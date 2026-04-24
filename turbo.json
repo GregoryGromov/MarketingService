@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -11,17 +12,21 @@
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "test:e2e": {
       "dependsOn": ["^build"],
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL", "REDIS_URL"],
+      "outputs": []
     },
     "lint": {
-      "cache": false
+      "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": []
     }
   }
 }

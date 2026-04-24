@@ -1,5 +1,5 @@
 {
-  "extends": "@marketing-service/config-typescript/nestjs.json",
+  "extends": "@marketing-service/config-typescript/library.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

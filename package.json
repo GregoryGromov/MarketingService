@@ -16,8 +16,9 @@
     "db:studio": "pnpm --filter @marketing-service/database drizzle-kit studio"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
-    "turbo": "^2.4.0"
+    "@biomejs/biome": "^2.4.13",
+    "turbo": "^2.4.0",
+    "typescript": "^6.0.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1,5 +1,8 @@
 {
   "name": "@marketing-service/config-typescript",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

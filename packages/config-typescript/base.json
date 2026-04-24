@@ -1,20 +1,19 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2024",
     "module": "commonjs",
-    "lib": ["ES2022"],
+    "lib": ["ES2024"],
     "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "ignoreDeprecations": "6.0"
   }
 }

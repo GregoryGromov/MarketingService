@@ -2,8 +2,12 @@
   "name": "@marketing-service/publishing",
   "private": true,
   "version": "0.0.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
@@ -15,6 +19,7 @@
   },
   "devDependencies": {
     "@marketing-service/config-typescript": "workspace:*",
-    "typescript": "^5.7.0"
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3"
   }
 }
