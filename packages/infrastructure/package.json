@@ -1,0 +1,26 @@
+{
+  "name": "@marketing-service/infrastructure",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marketing-service/shared": "workspace:*",
+    "@marketing-service/database": "workspace:*",
+    "@marketing-service/project-management": "workspace:*",
+    "@marketing-service/editorial": "workspace:*",
+    "@marketing-service/publishing": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "drizzle-orm": "^0.39.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@marketing-service/config-typescript": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}

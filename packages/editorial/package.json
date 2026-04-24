@@ -1,0 +1,20 @@
+{
+  "name": "@marketing-service/editorial",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marketing-service/shared": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/cqrs": "^11.0.0"
+  },
+  "devDependencies": {
+    "@marketing-service/config-typescript": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}

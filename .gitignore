@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.turbo/
+.env
+*.tsbuildinfo
+
+# Drizzle migration metadata
+drizzle/meta/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

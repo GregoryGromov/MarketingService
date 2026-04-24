@@ -1,0 +1,20 @@
+{
+  "name": "@marketing-service/database",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.39.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@marketing-service/config-typescript": "workspace:*",
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.7.0"
+  }
+}

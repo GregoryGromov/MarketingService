@@ -1,0 +1,8 @@
+{
+  "extends": "@marketing-service/config-typescript/nestjs.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"]
+}

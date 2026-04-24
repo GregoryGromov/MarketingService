@@ -1,0 +1,20 @@
+{
+  "name": "@marketing-service/shared",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "neverthrow": "^8.0.0",
+    "ts-pattern": "^5.0.0",
+    "typeid-js": "^1.0.0"
+  },
+  "devDependencies": {
+    "@marketing-service/config-typescript": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}
