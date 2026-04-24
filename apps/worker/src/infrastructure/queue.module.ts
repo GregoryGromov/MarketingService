@@ -1,4 +1,4 @@
-// BullMQ connection module (API side — registers queues for adding jobs)
+// BullMQ connection module (worker side — registers processors)
 //
 // TODO: implement
 //   BullModule.forRootAsync({

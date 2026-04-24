@@ -627,12 +627,11 @@ describe('Article', () => {
                          │
               ┌──────────┼──────────┐
               ▼          ▼          ▼
-       project-mgmt  editorial  publishing     ← domain + use-cases (ЧИСТЫЕ)
-              │          │          │
-              └──────────┼──────────┘
-                         ▼
-                 packages/database             ← Drizzle schemas
-                         │
+       project-mgmt  editorial  publishing       packages/database
+       (domain +      (domain +   (domain +       (Drizzle schemas)
+        use-cases)     use-cases)  use-cases)          │
+              │          │          │                   │
+              └──────────┼──────────┘───────────────────┘
                          ▼
                 packages/infrastructure        ← adapters (imports BC ports + database)
                          │
@@ -642,3 +641,4 @@ describe('Article', () => {
 ```
 
 BC-пакеты **не зависят** от database и infrastructure. Они чистые.
+`packages/database` тоже независим — infrastructure импортирует и BC-пакеты, и database параллельно.
