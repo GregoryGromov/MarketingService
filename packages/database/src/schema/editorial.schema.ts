@@ -1,11 +1,24 @@
+import { boolean, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+
 // Editorial bounded context schema
 //
-// Tables: articles, channel_adaptations, translations
-// Original is embedded in articles table (original_content, original_language, etc.)
-// All IDs are text (TypeID strings)
-// Use jsonb for: ReleasePlanSnapshot
-// Statuses stored as text: ArticleStatus, NodeStatus
-//
-// See domain doc: sections 3.3 (Article AR), 3.4 (Translation AR)
+// For the first vertical slice we only need the articles table.
+// Original content is embedded directly into the row.
 
-export {};
+export const articles = pgTable('articles', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull(),
+  status: text('status').notNull().default('draft'),
+  paused: boolean('paused').notNull().default(false),
+  publishAt: timestamp('publish_at', { withTimezone: true }),
+  defaultCoverUrl: text('default_cover_url'),
+  originalContent: text('original_content').notNull(),
+  originalLanguage: text('original_language').notNull(),
+  originalUploadedAt: timestamp('original_uploaded_at', { withTimezone: true }).notNull(),
+  releasePlanSnapshot: jsonb('release_plan_snapshot'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ArticleRow = typeof articles.$inferSelect;
+export type NewArticleRow = typeof articles.$inferInsert;
