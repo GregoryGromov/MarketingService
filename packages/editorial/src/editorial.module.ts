@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { CreateArticleHandler } from './use-cases/create-article/create-article.handler';
 
 @Module({
   imports: [CqrsModule],
   providers: [
-    // TODO: register command/query handlers from use-cases/
+    CreateArticleHandler,
     // TODO: register domain checkers from domain/ (TranslationReadinessChecker)
     // TODO: register sagas from use-cases/ (on-adaptation-approved, etc.)
     //

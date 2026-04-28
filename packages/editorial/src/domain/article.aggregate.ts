@@ -21,6 +21,18 @@ export interface CreateArticleParams {
   language: string;
 }
 
+export interface ArticleProps {
+  id: ArticleId;
+  projectId: ProjectId;
+  status: ArticleStatus;
+  paused: boolean;
+  publishAt: Date | null;
+  releasePlanSnapshot: Record<string, unknown> | null;
+  original: Original;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class Article extends AggregateRoot {
   private constructor(
     public readonly id: ArticleId,
@@ -63,5 +75,19 @@ export class Article extends AggregateRoot {
     );
 
     return article;
+  }
+
+  static rehydrate(props: ArticleProps): Article {
+    return new Article(
+      props.id,
+      props.projectId,
+      props.status,
+      props.paused,
+      props.publishAt,
+      props.releasePlanSnapshot,
+      props.original,
+      props.createdAt,
+      props.updatedAt,
+    );
   }
 }
