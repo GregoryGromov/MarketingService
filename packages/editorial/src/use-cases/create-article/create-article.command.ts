@@ -1,4 +1,4 @@
-import type { ProjectId } from '../../domain/article.aggregate';
+import type { ProjectId } from '../../domain/article.aggregate.js';
 
 export class CreateArticleCommand {
   constructor(

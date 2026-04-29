@@ -1,33 +1,26 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as schema from '@marketing-service/database';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 
 // Usage in adapters: @Inject(DRIZZLE) private db: DrizzleDB
-//
-// TODO: implement useFactory provider
-//   import { ConfigService } from '@nestjs/config';
-//   import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-//   import postgres from 'postgres';
-//   import * as schema from '@marketing-service/database';
-//
-//   providers: [{
-//     provide: DRIZZLE,
-//     inject: [ConfigService],
-//     useFactory: (config: ConfigService) => {
-//       const client = postgres(config.getOrThrow<string>('DATABASE_URL'));
-//       return drizzle(client, { schema });
-//     },
-//   }],
-//   exports: [DRIZZLE],
 
 export const DRIZZLE = Symbol('DRIZZLE');
-export type DrizzleDB = unknown; // TODO: replace with PostgresJsDatabase<typeof schema>
+export type DrizzleDB = PostgresJsDatabase<typeof schema>;
 
 @Global()
 @Module({
   providers: [
-    // TODO: DRIZZLE provider (see above)
+    {
+      provide: DRIZZLE,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): DrizzleDB => {
+        const client = postgres(config.getOrThrow<string>('DATABASE_URL'));
+        return drizzle(client, { schema });
+      },
+    },
   ],
-  exports: [
-    // TODO: DRIZZLE
-  ],
+  exports: [DRIZZLE],
 })
 export class DatabaseModule {}

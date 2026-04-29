@@ -1,4 +1,4 @@
-import { generateId, type TypedId } from './id';
+import { generateId, type TypedId } from './id.js';
 
 // Base domain event interface
 //

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { CreateArticleHandler } from './use-cases/create-article/create-article.handler';
+import { CreateArticleHandler } from './use-cases/create-article/create-article.handler.js';
 
 @Module({
   imports: [CqrsModule],

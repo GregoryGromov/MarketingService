@@ -1,4 +1,4 @@
-import type { Article, ArticleId } from './article.aggregate';
+import type { Article, ArticleId } from './article.aggregate.js';
 
 export abstract class ArticleRepository {
   abstract findById(id: ArticleId): Promise<Article | null>;

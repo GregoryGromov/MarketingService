@@ -1,4 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
+import { ArticleRepository } from '@marketing-service/editorial';
+import { DatabaseModule } from './database.module.js';
+import { ArticleDrizzleRepository } from './editorial/article.drizzle-repository.js';
 
 // TODO: import DatabaseModule
 // TODO: import and bind adapters to ports:
@@ -17,15 +20,17 @@ import { Module } from '@nestjs/common';
 //   { provide: PublishingTargetRepository, useClass: PublishingTargetDrizzleRepository }
 //   { provide: ChannelAdapterPort, useClass: ... }
 
+@Global()
 @Module({
   imports: [
-    // DatabaseModule,
+    DatabaseModule,
   ],
   providers: [
-    // TODO: bind port → adapter for each BC
+    ArticleDrizzleRepository,
+    { provide: ArticleRepository, useClass: ArticleDrizzleRepository },
   ],
   exports: [
-    // TODO: export all ports so BC modules can inject them
+    ArticleRepository,
   ],
 })
 export class InfrastructureModule {}

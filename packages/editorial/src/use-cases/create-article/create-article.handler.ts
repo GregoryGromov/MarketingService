@@ -1,7 +1,7 @@
 import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
-import { Article } from '../../domain/article.aggregate';
-import { ArticleRepository } from '../../domain/article.repository';
-import { CreateArticleCommand } from './create-article.command';
+import { Article } from '../../domain/article.aggregate.js';
+import { ArticleRepository } from '../../domain/article.repository.js';
+import { CreateArticleCommand } from './create-article.command.js';
 
 @CommandHandler(CreateArticleCommand)
 export class CreateArticleHandler implements ICommandHandler<CreateArticleCommand, string> {
