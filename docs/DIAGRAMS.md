@@ -73,9 +73,9 @@ graph LR
 
     subgraph ed_bc["Editorial"]
         direction TB
-        article["<b>Article</b> (AR)<br/>─────────<br/>status: ArticleStatus<br/>paused: boolean<br/>publishAt<br/>releasePlanSnapshot"]
+        article["<b>Article</b> (AR)<br/>─────────<br/>status: ArticleStatus<br/>paused: boolean<br/>releasePlanSnapshot"]
         original["<b>Original</b> (embedded)<br/>─────────<br/>content<br/>language<br/>uploadedAt"]
-        adaptation["<b>ChannelAdaptation</b> (Entity)<br/>─────────<br/>channelId<br/>status: NodeStatus<br/>adaptedContent"]
+        adaptation["<b>ChannelAdaptation</b> (Entity)<br/>─────────<br/>channelId<br/>sourceLanguage<br/>status: NodeStatus<br/>adaptedContent"]
         translation["<b>Translation</b> (AR)<br/>─────────<br/>adaptationId<br/>language<br/>status: NodeStatus<br/>translatedContent"]
 
         article -->|embeds| original
@@ -86,11 +86,11 @@ graph LR
     subgraph pub_bc["Publishing"]
         direction TB
         pubtarget["<b>PublishingTarget</b> (AR)<br/>─────────<br/>channelId<br/>config<br/>canEdit: boolean"]
-        publication["<b>Publication</b> (AR)<br/>─────────<br/>status: PublicationStatus<br/>scheduledAt<br/>publishedAt<br/>externalId"]
+        publication["<b>Publication</b> (AR)<br/>─────────<br/>status: PublicationStatus<br/>scheduledAt<br/>publishedAt<br/>targetLanguage<br/>contentSnapshot<br/>sourceRef<br/>externalId"]
     end
 
-    project -.->|defines channels for| article
-    article -.->|scheduled →| publication
+    project -.->|defines available channels| article
+    article -.->|approved content →| publication
     pubtarget -.->|routes to| channel
 
     style pm_bc fill:#dbeafe,stroke:#3b82f6
@@ -143,24 +143,24 @@ graph BT
 stateDiagram-v2
     [*] --> draft: CreateArticle
 
-    draft --> scheduled: Schedule<br/><i>all adaptations approved +<br/>translations ready</i>
+    draft --> ready: All required adaptations approved +<br/>translations ready
     draft --> cancelled: Cancel
 
-    scheduled --> publishing: PublishAt reached<br/><i>(BullMQ delayed job)</i>
-    scheduled --> cancelled: Cancel
+    ready --> active: First publication scheduled
+    ready --> cancelled: Cancel
 
-    publishing --> published: All publications<br/>succeeded
-    publishing --> publishing: Partial<br/>failure + retry
+    active --> active: More publications scheduled / published
+    active --> completed: All planned publications finished
 
     cancelled --> [*]
-    published --> [*]
+    completed --> [*]
 
     state draft {
         [*] --> original_uploaded
         original_uploaded --> adaptations_generating: GenerateAdaptation
         adaptations_generating --> adaptations_ready: All approved
         adaptations_ready --> translations_generating: GenerateTranslation<br/><i>(saga)</i>
-        translations_generating --> ready_to_schedule: All approved
+        translations_generating --> editorial_ready: All approved
     }
 ```
 
@@ -209,15 +209,16 @@ sequenceDiagram
     LLM-->>Worker: translated content
     Worker->>DB: save translation
 
-    User->>API: POST /articles/:id/schedule
-    API->>CmdBus: ScheduleArticleCommand
+    User->>API: POST /articles/:id/publications {channel, language, scheduledAt}
+    API->>CmdBus: CreatePublicationCommand
     CmdBus->>Handler: execute()
+    Handler->>DB: save publication(contentSnapshot, scheduledAt)
     Handler->>Queue: delayed job: execute-publication
 
-    Note over Queue: Waits until publishAt...
+    Note over Queue: Waits until publication.scheduledAt...
 
     Queue->>Worker: job: execute-publication
-    Worker->>Channel: publish(content)
+    Worker->>Channel: publish(publication.contentSnapshot)
     Channel-->>Worker: externalId
     Worker->>DB: save(status=published)
 ```
@@ -244,7 +245,7 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> scheduled: Schedule article
+    [*] --> scheduled: Schedule publication
 
     scheduled --> published: Channel API<br/>call succeeds
     scheduled --> failed: Channel API<br/>call fails

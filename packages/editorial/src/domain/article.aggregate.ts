@@ -7,7 +7,7 @@ import {
 
 export type ArticleId = TypedId<'article'>;
 export type ProjectId = TypedId<'project'>;
-export type ArticleStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'cancelled';
+export type ArticleStatus = 'draft' | 'ready' | 'active' | 'completed' | 'cancelled';
 
 export interface Original {
   content: string;
@@ -19,6 +19,7 @@ export interface CreateArticleParams {
   projectId: ProjectId;
   content: string;
   language: string;
+  releasePlanSnapshot?: Record<string, unknown> | null;
 }
 
 export interface ArticleProps {
@@ -26,7 +27,6 @@ export interface ArticleProps {
   projectId: ProjectId;
   status: ArticleStatus;
   paused: boolean;
-  publishAt: Date | null;
   releasePlanSnapshot: Record<string, unknown> | null;
   original: Original;
   createdAt: Date;
@@ -39,7 +39,6 @@ export class Article extends AggregateRoot {
     public readonly projectId: ProjectId,
     public status: ArticleStatus,
     public paused: boolean,
-    public publishAt: Date | null,
     public releasePlanSnapshot: Record<string, unknown> | null,
     public readonly original: Original,
     public readonly createdAt: Date,
@@ -56,8 +55,7 @@ export class Article extends AggregateRoot {
       params.projectId,
       'draft',
       false,
-      null,
-      null,
+      params.releasePlanSnapshot ?? null,
       {
         content: params.content,
         language: params.language,
@@ -83,7 +81,6 @@ export class Article extends AggregateRoot {
       props.projectId,
       props.status,
       props.paused,
-      props.publishAt,
       props.releasePlanSnapshot,
       props.original,
       props.createdAt,

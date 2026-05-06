@@ -326,6 +326,9 @@ importers:
 
   packages/publishing:
     dependencies:
+      '@marketing-service/editorial':
+        specifier: workspace:*
+        version: link:../editorial
       '@marketing-service/shared':
         specifier: workspace:*
         version: link:../shared

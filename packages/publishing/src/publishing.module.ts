@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { PublicationSchedulerService } from './services/telegram-publication-scheduler.service.js';
+import { GetArticlePublicationsHandler } from './use-cases/get-article-publications/get-article-publications.handler.js';
+import { ScheduleDiscordPublicationHandler } from './use-cases/schedule-discord-publication/schedule-discord-publication.handler.js';
+import { ScheduleTelegramPublicationHandler } from './use-cases/schedule-telegram-publication/schedule-telegram-publication.handler.js';
 
 @Module({
   imports: [CqrsModule],
   providers: [
-    // TODO: register command/query handlers from use-cases/
-    // TODO: register domain checkers from domain/ (PublicationCompletenessChecker)
-    // TODO: register sagas from use-cases/ (on-article-scheduled, etc.)
-    //
-    // Repositories and channel adapters are NOT here — they live in
-    // @marketing-service/infrastructure and are bound (port → adapter) there
+    GetArticlePublicationsHandler,
+    ScheduleDiscordPublicationHandler,
+    ScheduleTelegramPublicationHandler,
+    PublicationSchedulerService,
   ],
   exports: [],
 })

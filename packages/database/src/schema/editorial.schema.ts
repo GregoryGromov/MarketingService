@@ -10,7 +10,6 @@ export const articles = pgTable('articles', {
   projectId: text('project_id').notNull(),
   status: text('status').notNull().default('draft'),
   paused: boolean('paused').notNull().default(false),
-  publishAt: timestamp('publish_at', { withTimezone: true }),
   defaultCoverUrl: text('default_cover_url'),
   originalContent: text('original_content').notNull(),
   originalLanguage: text('original_language').notNull(),
@@ -22,3 +21,48 @@ export const articles = pgTable('articles', {
 
 export type ArticleRow = typeof articles.$inferSelect;
 export type NewArticleRow = typeof articles.$inferInsert;
+
+export const channelAdaptations = pgTable('channel_adaptations', {
+  id: text('id').primaryKey(),
+  articleId: text('article_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  displayName: text('display_name').notNull(),
+  promptInstructions: text('prompt_instructions'),
+  sourceLanguage: text('source_language').notNull(),
+  status: text('status').notNull().default('pending'),
+  adaptedContent: text('adapted_content'),
+  selectedVersionId: text('selected_version_id'),
+  approvedVersionId: text('approved_version_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ChannelAdaptationRow = typeof channelAdaptations.$inferSelect;
+export type NewChannelAdaptationRow = typeof channelAdaptations.$inferInsert;
+
+export const channelAdaptationVersions = pgTable('channel_adaptation_versions', {
+  id: text('id').primaryKey(),
+  adaptationId: text('adaptation_id').notNull(),
+  content: text('content').notNull(),
+  kind: text('kind').notNull(),
+  sourceVersionId: text('source_version_id'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ChannelAdaptationVersionRow = typeof channelAdaptationVersions.$inferSelect;
+export type NewChannelAdaptationVersionRow = typeof channelAdaptationVersions.$inferInsert;
+
+export const translations = pgTable('translations', {
+  id: text('id').primaryKey(),
+  adaptationId: text('adaptation_id').notNull(),
+  sourceLanguage: text('source_language').notNull(),
+  targetLanguage: text('target_language').notNull(),
+  status: text('status').notNull().default('pending'),
+  translatedContent: text('translated_content'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TranslationRow = typeof translations.$inferSelect;
+export type NewTranslationRow = typeof translations.$inferInsert;

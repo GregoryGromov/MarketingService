@@ -1,0 +1,1 @@
+{"version":3,"file":"add-translation.command.d.ts","sourceRoot":"","sources":["add-translation.command.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,2CAA2C,CAAC;AAC9E,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,mCAAmC,CAAC;AAEnE,qBAAa,qBAAqB;aAEd,SAAS,EAAE,SAAS;aACpB,YAAY,EAAE,YAAY;aAC1B,cAAc,EAAE,MAAM;gBAFtB,SAAS,EAAE,SAAS,EACpB,YAAY,EAAE,YAAY,EAC1B,cAAc,EAAE,MAAM;CAEzC"}

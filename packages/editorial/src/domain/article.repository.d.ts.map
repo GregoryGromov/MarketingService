@@ -1,0 +1,1 @@
+{"version":3,"file":"article.repository.d.ts","sourceRoot":"","sources":["article.repository.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,OAAO,EAAE,SAAS,EAAE,MAAM,wBAAwB,CAAC;AAEjE,8BAAsB,iBAAiB;IACrC,QAAQ,CAAC,QAAQ,CAAC,EAAE,EAAE,SAAS,GAAG,OAAO,CAAC,OAAO,GAAG,IAAI,CAAC;IACzD,QAAQ,CAAC,IAAI,CAAC,OAAO,EAAE,OAAO,GAAG,OAAO,CAAC,IAAI,CAAC;CAC/C"}

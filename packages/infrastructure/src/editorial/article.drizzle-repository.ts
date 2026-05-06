@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { articles, type ArticleRow, type NewArticleRow } from '@marketing-service/database';
 import {
   Article,
@@ -23,6 +23,15 @@ export class ArticleDrizzleRepository extends ArticleRepository {
     return row ? Article.rehydrate(this.toDomainProps(row)) : null;
   }
 
+  async findByProjectId(projectId: ArticleProps['projectId']): Promise<Article[]> {
+    const rows = await this.db.query.articles.findMany({
+      where: eq(articles.projectId, projectId),
+      orderBy: [desc(articles.updatedAt)],
+    });
+
+    return rows.map((row) => Article.rehydrate(this.toDomainProps(row)));
+  }
+
   async save(article: Article): Promise<void> {
     await this.db
       .insert(articles)
@@ -39,7 +48,6 @@ export class ArticleDrizzleRepository extends ArticleRepository {
       projectId: row.projectId as ArticleProps['projectId'],
       status: row.status as ArticleProps['status'],
       paused: row.paused,
-      publishAt: row.publishAt,
       releasePlanSnapshot: row.releasePlanSnapshot as ArticleProps['releasePlanSnapshot'],
       original: {
         content: row.originalContent,
@@ -57,7 +65,6 @@ export class ArticleDrizzleRepository extends ArticleRepository {
       projectId: article.projectId,
       status: article.status,
       paused: article.paused,
-      publishAt: article.publishAt,
       releasePlanSnapshot: article.releasePlanSnapshot,
       originalContent: article.original.content,
       originalLanguage: article.original.language,

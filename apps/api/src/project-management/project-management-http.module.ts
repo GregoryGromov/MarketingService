@@ -1,10 +1,9 @@
-// HTTP module for Project Management bounded context
-//
-// Groups controllers + Valibot schemas for this BC
-//
-// TODO: implement
-//   @Module({
-//     controllers: [ProjectController, ChannelController],
-//   })
+import { Module } from '@nestjs/common';
+import { CqrsModule } from '@nestjs/cqrs';
+import { ProjectController } from './project.controller.js';
 
-export {};
+@Module({
+  imports: [CqrsModule],
+  controllers: [ProjectController],
+})
+export class ProjectManagementHttpModule {}

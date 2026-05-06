@@ -134,6 +134,26 @@ packages/editorial/src/
 - **Checker** — чистый доменный сервис. Проверяет кросс-агрегатные инварианты. Чекер добывает данные, агрегат принимает решение.
 - **LLM port** — интерфейс генерации. Домен знает что нужно сгенерировать, infra знает как.
 
+### Модель публикации для multi-channel / multi-language
+
+Для реального business flow статья **не должна** хранить одно общее `publishAt`.
+
+Правильная целевая модель:
+- `Article` — исходный контент и editorial readiness.
+- `ChannelAdaptation` — адаптация под конкретный канал в базовом языке.
+- `Translation` — перевод adaptation на конкретный target language.
+- `Publication` — **конкретная запланированная публикация** с собственным `scheduledAt`.
+
+Ключевой принцип: `Publication` публикует не “adaptation или translation по условию”, а **зафиксированный `contentSnapshot`**, собранный из approved adaptation / translation на момент планирования.
+
+Это дает:
+- разные даты/времена для разных каналов;
+- разные языки для разных публикаций;
+- стабильный publish payload даже если editorial объекты потом изменились;
+- более чистую границу между `editorial` и `publishing`.
+
+`Content plan` при этом лучше понимать как **read model над `Publication`**, а не как отдельный core aggregate.
+
 ---
 
 ## Структура Infrastructure-пакета
@@ -259,16 +279,15 @@ import { ok, err, type Result } from 'neverthrow';
 
 // В агрегате (domain/)
 class Article {
-  schedule(publishAt: Date, translationsReady: boolean): Result<void, DomainError> {
+  markReadyForPublication(translationsReady: boolean): Result<void, DomainError> {
     if (!translationsReady) {
       return err(new TranslationsNotReadyError(this.id));
     }
     if (!this.allAdaptationsApproved()) {
       return err(new AdaptationsNotApprovedError(this.id));
     }
-    this.status = 'scheduled';
-    this.publishAt = publishAt;
-    this.addEvent(new ArticleScheduled({ articleId: this.id, publishAt }));
+    this.status = 'ready';
+    this.addEvent(new ArticleReadyForPublication({ articleId: this.id }));
     return ok(undefined);
   }
 }
@@ -276,7 +295,7 @@ class Article {
 
 ```typescript
 // В command handler (use-cases/)
-const result = article.schedule(command.publishAt, translationsReady);
+const result = article.markReadyForPublication(translationsReady);
 if (result.isErr()) {
   throw result.error; // exception filter в apps/api подхватит → HTTP 422
 }
@@ -289,9 +308,9 @@ await this.articleRepo.save(article);
 import { match } from 'ts-pattern';
 
 const canTransition = match(currentStatus)
-  .with('draft', () => ['scheduled', 'cancelled'])
-  .with('scheduled', () => ['publishing', 'cancelled'])
-  .with('publishing', () => ['published'])
+  .with('draft', () => ['ready', 'cancelled'])
+  .with('ready', () => ['active', 'cancelled'])
+  .with('active', () => ['completed'])
   .otherwise(() => []);
 ```
 
@@ -306,12 +325,29 @@ export const articles = pgTable('articles', {
   projectId: text('project_id').notNull(),
   status: text('status').notNull().default('draft'),
   paused: boolean('paused').notNull().default(false),
-  publishAt: timestamp('publish_at', { withTimezone: true }),
   defaultCoverUrl: text('default_cover_url'),
   originalContent: text('original_content').notNull(),
   originalLanguage: text('original_language').notNull(),
   originalUploadedAt: timestamp('original_uploaded_at', { withTimezone: true }).notNull(),
   releasePlanSnapshot: jsonb('release_plan_snapshot'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+```
+
+```typescript
+// packages/database/src/schema/publishing.schema.ts
+export const publications = pgTable('publications', {
+  id: text('id').primaryKey(),
+  articleId: text('article_id').notNull(),
+  publishingTargetId: text('publishing_target_id').notNull(),
+  status: text('status').notNull().default('scheduled'),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  targetLanguage: text('target_language').notNull(),
+  contentSnapshot: jsonb('content_snapshot').notNull(),
+  sourceRef: jsonb('source_ref').notNull(), // adaptation / translation traceability
+  externalId: text('external_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -515,7 +551,7 @@ export function validateEnv(config: Record<string, unknown>) {
 |---|---|---|
 | `generation` | `generate-adaptation` | LLM: original + brief → adaptation (EN) |
 | `generation` | `generate-translation` | LLM: adaptation → translation (target lang) |
-| `publishing` | `execute-publication` | API call через channel adapter (delayed job) |
+| `publishing` | `execute-publication` | API call через channel adapter с `publication.contentSnapshot` |
 | `publishing` | `update-published` | Обновить контент через API (если canEdit) |
 
 ---
@@ -561,7 +597,7 @@ pnpm db:studio      # визуальный UI для БД
 
 ### Статусы (хранятся как text в БД)
 
-**Article:** `draft → scheduled → publishing → published` (+ `cancelled` из draft/scheduled)
+**Article:** `draft → ready → active → completed` (+ `cancelled` из draft/ready)
 
 **Adaptation/Translation (NodeStatus):** `pending → generated → edited → approved → outdated`
 
@@ -588,7 +624,7 @@ export class TranslationReadinessDrizzleChecker extends TranslationReadinessChec
 
 // В command handler (use-cases/)
 const translationsReady = await this.checker.areAllApproved(articleId);
-const result = article.schedule(publishAt, translationsReady);
+const result = article.markReadyForPublication(translationsReady);
 ```
 
 ---
@@ -605,11 +641,11 @@ pnpm test:e2e          # e2e тесты (apps/api)
 ```typescript
 // packages/editorial/src/domain/__tests__/article.aggregate.spec.ts
 describe('Article', () => {
-  it('should transition from draft to scheduled', () => {
+  it('should transition from draft to ready', () => {
     const article = Article.create({ ... });
-    const result = article.schedule(new Date(), true);
+    const result = article.markReadyForPublication(true);
     expect(result.isOk()).toBe(true);
-    expect(article.status).toBe('scheduled');
+    expect(article.status).toBe('ready');
   });
 });
 ```

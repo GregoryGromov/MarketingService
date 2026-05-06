@@ -15,6 +15,7 @@ export class CreateArticleHandler implements ICommandHandler<CreateArticleComman
       projectId: command.projectId,
       content: command.content,
       language: command.language,
+      releasePlanSnapshot: command.releasePlanSnapshot,
     });
 
     await this.articleRepository.save(article);

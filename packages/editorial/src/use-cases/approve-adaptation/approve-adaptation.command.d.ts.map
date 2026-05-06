@@ -1,0 +1,1 @@
+{"version":3,"file":"approve-adaptation.command.d.ts","sourceRoot":"","sources":["approve-adaptation.command.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,2CAA2C,CAAC;AAC9E,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,mCAAmC,CAAC;AAEnE,qBAAa,wBAAwB;aAEjB,SAAS,EAAE,SAAS;aACpB,YAAY,EAAE,YAAY;gBAD1B,SAAS,EAAE,SAAS,EACpB,YAAY,EAAE,YAAY;CAE7C"}

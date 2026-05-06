@@ -8,6 +8,55 @@
       "when": 1777473416336,
       "tag": "0000_odd_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777893026804,
+      "tag": "0001_rainy_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778004924204,
+      "tag": "0002_mute_celestials",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778008059390,
+      "tag": "0003_common_redwing",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778013431686,
+      "tag": "0004_woozy_loners",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778014373415,
+      "tag": "0005_purple_killmonger",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778073967111,
+      "tag": "0006_reflective_ozymandias",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778087766664,
+      "tag": "0007_pretty_bloodstorm",
+      "breakpoints": true
     }
   ]
 }

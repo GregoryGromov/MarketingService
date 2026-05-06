@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { CreateProjectHandler } from './use-cases/create-project/create-project.handler.js';
+import { GetProjectHandler } from './use-cases/get-project/get-project.handler.js';
+import { ListProjectsHandler } from './use-cases/list-projects/list-projects.handler.js';
 
 @Module({
   imports: [CqrsModule],
   providers: [
-    // TODO: register command/query handlers from use-cases/
-    // TODO: register domain checkers from domain/
-    //
-    // Repositories are NOT here — they live in @marketing-service/infrastructure
-    // and are bound (port → adapter) in InfrastructureModule
+    CreateProjectHandler,
+    GetProjectHandler,
+    ListProjectsHandler,
   ],
   exports: [],
 })
