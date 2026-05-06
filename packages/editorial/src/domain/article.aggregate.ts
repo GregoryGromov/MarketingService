@@ -87,4 +87,53 @@ export class Article extends AggregateRoot {
       props.updatedAt,
     );
   }
+
+  removePublicationIntent(channelId: string, targetLanguage: string): void {
+    const snapshot = this.releasePlanSnapshot;
+    if (!snapshot || typeof snapshot !== 'object') {
+      return;
+    }
+
+    const intents = Array.isArray(snapshot.publicationIntents)
+      ? snapshot.publicationIntents
+      : [];
+
+    const nextIntents = intents
+      .map((intent) => {
+        if (!intent || typeof intent !== 'object' || intent.channelId !== channelId) {
+          return intent;
+        }
+
+        const translations = Array.isArray(intent.translations) ? intent.translations : [];
+        const nextTranslations = translations.filter((item: any) =>
+          String(item?.targetLanguage || '').toLowerCase() !== targetLanguage.toLowerCase(),
+        );
+
+        return {
+          ...intent,
+          translations: nextTranslations,
+        };
+      })
+      .filter((intent) => {
+        if (!intent || typeof intent !== 'object') {
+          return false;
+        }
+
+        const translations = Array.isArray(intent.translations) ? intent.translations : [];
+        return translations.length > 0;
+      });
+
+    this.releasePlanSnapshot = {
+      ...snapshot,
+      publicationIntents: nextIntents,
+    };
+    this.updatedAt = new Date();
+
+    this.addEvent(
+      createDomainEvent({
+        eventName: 'ArticlePublicationIntentRemoved',
+        aggregateId: this.id,
+      }),
+    );
+  }
 }

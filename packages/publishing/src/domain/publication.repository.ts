@@ -11,5 +11,6 @@ export abstract class PublicationRepository {
     targetLanguage: string,
   ): Promise<Publication | null>;
   abstract findDue(now: Date, limit?: number): Promise<Publication[]>;
+  abstract deleteById(id: PublicationId): Promise<void>;
   abstract save(publication: Publication): Promise<void>;
 }

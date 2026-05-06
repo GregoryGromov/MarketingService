@@ -74,6 +74,12 @@ export class PublicationDrizzleRepository extends PublicationRepository {
     return rows.map((row) => Publication.rehydrate(this.toDomainProps(row)));
   }
 
+  async deleteById(id: PublicationId): Promise<void> {
+    await this.db
+      .delete(publications)
+      .where(eq(publications.id, id));
+  }
+
   async save(publication: Publication): Promise<void> {
     await this.db
       .insert(publications)

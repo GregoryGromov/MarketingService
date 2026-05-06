@@ -3,12 +3,16 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   type AdaptationId,
   type ArticleId,
+  type ChannelId,
   PublishTelegramMessageCommand,
 } from '@marketing-service/editorial';
 import {
+  CancelPublicationCommand,
+  CancelPlannedPublicationCommand,
   GetArticlePublicationsQuery,
   ScheduleDiscordPublicationCommand,
   ScheduleTelegramPublicationCommand,
+  type PublicationId,
   type GetArticlePublicationsResultItem,
 } from '@marketing-service/publishing';
 
@@ -73,6 +77,33 @@ export class PublicationController {
         body.adaptationId as AdaptationId,
         body.targetLanguage,
         new Date(body.publishAt),
+      ),
+    );
+  }
+
+  @Post(':publicationId/cancel')
+  async cancelPublication(
+    @Param('publicationId') publicationId: string,
+  ): Promise<{ id: string; status: 'cancelled' }> {
+    return this.commandBus.execute(
+      new CancelPublicationCommand(publicationId as PublicationId),
+    );
+  }
+
+  @Post('cancel-planned')
+  async cancelPlannedPublication(
+    @Body()
+    body: {
+      articleId: string;
+      channelId: string;
+      targetLanguage: string;
+    },
+  ): Promise<{ status: 'cancelled' }> {
+    return this.commandBus.execute(
+      new CancelPlannedPublicationCommand(
+        body.articleId as ArticleId,
+        body.channelId as ChannelId,
+        body.targetLanguage,
       ),
     );
   }
