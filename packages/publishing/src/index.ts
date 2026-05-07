@@ -1,5 +1,12 @@
 export { PublishingModule } from './publishing.module.js';
 export {
+  PublicationPlan,
+  type CreatePublicationPlanParams,
+  type PublicationPlanId,
+  type PublicationPlanProps,
+} from './domain/publication-plan.aggregate.js';
+export { PublicationPlanRepository } from './domain/publication-plan.repository.js';
+export {
   Publication,
   type CreatePublicationParams,
   type PublicationId,
@@ -7,9 +14,16 @@ export {
   type PublicationStatus,
 } from './domain/publication.aggregate.js';
 export { PublicationRepository } from './domain/publication.repository.js';
+export { CancelPublicationPlanCommand } from './use-cases/cancel-publication-plan/cancel-publication-plan.command.js';
 export { CancelPublicationCommand } from './use-cases/cancel-publication/cancel-publication.command.js';
 export { CancelPlannedPublicationCommand } from './use-cases/cancel-planned-publication/cancel-planned-publication.command.js';
+export { CreatePublicationPlanCommand } from './use-cases/create-publication-plan/create-publication-plan.command.js';
+export { GetArticlePublicationPlansQuery } from './use-cases/get-article-publication-plans/get-article-publication-plans.query.js';
+export type { GetArticlePublicationPlansResultItem } from './use-cases/get-article-publication-plans/get-article-publication-plans.handler.js';
 export { GetArticlePublicationsQuery } from './use-cases/get-article-publications/get-article-publications.query.js';
 export type { GetArticlePublicationsResultItem } from './use-cases/get-article-publications/get-article-publications.handler.js';
+export { GetProjectPublicationPlansQuery } from './use-cases/get-project-publication-plans/get-project-publication-plans.query.js';
+export type { GetProjectPublicationPlansResultItem } from './use-cases/get-project-publication-plans/get-project-publication-plans.handler.js';
+export { ReschedulePublicationPlanCommand } from './use-cases/reschedule-publication-plan/reschedule-publication-plan.command.js';
 export { ScheduleDiscordPublicationCommand } from './use-cases/schedule-discord-publication/schedule-discord-publication.command.js';
 export { ScheduleTelegramPublicationCommand } from './use-cases/schedule-telegram-publication/schedule-telegram-publication.command.js';

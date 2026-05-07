@@ -9,6 +9,267 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function renderDevConsoleStyles(): string {
+  return `
+      .dev-console-anchor {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 50;
+      }
+      .dev-toggle {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 16px;
+        background: rgba(16, 24, 40, 0.92);
+        color: #eef2ff;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24);
+      }
+      .dev-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        background: rgba(9, 15, 28, 0.42);
+        display: none;
+        align-items: flex-end;
+        justify-content: flex-end;
+        padding: 24px;
+      }
+      .dev-backdrop.open {
+        display: flex;
+      }
+      .dev-panel {
+        width: min(540px, calc(100vw - 32px));
+        max-height: min(70vh, 680px);
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid rgba(216, 223, 235, 0.9);
+        background: rgba(15, 21, 34, 0.96);
+        box-shadow: 0 24px 60px rgba(9, 15, 28, 0.32);
+      }
+      .dev-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #eef2ff;
+      }
+      .dev-head strong {
+        font-size: 15px;
+        line-height: 1.2;
+      }
+      .dev-panel pre {
+        margin: 0;
+        padding: 18px;
+        min-height: 220px;
+        max-height: calc(70vh - 90px);
+        overflow: auto;
+        border-radius: 16px;
+        background: #0f1522;
+        color: #d8e1f4;
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+      }
+      @media (max-width: 720px) {
+        .dev-console-anchor {
+          right: 16px;
+          bottom: 16px;
+        }
+        .dev-backdrop {
+          padding: 16px;
+        }
+      }
+`;
+}
+
+function renderDevConsoleMarkup(): string {
+  return `
+    <div class="dev-console-anchor">
+      <button type="button" class="dev-toggle" onclick="toggleDevConsole(true)">Dev panel</button>
+    </div>
+    <div id="devConsoleBackdrop" class="dev-backdrop" onclick="toggleDevConsole(false, event)">
+      <div class="dev-panel" onclick="event.stopPropagation()">
+        <div class="dev-head">
+          <strong>Developer panel</strong>
+          <button type="button" class="secondary" onclick="toggleDevConsole(false)">Close</button>
+        </div>
+        <pre id="output">Ready.</pre>
+      </div>
+    </div>
+`;
+}
+
+function renderDevConsoleScript(): string {
+  return `
+    <script>
+      function toggleDevConsole(forceOpen, event) {
+        if (event && event.target !== event.currentTarget) return;
+        const overlay = document.getElementById('devConsoleBackdrop');
+        if (!overlay) return;
+
+        const shouldOpen = typeof forceOpen === 'boolean'
+          ? forceOpen
+          : !overlay.classList.contains('open');
+
+        overlay.classList.toggle('open', shouldOpen);
+        document.body.style.overflow = shouldOpen ? 'hidden' : '';
+      }
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          toggleDevConsole(false);
+        }
+      });
+    </script>
+`;
+}
+
+function renderUnifiedWorkflowStyles(): string {
+  return `
+      :root {
+        --bg: #ececed !important;
+        --panel: rgba(255, 255, 255, 0.88) !important;
+        --surface-soft: rgba(255, 255, 255, 0.54) !important;
+        --text: #121212 !important;
+        --muted: rgba(18, 18, 18, 0.58) !important;
+        --border: rgba(18, 18, 18, 0.18) !important;
+        --line-strong: rgba(18, 18, 18, 0.28) !important;
+        --accent: #121212 !important;
+        --accent-soft: rgba(255, 255, 255, 0.34) !important;
+        --success: #117a43 !important;
+        --success-soft: #ebfff4 !important;
+        --warning: #b54708 !important;
+        --warning-soft: #fff3e8 !important;
+        --danger: #b42318 !important;
+        --danger-soft: #fff0ed !important;
+        --shadow: none !important;
+      }
+      body {
+        background: var(--bg) !important;
+        color: var(--text) !important;
+        font: 15px/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+      }
+      .wrap {
+        max-width: 1800px !important;
+        padding: 22px 38px 40px !important;
+        gap: 18px !important;
+      }
+      .panel, .hero, .card, .status-card, .content, .empty-state {
+        background: var(--panel) !important;
+        border: 1px solid rgba(18, 18, 18, 0.12) !important;
+        border-radius: 34px !important;
+        box-shadow: none !important;
+      }
+      .panel, .hero, .content {
+        padding: 24px !important;
+      }
+      h1 {
+        margin: 0 !important;
+        font-size: clamp(36px, 4.8vw, 72px) !important;
+        line-height: 0.92 !important;
+        letter-spacing: -0.06em !important;
+        font-weight: 400 !important;
+      }
+      h2 {
+        margin: 0 !important;
+        font-size: 28px !important;
+        line-height: 1 !important;
+        letter-spacing: -0.04em !important;
+        font-weight: 400 !important;
+      }
+      h3 {
+        margin: 0 !important;
+        font-size: 22px !important;
+        line-height: 1.06 !important;
+        letter-spacing: -0.04em !important;
+        font-weight: 400 !important;
+      }
+      p, .hero p, .sub, .status-subtitle, .meta-line, .post-copy, .translation-note, .channel-copy span, .note, .info-row span, .meta-box span, .meta-value {
+        color: var(--muted) !important;
+      }
+      button, a.btn, .topbar a, .mini-btn, .version-dot {
+        appearance: none !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 999px !important;
+        padding: 10px 18px !important;
+        background: rgba(255, 255, 255, 0.34) !important;
+        color: var(--text) !important;
+        font: inherit !important;
+        font-weight: 400 !important;
+        text-decoration: none !important;
+        box-shadow: none !important;
+      }
+      button:hover, a.btn:hover, .topbar a:hover, .mini-btn:hover, .version-dot:hover {
+        background: rgba(255, 255, 255, 0.56) !important;
+        transform: none !important;
+      }
+      button.secondary, .btn.secondary, .mini-btn.danger {
+        background: rgba(255, 255, 255, 0.34) !important;
+        color: var(--text) !important;
+        border-color: var(--border) !important;
+      }
+      input, textarea, select {
+        border: 1px solid var(--border) !important;
+        border-radius: 18px !important;
+        background: rgba(255, 255, 255, 0.72) !important;
+        color: var(--text) !important;
+        box-shadow: none !important;
+      }
+      label {
+        color: var(--muted) !important;
+        font-weight: 700 !important;
+      }
+      .check, .translation-box, .translation-row, .note, .meta-box, .version-strip, .ai-panel, .status-card, .post-card, .stat {
+        border: 1px solid var(--border) !important;
+        border-radius: 24px !important;
+        background: var(--surface-soft) !important;
+        box-shadow: none !important;
+      }
+      .placeholder, .content-highlight, .preview-box, .selection-preview {
+        border: 1px dashed var(--border) !important;
+        border-radius: 20px !important;
+        background: rgba(255, 255, 255, 0.5) !important;
+      }
+      .badge, .status, .version-tag {
+        border-radius: 999px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.04em !important;
+        box-shadow: none !important;
+      }
+      .empty, .empty-state {
+        border-style: dashed !important;
+        color: var(--muted) !important;
+      }
+      .error, .publish-error {
+        color: var(--danger) !important;
+      }
+      .control-panel, .editor-sidebar, .sidebar {
+        top: 22px !important;
+      }
+      .actions, .hero-actions, .post-actions, .modal-actions {
+        gap: 10px !important;
+      }
+      .layout, .grid, .editor-shell {
+        gap: 18px !important;
+      }
+      pre {
+        border-radius: 20px !important;
+      }
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 18px 16px 28px !important;
+        }
+      }
+`;
+}
+
 @Controller('test-ui')
 export class TestUiController {
   @Get()
@@ -22,127 +283,128 @@ export class TestUiController {
     <title>Marketing Service - Projects</title>
     <style>
       :root {
-        --bg: #f4f7fb;
-        --panel: #ffffff;
-        --text: #121826;
-        --muted: #5d687c;
-        --border: #d8dfeb;
-        --accent: #1d4fff;
-        --accent-soft: #edf2ff;
-        --shadow: 0 16px 40px rgba(15, 27, 58, 0.08);
+        --bg: #ececed;
+        --text: #121212;
+        --muted: rgba(18, 18, 18, 0.58);
+        --line: rgba(18, 18, 18, 0.18);
         --danger: #b42318;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
+        background: var(--bg);
         color: var(--text);
-        font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font: 15px/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
       .wrap {
-        max-width: 1180px;
+        max-width: 1800px;
         margin: 0 auto;
-        padding: 24px;
+        padding: 22px 38px 40px;
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        box-shadow: var(--shadow);
-      }
-      .hero, .content { padding: 24px 28px; }
-      .hero-top, .project-top {
+      .section-head,
+      .project-row {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 16px;
+        gap: 24px;
       }
-      h1 { margin: 0 0 8px; font-size: 34px; }
-      h2 { margin: 0 0 12px; }
-      p { margin: 0; color: var(--muted); }
-      button, a.btn {
+      h1 {
+        margin: 0;
+        font-size: clamp(60px, 7vw, 118px);
+        line-height: 0.86;
+        letter-spacing: -0.07em;
+        font-weight: 400;
+      }
+      h2 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      .calendar-title {
+        font-size: 20px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+      h3 {
+        margin: 0;
+        font-size: 44px;
+        line-height: 0.94;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      button, a.btn, span.btn {
         appearance: none;
-        border: 0;
+        border: 1px solid var(--line);
         border-radius: 999px;
-        padding: 12px 18px;
-        background: var(--accent);
-        color: white;
+        padding: 10px 18px;
+        background: rgba(255, 255, 255, 0.34);
+        color: var(--text);
         font: inherit;
-        font-weight: 800;
+        font-weight: 400;
         cursor: pointer;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        transition: background 120ms ease, opacity 120ms ease;
       }
-      .btn.secondary {
-        background: var(--accent-soft);
-        color: var(--accent);
+      button:hover, a.btn:hover {
+        background: rgba(255, 255, 255, 0.56);
       }
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-      }
-      .stat {
-        padding: 16px;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        background: #fafcff;
-      }
-      .stat strong {
-        display: block;
-        font-size: 26px;
-        line-height: 1.1;
-        margin-bottom: 6px;
-      }
-      .projects {
+      .project-section {
         display: grid;
         gap: 14px;
+      }
+      .project-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 18px;
+      }
+      .project-link {
+        color: inherit;
+        text-decoration: none;
+        transition: transform 120ms ease, opacity 120ms ease;
+      }
+      .project-link:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
       }
       .project-card {
         display: grid;
-        gap: 14px;
-        padding: 18px;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        background: #fcfdff;
-      }
-      .project-top h3 {
-        margin: 0 0 6px;
-        font-size: 22px;
-        line-height: 1.25;
+        gap: 18px;
+        padding: 24px;
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 34px;
+        background: rgba(255, 255, 255, 0.88);
+        min-height: 180px;
       }
       .project-meta {
         color: var(--muted);
-        font-size: 13px;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
       }
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .chip {
-        padding: 8px 10px;
-        border-radius: 999px;
-        background: #eef3ff;
-        color: #2347a0;
-        font-size: 12px;
-        font-weight: 800;
+      .project-open {
+        flex-shrink: 0;
+        margin-top: 4px;
+        background: rgba(255, 255, 255, 0.5);
       }
       .empty {
-        padding: 28px;
-        border: 1px dashed var(--border);
-        border-radius: 18px;
+        padding: 18px 0;
         color: var(--muted);
-        background: #fafcff;
       }
       .error {
         color: var(--danger);
         font-weight: 700;
-        min-height: 24px;
+        min-height: 20px;
       }
       pre {
         margin: 0;
@@ -167,10 +429,10 @@ export class TestUiController {
       .modal-backdrop.open { display: flex; }
       .modal {
         width: min(560px, 100%);
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        box-shadow: 0 24px 60px rgba(9, 15, 28, 0.22);
+        background: #f4f4f4;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 28px 60px rgba(9, 15, 28, 0.16);
         padding: 24px;
         display: grid;
         gap: 16px;
@@ -184,11 +446,11 @@ export class TestUiController {
       input {
         width: 100%;
         padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
         font: inherit;
         color: var(--text);
-        background: #fff;
+        background: rgba(255, 255, 255, 0.78);
       }
       .modal-actions {
         display: flex;
@@ -197,52 +459,40 @@ export class TestUiController {
         flex-wrap: wrap;
       }
       @media (max-width: 760px) {
-        .hero-top, .project-top { flex-direction: column; }
-        .stats { grid-template-columns: 1fr; }
+        .section-head,
+        .project-row { flex-direction: column; }
+        h3 {
+          font-size: 30px;
+        }
+        .project-list {
+          grid-template-columns: 1fr;
+        }
       }
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
     <div class="wrap">
-      <section class="panel hero">
-        <div class="hero-top">
-          <div>
-            <h1>Projects</h1>
-            <p>Главная страница теперь начинается с проектов. Внутри проекта уже живут статьи и весь editorial workflow.</p>
-          </div>
+      <section class="project-section">
+        <div class="section-head">
+          <h2>Available projects</h2>
           <button onclick="openCreateProjectModal()">New project</button>
         </div>
-      </section>
-
-      <section class="panel content">
-        <div class="stats">
-          <div class="stat"><strong id="projectCount">0</strong><span>Projects</span></div>
-          <div class="stat"><strong id="articlesCount">0</strong><span>Articles total</span></div>
-          <div class="stat"><strong id="activeCount">0</strong><span>Projects with articles</span></div>
-        </div>
-      </section>
-
-      <section class="panel content">
-        <h2>Available projects</h2>
         <div id="error" class="error"></div>
-        <div id="projects" class="projects"></div>
+        <div id="projects" class="project-list"></div>
       </section>
 
-      <section class="panel content">
-        <h2>Output</h2>
-        <pre id="output">Ready.</pre>
-      </section>
     </div>
 
     <div id="projectModalBackdrop" class="modal-backdrop" onclick="closeCreateProjectModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <div>
           <h2 style="margin:0 0 8px;">Create project</h2>
-          <p>Нужно только название. Project ID backend сгенерит сам.</p>
+          <p>Enter a name. The backend will generate the project ID automatically.</p>
         </div>
         <label>
           Project name
-          <input id="projectName" placeholder="Например, Reinforce Content" />
+          <input id="projectName" placeholder="For example, Reinforce Content" />
         </label>
         <div id="modalError" class="error"></div>
         <div class="modal-actions">
@@ -283,7 +533,7 @@ export class TestUiController {
       function formatDate(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -352,34 +602,24 @@ export class TestUiController {
 
       function renderProjects() {
         const root = document.getElementById('projects');
-        const totalArticles = Array.from(currentArticleCounts.values()).reduce((sum, count) => sum + count, 0);
-        const activeProjects = Array.from(currentArticleCounts.values()).filter((count) => count > 0).length;
-
-        document.getElementById('projectCount').textContent = String(currentProjects.length);
-        document.getElementById('articlesCount').textContent = String(totalArticles);
-        document.getElementById('activeCount').textContent = String(activeProjects);
 
         if (!currentProjects.length) {
-          root.innerHTML = '<div class="empty">Проектов пока нет. Нажми <strong>New project</strong> и создай первый.</div>';
+          root.innerHTML = '<div class="empty">No projects yet. Click <strong>New project</strong> to create the first one.</div>';
           return;
         }
 
         root.innerHTML = currentProjects.map((project) => {
           const articleCount = currentArticleCounts.get(project.id) || 0;
           return \`
-            <article class="project-card">
-              <div class="project-top">
+            <a class="project-card project-link" href="/test-ui/project?projectId=\${escapeHtml(project.id)}">
+              <div class="project-row">
                 <div>
                   <h3>\${escapeHtml(project.name)}</h3>
-                  <div class="project-meta">Project ID: \${escapeHtml(project.id)} · Updated: \${escapeHtml(formatDate(project.updatedAt))}</div>
+                  <div class="project-meta">Articles: \${escapeHtml(String(articleCount))}</div>
                 </div>
-                <a class="btn" href="/test-ui/project?projectId=\${escapeHtml(project.id)}">Open project</a>
+                <span class="btn project-open">Open project</span>
               </div>
-              <div class="chips">
-                <span class="chip">Articles: \${escapeHtml(String(articleCount))}</span>
-                <span class="chip">Created: \${escapeHtml(formatDate(project.createdAt))}</span>
-              </div>
-            </article>
+            </a>
           \`;
         }).join('');
       }
@@ -388,6 +628,8 @@ export class TestUiController {
         document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
       });
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -403,215 +645,421 @@ export class TestUiController {
     <title>Marketing Service - Project</title>
     <style>
       :root {
-        --bg: #f4f7fb;
-        --panel: #ffffff;
-        --text: #121826;
-        --muted: #5d687c;
-        --border: #d8dfeb;
-        --accent: #1d4fff;
-        --accent-soft: #edf2ff;
-        --shadow: 0 16px 40px rgba(15, 27, 58, 0.08);
+        --bg: #ececed;
+        --text: #121212;
+        --muted: rgba(18, 18, 18, 0.58);
+        --line: rgba(18, 18, 18, 0.18);
+        --line-strong: rgba(18, 18, 18, 0.28);
+        --surface: rgba(255, 255, 255, 0.88);
+        --surface-soft: rgba(255, 255, 255, 0.54);
+        --danger: #b42318;
+        --week-cell-height: 138px;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
+        background: var(--bg);
         color: var(--text);
-        font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font: 15px/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
       .wrap {
-        max-width: 1180px;
+        max-width: 1800px;
         margin: 0 auto;
-        padding: 24px;
+        padding: 22px 38px 40px;
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        box-shadow: var(--shadow);
+      .project-card {
+        display: grid;
+        gap: 18px;
+        padding: 24px;
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 34px;
+        background: var(--surface);
       }
-      .hero, .content { padding: 24px 28px; }
-      .hero-top, .article-top {
+      .section-head,
+      .hero-top,
+      .article-top {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 16px;
+        gap: 24px;
       }
-      h1 { margin: 0 0 8px; font-size: 34px; }
-      h2 { margin: 0 0 12px; }
-      p { margin: 0; color: var(--muted); }
-      label {
-        display: grid;
-        gap: 6px;
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 3.5vw, 56px);
+        line-height: 0.86;
+        letter-spacing: -0.07em;
+        font-weight: 400;
+      }
+      h2 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      h3 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
+      p {
+        margin: 0;
         color: var(--muted);
-        font-weight: 700;
       }
-      input {
-        width: 240px;
-        padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        font: inherit;
-        color: var(--text);
-        background: #fff;
-      }
-      button, a.btn {
+      button, a.btn, span.btn {
         appearance: none;
-        border: 0;
+        border: 1px solid var(--line);
         border-radius: 999px;
-        padding: 12px 18px;
-        background: var(--accent);
-        color: white;
+        padding: 10px 18px;
+        background: rgba(255, 255, 255, 0.34);
+        color: var(--text);
         font: inherit;
-        font-weight: 800;
+        font-weight: 400;
         cursor: pointer;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        transition: background 120ms ease, opacity 120ms ease, transform 120ms ease;
       }
-      .btn.secondary {
-        background: var(--accent-soft);
-        color: var(--accent);
+      button:hover, a.btn:hover {
+        background: rgba(255, 255, 255, 0.56);
+      }
+      .hero-copy,
+      .section-copy {
+        display: grid;
+        gap: 12px;
+      }
+      .eyebrow,
+      .meta-label {
+        color: var(--muted);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .hero-actions,
+      .week-nav,
+      .card-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .calendar-controls {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .calendar-switch {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .calendar-switch-row {
+        display: flex;
+        justify-content: flex-end;
+      }
+      .calendar-switch button.is-active {
+        background: rgba(18, 18, 18, 0.92);
+        color: #fff;
+        border-color: rgba(18, 18, 18, 0.92);
+      }
+      .calendar-headline {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .calendar-range {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+      }
+      .marker-toolbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .marker-toolbar-copy {
+        display: grid;
+        gap: 8px;
+      }
+      .marker-list {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .marker-pill-wrap {
+        position: relative;
+      }
+      .marker-pill {
+        max-width: 260px;
+        min-height: 98px;
+        padding: 14px 16px;
+        border-radius: 24px;
+        border: 1px dashed var(--marker-border, var(--line));
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--marker-text, var(--text));
+        display: grid;
+        gap: 8px;
+        justify-items: start;
+        text-align: left;
+      }
+      .marker-delete {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: #cf222e;
+        color: #fff;
+        font-size: 18px;
+        line-height: 1;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(207, 34, 46, 0.2);
+        z-index: 2;
+      }
+      .marker-delete:hover {
+        background: #b91c1c;
+      }
+      .marker-pill.is-active {
+        border-style: solid;
+        background: var(--marker-bg, rgba(255, 255, 255, 0.54));
+        box-shadow: inset 0 0 0 1px rgba(18, 18, 18, 0.08);
+      }
+      .marker-pill strong {
+        font-size: 20px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .marker-pill span {
+        color: rgba(18, 18, 18, 0.62);
+        font-size: 12px;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .marker-pill-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.68;
+      }
+      .marker-empty {
+        padding: 20px 22px;
+        border: 1px dashed var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.34);
+        color: var(--muted);
       }
       .stats {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .stat {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--surface-soft);
+        min-height: 116px;
+        display: grid;
+        align-content: space-between;
         gap: 12px;
       }
+      .stat strong {
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
       .week-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
+        display: block;
       }
-      .week-title {
-        display: grid;
-        gap: 4px;
-      }
-      .week-title strong {
-        font-size: 20px;
-        line-height: 1.2;
-      }
-      .week-nav {
-        display: flex;
-        gap: 10px;
+      .schedule-shell {
+        overflow-x: auto;
+        padding-bottom: 4px;
       }
       .week-nav button {
-        min-width: 48px;
-        padding: 12px 0;
+        min-width: 112px;
       }
       .week-board {
         display: grid;
-        grid-template-columns: 180px repeat(7, minmax(0, 1fr));
+        grid-template-columns: 152px repeat(7, minmax(132px, 1fr));
         gap: 10px;
         align-items: start;
+        min-width: 1120px;
       }
       .week-corner,
       .week-column-head,
       .week-row-head,
       .week-cell {
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        background: linear-gradient(180deg, #fcfdff 0%, #f6f9ff 100%);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.5);
       }
       .week-corner {
-        min-height: 88px;
+        min-height: 96px;
         padding: 16px;
         display: flex;
         align-items: end;
         color: var(--muted);
-        font-weight: 800;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .week-column-head {
-        min-height: 88px;
-        padding: 14px 12px;
+        min-height: 96px;
+        padding: 16px 14px;
         display: grid;
         align-content: space-between;
       }
       .week-column-head.is-today {
-        border-color: #b7c8ff;
-        background: linear-gradient(180deg, #eef3ff 0%, #e4ecff 100%);
-        box-shadow: inset 0 0 0 1px rgba(29, 79, 255, 0.12);
+        border-color: var(--line-strong);
+        background: rgba(255, 255, 255, 0.82);
       }
       .week-column-head small {
         color: var(--muted);
-        font-weight: 800;
+        font-weight: 400;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.08em;
       }
       .week-column-head strong {
-        font-size: 30px;
-        line-height: 1;
+        font-size: 36px;
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+        font-weight: 400;
       }
       .week-column-head span {
         color: var(--muted);
         font-size: 12px;
-        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
       }
       .week-row-head {
-        min-height: 116px;
+        height: var(--week-cell-height);
+        min-height: var(--week-cell-height);
         padding: 16px;
         display: grid;
         align-content: center;
         gap: 6px;
       }
       .week-row-head strong {
-        font-size: 18px;
+        font-size: 24px;
         line-height: 1.2;
+        letter-spacing: -0.04em;
+        font-weight: 400;
       }
       .week-row-head span {
         color: var(--muted);
         font-size: 12px;
-        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .week-cell {
-        height: 116px;
-        padding: 8px;
-        display: grid;
-        align-content: start;
-        gap: 4px;
+        height: var(--week-cell-height);
+        min-height: var(--week-cell-height);
+        padding: 10px;
+        display: flex;
         overflow: hidden;
         text-decoration: none;
         color: inherit;
-        transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+      }
+      .week-cell.is-placeable {
+        cursor: pointer;
+        border-style: dashed;
       }
       .week-cell.is-today {
-        border-color: #c9d5ff;
+        border-color: var(--line-strong);
       }
       .week-cell:hover {
-        border-color: #b7c8ff;
-        box-shadow: 0 10px 22px rgba(29, 79, 255, 0.08);
+        background: rgba(255, 255, 255, 0.78);
         transform: translateY(-1px);
       }
       .week-cell-scroll {
+        flex: 1;
         display: grid;
         align-content: start;
-        gap: 4px;
+        gap: 6px;
         overflow: auto;
         min-height: 0;
       }
       .week-cell-placeholder {
-        color: #8b97ad;
+        color: var(--muted);
         font-size: 12px;
-        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .week-publication-more {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 5px 7px;
-        border-radius: 10px;
-        background: #f3f6fb;
-        border: 1px dashed #cfd8e8;
-        color: #5d687c;
+        padding: 7px 9px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px dashed var(--line);
+        color: var(--muted);
         font-size: 10px;
-        font-weight: 900;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.06em;
+      }
+      .week-marker {
+        --marker-bg: rgba(255, 255, 255, 0.72);
+        --marker-border: rgba(18, 18, 18, 0.22);
+        --marker-text: var(--text);
+        padding: 8px 10px;
+        border-radius: 16px;
+        border: 1px dashed var(--marker-border);
+        background: var(--marker-bg);
+        color: var(--marker-text);
+        display: grid;
+        gap: 6px;
+      }
+      .week-marker-title {
+        font-size: 12px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .week-marker-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
       }
       .week-publication {
         --pub-bg: #eaf0ff;
@@ -622,116 +1070,155 @@ export class TestUiController {
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 5px 7px;
+        padding: 8px 10px;
         min-width: 0;
-        border-radius: 10px;
+        border-radius: 16px;
         background: var(--pub-bg);
         border: 1px solid var(--pub-border);
       }
       .week-publication.is-published {
-        opacity: 0.42;
+        opacity: 0.52;
         filter: grayscale(0.15);
       }
       .week-publication-language {
         color: var(--pub-text);
-        font-size: 10px;
-        font-weight: 900;
+        font-size: 11px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.06em;
         white-space: nowrap;
       }
       .week-publication-time {
         color: var(--pub-time);
-        font-size: 10px;
-        font-weight: 800;
+        font-size: 11px;
+        font-weight: 700;
         white-space: nowrap;
       }
-      .stat {
-        padding: 16px;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        background: #fafcff;
-      }
-      .stat strong {
-        display: block;
-        font-size: 26px;
-        line-height: 1.1;
-        margin-bottom: 6px;
-      }
+      .section-stack,
       .cards {
         display: grid;
-        gap: 14px;
+        gap: 24px;
+      }
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+      }
+      .articles-section {
+        gap: 16px;
       }
       .article-card {
         display: grid;
-        gap: 14px;
-        padding: 18px;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        background: #fcfdff;
-      }
-      .article-flag {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--flag-border, #cfdbff);
-        background: var(--flag-bg, #eaf0ff);
-        color: var(--flag-text, #173b93);
-        font-size: 12px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-      .article-flag-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: currentColor;
-        flex: 0 0 auto;
+        gap: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 24px;
+        background: transparent;
+        align-content: start;
+        height: 170px;
       }
       .article-top h3 {
-        margin: 0 0 6px;
-        font-size: 22px;
-        line-height: 1.25;
+        margin: 0;
+        font-size: 27px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
-      .article-meta {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      .article-excerpt {
-        color: var(--muted);
-      }
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .chip {
-        padding: 8px 10px;
-        border-radius: 999px;
-        background: #eef3ff;
-        color: #2347a0;
-        font-size: 12px;
-        font-weight: 800;
-      }
-      .card-actions {
-        display: flex;
+      .article-headline {
+        display: grid;
         gap: 10px;
-        flex-wrap: wrap;
+        min-height: 0;
+      }
+      .article-top {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 10px;
+        min-height: 0;
       }
       .empty {
         padding: 28px;
-        border: 1px dashed var(--border);
-        border-radius: 18px;
+        border: 1px dashed var(--line);
+        border-radius: 28px;
         color: var(--muted);
-        background: #fafcff;
+        background: rgba(255, 255, 255, 0.36);
       }
       .error {
-        color: #b42318;
+        color: var(--danger);
         font-weight: 700;
         min-height: 24px;
+      }
+      .error:empty {
+        display: none;
+        min-height: 0;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(18, 18, 18, 0.22);
+        display: none;
+        place-items: center;
+        padding: 24px;
+      }
+      .modal-backdrop.open {
+        display: grid;
+      }
+      .modal {
+        width: min(560px, 100%);
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 30px;
+        padding: 24px;
+        display: grid;
+        gap: 14px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .modal-head h3 {
+        margin: 0 0 6px;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      .modal-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 12px;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        font: inherit;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.86);
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
       }
       pre {
         margin: 0;
@@ -744,73 +1231,155 @@ export class TestUiController {
         white-space: pre-wrap;
         overflow-wrap: break-word;
       }
-      @media (max-width: 840px) {
-        .week-board {
-          grid-template-columns: 140px repeat(7, minmax(120px, 1fr));
-          overflow-x: auto;
-          padding-bottom: 4px;
+      @media (max-width: 980px) {
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
-        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .cards {
+          grid-template-columns: 1fr;
+        }
       }
-      @media (max-width: 640px) {
-        .hero-top, .article-top { flex-direction: column; }
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 18px 16px 28px;
+        }
+        .section-head,
+        .hero-top,
+        .article-top {
+          flex-direction: column;
+        }
+        .marker-toolbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .calendar-headline {
+          align-items: flex-start;
+        }
         .week-header {
           flex-direction: column;
           align-items: flex-start;
         }
-        .stats { grid-template-columns: 1fr; }
-        input { width: 100%; }
+        .stats {
+          grid-template-columns: 1fr;
+        }
       }
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
     <div class="wrap">
-      <section class="panel hero">
+      <section class="project-card">
         <div class="hero-top">
-          <div>
-            <h1>Project Dashboard</h1>
-            <p>Здесь живут все статьи проекта. Можно продолжить уже созданный workflow или завести новый article.</p>
+          <div class="hero-copy">
+            <span class="eyebrow">Project</span>
+            <h1 id="projectName">Loading project</h1>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="btn secondary" href="/test-ui">All projects</a>
+          <div class="hero-actions">
+            <a class="btn" href="/test-ui">All projects</a>
             <a class="btn" id="newArticleBtn" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
           </div>
         </div>
       </section>
 
-      <section class="panel content">
-        <div class="week-header">
-          <div class="week-title">
-            <strong>Current Week</strong>
-            <span id="weekRange" style="color:var(--muted);font-weight:700;"></span>
+      <section class="project-card section-stack">
+        <div class="section-head">
+          <div class="section-copy">
+            <div class="calendar-headline">
+              <h2 class="calendar-title">Publication calendar</h2>
+              <span id="weekRange" class="calendar-range"></span>
+            </div>
           </div>
-          <div class="week-nav">
-            <button class="btn secondary" onclick="shiftWeek(-1)" aria-label="Previous week">←</button>
-            <button class="btn secondary" onclick="shiftWeek(1)" aria-label="Next week">→</button>
+          <div class="calendar-controls">
+            <div class="week-nav">
+              <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
+              <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
+            </div>
           </div>
         </div>
-        <div id="weekGrid" class="week-board"></div>
-      </section>
-
-      <section class="panel content">
-        <div class="stats">
-          <div class="stat"><strong id="articleCount">0</strong><span>Articles</span></div>
-          <div class="stat"><strong id="draftCount">0</strong><span>Drafts</span></div>
-          <div class="stat"><strong id="approvedAdaptationCount">0</strong><span>Approved adaptations</span></div>
-          <div class="stat"><strong id="approvedTranslationCount">0</strong><span>Approved translations</span></div>
+        <div class="marker-toolbar">
+          <div class="marker-toolbar-copy">
+            <span class="eyebrow">Draft markers</span>
+            <p id="markerToolbarMeta">Create idea markers, select one, then place it on the calendar.</p>
+          </div>
+          <div class="hero-actions">
+            <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
+            <button onclick="openMarkerModal()">New marker</button>
+          </div>
         </div>
-      </section>
-
-      <section class="panel content">
-        <h2>Articles</h2>
+        <div id="markerList" class="marker-list"></div>
         <div id="error" class="error"></div>
+        <div class="week-header"></div>
+        <div class="calendar-switch-row">
+          <div class="calendar-switch">
+            <button id="postsModeBtn" class="is-active" onclick="setCalendarMode('posts')">Posts</button>
+            <button id="markersModeBtn" onclick="setCalendarMode('markers')">Markers</button>
+          </div>
+        </div>
+        <div class="schedule-shell">
+          <div id="weekGrid" class="week-board"></div>
+        </div>
+      </section>
+
+      <section class="project-card section-stack articles-section">
+        <div class="section-head">
+          <div class="section-copy">
+            <h2>Articles</h2>
+            <p id="articleSectionMeta">Project articles and next workflow entry points.</p>
+          </div>
+        </div>
         <div id="articles" class="cards"></div>
       </section>
 
-      <section class="panel content">
-        <h2>Output</h2>
-        <pre id="output">Ready.</pre>
-      </section>
+    </div>
+
+    <div id="markerModalBackdrop" class="modal-backdrop" onclick="closeMarkerModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3>Create draft marker</h3>
+            <p>Save an idea for future publications and then place it on the current week.</p>
+          </div>
+          <button type="button" onclick="closeMarkerModal()">Close</button>
+        </div>
+        <label>
+          Idea
+          <input id="markerTitle" type="text" maxlength="180" />
+        </label>
+        <label>
+          Notes
+          <textarea id="markerNotes" maxlength="2000"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" onclick="saveMarker()">Save marker</button>
+          <button type="button" onclick="closeMarkerModal()">Cancel</button>
+        </div>
+        <div id="markerError" class="error"></div>
+      </div>
+    </div>
+
+    <div id="markerPlacementModalBackdrop" class="modal-backdrop" onclick="closeMarkerPlacementModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3>Place draft marker</h3>
+            <p id="markerPlacementSubtitle">Choose language and time for this marker placement.</p>
+          </div>
+          <button type="button" onclick="closeMarkerPlacementModal()">Close</button>
+        </div>
+        <label>
+          Language
+          <select id="markerPlacementLanguage"></select>
+        </label>
+        <label>
+          Time
+          <input id="markerPlacementTime" type="time" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" onclick="saveMarkerPlacement()">Save placement</button>
+          <button type="button" onclick="closeMarkerPlacementModal()">Cancel</button>
+        </div>
+        <div id="markerPlacementError" class="error"></div>
+      </div>
     </div>
 
     <script>
@@ -830,9 +1399,17 @@ export class TestUiController {
         { bg: '#e8fbff', border: '#bdebf5', text: '#0c6b7a', time: '#2d6670' },
         { bg: '#fff0f5', border: '#ffc9dc', text: '#b42363', time: '#8f3f62' },
       ];
+      let currentProject = null;
       let currentWeekStart = startOfWeek(new Date());
       let currentProjectArticles = [];
+      let currentProjectMarkers = [];
+      let currentProjectMarkerPlacements = [];
+      let currentProjectPlans = [];
       let currentPublicationsByArticle = new Map();
+      let activeMarkerId = null;
+      let markerEditMode = false;
+      let pendingMarkerPlacement = null;
+      let calendarMode = 'posts';
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -848,10 +1425,20 @@ export class TestUiController {
           typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       }
 
-      async function request(url) {
-        const response = await fetch(url);
-        const payload = await response.json();
-        renderOutput(payload);
+      async function request(url, options, config) {
+        const shouldRender = config?.renderResponse ?? true;
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let payload;
+        try {
+          payload = text ? JSON.parse(text) : {};
+        } catch {
+          payload = text;
+        }
+
+        if (shouldRender) {
+          renderOutput(payload);
+        }
 
         if (!response.ok) {
           throw new Error(payload?.message || 'Request failed');
@@ -893,6 +1480,10 @@ export class TestUiController {
         return String(language || '').toUpperCase();
       }
 
+      function markerById(markerId) {
+        return currentProjectMarkers.find((marker) => marker.id === markerId) || null;
+      }
+
       function hashString(value) {
         let hash = 0;
         const input = String(value || '');
@@ -905,6 +1496,13 @@ export class TestUiController {
 
       function articleTheme(articleId) {
         return articleColorThemes[hashString(articleId) % articleColorThemes.length];
+      }
+
+      function renderProjectHero() {
+        const projectName = currentProject?.name || currentProjectId;
+
+        document.title = 'Marketing Service - ' + projectName;
+        document.getElementById('projectName').textContent = projectName;
       }
 
       function startOfWeek(date) {
@@ -947,10 +1545,310 @@ export class TestUiController {
           end.getDate() + ' ' + monthLabels[end.getMonth()];
       }
 
-      function buildDayChannelUrl(channelId, dayDate) {
-        return '/test-ui/day?projectId=' + encodeURIComponent(currentProjectId) +
-          '&channelId=' + encodeURIComponent(channelId) +
-          '&date=' + encodeURIComponent(dateKey(dayDate));
+      function isPastPlanningDay(date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const value = new Date(date);
+        value.setHours(0, 0, 0, 0);
+        return value.getTime() < today.getTime();
+      }
+
+      function formatDayLabel(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('ru-RU', {
+          day: 'numeric',
+          month: 'long',
+        }).format(date);
+      }
+
+      function markerPlacementsForCell(channelId, dayDate) {
+        return currentProjectMarkerPlacements
+          .filter((placement) =>
+            placement &&
+            placement.channelId === channelId &&
+            isSameDay(new Date(placement.publishAt), dayDate),
+          )
+          .map((placement) => {
+            const marker = markerById(placement.markerId);
+            return marker
+              ? {
+                  id: placement.id,
+                  markerId: placement.markerId,
+                  title: marker.title,
+                  notes: marker.notes,
+                  targetLanguage: placement.targetLanguage,
+                  publishAt: new Date(placement.publishAt),
+                  colorBg: marker.colorBg,
+                  colorBorder: marker.colorBorder,
+                  colorText: marker.colorText,
+                }
+              : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
+      }
+
+      function languageOptions() {
+        return [
+          { language: 'ru', label: 'Russian' },
+          { language: 'en', label: 'English' },
+          { language: 'es', label: 'Spanish' },
+        ];
+      }
+
+      function syncActiveMarker() {
+        if (activeMarkerId && markerById(activeMarkerId)) {
+          return;
+        }
+
+        activeMarkerId = null;
+      }
+
+      function toggleMarkerSelection(markerId) {
+        if (markerEditMode) {
+          return;
+        }
+        activeMarkerId = activeMarkerId === markerId ? null : markerId;
+        renderMarkers();
+        renderWeekDashboard();
+      }
+
+      function toggleMarkerEditMode() {
+        markerEditMode = !markerEditMode;
+        const button = document.getElementById('editMarkersBtn');
+        if (button) {
+          button.textContent = markerEditMode ? 'Done' : 'Edit markers';
+          button.classList.toggle('is-active', markerEditMode);
+        }
+        renderMarkers();
+      }
+
+      function setCalendarMode(mode) {
+        calendarMode = mode === 'markers' ? 'markers' : 'posts';
+        document.getElementById('postsModeBtn').classList.toggle('is-active', calendarMode === 'posts');
+        document.getElementById('markersModeBtn').classList.toggle('is-active', calendarMode === 'markers');
+        renderWeekDashboard();
+      }
+
+      function renderMarkers() {
+        const root = document.getElementById('markerList');
+        const meta = document.getElementById('markerToolbarMeta');
+
+        if (!Array.isArray(currentProjectMarkers) || currentProjectMarkers.length === 0) {
+          meta.textContent = 'Create the first draft marker, then place it on the week.';
+          const button = document.getElementById('editMarkersBtn');
+          if (button) {
+            button.textContent = 'Edit markers';
+            button.classList.remove('is-active');
+          }
+          markerEditMode = false;
+          root.innerHTML = '<div class="marker-empty">No draft markers yet.</div>';
+          return;
+        }
+
+        const activeMarker = markerById(activeMarkerId);
+        meta.textContent = markerEditMode
+          ? 'Delete draft marker templates. Their placements on the calendar will be removed too.'
+          : activeMarker
+            ? 'Selected: ' + activeMarker.title + '. Click a future cell to place it.'
+            : 'Select one marker from the list, then place it on the calendar.';
+
+        root.innerHTML = currentProjectMarkers.map((marker) =>
+          '<div class="marker-pill-wrap">' +
+            (markerEditMode
+              ? '<button type="button" class="marker-delete" onclick="deleteMarker(event, \\'' + escapeHtml(marker.id) + '\\')" aria-label="Delete marker">−</button>'
+              : '') +
+            '<button' +
+              ' type="button"' +
+              ' class="marker-pill ' + (activeMarkerId === marker.id ? 'is-active' : '') + '"' +
+              ' style="' +
+                '--marker-bg:' + escapeHtml(marker.colorBg) + ';' +
+                '--marker-border:' + escapeHtml(marker.colorBorder) + ';' +
+                '--marker-text:' + escapeHtml(marker.colorText) + ';' +
+              '"' +
+              ' onclick="toggleMarkerSelection(\\'' + escapeHtml(marker.id) + '\\')"' +
+            '>' +
+              '<span class="marker-pill-label">' +
+                escapeHtml(activeMarkerId === marker.id ? 'Selected marker' : 'Draft marker') +
+              '</span>' +
+              '<strong>' + escapeHtml(marker.title) + '</strong>' +
+              '<span>' + escapeHtml(marker.notes || 'Click to select and place on the calendar.') + '</span>' +
+            '</button>' +
+          '</div>'
+        ).join('');
+      }
+
+      async function deleteMarker(event, markerId) {
+        event.stopPropagation();
+
+        const marker = markerById(markerId);
+        if (!marker) {
+          return;
+        }
+
+        const confirmed = window.confirm(
+          'Delete marker "' + marker.title + '" and all its placements on the calendar?'
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          await request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/markers/' + encodeURIComponent(markerId),
+            { method: 'DELETE' },
+            { renderResponse: false },
+          );
+
+          if (activeMarkerId === markerId) {
+            activeMarkerId = null;
+          }
+
+          await refreshProject();
+        } catch (requestError) {
+          document.getElementById('error').textContent =
+            requestError instanceof Error ? requestError.message : String(requestError);
+        }
+      }
+
+      function openMarkerModal() {
+        document.getElementById('markerTitle').value = '';
+        document.getElementById('markerNotes').value = '';
+        document.getElementById('markerError').textContent = '';
+        document.getElementById('markerModalBackdrop').classList.add('open');
+      }
+
+      function closeMarkerModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('markerModalBackdrop').classList.remove('open');
+        document.getElementById('markerError').textContent = '';
+      }
+
+      async function saveMarker() {
+        const error = document.getElementById('markerError');
+        const title = document.getElementById('markerTitle').value.trim();
+        const notes = document.getElementById('markerNotes').value.trim();
+
+        error.textContent = '';
+
+        if (!title) {
+          error.textContent = 'Enter marker idea.';
+          return;
+        }
+
+        try {
+          const result = await request('/projects/' + encodeURIComponent(currentProjectId) + '/markers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title,
+              notes: notes || null,
+            }),
+          });
+          activeMarkerId = result?.id || null;
+          closeMarkerModal();
+          await refreshProject();
+        } catch (requestError) {
+          error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
+        }
+      }
+
+      function handleCellPress(channelId, dayKey) {
+        if (!activeMarkerId) {
+          return;
+        }
+
+        openMarkerPlacementModal(null, channelId, dayKey);
+      }
+
+      function openMarkerPlacementModal(event, channelId, dayKey) {
+        if (event) {
+          event.stopPropagation();
+        }
+
+        const marker = markerById(activeMarkerId);
+        const selectedDay = new Date(dayKey + 'T00:00:00');
+        if (!marker || isPastPlanningDay(selectedDay)) {
+          return;
+        }
+
+        pendingMarkerPlacement = {
+          markerId: marker.id,
+          channelId,
+          dayKey,
+        };
+
+        const languageSelect = document.getElementById('markerPlacementLanguage');
+        languageSelect.innerHTML = languageOptions().map((option) =>
+          '<option value="' + escapeHtml(option.language) + '">' + escapeHtml(option.label) + '</option>'
+        ).join('');
+
+        const timeInput = document.getElementById('markerPlacementTime');
+        if (isSameDay(selectedDay, new Date())) {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + 5);
+          timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        } else {
+          timeInput.value = '12:00';
+        }
+
+        document.getElementById('markerPlacementSubtitle').textContent =
+          marker.title + ' · ' +
+          (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
+          ' · ' +
+          formatDayLabel(selectedDay);
+        document.getElementById('markerPlacementError').textContent = '';
+        document.getElementById('markerPlacementModalBackdrop').classList.add('open');
+      }
+
+      function closeMarkerPlacementModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('markerPlacementModalBackdrop').classList.remove('open');
+        document.getElementById('markerPlacementError').textContent = '';
+        pendingMarkerPlacement = null;
+      }
+
+      async function saveMarkerPlacement() {
+        const error = document.getElementById('markerPlacementError');
+        const targetLanguage = document.getElementById('markerPlacementLanguage').value.trim();
+        const timeValue = document.getElementById('markerPlacementTime').value.trim();
+
+        error.textContent = '';
+
+        if (!pendingMarkerPlacement) {
+          error.textContent = 'Select a cell first.';
+          return;
+        }
+
+        if (!targetLanguage || !timeValue) {
+          error.textContent = 'Choose language and time.';
+          return;
+        }
+
+        const publishAt = new Date(pendingMarkerPlacement.dayKey + 'T' + timeValue + ':00');
+        if (Number.isNaN(publishAt.getTime())) {
+          error.textContent = 'Invalid placement time.';
+          return;
+        }
+
+        try {
+          await request('/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              markerId: pendingMarkerPlacement.markerId,
+              channelId: pendingMarkerPlacement.channelId,
+              targetLanguage,
+              publishAt: publishAt.toISOString(),
+            }),
+          });
+          closeMarkerPlacementModal();
+          await refreshProject();
+        } catch (requestError) {
+          error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
+        }
       }
 
       function renderWeekDashboard() {
@@ -975,10 +1873,32 @@ export class TestUiController {
           const cells = Array.from({ length: 7 }, (_, index) => {
             const dayDate = addDays(currentWeekStart, index);
             const isToday = isSameDay(dayDate, today);
+            const isPast = isPastPlanningDay(dayDate);
+            const markerPlacements = markerPlacementsForCell(channel.id, dayDate);
+            const visibleMarkers = markerPlacements.length > 2 ? markerPlacements.slice(0, 2) : markerPlacements;
+            const hiddenMarkers = markerPlacements.length > 2 ? markerPlacements.length - 2 : 0;
             const publications = plannedPublicationsForCell(channel.id, dayDate);
             const visiblePublications = publications.length > 3 ? publications.slice(0, 2) : publications;
             const hiddenCount = publications.length > 3 ? publications.length - 2 : 0;
-            const content = publications.length
+            const markerContent = calendarMode === 'markers' && markerPlacements.length
+              ? visibleMarkers.map((item) =>
+                  '<div class="week-marker" style="' +
+                    '--marker-bg:' + item.colorBg + ';' +
+                    '--marker-border:' + item.colorBorder + ';' +
+                    '--marker-text:' + item.colorText + ';' +
+                  '">' +
+                    '<div class="week-marker-title">' + escapeHtml(item.title) + '</div>' +
+                    '<div class="week-marker-meta">' +
+                      '<span>' + escapeHtml(languageCode(item.targetLanguage)) + '</span>' +
+                      '<span>' + escapeHtml(formatTime(item.publishAt)) + '</span>' +
+                    '</div>' +
+                  '</div>'
+                ).join('') +
+                (hiddenMarkers > 0
+                  ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenMarkers)) + '</div>'
+                  : '')
+              : '';
+            const publicationContent = calendarMode === 'posts' && publications.length
               ? visiblePublications.map((item) =>
                   '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '" style="' +
                     '--pub-bg:' + item.theme.bg + ';' +
@@ -993,12 +1913,21 @@ export class TestUiController {
                 (hiddenCount > 0
                   ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenCount)) + '</div>'
                   : '')
-              : '<span class="week-cell-placeholder">—</span>';
+              : '';
+            const content = markerContent + publicationContent ||
+              '<span class="week-cell-placeholder">' +
+                (calendarMode === 'markers' && activeMarkerId && !isPast ? 'Place marker' : '—') +
+              '</span>';
+            const canPlaceMarker = calendarMode === 'markers' && Boolean(activeMarkerId) && !isPast;
 
             return \`
-              <a class="week-cell \${isToday ? 'is-today' : ''}" href="\${buildDayChannelUrl(channel.id, dayDate)}">
+              <div
+                class="week-cell \${isToday ? 'is-today' : ''} \${canPlaceMarker ? 'is-placeable' : ''}"
+                \${canPlaceMarker ? 'onclick="handleCellPress(\\'' + channel.id + '\\', \\''
+                  + dateKey(dayDate) + '\\')"' : ''}
+              >
                 <div class="week-cell-scroll">\${content}</div>
-              </a>
+              </div>
             \`;
           }).join('');
 
@@ -1015,49 +1944,30 @@ export class TestUiController {
       }
 
       function plannedPublicationsForCell(channelId, dayDate) {
-        const items = [];
-
-        for (const article of currentProjectArticles) {
-          const intents = Array.isArray(article?.releasePlanSnapshot?.publicationIntents)
-            ? article.releasePlanSnapshot.publicationIntents
-            : [];
-          const intent = intents.find((item) => item && item.channelId === channelId);
-          const plans = Array.isArray(intent?.translations) ? intent.translations : [];
-
-          for (const plan of plans) {
-            const publishAt = plan?.publishNow
-              ? new Date()
-              : (plan?.scheduledAt ? new Date(plan.scheduledAt) : null);
-
-            if (!publishAt || Number.isNaN(publishAt.getTime())) {
-              continue;
-            }
-
-            if (!isSameDay(publishAt, dayDate)) {
-              continue;
-            }
-
-            items.push({
-              articleId: article.id,
-              channelId,
-              targetLanguage: plan.targetLanguage,
-              publishAt,
-              theme: articleTheme(article.id),
-              isPublished: publicationStateFor(article.id, channelId, plan.targetLanguage) === 'published',
-            });
-          }
-        }
-
-        items.sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
-        return items;
+        return currentProjectPlans
+          .filter((plan) =>
+            plan &&
+            plan.channelId === channelId &&
+            isSameDay(new Date(plan.publishAt), dayDate),
+          )
+          .map((plan) => ({
+            articleId: plan.articleId,
+            channelId: plan.channelId,
+            targetLanguage: plan.targetLanguage,
+            publishAt: new Date(plan.publishAt),
+            theme: articleTheme(plan.articleId),
+            isPublished: publicationStateFor(plan.articleId, plan.channelId, plan.targetLanguage, plan.publishAt) === 'published',
+          }))
+          .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
       }
 
-      function publicationStateFor(articleId, channelId, targetLanguage) {
+      function publicationStateFor(articleId, channelId, targetLanguage, publishAt) {
         const publications = currentPublicationsByArticle.get(articleId) || [];
         const match = publications.find((item) =>
           item &&
           item.channelId === channelId &&
-          String(item.targetLanguage || '').toLowerCase() === String(targetLanguage || '').toLowerCase(),
+          String(item.targetLanguage || '').toLowerCase() === String(targetLanguage || '').toLowerCase() &&
+          (!publishAt || new Date(item.publishAt).getTime() === new Date(publishAt).getTime()),
         );
 
         return match?.status || null;
@@ -1065,10 +1975,15 @@ export class TestUiController {
 
       function shiftWeek(direction) {
         currentWeekStart = addDays(currentWeekStart, direction * 7);
-        renderWeekDashboard();
+        refreshProject();
       }
 
       function nextStepUrl(article) {
+        const hasPlans = currentProjectPlans.some((plan) => plan.articleId === article.id);
+        if (!hasPlans || article.adaptationCount === 0) {
+          return '/test-ui/article-plan?articleId=' + encodeURIComponent(article.id);
+        }
+
         if (article.approvedTranslationCount > 0) {
           return '/test-ui/publishing?articleId=' + encodeURIComponent(article.id);
         }
@@ -1085,64 +2000,77 @@ export class TestUiController {
 
         if (!Array.isArray(items) || items.length === 0) {
           root.innerHTML = '<div class="empty">У проекта пока нет статей. Нажми <strong>New article</strong> и запусти первый workflow.</div>';
-          document.getElementById('articleCount').textContent = '0';
-          document.getElementById('draftCount').textContent = '0';
-          document.getElementById('approvedAdaptationCount').textContent = '0';
-          document.getElementById('approvedTranslationCount').textContent = '0';
+          document.getElementById('articleSectionMeta').textContent = 'No articles in this project yet.';
+          renderProjectHero();
           return;
         }
 
-        document.getElementById('articleCount').textContent = String(items.length);
-        document.getElementById('draftCount').textContent = String(items.filter((item) => item.status === 'draft').length);
-        document.getElementById('approvedAdaptationCount').textContent = String(items.reduce((sum, item) => sum + item.approvedAdaptationCount, 0));
-        document.getElementById('approvedTranslationCount').textContent = String(items.reduce((sum, item) => sum + item.approvedTranslationCount, 0));
+        document.getElementById('articleSectionMeta').textContent =
+          items.length + ' article' + (items.length === 1 ? '' : 's') + ' in this project.';
 
         root.innerHTML = items.map((article) => \`
           <article class="article-card">
+            <div style="
+              border-radius: 28px;
+              border: 1px solid \${escapeHtml(articleTheme(article.id).border)};
+              background: \${escapeHtml(articleTheme(article.id).bg)};
+              color: \${escapeHtml(articleTheme(article.id).text)};
+              padding: 18px;
+              height: 100%;
+              display: grid;
+              grid-template-rows: 1fr auto;
+              gap: 10px;
+              overflow: hidden;
+            ">
             <div class="article-top">
-              <div>
-                <div class="article-flag" style="
-                  --flag-bg: \${escapeHtml(articleTheme(article.id).bg)};
-                  --flag-border: \${escapeHtml(articleTheme(article.id).border)};
-                  --flag-text: \${escapeHtml(articleTheme(article.id).text)};
-                ">
-                  <span class="article-flag-dot"></span>
-                  <span>Article Color</span>
-                </div>
+              <div class="article-headline">
                 <h3>\${escapeHtml(article.originalTitle)}</h3>
-                <div class="article-meta">Article ID: \${escapeHtml(article.id)} · Updated: \${escapeHtml(formatDate(article.updatedAt))}</div>
               </div>
-              <a class="btn" href="\${escapeHtml(nextStepUrl(article))}">Open workflow</a>
             </div>
-            <div class="article-excerpt">\${escapeHtml(article.originalExcerpt)}</div>
-            <div class="chips">
-              <span class="chip">Language: \${escapeHtml(String(article.originalLanguage).toUpperCase())}</span>
-              <span class="chip">Adaptations: \${escapeHtml(String(article.adaptationCount))}</span>
-              <span class="chip">Approved adaptations: \${escapeHtml(String(article.approvedAdaptationCount))}</span>
-              <span class="chip">Translations: \${escapeHtml(String(article.translationCount))}</span>
-              <span class="chip">Approved translations: \${escapeHtml(String(article.approvedTranslationCount))}</span>
-              <span class="chip">Versions: \${escapeHtml(String(article.versionCount))}</span>
-            </div>
-            <div class="card-actions">
-              <a class="btn secondary" href="/articles/\${escapeHtml(article.id)}" target="_blank" rel="noreferrer">Open JSON</a>
-              <a class="btn secondary" href="/test-ui/new?projectId=\${escapeHtml(article.projectId)}">New article for this project</a>
+            <a class="btn" style="justify-self:start;" href="\${escapeHtml(nextStepUrl(article))}">Open workflow</a>
             </div>
           </article>
         \`).join('');
+        renderProjectHero();
       }
 
-      async function loadProject() {
+      async function refreshProject() {
         document.getElementById('error').textContent = '';
         document.getElementById('newArticleBtn').href = '/test-ui/new?projectId=' + encodeURIComponent(currentProjectId);
 
         try {
-          const articles = await request('/articles?projectId=' + encodeURIComponent(currentProjectId));
+          const [project, articles, markers] = await Promise.all([
+            request('/projects/' + encodeURIComponent(currentProjectId)).catch(() => null),
+            request('/articles?projectId=' + encodeURIComponent(currentProjectId)),
+            request('/projects/' + encodeURIComponent(currentProjectId) + '/markers').catch(() => []),
+          ]);
+          currentProject = project;
           currentProjectArticles = Array.isArray(articles) ? articles : [];
-          const publicationLists = await Promise.all(
+          currentProjectMarkers = Array.isArray(markers) ? markers : [];
+          syncActiveMarker();
+          const weekStart = new Date(currentWeekStart);
+          weekStart.setHours(0, 0, 0, 0);
+          const weekEnd = addDays(currentWeekStart, 6);
+          weekEnd.setHours(23, 59, 59, 999);
+          const [projectPlans, markerPlacements, publicationLists] = await Promise.all([
+            request(
+              '/publishing/projects/' + encodeURIComponent(currentProjectId) +
+              '/plans?from=' + encodeURIComponent(weekStart.toISOString()) +
+              '&to=' + encodeURIComponent(weekEnd.toISOString()),
+            ),
+            request(
+              '/projects/' + encodeURIComponent(currentProjectId) +
+              '/marker-placements?from=' + encodeURIComponent(weekStart.toISOString()) +
+              '&to=' + encodeURIComponent(weekEnd.toISOString()),
+            ).catch(() => []),
+            Promise.all(
             currentProjectArticles.map((article) =>
               request('/publishing/articles/' + encodeURIComponent(article.id)).catch(() => []),
             ),
-          );
+            ),
+          ]);
+          currentProjectPlans = Array.isArray(projectPlans) ? projectPlans : [];
+          currentProjectMarkerPlacements = Array.isArray(markerPlacements) ? markerPlacements : [];
           currentPublicationsByArticle = new Map(
             currentProjectArticles.map((article, index) => [
               article.id,
@@ -1150,17 +2078,23 @@ export class TestUiController {
             ]),
           );
           renderArticles(articles);
+          renderMarkers();
           renderWeekDashboard();
+          renderProjectHero();
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
         }
       }
 
-      loadProject().catch((error) => {
+      refreshProject().catch((error) => {
         document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
       });
+      renderProjectHero();
+      renderMarkers();
       renderWeekDashboard();
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -1435,6 +2369,8 @@ export class TestUiController {
           align-items: flex-start;
         }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -1484,7 +2420,6 @@ export class TestUiController {
             </div>
           </div>
           <button class="btn secondary" onclick="loadDaySchedule()">Refresh</button>
-          <pre id="output">Ready.</pre>
         </aside>
       </div>
     </div>
@@ -1662,52 +2597,36 @@ export class TestUiController {
         return payload;
       }
 
-      function collectPosts(articles, publicationMap, selectedDate) {
-        const items = [];
-
-        for (const article of articles) {
-          const intents = Array.isArray(article?.releasePlanSnapshot?.publicationIntents)
-            ? article.releasePlanSnapshot.publicationIntents
-            : [];
-          const intent = intents.find((item) => item && item.channelId === channelId);
-          const plans = Array.isArray(intent?.translations) ? intent.translations : [];
-          const publications = publicationMap.get(article.id) || [];
-
-          for (const plan of plans) {
-            const publishAt = plan?.publishNow
-              ? new Date()
-              : (plan?.scheduledAt ? new Date(plan.scheduledAt) : null);
-
-            if (!publishAt || Number.isNaN(publishAt.getTime())) {
-              continue;
-            }
-
-            if (!isSameDay(publishAt, selectedDate)) {
-              continue;
-            }
-
+      function collectPosts(plans, articleMap, publicationMap, selectedDate) {
+        return plans
+          .filter((plan) =>
+            plan &&
+            plan.channelId === channelId &&
+            isSameDay(new Date(plan.publishAt), selectedDate),
+          )
+          .map((plan) => {
+            const article = articleMap.get(plan.articleId);
+            const publications = publicationMap.get(plan.articleId) || [];
             const publication = publications.find((item) =>
               item &&
               item.channelId === channelId &&
-              String(item.targetLanguage || '').toLowerCase() === String(plan.targetLanguage || '').toLowerCase(),
+              String(item.targetLanguage || '').toLowerCase() === String(plan.targetLanguage || '').toLowerCase() &&
+              new Date(item.publishAt).getTime() === new Date(plan.publishAt).getTime(),
             ) || null;
 
-            items.push({
-              articleId: article.id,
-              articleTitle: article.originalTitle || 'Без названия',
-              articleExcerpt: article.originalExcerpt || '',
-              adaptationCount: article.adaptationCount || 0,
+            return {
+              planId: plan.id,
+              articleId: plan.articleId,
+              articleTitle: article?.originalTitle || 'Без названия',
+              articleExcerpt: article?.originalExcerpt || '',
               targetLanguage: plan.targetLanguage,
-              publishAt,
+              publishAt: new Date(plan.publishAt),
               publication,
-              status: previewStatus(publication, publishAt),
-              theme: articleTheme(article.id),
-            });
-          }
-        }
-
-        items.sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
-        return items;
+              status: previewStatus(publication, plan.publishAt),
+              theme: articleTheme(plan.articleId),
+            };
+          })
+          .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
       }
 
       function renderStats(items) {
@@ -1756,7 +2675,7 @@ export class TestUiController {
                 <a class="btn secondary" href="/test-ui/review?articleId=\${escapeHtml(item.articleId)}">Open workflow</a>
                 <a class="btn secondary" href="/articles/\${escapeHtml(item.articleId)}" target="_blank" rel="noreferrer">Open JSON</a>
                 \${canCancel
-                  ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.articleId) + '\\', \\'' + escapeHtml(channelId) + '\\', \\'' + escapeHtml(item.targetLanguage) + '\\')">Cancel publication</button>'
+                  ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
                   : ''}
               </div>
             </article>
@@ -1764,15 +2683,11 @@ export class TestUiController {
         }).join('');
       }
 
-      async function cancelPublication(articleId, selectedChannelId, targetLanguage) {
-        if (!articleId || !selectedChannelId || !targetLanguage) return;
+      async function cancelPublication(planId) {
+        if (!planId) return;
 
         try {
-          await post('/publishing/cancel-planned', {
-            articleId,
-            channelId: selectedChannelId,
-            targetLanguage,
-          });
+          await post('/publishing/plans/' + encodeURIComponent(planId) + '/cancel');
           await loadDaySchedule();
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
@@ -1785,6 +2700,18 @@ export class TestUiController {
 
         try {
           const articles = await request('/articles?projectId=' + encodeURIComponent(projectId));
+          const articleMap = new Map(
+            (Array.isArray(articles) ? articles : []).map((article) => [article.id, article]),
+          );
+          const rangeStart = new Date(selectedDate);
+          rangeStart.setHours(0, 0, 0, 0);
+          const rangeEnd = new Date(selectedDate);
+          rangeEnd.setHours(23, 59, 59, 999);
+          const plans = await request(
+            '/publishing/projects/' + encodeURIComponent(projectId) +
+            '/plans?from=' + encodeURIComponent(rangeStart.toISOString()) +
+            '&to=' + encodeURIComponent(rangeEnd.toISOString()),
+          );
           const publicationLists = await Promise.all(
             (Array.isArray(articles) ? articles : []).map((article) =>
               request('/publishing/articles/' + encodeURIComponent(article.id)).catch(() => []),
@@ -1796,7 +2723,7 @@ export class TestUiController {
               Array.isArray(publicationLists[index]) ? publicationLists[index] : [],
             ]),
           );
-          currentPosts = collectPosts(Array.isArray(articles) ? articles : [], publicationMap, selectedDate);
+          currentPosts = collectPosts(Array.isArray(plans) ? plans : [], articleMap, publicationMap, selectedDate);
           renderPosts(currentPosts, selectedDate);
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
@@ -1807,6 +2734,8 @@ export class TestUiController {
         document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
       });
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -2147,6 +3076,8 @@ export class TestUiController {
           padding-left: 34px;
         }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -2156,8 +3087,8 @@ export class TestUiController {
           <a href="/test-ui/project?projectId=${escapeHtml(projectId)}">← Back to project</a>
           <span style="color:var(--muted);font-weight:700;">Project: ${escapeHtml(projectId)}</span>
         </div>
-        <h1>Страница 1. Утвердить лонгрид</h1>
-        <p>Сначала фиксируем исходную статью. Затем галочками выбираем каналы, для которых нужно запустить adaptation.</p>
+        <h1>Страница 1. Создать article</h1>
+        <p>Здесь мы только создаем исходный article. Планирование конечных публикаций происходит уже на следующем отдельном дэшборде статьи.</p>
       </section>
 
       <div class="grid">
@@ -2181,24 +3112,21 @@ export class TestUiController {
         </section>
 
         <section class="panel content">
-          <h2 style="margin:0 0 8px;">Куда делаем adaptation</h2>
-          <p class="sub" style="margin:0 0 14px;">Для каждого канала можно задать время публикации adaptation и отдельно спланировать переводы на английский и испанский.</p>
+          <h2 style="margin:0 0 8px;">Каналы и prompt rules</h2>
+          <p class="sub" style="margin:0 0 14px;">Пока здесь можно только подредактировать встроенные prompt rules для каналов. Конкретные публикации и языки мы зададим уже на следующем planning dashboard статьи.</p>
 
           <div id="channelList" class="channels"></div>
 
           <div class="note" style="margin-top: 16px;">
-            После нажатия кнопки мы создадим статью, создадим adaptation для выбранных каналов и переведем тебя на экран генерации.
+            После нажатия кнопки мы создадим article и сразу переведем тебя на отдельный dashboard этой статьи, где ты уже расставишь конечные публикации по дням и каналам.
           </div>
 
           <div style="margin-top: 18px;">
-            <button id="submitBtn" onclick="submitWorkflow()">Approve</button>
+            <button id="submitBtn" onclick="submitWorkflow()">Create article</button>
           </div>
 
           <div id="error" class="error" style="margin-top: 12px;"></div>
 
-          <div style="margin-top: 16px;">
-            <pre id="output">Ready.</pre>
-          </div>
         </section>
       </div>
     </div>
@@ -2253,18 +3181,6 @@ export class TestUiController {
           builtIn: true,
         },
       ];
-      function localizationOptions() {
-        const originalLanguage = (document.getElementById('language')?.value || 'ru').trim().toLowerCase() || 'ru';
-        const options = [
-          { language: originalLanguage, label: languageLabel(originalLanguage), isOriginal: true },
-          { language: 'en', label: 'English', isOriginal: false },
-          { language: 'es', label: 'Spanish', isOriginal: false },
-        ];
-
-        return options.filter(
-          (option, index, list) => list.findIndex((item) => item.language === option.language) === index,
-        );
-      }
       let editingTypeId = null;
 
       function languageLabel(language) {
@@ -2362,164 +3278,30 @@ export class TestUiController {
         });
       }
 
-      function currentSelectedIds() {
-        return new Set(
-          allTypes()
-            .filter((type) => document.getElementById('channel_' + type.channelId)?.checked)
-            .map((type) => type.channelId),
-        );
-      }
-
-      function selectedChannels() {
-        return allTypes().filter((type) => {
-          const checkbox = document.getElementById('channel_' + type.channelId);
-          return checkbox?.checked;
-        });
-      }
-
-      function formatDateTimeLocal(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
-      }
-
-      function defaultScheduleValue() {
-        const date = new Date();
-        date.setHours(date.getHours() + 1, 0, 0, 0);
-        return formatDateTimeLocal(date);
-      }
-
-      function currentTranslationStates() {
-        return new Map(
-          allTypes().map((type) => [
-            type.channelId,
-            Object.fromEntries(
-              localizationOptions().map((option) => [
-                option.language,
-                {
-                  enabled: Boolean(document.getElementById('translation_' + type.channelId + '_' + option.language)?.checked),
-                  publishNow: Boolean(
-                    document.getElementById('translation_now_' + type.channelId + '_' + option.language)?.checked,
-                  ),
-                  scheduledAt:
-                    document.getElementById('translation_schedule_' + type.channelId + '_' + option.language)?.value ||
-                    defaultScheduleValue(),
-                },
-              ]),
-            ),
-          ]),
-        );
-      }
-
-      function syncTranslationAvailability(channelId, language) {
-        const channelCheckbox = document.getElementById('channel_' + channelId);
-        const translationCheckbox = document.getElementById('translation_' + channelId + '_' + language);
-        const translationInput = document.getElementById('translation_schedule_' + channelId + '_' + language);
-        const publishNowCheckbox = document.getElementById('translation_now_' + channelId + '_' + language);
-
-        if (!translationCheckbox || !translationInput || !publishNowCheckbox) {
-          return;
-        }
-
-        const channelEnabled = Boolean(channelCheckbox?.checked);
-        translationCheckbox.disabled = !channelEnabled;
-        publishNowCheckbox.disabled = !channelEnabled || !translationCheckbox.checked;
-        translationInput.disabled = !channelEnabled || !translationCheckbox.checked || publishNowCheckbox.checked;
-      }
-
-      function syncAllTranslationAvailability(channelId) {
-        for (const option of localizationOptions()) {
-          syncTranslationAvailability(channelId, option.language);
-        }
-      }
-
-      function renderTypeList(selectedIds, translationStates) {
+      function renderTypeList() {
         const list = document.getElementById('channelList');
         const types = allTypes();
-        const localization = localizationOptions();
-        const chosen = selectedIds ?? new Set(types.map((type) => type.channelId));
-        const translations = translationStates ?? new Map();
-
         list.innerHTML = types.map((type) => {
           const description = type.promptInstructions
             ? 'Prompt overridden'
             : 'Built-in social adaptation rules';
-          const checked = chosen.has(type.channelId) ? 'checked' : '';
-          const translationMarkup = localization.map((option) => {
-            const state = translations.get(type.channelId)?.[option.language] ?? {
-              enabled: option.isOriginal,
-              publishNow: false,
-              scheduledAt: defaultScheduleValue(),
-            };
-            const translationChecked = state.enabled ? 'checked' : '';
-            const translationNowChecked = state.publishNow ? 'checked' : '';
-            const meta = option.isOriginal ? 'Original adaptation language' : 'Localized translation';
-            return \`
-              <div class="translation-row">
-                <label class="translation-toggle">
-                  <input
-                    id="translation_\${type.channelId}_\${option.language}"
-                    type="checkbox"
-                    \${translationChecked}
-                    onchange="syncTranslationAvailability('\${type.channelId}', '\${option.language}')"
-                  />
-                  <div class="translation-copy">
-                    <span>\${escapeHtml(option.label)}</span>
-                    <small>\${escapeHtml(meta)}</small>
-                  </div>
-                </label>
-                <div class="schedule-controls translation-schedule">
-                  <label class="toggle-inline">
-                    <input
-                      id="translation_now_\${type.channelId}_\${option.language}"
-                      type="checkbox"
-                      \${translationNowChecked}
-                      onchange="syncTranslationAvailability('\${type.channelId}', '\${option.language}')"
-                    />
-                    <span>Publish now</span>
-                  </label>
-                  <label class="schedule-row">
-                    <input
-                      id="translation_schedule_\${type.channelId}_\${option.language}"
-                      type="datetime-local"
-                      value="\${escapeHtml(state.scheduledAt)}"
-                    />
-                  </label>
-                </div>
-              </div>
-            \`;
-          }).join('');
 
           return \`
             <div class="check">
               <div class="check-head">
-                <label class="check-main">
-                  <input id="channel_\${type.channelId}" type="checkbox" \${checked} onchange="syncAllTranslationAvailability('\${type.channelId}')" />
+                <div class="check-main">
                   <div class="channel-copy">
                     <strong>\${escapeHtml(type.displayName)}</strong>
                     <span>\${escapeHtml(description)}</span>
                   </div>
-                </label>
+                </div>
                 <div class="modal-actions">
                   <button type="button" class="mini-btn" onclick="openEditTypeModal('\${type.channelId}')">Edit</button>
                 </div>
               </div>
-              <div class="translation-box">
-                <h3>Localization</h3>
-                <div class="translation-list">\${translationMarkup}</div>
-              </div>
             </div>
           \`;
         }).join('');
-
-        for (const type of types) {
-          for (const option of localization) {
-            syncTranslationAvailability(type.channelId, option.language);
-          }
-        }
       }
 
       function openEditTypeModal(channelId) {
@@ -2545,8 +3327,6 @@ export class TestUiController {
       function saveType() {
         const error = document.getElementById('typeError');
         const promptInstructions = document.getElementById('typePrompt').value.trim();
-        const selectedIds = currentSelectedIds();
-        const translationStates = currentTranslationStates();
         error.textContent = '';
 
         if (!editingTypeId) {
@@ -2574,7 +3354,7 @@ export class TestUiController {
 
         saveCustomTypes(nextTypes);
         closeTypeModal();
-        renderTypeList(selectedIds, translationStates);
+        renderTypeList();
       }
 
       function render(data) {
@@ -2620,57 +3400,6 @@ export class TestUiController {
         const submitBtn = document.getElementById('submitBtn');
         error.textContent = '';
 
-        const channels = selectedChannels();
-        if (channels.length === 0) {
-          error.textContent = 'Выбери хотя бы один канал.';
-          return;
-        }
-
-        const publicationIntents = [];
-        for (const channel of channels) {
-          const translationPlans = [];
-          for (const option of localizationOptions()) {
-            const translationCheckbox = document.getElementById('translation_' + channel.channelId + '_' + option.language);
-            if (!translationCheckbox?.checked) {
-              continue;
-            }
-
-            const translationPublishNow = Boolean(
-              document.getElementById('translation_now_' + channel.channelId + '_' + option.language)?.checked,
-            );
-            const translationValue =
-              document.getElementById('translation_schedule_' + channel.channelId + '_' + option.language)?.value?.trim();
-            let translationScheduledAtIso = null;
-
-            if (!translationPublishNow) {
-              if (!translationValue) {
-                error.textContent = 'Выбери дату и время перевода ' + option.label + ' для ' + channel.displayName + '.';
-                return;
-              }
-
-              const translationDate = new Date(translationValue);
-              if (Number.isNaN(translationDate.getTime())) {
-                error.textContent = 'Некорректная дата перевода ' + option.label + ' для ' + channel.displayName + '.';
-                return;
-              }
-
-              translationScheduledAtIso = translationDate.toISOString();
-            }
-
-            translationPlans.push({
-              targetLanguage: option.language,
-              publishNow: translationPublishNow,
-              scheduledAt: translationScheduledAtIso,
-            });
-          }
-
-          publicationIntents.push({
-            channelId: channel.channelId,
-            displayName: channel.displayName,
-            translations: translationPlans,
-          });
-        }
-
         submitBtn.disabled = true;
 
         try {
@@ -2681,27 +3410,11 @@ export class TestUiController {
               projectId: document.getElementById('projectId').value.trim(),
               content: document.getElementById('content').value.trim(),
               language: document.getElementById('language').value.trim(),
-              releasePlanSnapshot: {
-                source: 'test-ui',
-                publicationIntents,
-              },
+              releasePlanSnapshot: null,
             }),
           });
 
-          const articleId = article.id;
-          for (const channel of channels) {
-            const adaptation = await request('/articles/' + encodeURIComponent(articleId) + '/adaptations', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                channelId: channel.channelId,
-                displayName: channel.displayName,
-                promptInstructions: channel.promptInstructions || builtInPrompt(channel.channelId) || null,
-              }),
-            });
-          }
-
-          window.location.href = '/test-ui/review?articleId=' + encodeURIComponent(articleId);
+          window.location.href = '/test-ui/article-plan?articleId=' + encodeURIComponent(article.id);
         } catch (e) {
           error.textContent = e instanceof Error ? e.message : 'Не удалось создать workflow';
           submitBtn.disabled = false;
@@ -2710,6 +3423,1030 @@ export class TestUiController {
 
       renderTypeList();
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
+  </body>
+</html>`;
+  }
+
+  @Get('article-plan')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  renderArticlePlanPage(@Query('articleId') articleId = ''): string {
+    return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Marketing Service - Article Planning</title>
+    <style>
+      :root {
+        --bg: #ececed;
+        --text: #121212;
+        --muted: rgba(18, 18, 18, 0.58);
+        --line: rgba(18, 18, 18, 0.18);
+        --line-strong: rgba(18, 18, 18, 0.28);
+        --surface: rgba(255, 255, 255, 0.88);
+        --surface-soft: rgba(255, 255, 255, 0.54);
+        --danger: #b42318;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 22px 38px 40px;
+        display: grid;
+        gap: 18px;
+      }
+      .project-card {
+        display: grid;
+        gap: 18px;
+        padding: 24px;
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 34px;
+        background: var(--surface);
+      }
+      .section-head,
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 3.5vw, 56px);
+        line-height: 0.86;
+        letter-spacing: -0.07em;
+        font-weight: 400;
+      }
+      h2 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      h3 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      button, a.btn {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 18px;
+        background: rgba(255, 255, 255, 0.34);
+        color: var(--text);
+        font: inherit;
+        font-weight: 400;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 120ms ease, opacity 120ms ease, transform 120ms ease;
+      }
+      button:hover, a.btn:hover {
+        background: rgba(255, 255, 255, 0.56);
+      }
+      button[disabled] {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .hero-copy,
+      .section-copy {
+        display: grid;
+        gap: 12px;
+      }
+      .eyebrow,
+      .meta-label {
+        color: var(--muted);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .hero-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+      }
+      .section-stack {
+        display: grid;
+        gap: 24px;
+      }
+      .calendar-headline {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .calendar-range {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+      }
+      .week-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .week-nav button {
+        min-width: 112px;
+      }
+      .schedule-shell {
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .week-board {
+        display: grid;
+        grid-template-columns: 152px repeat(7, minmax(132px, 1fr));
+        gap: 10px;
+        align-items: start;
+        min-width: 1120px;
+      }
+      .week-corner,
+      .week-column-head,
+      .week-row-head,
+      .week-cell {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      .week-corner {
+        min-height: 96px;
+        padding: 16px;
+        display: flex;
+        align-items: end;
+        color: var(--muted);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .week-column-head {
+        min-height: 96px;
+        padding: 16px 14px;
+        display: grid;
+        align-content: space-between;
+      }
+      .week-column-head.is-today {
+        border-color: var(--line-strong);
+        background: rgba(255, 255, 255, 0.82);
+      }
+      .week-column-head small {
+        color: var(--muted);
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .week-column-head strong {
+        font-size: 36px;
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+        font-weight: 400;
+      }
+      .week-column-head span {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .week-row-head {
+        min-height: 124px;
+        padding: 16px;
+        display: grid;
+        align-content: center;
+        gap: 6px;
+      }
+      .week-row-head strong {
+        font-size: 24px;
+        line-height: 1.2;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      .week-row-head span {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .week-cell {
+        min-height: 124px;
+        width: 100%;
+        padding: 10px;
+        display: grid;
+        align-content: start;
+        gap: 6px;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+      }
+      .week-cell:disabled {
+        cursor: not-allowed;
+      }
+      .week-cell:hover {
+        background: rgba(255, 255, 255, 0.78);
+        transform: translateY(-1px);
+      }
+      .week-cell:disabled:hover {
+        background: rgba(255, 255, 255, 0.5);
+        transform: none;
+      }
+      .week-cell.is-today {
+        border-color: var(--line-strong);
+      }
+      .week-cell.is-past {
+        background: rgba(255, 255, 255, 0.24);
+      }
+      .week-cell-scroll {
+        display: grid;
+        gap: 4px;
+        align-content: start;
+        overflow: auto;
+        min-height: 0;
+      }
+      .week-cell-placeholder {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .week-cell-placeholder.disabled {
+        color: rgba(18, 18, 18, 0.34);
+      }
+      .week-publication {
+        --pub-bg: #eaf0ff;
+        --pub-border: #cfdbff;
+        --pub-text: #173b93;
+        --pub-time: #35507d;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        min-width: 0;
+        border-radius: 16px;
+        background: var(--pub-bg);
+        border: 1px solid var(--pub-border);
+      }
+      .week-publication-language {
+        color: var(--pub-text);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+      .week-publication-time {
+        color: var(--pub-time);
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .week-publication-more {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 9px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .meta {
+        display: grid;
+        gap: 12px;
+      }
+      .meta-card {
+        display: grid;
+        gap: 10px;
+        min-height: 110px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--surface-soft);
+        align-content: space-between;
+      }
+      .meta-value {
+        font-size: 24px;
+        line-height: 1.02;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+        overflow-wrap: anywhere;
+      }
+      .meta-value.compact {
+        font-size: 18px;
+        line-height: 1.1;
+      }
+      .meta-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      pre {
+        margin: 0;
+        padding: 16px;
+        min-height: 120px;
+        overflow: auto;
+        border-radius: 16px;
+        background: #101828;
+        color: #eef2ff;
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+      }
+      .error {
+        color: var(--danger);
+        font-weight: 700;
+        min-height: 24px;
+      }
+      .error:empty {
+        display: none;
+        min-height: 0;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(18, 18, 18, 0.22);
+        display: none;
+        place-items: center;
+        padding: 24px;
+      }
+      .modal-backdrop.open {
+        display: grid;
+      }
+      .modal {
+        width: min(560px, 100%);
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 30px;
+        padding: 24px;
+        display: grid;
+        gap: 14px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .modal-head h3 {
+        margin: 0 0 6px;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        font-weight: 400;
+      }
+      .modal-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 12px;
+      }
+      input, select {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        font: inherit;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.86);
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 980px) {
+        .meta {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 18px 16px 28px;
+        }
+        .section-head,
+        .hero-top,
+        .section-copy {
+          flex-direction: column;
+        }
+        .calendar-headline {
+          align-items: flex-start;
+        }
+        .meta {
+          grid-template-columns: 1fr;
+        }
+      }
+${renderDevConsoleStyles()}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="project-card">
+        <div class="hero-top">
+          <div class="hero-copy">
+            <span class="eyebrow">Article</span>
+            <h1 id="articleTitle">Planning article...</h1>
+          </div>
+          <div class="hero-actions">
+            <a class="btn" id="backToProjectLink" href="#">Back to project</a>
+            <button id="continueBtn" onclick="continueToGeneration()" disabled>Continue to generation</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="project-card section-stack">
+          <div class="section-head">
+            <div class="section-copy">
+              <div class="calendar-headline">
+                <h2>Publication calendar</h2>
+                <span id="weekRange" class="calendar-range"></span>
+              </div>
+              <p>Планирование публикаций по дням, каналам и языкам для одной статьи.</p>
+            </div>
+            <div class="week-nav">
+              <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
+              <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
+            </div>
+          </div>
+          <div id="error" class="error"></div>
+          <div class="schedule-shell">
+            <div id="weekGrid" class="week-board"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="sr-only" aria-hidden="true">
+        <span id="articleIdLabel"></span>
+        <span id="projectIdLabel"></span>
+        <span id="planCount">0</span>
+        <span id="channelCount">0</span>
+      </div>
+    </div>
+
+    <div id="planModalBackdrop" class="modal-backdrop" onclick="closePlanModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3>Create publication</h3>
+            <p id="planModalSubtitle">Выбранная клетка уже определяет день и канал. Здесь нужно задать только язык и время.</p>
+          </div>
+          <button type="button" class="btn secondary" onclick="closePlanModal()">Close</button>
+        </div>
+        <label>
+          Language
+          <select id="planLanguage"></select>
+        </label>
+        <label>
+          Time
+          <input id="planTime" type="time" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="savePlanBtn" onclick="savePlan()">Save publication</button>
+          <button type="button" class="btn secondary" onclick="closePlanModal()">Cancel</button>
+        </div>
+        <div id="planError" class="error"></div>
+      </div>
+    </div>
+
+    <script>
+      const articleId = ${JSON.stringify(articleId)};
+      const weekDayLabels = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+      const monthLabels = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const adaptationChannels = [
+        { id: 'channel_telegram', label: 'Telegram', hint: 'Adaptation' },
+        { id: 'channel_x', label: 'X', hint: 'Adaptation' },
+        { id: 'channel_discord', label: 'Discord', hint: 'Adaptation' },
+      ];
+      const DEFAULT_TYPES = [
+        { channelId: 'channel_telegram', displayName: 'Telegram', promptInstructions: '' },
+        { channelId: 'channel_x', displayName: 'X', promptInstructions: '' },
+        { channelId: 'channel_discord', displayName: 'Discord', promptInstructions: '' },
+      ];
+      const CUSTOM_TYPES_KEY = 'ms:test-ui-adaptation-overrides';
+      let currentWeekStart = startOfWeek(new Date());
+      let currentArticle = null;
+      let currentPlans = [];
+      let currentPublications = [];
+      let pendingCell = null;
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function render(data) {
+        document.getElementById('output').textContent =
+          typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      }
+
+      async function request(url, options, config) {
+        const shouldRender = config?.renderResponse ?? true;
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let payload;
+        try {
+          payload = text ? JSON.parse(text) : {};
+        } catch {
+          payload = text;
+        }
+
+        if (shouldRender) {
+          render({
+            status: response.status,
+            ok: response.ok,
+            url,
+            payload,
+          });
+        }
+
+        if (!response.ok) {
+          throw new Error(payload?.message || 'Request failed');
+        }
+
+        return payload;
+      }
+
+      function loadCustomTypes() {
+        try {
+          const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(parsed)) return [];
+
+          const allowedIds = new Set(DEFAULT_TYPES.map((type) => type.channelId));
+          return parsed.filter(
+            (item) => item && typeof item.channelId === 'string' && allowedIds.has(item.channelId),
+          );
+        } catch {
+          return [];
+        }
+      }
+
+      function allTypes() {
+        const stored = new Map(loadCustomTypes().map((type) => [type.channelId, type]));
+        return DEFAULT_TYPES.map((type) => {
+          const override = stored.get(type.channelId);
+          return {
+            ...type,
+            promptInstructions: override?.promptInstructions ?? type.promptInstructions,
+          };
+        });
+      }
+
+      function builtInPrompt(channelId) {
+        if (channelId === 'channel_telegram') {
+          return [
+            'Rewrite the provided long-form article into a Telegram post in the same language.',
+            'Preserve the core meaning and factual accuracy.',
+            'Make it concise, readable, and engaging for Telegram.',
+            'Return exactly 3 sentences.',
+            'The output must be substantially shorter than the original article.',
+            'Each sentence should carry one key idea only.',
+            'Use a strong opening hook.',
+            'Keep the tone expert and clear.',
+            'Do not use hashtags.',
+            'Do not use emojis unless they are absolutely necessary.',
+            'Do not produce bullet points or lists.',
+            'Return only the final post text with no commentary.',
+          ].join(' ');
+        }
+
+        if (channelId === 'channel_x') {
+          return [
+            'Rewrite the provided long-form article into a post for X in the same language.',
+            'Preserve the core meaning and factual accuracy.',
+            'Return exactly 1 sentence.',
+            'Use no more than 15 words.',
+            'Make it sharp, compact, and readable as a social post.',
+            'Do not use hashtags.',
+            'Do not use emojis.',
+            'Return only the final post text with no commentary.',
+          ].join(' ');
+        }
+
+        if (channelId === 'channel_discord') {
+          return [
+            'Rewrite the provided long-form article into a Discord post in the same language.',
+            'Preserve the core meaning and factual accuracy.',
+            'Return no more than 2 sentences.',
+            'Explain everything as simply as possible.',
+            'Use very plain words and short phrases.',
+            'Make it understandable immediately for a non-expert reader.',
+            'Do not use jargon unless absolutely necessary.',
+            'Do not use hashtags.',
+            'Return only the final post text with no commentary.',
+          ].join(' ');
+        }
+
+        return '';
+      }
+
+      function languageOptions() {
+        const originalLanguage = String(currentArticle?.original?.language || 'ru').trim().toLowerCase() || 'ru';
+        const options = [
+          { language: originalLanguage, label: languageLabel(originalLanguage) },
+          { language: 'en', label: 'English' },
+          { language: 'es', label: 'Spanish' },
+        ];
+
+        return options.filter(
+          (option, index, list) => list.findIndex((item) => item.language === option.language) === index,
+        );
+      }
+
+      function languageLabel(language) {
+        const normalized = String(language || '').toLowerCase();
+        if (normalized === 'ru') return 'Russian';
+        if (normalized === 'en') return 'English';
+        if (normalized === 'es') return 'Spanish';
+        return normalized.toUpperCase();
+      }
+
+      function startOfWeek(date) {
+        const value = new Date(date);
+        value.setHours(0, 0, 0, 0);
+        const day = value.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        value.setDate(value.getDate() + diff);
+        return value;
+      }
+
+      function addDays(date, days) {
+        const value = new Date(date);
+        value.setDate(value.getDate() + days);
+        return value;
+      }
+
+      function isSameDay(a, b) {
+        return a.getFullYear() === b.getFullYear() &&
+          a.getMonth() === b.getMonth() &&
+          a.getDate() === b.getDate();
+      }
+
+      function isPastPlanningDay(date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const value = new Date(date);
+        value.setHours(0, 0, 0, 0);
+        return value.getTime() < today.getTime();
+      }
+
+      function formatWeekRange(start) {
+        const end = addDays(start, 6);
+        const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+
+        if (sameMonth) {
+          return start.getDate() + '–' + end.getDate() + ' ' + monthLabels[start.getMonth()];
+        }
+
+        return start.getDate() + ' ' + monthLabels[start.getMonth()] + ' – ' +
+          end.getDate() + ' ' + monthLabels[end.getMonth()];
+      }
+
+      function formatTime(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(date);
+      }
+
+      function dateKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+      }
+
+      function formatDate(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('ru-RU', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }).format(date);
+      }
+
+      function publicationStatus(plan) {
+        const linkedPublication = currentPublications.find((item) =>
+          item.channelId === plan.channelId &&
+          String(item.targetLanguage || '').toLowerCase() === String(plan.targetLanguage || '').toLowerCase() &&
+          new Date(item.publishAt).getTime() === new Date(plan.publishAt).getTime(),
+        ) || null;
+
+        return linkedPublication?.status || null;
+      }
+
+      function plansForCell(channelId, dayDate) {
+        return currentPlans
+          .filter((plan) => plan.channelId === channelId && isSameDay(new Date(plan.publishAt), dayDate))
+          .sort((a, b) => new Date(a.publishAt).getTime() - new Date(b.publishAt).getTime());
+      }
+
+      function renderWeekDashboard() {
+        const root = document.getElementById('weekGrid');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
+        const headers = Array.from({ length: 7 }, (_, index) => {
+          const dayDate = addDays(currentWeekStart, index);
+          const isToday = isSameDay(dayDate, today);
+          return \`
+            <article class="week-column-head \${isToday ? 'is-today' : ''}">
+              <small>\${weekDayLabels[index]}</small>
+              <strong>\${dayDate.getDate()}</strong>
+              <span>\${monthLabels[dayDate.getMonth()]}</span>
+            </article>
+          \`;
+        }).join('');
+
+        const rows = adaptationChannels.map((channel) => {
+          const cells = Array.from({ length: 7 }, (_, index) => {
+            const dayDate = addDays(currentWeekStart, index);
+            const isToday = isSameDay(dayDate, today);
+            const isPast = isPastPlanningDay(dayDate);
+            const plans = plansForCell(channel.id, dayDate);
+            const visible = plans.length > 3 ? plans.slice(0, 2) : plans;
+            const hiddenCount = plans.length > 3 ? plans.length - 2 : 0;
+            const content = plans.length
+              ? visible.map((plan) =>
+                  '<div class="week-publication">' +
+                    '<span class="week-publication-language">' + escapeHtml(String(plan.targetLanguage || '').toUpperCase()) + '</span>' +
+                    '<span class="week-publication-time">' + escapeHtml(formatTime(plan.publishAt)) + '</span>' +
+                  '</div>'
+                ).join('') +
+                (hiddenCount > 0 ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenCount)) + '</div>' : '')
+              : '<span class="week-cell-placeholder ' + (isPast ? 'disabled' : '') + '">' + (isPast ? '—' : '+') + '</span>';
+
+            return \`
+              <button
+                class="week-cell \${isToday ? 'is-today' : ''} \${isPast ? 'is-past' : ''}"
+                onclick="openPlanModal('\${channel.id}', '\${dateKey(dayDate)}')"
+                \${isPast ? 'disabled aria-disabled="true"' : ''}
+              >
+                <div class="week-cell-scroll">\${content}</div>
+              </button>
+            \`;
+          }).join('');
+
+          return \`
+            <div class="week-row-head">
+              <strong>\${channel.label}</strong>
+              <span>\${channel.hint}</span>
+            </div>
+            \${cells}
+          \`;
+        }).join('');
+
+        root.innerHTML = '<div class="week-corner">Channels</div>' + headers + rows;
+      }
+
+      function openPlanModal(channelId, dayKey) {
+        const selectedDay = new Date(dayKey + 'T00:00:00');
+        if (isPastPlanningDay(selectedDay)) {
+          return;
+        }
+
+        pendingCell = { channelId, dayKey };
+        const languageSelect = document.getElementById('planLanguage');
+        languageSelect.innerHTML = languageOptions().map((option) =>
+          '<option value="' + escapeHtml(option.language) + '">' + escapeHtml(option.label) + '</option>'
+        ).join('');
+        const timeInput = document.getElementById('planTime');
+        if (isSameDay(selectedDay, new Date())) {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + 5);
+          timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        } else {
+          timeInput.value = '12:00';
+        }
+        document.getElementById('planError').textContent = '';
+        document.getElementById('planModalSubtitle').textContent =
+          'Канал: ' +
+          adaptationChannels.find((item) => item.id === channelId)?.label +
+          ' · День: ' +
+          formatDate(new Date(dayKey + 'T00:00:00'));
+        document.getElementById('planModalBackdrop').classList.add('open');
+      }
+
+      function closePlanModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('planModalBackdrop').classList.remove('open');
+        document.getElementById('planError').textContent = '';
+        pendingCell = null;
+      }
+
+      async function savePlan() {
+        const error = document.getElementById('planError');
+        error.textContent = '';
+
+        if (!pendingCell) {
+          error.textContent = 'Не выбрана клетка.';
+          return;
+        }
+
+        const targetLanguage = document.getElementById('planLanguage').value.trim();
+        const timeValue = document.getElementById('planTime').value.trim();
+
+        if (!targetLanguage) {
+          error.textContent = 'Выбери язык.';
+          return;
+        }
+
+        if (!timeValue) {
+          error.textContent = 'Выбери время.';
+          return;
+        }
+
+        const publishAt = new Date(pendingCell.dayKey + 'T' + timeValue + ':00');
+        if (Number.isNaN(publishAt.getTime())) {
+          error.textContent = 'Некорректное время публикации.';
+          return;
+        }
+
+        const now = new Date();
+        if (publishAt.getTime() <= now.getTime()) {
+          error.textContent = 'Нельзя планировать публикацию на уже прошедшее время.';
+          return;
+        }
+
+        try {
+          const existing = currentPlans.find((plan) =>
+            plan.channelId === pendingCell.channelId &&
+            String(plan.targetLanguage || '').toLowerCase() === targetLanguage.toLowerCase(),
+          );
+
+          if (existing && new Date(existing.publishAt).getTime() === publishAt.getTime()) {
+            closePlanModal();
+            return;
+          }
+
+          if (existing) {
+            await request(
+              '/publishing/plans/' + encodeURIComponent(existing.id) + '/cancel',
+              { method: 'POST' },
+              { renderResponse: false },
+            );
+          }
+
+          await request('/publishing/plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              articleId,
+              channelId: pendingCell.channelId,
+              targetLanguage,
+              publishAt: publishAt.toISOString(),
+            }),
+          });
+          closePlanModal();
+          await refreshPlanning();
+        } catch (requestError) {
+          error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
+        }
+      }
+
+      function shiftWeek(direction) {
+        currentWeekStart = addDays(currentWeekStart, direction * 7);
+        refreshPlanning();
+      }
+
+      async function ensureAdaptationsForPlannedChannels() {
+        const channelIds = Array.from(new Set(currentPlans.map((plan) => plan.channelId)));
+        const existingByChannel = new Map(
+          (Array.isArray(currentArticle?.adaptations) ? currentArticle.adaptations : []).map((adaptation) => [adaptation.channelId, adaptation]),
+        );
+        const types = new Map(allTypes().map((type) => [type.channelId, type]));
+
+        for (const channelId of channelIds) {
+          if (existingByChannel.has(channelId)) {
+            continue;
+          }
+
+          const type = types.get(channelId);
+          await request('/articles/' + encodeURIComponent(articleId) + '/adaptations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              channelId,
+              displayName: type?.displayName || channelId,
+              promptInstructions: type?.promptInstructions || builtInPrompt(channelId) || null,
+            }),
+          }, { renderResponse: false });
+        }
+      }
+
+      async function continueToGeneration() {
+        const button = document.getElementById('continueBtn');
+        if (!currentPlans.length) {
+          return;
+        }
+
+        button.disabled = true;
+        try {
+          await ensureAdaptationsForPlannedChannels();
+          window.location.href = '/test-ui/review?articleId=' + encodeURIComponent(articleId);
+        } catch (error) {
+          document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
+          button.disabled = false;
+        }
+      }
+
+      async function refreshPlanning() {
+        document.getElementById('error').textContent = '';
+        try {
+          currentArticle = await request('/articles/' + encodeURIComponent(articleId), undefined, { renderResponse: false });
+          document.getElementById('articleIdLabel').textContent = currentArticle.id || 'missing';
+          document.getElementById('projectIdLabel').textContent = currentArticle.projectId || 'missing';
+          document.getElementById('articleTitle').textContent = currentArticle.original?.content
+            ? String(currentArticle.original.content).split(/\\r?\\n/).map((item) => item.trim()).find(Boolean)?.slice(0, 120) || 'Untitled article'
+            : 'Untitled article';
+          document.getElementById('backToProjectLink').href = '/test-ui/project?projectId=' + encodeURIComponent(currentArticle.projectId);
+
+          currentPlans = await request(
+            '/publishing/articles/' + encodeURIComponent(articleId) + '/plans',
+            undefined,
+            { renderResponse: false },
+          );
+          currentPublications = await request(
+            '/publishing/articles/' + encodeURIComponent(articleId),
+            undefined,
+            { renderResponse: false },
+          );
+
+          document.getElementById('planCount').textContent = String(currentPlans.length);
+          document.getElementById('channelCount').textContent = String(new Set(currentPlans.map((plan) => plan.channelId)).size);
+          document.getElementById('continueBtn').disabled = currentPlans.length === 0;
+
+          renderWeekDashboard();
+        } catch (error) {
+          document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      refreshPlanning().catch((error) => {
+        document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
+      });
+    </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -2967,6 +4704,8 @@ export class TestUiController {
           position: static;
         }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -2992,7 +4731,6 @@ export class TestUiController {
             <button class="secondary" onclick="refreshArticle()">Refresh</button>
           </div>
 
-          <pre id="output">Ready.</pre>
         </aside>
       </div>
     </div>
@@ -3220,6 +4958,8 @@ export class TestUiController {
 
       boot().catch((error) => render(String(error)));
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -3403,6 +5143,33 @@ export class TestUiController {
         color: var(--muted);
         font-size: 13px;
       }
+      .translation-schedule {
+        display: grid;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .translation-schedule label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .translation-schedule input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        font: inherit;
+        color: var(--text);
+        background: #fff;
+      }
+      .translation-schedule input.is-expired {
+        border-color: #f2b8ad;
+        background: #fff6f4;
+      }
       .publish-note {
         margin: 6px 0 0;
         color: var(--success);
@@ -3434,6 +5201,16 @@ export class TestUiController {
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 16px;
+      }
+      .plan-warning {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid #f2b8ad;
+        background: #fff6f4;
+        color: #b42318;
+        font-size: 13px;
+        font-weight: 700;
       }
       .meta {
         display: grid;
@@ -3479,6 +5256,8 @@ export class TestUiController {
         .layout { grid-template-columns: 1fr; }
         .control-panel { position: static; }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -3499,12 +5278,12 @@ export class TestUiController {
           </div>
 
           <div class="actions">
-            <button id="approvePublishBtn" onclick="goToPublishingStep()">Approve translations and publish</button>
+            <button id="approvePublishBtn" onclick="goToPublishingStep()">Approve translations and continue</button>
             <button class="secondary" onclick="refreshArticle()">Refresh</button>
             <button class="secondary" onclick="goBack()">Back to adaptations</button>
           </div>
+          <div id="planWarning" class="plan-warning hidden"></div>
 
-          <pre id="output">Ready.</pre>
         </aside>
       </div>
     </div>
@@ -3515,6 +5294,7 @@ export class TestUiController {
       const generatingTranslations = new Set();
       const publishedLocalizations = new Map();
       let currentArticle = null;
+      let currentPlans = [];
 
       function render(data) {
         document.getElementById('output').textContent =
@@ -3565,6 +5345,10 @@ export class TestUiController {
         return adaptationId + ':' + targetLanguage;
       }
 
+      function planInputId(planId) {
+        return 'planInput_' + planId;
+      }
+
       function languageLabel(language) {
         if (language === 'ru') return 'Russian';
         if (language === 'en') return 'English';
@@ -3586,28 +5370,48 @@ export class TestUiController {
       }
 
       function formatPlanTiming(plan) {
-        if (plan?.publishNow) {
-          return 'Now';
-        }
-
-        return formatDateTime(plan?.scheduledAt);
+        return formatDateTime(plan?.publishAt);
       }
 
-      function formatPlanTiming(plan) {
-        if (plan?.publishNow) {
-          return 'Now';
-        }
-
-        return formatDateTime(plan?.scheduledAt);
+      function toDateTimeLocalValue(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
       }
 
-      function publicationPlanFor(adaptation, article) {
-        const intents = Array.isArray(article?.releasePlanSnapshot?.publicationIntents)
-          ? article.releasePlanSnapshot.publicationIntents
-          : [];
+      function publicationPlanFor(adaptation) {
+        const planMap = new Map();
+        for (const plan of currentPlans) {
+          if (!plan || plan.channelId !== adaptation.channelId) {
+            continue;
+          }
 
-        const channelPlan = intents.find((item) => item && item.channelId === adaptation.channelId);
-        return Array.isArray(channelPlan?.translations) ? channelPlan.translations : [];
+          const key = String(plan.targetLanguage || '').toLowerCase();
+          const existing = planMap.get(key);
+          if (!existing) {
+            planMap.set(key, {
+              id: plan.id,
+              targetLanguage: key,
+              publishAt: plan.publishAt,
+              publishAtList: [plan.publishAt],
+            });
+            continue;
+          }
+
+          existing.publishAtList.push(plan.publishAt);
+          if (new Date(plan.publishAt).getTime() < new Date(existing.publishAt).getTime()) {
+            existing.publishAt = plan.publishAt;
+          }
+        }
+
+        return Array.from(planMap.values()).sort(
+          (left, right) => new Date(left.publishAt).getTime() - new Date(right.publishAt).getTime(),
+        );
       }
 
       function isOriginalLanguagePlan(language, article) {
@@ -3618,7 +5422,7 @@ export class TestUiController {
         const cards = document.getElementById('cards');
         cards.innerHTML = adaptations.map((adaptation) => {
           const key = cardKey(adaptation.id);
-          const translationPlans = publicationPlanFor(adaptation, currentArticle);
+          const translationPlans = publicationPlanFor(adaptation);
           const translationMarkup = translationPlans.map((plan) => {
             const translation = Array.isArray(adaptation.translations)
               ? adaptation.translations.find((item) => item.targetLanguage === plan.targetLanguage)
@@ -3640,11 +5444,23 @@ export class TestUiController {
                   <div>
                     <h3>\${escapeHtml(languageLabel(plan.targetLanguage))}</h3>
                     <p class="translation-note">
-                      Publish at: \${escapeHtml(formatPlanTiming(plan))}
+                      \${plan.publishAtList.length > 1
+                        ? 'Planned publications: ' + escapeHtml(String(plan.publishAtList.length)) + ' · next at ' + escapeHtml(formatPlanTiming(plan))
+                        : 'Publish at: ' + escapeHtml(formatPlanTiming(plan))}
                     </p>
                     \${publishMarkup}
                   </div>
                   <span id="\${key}TranslationStatus_\${plan.targetLanguage}" class="badge \${status === 'not started' || status === 'pending' ? 'pending' : 'generated'}">\${escapeHtml(status)}</span>
+                </div>
+                <div class="translation-schedule">
+                  <label>
+                    Publish at
+                    <input
+                      id="\${planInputId(plan.id)}"
+                      type="datetime-local"
+                      value="\${escapeHtml(toDateTimeLocalValue(plan.publishAt))}"
+                    />
+                  </label>
                 </div>
                 <div class="stage">
                   <div id="\${key}TranslationPlaceholder_\${plan.targetLanguage}" class="placeholder \${content ? 'hidden' : ''}">
@@ -3712,21 +5528,43 @@ export class TestUiController {
         }
       }
 
+      function setPlanWarning(message) {
+        const node = document.getElementById('planWarning');
+        if (!node) return;
+
+        if (!message) {
+          node.textContent = '';
+          node.classList.add('hidden');
+          return;
+        }
+
+        node.textContent = message;
+        node.classList.remove('hidden');
+      }
+
       async function refreshArticle() {
         const article = await request(
           '/articles/' + encodeURIComponent(articleId),
           undefined,
           { renderResponse: false },
         );
+        currentPlans = await request(
+          '/publishing/articles/' + encodeURIComponent(articleId) + '/plans',
+          undefined,
+          { renderResponse: false },
+        );
         currentArticle = article;
         const adaptations = Array.isArray(article.adaptations)
-          ? article.adaptations.filter((item) => item.status === 'approved')
+          ? article.adaptations.filter((item) =>
+              item.status === 'approved' &&
+              currentPlans.some((plan) => plan.channelId === item.channelId),
+            )
           : [];
 
         renderCards(adaptations);
 
         for (const adaptation of adaptations) {
-          const plans = publicationPlanFor(adaptation, article);
+          const plans = publicationPlanFor(adaptation);
           for (const plan of plans) {
             const translation = Array.isArray(adaptation.translations)
               ? adaptation.translations.find((item) => item.targetLanguage === plan.targetLanguage)
@@ -3783,12 +5621,15 @@ export class TestUiController {
       async function startTranslationGeneration() {
         const article = await refreshArticle();
         const adaptations = Array.isArray(article.adaptations)
-          ? article.adaptations.filter((item) => item.status === 'approved')
+          ? article.adaptations.filter((item) =>
+              item.status === 'approved' &&
+              currentPlans.some((plan) => plan.channelId === item.channelId),
+            )
           : [];
         const translationJobs = [];
 
         for (const adaptation of adaptations) {
-          const plans = publicationPlanFor(adaptation, article);
+          const plans = publicationPlanFor(adaptation);
           for (const plan of plans) {
             if (isOriginalLanguagePlan(plan.targetLanguage, article)) {
               continue;
@@ -3830,9 +5671,81 @@ export class TestUiController {
         void Promise.allSettled(translationJobs).then(() => refreshArticle());
       }
 
-      function goToPublishingStep() {
-        window.location.href =
-          '/test-ui/publishing?articleId=' + encodeURIComponent(articleId);
+      async function persistPlanChangesAndValidate() {
+        setPlanWarning('');
+        const article = await refreshArticle();
+        const adaptations = Array.isArray(article.adaptations)
+          ? article.adaptations.filter((item) =>
+              item.status === 'approved' &&
+              currentPlans.some((plan) => plan.channelId === item.channelId),
+            )
+          : [];
+        const issues = [];
+        const updates = [];
+        const now = new Date();
+
+        for (const adaptation of adaptations) {
+          const plans = publicationPlanFor(adaptation);
+          for (const plan of plans) {
+            const input = document.getElementById(planInputId(plan.id));
+            const rawValue = input?.value?.trim() || '';
+            const nextPublishAt = rawValue ? new Date(rawValue) : new Date(NaN);
+
+            if (Number.isNaN(nextPublishAt.getTime()) || nextPublishAt.getTime() <= now.getTime()) {
+              issues.push(adaptation.displayName + ' · ' + languageLabel(plan.targetLanguage));
+              input?.classList.add('is-expired');
+              continue;
+            }
+
+            input?.classList.remove('is-expired');
+
+            if (new Date(plan.publishAt).getTime() !== nextPublishAt.getTime()) {
+              updates.push({
+                id: plan.id,
+                publishAt: nextPublishAt.toISOString(),
+              });
+            }
+          }
+        }
+
+        if (issues.length) {
+          setPlanWarning('Измени дату и время для: ' + issues.join(', ') + '. Эти публикации уже просрочены.');
+          return false;
+        }
+
+        for (const update of updates) {
+          await request(
+            '/publishing/plans/' + encodeURIComponent(update.id) + '/reschedule',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ publishAt: update.publishAt }),
+            },
+            { renderResponse: false },
+          );
+        }
+
+        if (updates.length) {
+          await refreshArticle();
+        }
+
+        return true;
+      }
+
+      async function goToPublishingStep() {
+        const button = document.getElementById('approvePublishBtn');
+        button.disabled = true;
+        try {
+          const canContinue = await persistPlanChangesAndValidate();
+          if (!canContinue) {
+            return;
+          }
+
+          window.location.href =
+            '/test-ui/publishing?articleId=' + encodeURIComponent(articleId);
+        } finally {
+          button.disabled = false;
+        }
       }
 
       function goBack() {
@@ -3848,6 +5761,8 @@ export class TestUiController {
 
       boot().catch((error) => render(String(error)));
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -4060,6 +5975,8 @@ export class TestUiController {
       @media (max-width: 1024px) {
         .layout { grid-template-columns: 1fr; }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -4085,7 +6002,6 @@ export class TestUiController {
             <button class="secondary" onclick="goBack()">Back to translations</button>
             <button class="secondary" onclick="goToProjectDashboard()">Back to project dashboard</button>
           </div>
-          <pre id="output">Ready.</pre>
         </aside>
       </div>
     </div>
@@ -4094,6 +6010,7 @@ export class TestUiController {
       const params = new URLSearchParams(window.location.search);
       const articleId = params.get('articleId');
       let currentArticle = null;
+      let currentPlans = [];
       let currentPublications = [];
 
       function render(data) {
@@ -4173,22 +6090,6 @@ export class TestUiController {
         }).format(date);
       }
 
-      function formatPlanTiming(plan) {
-        if (plan?.publishNow) {
-          return 'Now';
-        }
-
-        return formatDateTime(plan?.scheduledAt);
-      }
-
-      function publicationPlanFor(adaptation, article) {
-        const intents = Array.isArray(article?.releasePlanSnapshot?.publicationIntents)
-          ? article.releasePlanSnapshot.publicationIntents
-          : [];
-        const channelPlan = intents.find((item) => item && item.channelId === adaptation.channelId);
-        return Array.isArray(channelPlan?.translations) ? channelPlan.translations : [];
-      }
-
       function isOriginalLanguagePlan(language, article) {
         return language === article?.original?.language;
       }
@@ -4203,10 +6104,12 @@ export class TestUiController {
           : [];
 
         return adaptations.flatMap((adaptation) =>
-          publicationPlanFor(adaptation, article).map((plan) => ({
+          currentPlans
+            .filter((plan) => plan.channelId === adaptation.channelId)
+            .map((plan) => ({
             adaptation,
             plan,
-            key: publishKey(adaptation.id, plan.targetLanguage),
+            key: publishKey(adaptation.id, plan.targetLanguage) + ':' + plan.publishAt,
           })),
         );
       }
@@ -4344,6 +6247,11 @@ export class TestUiController {
           undefined,
           { renderResponse: false },
         );
+        currentPlans = await request(
+          '/publishing/articles/' + encodeURIComponent(articleId) + '/plans',
+          undefined,
+          { renderResponse: false },
+        );
         return currentArticle;
       }
 
@@ -4402,9 +6310,7 @@ export class TestUiController {
                   articleId,
                   adaptationId: item.adaptation.id,
                   targetLanguage: item.plan.targetLanguage,
-                  publishAt: item.plan.publishNow
-                    ? new Date().toISOString()
-                    : item.plan.scheduledAt,
+                  publishAt: item.plan.publishAt,
                 }),
               },
               { renderResponse: false },
@@ -4451,6 +6357,8 @@ export class TestUiController {
 
       boot().catch((error) => render(String(error)));
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }
@@ -4807,6 +6715,8 @@ export class TestUiController {
           position: static;
         }
       }
+${renderUnifiedWorkflowStyles()}
+${renderDevConsoleStyles()}
     </style>
   </head>
   <body>
@@ -4866,9 +6776,6 @@ export class TestUiController {
         </div>
       </section>
 
-      <section class="panel">
-        <pre id="output">Ready.</pre>
-      </section>
     </div>
 
     <script>
@@ -5331,6 +7238,8 @@ export class TestUiController {
       contentNode.addEventListener('keyup', updateSelectionPreview);
       contentNode.addEventListener('select', updateSelectionPreview);
     </script>
+${renderDevConsoleMarkup()}
+${renderDevConsoleScript()}
   </body>
 </html>`;
   }

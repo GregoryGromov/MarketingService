@@ -57,6 +57,20 @@
       "when": 1778087766664,
       "tag": "0007_pretty_bloodstorm",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778094000000,
+      "tag": "0008_modern_gravity",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778165874389,
+      "tag": "0009_magenta_star_brand",
+      "breakpoints": true
     }
   ]
 }

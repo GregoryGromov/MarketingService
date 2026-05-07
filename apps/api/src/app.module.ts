@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'node:path';
 import { EditorialModule } from '@marketing-service/editorial';
 import { InfrastructureModule } from '@marketing-service/infrastructure';
 import { ProjectManagementModule } from '@marketing-service/project-management';
@@ -14,7 +15,13 @@ import { PublishingHttpModule } from './publishing/publishing-http.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        resolve(process.cwd(), '.env'),
+        resolve(process.cwd(), '../../.env'),
+      ],
+    }),
     LoggerModule.forRoot({
       pinoHttp: {
         transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,

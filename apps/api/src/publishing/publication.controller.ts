@@ -1,18 +1,27 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   type AdaptationId,
   type ArticleId,
   type ChannelId,
+  type ProjectId,
   PublishTelegramMessageCommand,
 } from '@marketing-service/editorial';
 import {
   CancelPublicationCommand,
+  CancelPublicationPlanCommand,
   CancelPlannedPublicationCommand,
+  CreatePublicationPlanCommand,
+  GetArticlePublicationPlansQuery,
   GetArticlePublicationsQuery,
+  GetProjectPublicationPlansQuery,
   ScheduleDiscordPublicationCommand,
   ScheduleTelegramPublicationCommand,
+  ReschedulePublicationPlanCommand,
+  type GetArticlePublicationPlansResultItem,
+  type PublicationPlanId,
   type PublicationId,
+  type GetProjectPublicationPlansResultItem,
   type GetArticlePublicationsResultItem,
 } from '@marketing-service/publishing';
 
@@ -104,6 +113,75 @@ export class PublicationController {
         body.articleId as ArticleId,
         body.channelId as ChannelId,
         body.targetLanguage,
+      ),
+    );
+  }
+
+  @Post('plans')
+  async createPlan(
+    @Body()
+    body: {
+      articleId: string;
+      channelId: string;
+      targetLanguage: string;
+      publishAt: string;
+    },
+  ): Promise<{ id: string }> {
+    return this.commandBus.execute(
+      new CreatePublicationPlanCommand(
+        body.articleId as ArticleId,
+        body.channelId as ChannelId,
+        body.targetLanguage,
+        new Date(body.publishAt),
+      ),
+    );
+  }
+
+  @Post('plans/:planId/cancel')
+  async cancelPlan(
+    @Param('planId') planId: string,
+  ): Promise<{ id: string; status: 'cancelled' }> {
+    return this.commandBus.execute(
+      new CancelPublicationPlanCommand(planId as PublicationPlanId),
+    );
+  }
+
+  @Post('plans/:planId/reschedule')
+  async reschedulePlan(
+    @Param('planId') planId: string,
+    @Body()
+    body: {
+      publishAt: string;
+    },
+  ): Promise<{ id: string; publishAt: Date }> {
+    return this.commandBus.execute(
+      new ReschedulePublicationPlanCommand(
+        planId as PublicationPlanId,
+        new Date(body.publishAt),
+      ),
+    );
+  }
+
+  @Get('articles/:articleId/plans')
+  async getArticlePublicationPlans(
+    @Param('articleId') articleId: string,
+  ): Promise<GetArticlePublicationPlansResultItem[]> {
+    return this.queryBus.execute(
+      new GetArticlePublicationPlansQuery(articleId as ArticleId),
+    );
+  }
+
+  @Get('projects/:projectId/plans')
+  async getProjectPublicationPlans(
+    @Param('projectId') projectId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ): Promise<GetProjectPublicationPlansResultItem[]> {
+    return this.queryBus.execute(
+      new GetProjectPublicationPlansQuery(
+        projectId as ProjectId,
+        from ? new Date(from) : null,
+        to ? new Date(to) : null,
       ),
     );
   }
