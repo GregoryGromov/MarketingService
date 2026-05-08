@@ -1,11 +1,12 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   type AdaptationId,
   ChannelAdaptationRepository,
   DiscordPublisherPort,
   TelegramPublisherPort,
   TranslationRepository,
+  XPublisherPort,
 } from '@marketing-service/editorial';
+import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { PublicationRepository } from '../domain/publication.repository.js';
 
 @Injectable()
@@ -24,6 +25,8 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     private readonly discordPublisher: DiscordPublisherPort,
     @Inject(TelegramPublisherPort)
     private readonly telegramPublisher: TelegramPublisherPort,
+    @Inject(XPublisherPort)
+    private readonly xPublisher: XPublisherPort,
   ) {}
 
   onModuleInit(): void {
@@ -99,6 +102,16 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       publication.markPublished({
         telegramChatId: published.channelId ?? 'discord-webhook',
         telegramMessageId: published.messageId ?? 'discord-message',
+      });
+      return;
+    }
+
+    if (publication.channelId === 'channel_x') {
+      const published = await this.xPublisher.publishMessage({ text });
+
+      publication.markPublished({
+        telegramChatId: published.screenName ?? 'x-user',
+        telegramMessageId: published.tweetId,
       });
       return;
     }

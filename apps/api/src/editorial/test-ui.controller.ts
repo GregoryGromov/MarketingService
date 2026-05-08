@@ -1756,11 +1756,15 @@ ${renderDevConsoleStyles()}
       }
 
       function handleCellPress(channelId, dayKey) {
-        if (!activeMarkerId) {
+        if (calendarMode === 'markers' && activeMarkerId) {
+          openMarkerPlacementModal(null, channelId, dayKey);
           return;
         }
 
-        openMarkerPlacementModal(null, channelId, dayKey);
+        const url = '/test-ui/day?projectId=' + encodeURIComponent(currentProjectId) +
+          '&channelId=' + encodeURIComponent(channelId) +
+          '&date=' + encodeURIComponent(dayKey);
+        window.location.href = url;
       }
 
       function openMarkerPlacementModal(event, channelId, dayKey) {
@@ -1923,8 +1927,7 @@ ${renderDevConsoleStyles()}
             return \`
               <div
                 class="week-cell \${isToday ? 'is-today' : ''} \${canPlaceMarker ? 'is-placeable' : ''}"
-                \${canPlaceMarker ? 'onclick="handleCellPress(\\'' + channel.id + '\\', \\''
-                  + dateKey(dayDate) + '\\')"' : ''}
+                onclick="handleCellPress('\${channel.id}', '\${dateKey(dayDate)}')"
               >
                 <div class="week-cell-scroll">\${content}</div>
               </div>
@@ -2114,42 +2117,40 @@ ${renderDevConsoleScript()}
     <title>Marketing Service - Day Schedule</title>
     <style>
       :root {
-        --bg: #f4f7fb;
-        --panel: #ffffff;
-        --text: #121826;
-        --muted: #5d687c;
-        --border: #d8dfeb;
-        --accent: #1d4fff;
-        --accent-soft: #edf2ff;
-        --shadow: 0 16px 40px rgba(15, 27, 58, 0.08);
+        --bg: #ececed;
+        --panel: rgba(255, 255, 255, 0.88);
+        --text: #121212;
+        --muted: rgba(18, 18, 18, 0.58);
+        --border: rgba(18, 18, 18, 0.18);
+        --accent: rgba(18, 18, 18, 0.92);
+        --accent-soft: rgba(255, 255, 255, 0.34);
         --danger: #b42318;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
+        background: var(--bg);
         color: var(--text);
-        font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font: 15px/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
       .wrap {
-        max-width: 1180px;
+        max-width: 1320px;
         margin: 0 auto;
-        padding: 24px;
+        padding: 22px 38px 40px;
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
       .panel {
         background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        box-shadow: var(--shadow);
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 34px;
       }
       .hero, .content {
-        padding: 24px 28px;
+        padding: 24px;
       }
       .hero-top, .layout {
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
       .topbar {
         display: flex;
@@ -2159,11 +2160,11 @@ ${renderDevConsoleScript()}
         flex-wrap: wrap;
       }
       h1 {
-        margin: 0 0 8px;
-        font-size: 34px;
-      }
-      h2 {
-        margin: 0 0 10px;
+        margin: 0;
+        font-size: clamp(28px, 3.5vw, 56px);
+        line-height: 0.86;
+        letter-spacing: -0.07em;
+        font-weight: 400;
       }
       p {
         margin: 0;
@@ -2171,63 +2172,40 @@ ${renderDevConsoleScript()}
       }
       a.btn, button {
         appearance: none;
-        border: 0;
+        border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 12px 18px;
-        background: var(--accent);
-        color: white;
+        padding: 10px 18px;
+        background: var(--accent-soft);
+        color: var(--text);
         font: inherit;
-        font-weight: 800;
+        font-weight: 400;
         cursor: pointer;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
       }
+      a.btn:hover, button:hover {
+        background: rgba(255, 255, 255, 0.56);
+      }
       .btn.secondary {
-        background: var(--accent-soft);
-        color: var(--accent);
-      }
-      .summary {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-      }
-      .stat {
-        padding: 16px;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        background: #fafcff;
-      }
-      .stat strong {
-        display: block;
-        font-size: 24px;
-        line-height: 1.1;
-        margin-bottom: 6px;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.4fr) 320px;
-        gap: 16px;
-        align-items: start;
+        background: rgba(255, 255, 255, 0.34);
       }
       .posts {
         display: grid;
         gap: 14px;
       }
       .post-card {
+        min-height: 220px;
         display: grid;
+        grid-template-rows: auto 1fr auto;
         gap: 14px;
         padding: 18px;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        background: #fcfdff;
-      }
-      .post-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
+        border-radius: 28px;
+        border: 1px solid var(--post-border);
+        background: var(--post-bg);
+        color: var(--post-text);
+        overflow: hidden;
       }
       .post-meta {
         display: flex;
@@ -2240,99 +2218,48 @@ ${renderDevConsoleScript()}
         gap: 8px;
         padding: 8px 10px;
         border-radius: 999px;
-        font-size: 12px;
-        font-weight: 900;
+        font-size: 11px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.06em;
       }
       .badge.lang {
-        background: var(--badge-bg, #eaf0ff);
-        border: 1px solid var(--badge-border, #cfdbff);
-        color: var(--badge-text, #173b93);
+        background: rgba(255, 255, 255, 0.48);
+        border: 1px solid var(--post-border);
+        color: var(--post-text);
       }
       .badge.status {
-        background: #f3f6fb;
-        border: 1px solid #d8dfeb;
-        color: #35507d;
-      }
-      .badge.status.is-published {
-        background: #eefbf3;
-        border-color: #c8edd8;
-        color: #117a43;
-      }
-      .badge.status.is-scheduled {
-        background: #f7f8fe;
-        border-color: #d7defa;
-        color: #35507d;
-      }
-      .badge.status.is-publishing {
-        background: #fff8e8;
-        border-color: #ffe1a6;
-        color: #b54708;
-      }
-      .badge.status.is-failed {
-        background: #fff3f1;
-        border-color: #f6c7c0;
-        color: #b42318;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid rgba(18, 18, 18, 0.14);
+        color: rgba(18, 18, 18, 0.72);
       }
       .post-title {
         margin: 0;
-        font-size: 22px;
-        line-height: 1.25;
-      }
-      .post-copy {
-        color: var(--muted);
+        font-size: 34px;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
       .post-actions {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
       }
-      .post-preview {
-        padding: 14px 16px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: #fff;
-        color: #23314e;
-        white-space: pre-wrap;
-        overflow-wrap: break-word;
-      }
-      .sidebar {
-        position: sticky;
-        top: 24px;
-        display: grid;
-        gap: 12px;
-      }
-      .info-list {
-        display: grid;
-        gap: 10px;
-      }
-      .info-row {
-        display: grid;
-        gap: 4px;
-      }
-      .info-row span {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-      .info-row strong {
-        font-size: 18px;
-        line-height: 1.3;
-      }
       .empty {
         padding: 28px;
         border: 1px dashed var(--border);
-        border-radius: 18px;
+        border-radius: 24px;
         color: var(--muted);
-        background: #fafcff;
+        background: rgba(255, 255, 255, 0.34);
       }
       .error {
         color: var(--danger);
         font-weight: 700;
-        min-height: 24px;
+        min-height: 0;
       }
       button[disabled] {
         opacity: 0.5;
@@ -2350,23 +2277,14 @@ ${renderDevConsoleScript()}
         overflow-wrap: break-word;
       }
       @media (max-width: 960px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-        .sidebar {
-          position: static;
-        }
-        .summary {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
       }
       @media (max-width: 640px) {
-        .summary {
-          grid-template-columns: 1fr;
-        }
-        .topbar, .post-head {
+        .topbar {
           flex-direction: column;
           align-items: flex-start;
+        }
+        .post-title {
+          font-size: 28px;
         }
       }
 ${renderUnifiedWorkflowStyles()}
@@ -2382,46 +2300,15 @@ ${renderDevConsoleStyles()}
             <a class="btn secondary" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
           </div>
           <div>
-            <h1>Публикации за день</h1>
-            <p>Отдельный экран для конкретного дня и соцсети. Здесь показаны все посты, которые должны выйти в этот день по выбранному каналу.</p>
+            <h1 id="pageTitle">Загрузка...</h1>
           </div>
         </div>
       </section>
 
       <section class="panel content">
-        <div class="summary">
-          <div class="stat"><strong id="plannedCount">0</strong><span>Публикаций</span></div>
-          <div class="stat"><strong id="publishedCount">0</strong><span>Опубликовано</span></div>
-          <div class="stat"><strong id="scheduledCount">0</strong><span>Запланировано</span></div>
-          <div class="stat"><strong id="failedCount">0</strong><span>Ошибок</span></div>
-        </div>
+        <div id="error" class="error"></div>
+        <div id="posts" class="posts"></div>
       </section>
-
-      <div class="grid">
-        <section class="panel content">
-          <h2 id="sectionTitle">Загрузка...</h2>
-          <div id="error" class="error"></div>
-          <div id="posts" class="posts"></div>
-        </section>
-
-        <aside class="panel content sidebar">
-          <div class="info-list">
-            <div class="info-row">
-              <span>Project ID</span>
-              <strong id="projectValue">${escapeHtml(projectId)}</strong>
-            </div>
-            <div class="info-row">
-              <span>Канал</span>
-              <strong id="channelValue">—</strong>
-            </div>
-            <div class="info-row">
-              <span>День</span>
-              <strong id="dayValue">—</strong>
-            </div>
-          </div>
-          <button class="btn secondary" onclick="loadDaySchedule()">Refresh</button>
-        </aside>
-      </div>
     </div>
 
     <script>
@@ -2629,20 +2516,11 @@ ${renderDevConsoleStyles()}
           .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
       }
 
-      function renderStats(items) {
-        document.getElementById('plannedCount').textContent = String(items.length);
-        document.getElementById('publishedCount').textContent = String(items.filter((item) => item.publication?.status === 'published').length);
-        document.getElementById('scheduledCount').textContent = String(items.filter((item) => !item.publication || item.publication.status === 'scheduled').length);
-        document.getElementById('failedCount').textContent = String(items.filter((item) => item.publication?.status === 'failed').length);
-      }
-
       function renderPosts(items, selectedDate) {
         const root = document.getElementById('posts');
-        document.getElementById('sectionTitle').textContent =
-          channelLabel(channelId) + ' · ' + formatDate(selectedDate);
-        document.getElementById('channelValue').textContent = channelLabel(channelId);
-        document.getElementById('dayValue').textContent = formatDate(selectedDate);
-        renderStats(items);
+        const title = channelLabel(channelId) + ' · ' + formatDate(selectedDate);
+        document.getElementById('pageTitle').textContent = title;
+        document.title = 'Marketing Service - ' + title;
 
         if (!items.length) {
           root.innerHTML = '<div class="empty">На этот день для этого канала пока ничего не запланировано.</div>';
@@ -2650,30 +2528,26 @@ ${renderDevConsoleStyles()}
         }
 
         root.innerHTML = items.map((item) => {
-          const preview = item.articleExcerpt || item.articleTitle;
           const canCancel = item.publication
             ? item.publication.status !== 'published' && item.publication.status !== 'publishing'
             : true;
           return \`
-            <article class="post-card">
-              <div class="post-head">
-                <div>
-                  <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
-                  <p class="post-copy">Статья \${escapeHtml(item.articleId)} · публикация в \${escapeHtml(formatTime(item.publishAt))}</p>
-                </div>
-                <div class="post-meta">
-                  <span class="badge lang" style="
-                    --badge-bg: \${escapeHtml(item.theme.bg)};
-                    --badge-border: \${escapeHtml(item.theme.border)};
-                    --badge-text: \${escapeHtml(item.theme.text)};
-                  ">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
-                  <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
-                </div>
+            <article
+              class="post-card"
+              style="
+                --post-bg: \${escapeHtml(item.theme.bg)};
+                --post-border: \${escapeHtml(item.theme.border)};
+                --post-text: \${escapeHtml(item.theme.text)};
+              "
+            >
+              <div class="post-meta">
+                <span class="badge lang">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
+                <span class="badge lang">\${escapeHtml(formatTime(item.publishAt))}</span>
+                <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
               </div>
-              <div class="post-preview">\${escapeHtml(preview)}</div>
+              <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
               <div class="post-actions">
-                <a class="btn secondary" href="/test-ui/review?articleId=\${escapeHtml(item.articleId)}">Open workflow</a>
-                <a class="btn secondary" href="/articles/\${escapeHtml(item.articleId)}" target="_blank" rel="noreferrer">Open JSON</a>
+                <a class="btn" style="justify-self:start;" href="/test-ui/review?articleId=\${escapeHtml(item.articleId)}">Open workflow</a>
                 \${canCancel
                   ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
                   : ''}
@@ -2793,7 +2667,7 @@ ${renderDevConsoleScript()}
         box-shadow: var(--shadow);
       }
       .hero, .content { padding: 24px 28px; }
-      .hero h1 { margin: 0 0 8px; font-size: 34px; }
+      .hero h1 { margin: 0; font-size: 18px; }
       .hero p { margin: 0; color: var(--muted); }
       .grid {
         display: grid;
@@ -3085,24 +2959,15 @@ ${renderDevConsoleStyles()}
       <section class="panel hero">
         <div class="topbar">
           <a href="/test-ui/project?projectId=${escapeHtml(projectId)}">← Back to project</a>
-          <span style="color:var(--muted);font-weight:700;">Project: ${escapeHtml(projectId)}</span>
         </div>
-        <h1>Страница 1. Создать article</h1>
-        <p>Здесь мы только создаем исходный article. Планирование конечных публикаций происходит уже на следующем отдельном дэшборде статьи.</p>
+        <h1>Article creation</h1>
       </section>
 
       <div class="grid">
         <section class="panel content">
           <div class="stack">
-            <label>
-              Project ID
-              <input id="projectId" value="${escapeHtml(projectId)}" />
-            </label>
-
-            <label>
-              Язык исходника
-              <input id="language" value="ru" />
-            </label>
+            <input id="projectId" type="hidden" value="${escapeHtml(projectId)}" />
+            <input id="language" type="hidden" value="ru" />
 
             <label>
               Исходный лонгрид
@@ -6099,7 +5964,11 @@ ${renderDevConsoleStyles()}
           ? article.adaptations.filter(
               (item) =>
                 item.status === 'approved' &&
-                (item.channelId === 'channel_telegram' || item.channelId === 'channel_discord'),
+                (
+                  item.channelId === 'channel_telegram' ||
+                  item.channelId === 'channel_discord' ||
+                  item.channelId === 'channel_x'
+                ),
             )
           : [];
 
@@ -6207,7 +6076,9 @@ ${renderDevConsoleStyles()}
                 escapeHtml(
                   publication.channelId === 'channel_discord'
                     ? 'Discord delivery confirmed'
-                    : 'Telegram message #' + String(publication.telegramMessageId),
+                    : publication.channelId === 'channel_x'
+                      ? 'X post #' + String(publication.telegramMessageId)
+                      : 'Telegram message #' + String(publication.telegramMessageId),
                 ) +
               '</div>'
             : '';
@@ -6302,7 +6173,9 @@ ${renderDevConsoleStyles()}
             await request(
               item.adaptation.channelId === 'channel_discord'
                 ? '/publishing/discord/schedule'
-                : '/publishing/telegram/schedule',
+                : item.adaptation.channelId === 'channel_x'
+                  ? '/publishing/x/schedule'
+                  : '/publishing/telegram/schedule',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

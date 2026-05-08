@@ -1,13 +1,3 @@
-export { EditorialModule } from './editorial.module.js';
-export {
-  Article,
-  type ArticleId,
-  type ArticleProps,
-  type ArticleStatus,
-  type CreateArticleParams,
-  type Original,
-  type ProjectId,
-} from './domain/article.aggregate.js';
 export {
   AdaptationVersion,
   type AdaptationVersionId,
@@ -17,41 +7,56 @@ export {
 } from './domain/adaptation-version.entity.js';
 export { AdaptationVersionRepository } from './domain/adaptation-version.repository.js';
 export {
-  ChannelAdaptation,
+  Article,
+  type ArticleId,
+  type ArticleProps,
+  type ArticleStatus,
+  type CreateArticleParams,
+  type Original,
+  type ProjectId,
+} from './domain/article.aggregate.js';
+export { ArticleRepository } from './domain/article.repository.js';
+export {
   type AdaptationId,
+  ChannelAdaptation,
   type ChannelAdaptationProps,
   type ChannelId,
   type CreateChannelAdaptationParams,
   type NodeStatus,
 } from './domain/channel-adaptation.entity.js';
-export { ArticleRepository } from './domain/article.repository.js';
 export { ChannelAdaptationRepository } from './domain/channel-adaptation.repository.js';
 export {
-  Translation,
   type CreateTranslationParams,
+  Translation,
   type TranslationId,
   type TranslationProps,
 } from './domain/translation.aggregate.js';
 export { TranslationRepository } from './domain/translation.repository.js';
+export { EditorialModule } from './editorial.module.js';
 export {
   AdaptationGeneratorPort,
   type GenerateAdaptationParams,
   type ReviseAdaptationSelectionParams,
 } from './ports/adaptation-generator.port.js';
 export {
-  TranslationGeneratorPort,
-  type GenerateTranslationParams,
-} from './ports/translation-generator.port.js';
-export {
   DiscordPublisherPort,
   type PublishDiscordMessageParams,
   type PublishDiscordMessageResult,
 } from './ports/discord-publisher.port.js';
 export {
-  TelegramPublisherPort,
   type PublishTelegramMessageParams,
   type PublishTelegramMessageResult,
+  TelegramPublisherPort,
 } from './ports/telegram-publisher.port.js';
+export {
+  type GenerateTranslationParams,
+  TranslationGeneratorPort,
+} from './ports/translation-generator.port.js';
+export {
+  type PublishXMessageParams,
+  type PublishXMessageResult,
+  XPublisherPort,
+} from './ports/x-publisher.port.js';
 export { AddAdaptationCommand } from './use-cases/add-adaptation/add-adaptation.command.js';
 export { AddTranslationCommand } from './use-cases/add-translation/add-translation.command.js';
 export { ApproveAdaptationCommand } from './use-cases/approve-adaptation/approve-adaptation.command.js';

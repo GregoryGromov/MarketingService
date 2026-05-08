@@ -7,6 +7,7 @@ import {
   TelegramPublisherPort,
   TranslationGeneratorPort,
   TranslationRepository,
+  XPublisherPort,
 } from '@marketing-service/editorial';
 import {
   ProjectMarkerPlacementRepository,
@@ -28,6 +29,7 @@ import { DiscordWebhookPublisher } from './publishing/discord-webhook.publisher.
 import { PublicationDrizzleRepository } from './publishing/publication.drizzle-repository.js';
 import { PublicationPlanDrizzleRepository } from './publishing/publication-plan.drizzle-repository.js';
 import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher.js';
+import { XApiPublisher } from './publishing/x-api.publisher.js';
 
 // TODO: import DatabaseModule
 // TODO: import and bind adapters to ports:
@@ -53,6 +55,7 @@ import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher
     DeepSeekAdaptationGenerator,
     DiscordWebhookPublisher,
     TelegramBotApiPublisher,
+    XApiPublisher,
     PublicationDrizzleRepository,
     PublicationPlanDrizzleRepository,
     ProjectMarkerPlacementDrizzleRepository,
@@ -66,6 +69,7 @@ import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher
     { provide: TranslationGeneratorPort, useExisting: DeepSeekAdaptationGenerator },
     { provide: DiscordPublisherPort, useClass: DiscordWebhookPublisher },
     { provide: TelegramPublisherPort, useClass: TelegramBotApiPublisher },
+    { provide: XPublisherPort, useClass: XApiPublisher },
     { provide: PublicationRepository, useClass: PublicationDrizzleRepository },
     { provide: PublicationPlanRepository, useClass: PublicationPlanDrizzleRepository },
     {
@@ -87,6 +91,7 @@ import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher
     DiscordPublisherPort,
     TranslationGeneratorPort,
     TelegramPublisherPort,
+    XPublisherPort,
     PublicationPlanRepository,
     PublicationRepository,
     ProjectMarkerPlacementRepository,
