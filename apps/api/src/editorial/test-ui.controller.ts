@@ -276,7 +276,7 @@ export class TestUiController {
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderProjectsPage(): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -638,7 +638,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderProjectPage(@Query('projectId') projectId = 'project_123'): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -1384,8 +1384,8 @@ ${renderDevConsoleStyles()}
 
     <script>
       const currentProjectId = ${JSON.stringify(projectId)};
-      const weekDayLabels = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-      const monthLabels = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const weekDayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const adaptationChannels = [
         { id: 'channel_telegram', label: 'Telegram', hint: 'Adaptation' },
         { id: 'channel_x', label: 'X', hint: 'Adaptation' },
@@ -1450,7 +1450,7 @@ ${renderDevConsoleStyles()}
       function formatDate(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -1462,7 +1462,7 @@ ${renderDevConsoleStyles()}
       function formatTime(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
@@ -1470,9 +1470,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Русский';
-        if (normalized === 'en') return 'Английский';
-        if (normalized === 'es') return 'Испанский';
+        if (normalized === 'ru') return 'Russian';
+        if (normalized === 'en') return 'English';
+        if (normalized === 'es') return 'Spanish';
         return normalized.toUpperCase();
       }
 
@@ -1556,7 +1556,7 @@ ${renderDevConsoleStyles()}
       function formatDayLabel(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: 'numeric',
           month: 'long',
         }).format(date);
@@ -1591,9 +1591,9 @@ ${renderDevConsoleStyles()}
 
       function languageOptions() {
         return [
-          { language: 'ru', label: 'Russian' },
           { language: 'en', label: 'English' },
           { language: 'es', label: 'Spanish' },
+          { language: 'ru', label: 'Russian' },
         ];
       }
 
@@ -1899,7 +1899,7 @@ ${renderDevConsoleStyles()}
                   '</div>'
                 ).join('') +
                 (hiddenMarkers > 0
-                  ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenMarkers)) + '</div>'
+                  ? '<div class="week-publication-more">' + escapeHtml(String(hiddenMarkers)) + ' more</div>'
                   : '')
               : '';
             const publicationContent = calendarMode === 'posts' && publications.length
@@ -1915,7 +1915,7 @@ ${renderDevConsoleStyles()}
                   '</div>'
                 ).join('') +
                 (hiddenCount > 0
-                  ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenCount)) + '</div>'
+                  ? '<div class="week-publication-more">' + escapeHtml(String(hiddenCount)) + ' more</div>'
                   : '')
               : '';
             const content = markerContent + publicationContent ||
@@ -2002,7 +2002,7 @@ ${renderDevConsoleStyles()}
         const root = document.getElementById('articles');
 
         if (!Array.isArray(items) || items.length === 0) {
-          root.innerHTML = '<div class="empty">У проекта пока нет статей. Нажми <strong>New article</strong> и запусти первый workflow.</div>';
+          root.innerHTML = '<div class="empty">No articles in this project yet. Click <strong>New article</strong> to start the first workflow.</div>';
           document.getElementById('articleSectionMeta').textContent = 'No articles in this project yet.';
           renderProjectHero();
           return;
@@ -2110,7 +2110,7 @@ ${renderDevConsoleScript()}
     @Query('date') date = '',
   ): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -2300,7 +2300,7 @@ ${renderDevConsoleStyles()}
             <a class="btn secondary" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
           </div>
           <div>
-            <h1 id="pageTitle">Загрузка...</h1>
+            <h1 id="pageTitle">Loading...</h1>
           </div>
         </div>
       </section>
@@ -2374,7 +2374,7 @@ ${renderDevConsoleStyles()}
       function formatDate(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -2384,7 +2384,7 @@ ${renderDevConsoleStyles()}
       function formatDateTime(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -2396,7 +2396,7 @@ ${renderDevConsoleStyles()}
       function formatTime(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
@@ -2404,9 +2404,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Русский';
-        if (normalized === 'en') return 'Английский';
-        if (normalized === 'es') return 'Испанский';
+        if (normalized === 'ru') return 'Russian';
+        if (normalized === 'en') return 'English';
+        if (normalized === 'es') return 'Spanish';
         return normalized.toUpperCase();
       }
 
@@ -2417,34 +2417,34 @@ ${renderDevConsoleStyles()}
       function previewStatus(publication, publishAt) {
         if (!publication) {
           return {
-            label: 'Будет опубликовано ' + formatDateTime(publishAt),
+            label: 'Will be published ' + formatDateTime(publishAt),
             className: 'is-scheduled',
           };
         }
 
         if (publication.status === 'published') {
           return {
-            label: 'Опубликовано' + (publication.publishedAt ? ' · ' + formatDateTime(publication.publishedAt) : ''),
+            label: 'Published' + (publication.publishedAt ? ' · ' + formatDateTime(publication.publishedAt) : ''),
             className: 'is-published',
           };
         }
 
         if (publication.status === 'publishing') {
           return {
-            label: 'Публикуем сейчас',
+            label: 'Publishing now',
             className: 'is-publishing',
           };
         }
 
         if (publication.status === 'failed') {
           return {
-            label: 'Ошибка публикации',
+            label: 'Publishing error',
             className: 'is-failed',
           };
         }
 
         return {
-          label: 'Будет опубликовано ' + formatDateTime(publication.publishAt || publishAt),
+          label: 'Will be published ' + formatDateTime(publication.publishAt || publishAt),
           className: 'is-scheduled',
         };
       }
@@ -2504,7 +2504,7 @@ ${renderDevConsoleStyles()}
             return {
               planId: plan.id,
               articleId: plan.articleId,
-              articleTitle: article?.originalTitle || 'Без названия',
+              articleTitle: article?.originalTitle || 'Untitled',
               articleExcerpt: article?.originalExcerpt || '',
               targetLanguage: plan.targetLanguage,
               publishAt: new Date(plan.publishAt),
@@ -2523,7 +2523,7 @@ ${renderDevConsoleStyles()}
         document.title = 'Marketing Service - ' + title;
 
         if (!items.length) {
-          root.innerHTML = '<div class="empty">На этот день для этого канала пока ничего не запланировано.</div>';
+          root.innerHTML = '<div class="empty">Nothing is scheduled for this channel on this day yet.</div>';
           return;
         }
 
@@ -2618,7 +2618,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderCreatePage(@Query('projectId') projectId = 'project_123'): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -2967,23 +2967,23 @@ ${renderDevConsoleStyles()}
         <section class="panel content">
           <div class="stack">
             <input id="projectId" type="hidden" value="${escapeHtml(projectId)}" />
-            <input id="language" type="hidden" value="ru" />
+            <input id="language" type="hidden" value="en" />
 
             <label>
-              Исходный лонгрид
-              <textarea id="content" placeholder="Вставь исходную статью"></textarea>
+              Original longread
+              <textarea id="content" placeholder="Paste the original article"></textarea>
             </label>
           </div>
         </section>
 
         <section class="panel content">
-          <h2 style="margin:0 0 8px;">Каналы и prompt rules</h2>
-          <p class="sub" style="margin:0 0 14px;">Пока здесь можно только подредактировать встроенные prompt rules для каналов. Конкретные публикации и языки мы зададим уже на следующем planning dashboard статьи.</p>
+          <h2 style="margin:0 0 8px;">Channels and prompt rules</h2>
+          <p class="sub" style="margin:0 0 14px;">At this step you can only adjust the built-in prompt rules for channels. Exact publications and languages will be set on the next article planning dashboard.</p>
 
           <div id="channelList" class="channels"></div>
 
           <div class="note" style="margin-top: 16px;">
-            После нажатия кнопки мы создадим article и сразу переведем тебя на отдельный dashboard этой статьи, где ты уже расставишь конечные публикации по дням и каналам.
+            After you click the button, we will create the article and move you to its dedicated dashboard, where you will place the final publications across days and channels.
           </div>
 
           <div style="margin-top: 18px;">
@@ -3000,20 +3000,20 @@ ${renderDevConsoleStyles()}
       <div class="modal">
         <div class="modal-head">
           <div>
-            <h3>Редактирование prompt</h3>
-            <p>Здесь можно поменять только правило адаптации для уже встроенного канала.</p>
+            <h3>Edit prompt</h3>
+            <p>Here you can only change the adaptation rule for a built-in channel.</p>
           </div>
           <button type="button" class="secondary" onclick="closeTypeModal()">Close</button>
         </div>
 
         <label>
-          Канал
+          Channel
           <input id="typeName" readonly />
         </label>
 
         <label>
-          Prompt / правило адаптации
-          <textarea id="typePrompt" placeholder="Например: Сделай 1 короткий пост, до 20 слов, без хештегов."></textarea>
+          Prompt / adaptation rule
+          <textarea id="typePrompt" placeholder="For example: Write 1 short post, up to 20 words, with no hashtags."></textarea>
         </label>
 
         <div class="modal-actions">
@@ -3195,13 +3195,13 @@ ${renderDevConsoleStyles()}
         error.textContent = '';
 
         if (!editingTypeId) {
-          error.textContent = 'Не выбран канал для редактирования.';
+          error.textContent = 'No channel selected for editing.';
           return;
         }
 
         const baseType = DEFAULT_TYPES.find((type) => type.channelId === editingTypeId);
         if (!baseType) {
-          error.textContent = 'Можно редактировать только встроенные каналы.';
+          error.textContent = 'Only built-in channels can be edited.';
           return;
         }
 
@@ -3281,7 +3281,7 @@ ${renderDevConsoleStyles()}
 
           window.location.href = '/test-ui/article-plan?articleId=' + encodeURIComponent(article.id);
         } catch (e) {
-          error.textContent = e instanceof Error ? e.message : 'Не удалось создать workflow';
+          error.textContent = e instanceof Error ? e.message : 'Failed to create workflow';
           submitBtn.disabled = false;
         }
       }
@@ -3298,7 +3298,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderArticlePlanPage(@Query('articleId') articleId = ''): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -3777,7 +3777,7 @@ ${renderDevConsoleStyles()}
                 <h2>Publication calendar</h2>
                 <span id="weekRange" class="calendar-range"></span>
               </div>
-              <p>Планирование публикаций по дням, каналам и языкам для одной статьи.</p>
+              <p>Plan publications by day, channel, and language for a single article.</p>
             </div>
             <div class="week-nav">
               <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
@@ -3804,7 +3804,7 @@ ${renderDevConsoleStyles()}
         <div class="modal-head">
           <div>
             <h3>Create publication</h3>
-            <p id="planModalSubtitle">Выбранная клетка уже определяет день и канал. Здесь нужно задать только язык и время.</p>
+            <p id="planModalSubtitle">The selected cell already defines the day and channel. Here you only set language and time.</p>
           </div>
           <button type="button" class="btn secondary" onclick="closePlanModal()">Close</button>
         </div>
@@ -3826,8 +3826,8 @@ ${renderDevConsoleStyles()}
 
     <script>
       const articleId = ${JSON.stringify(articleId)};
-      const weekDayLabels = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-      const monthLabels = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const weekDayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const adaptationChannels = [
         { id: 'channel_telegram', label: 'Telegram', hint: 'Adaptation' },
         { id: 'channel_x', label: 'X', hint: 'Adaptation' },
@@ -3961,7 +3961,7 @@ ${renderDevConsoleStyles()}
       }
 
       function languageOptions() {
-        const originalLanguage = String(currentArticle?.original?.language || 'ru').trim().toLowerCase() || 'ru';
+        const originalLanguage = String(currentArticle?.original?.language || 'en').trim().toLowerCase() || 'en';
         const options = [
           { language: originalLanguage, label: languageLabel(originalLanguage) },
           { language: 'en', label: 'English' },
@@ -4025,7 +4025,7 @@ ${renderDevConsoleStyles()}
       function formatTime(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
@@ -4041,7 +4041,7 @@ ${renderDevConsoleStyles()}
       function formatDate(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -4097,7 +4097,7 @@ ${renderDevConsoleStyles()}
                     '<span class="week-publication-time">' + escapeHtml(formatTime(plan.publishAt)) + '</span>' +
                   '</div>'
                 ).join('') +
-                (hiddenCount > 0 ? '<div class="week-publication-more">ещё ' + escapeHtml(String(hiddenCount)) + '</div>' : '')
+                (hiddenCount > 0 ? '<div class="week-publication-more">' + escapeHtml(String(hiddenCount)) + ' more</div>' : '')
               : '<span class="week-cell-placeholder ' + (isPast ? 'disabled' : '') + '">' + (isPast ? '—' : '+') + '</span>';
 
             return \`
@@ -4144,9 +4144,9 @@ ${renderDevConsoleStyles()}
         }
         document.getElementById('planError').textContent = '';
         document.getElementById('planModalSubtitle').textContent =
-          'Канал: ' +
+          'Channel: ' +
           adaptationChannels.find((item) => item.id === channelId)?.label +
-          ' · День: ' +
+          ' · Day: ' +
           formatDate(new Date(dayKey + 'T00:00:00'));
         document.getElementById('planModalBackdrop').classList.add('open');
       }
@@ -4163,7 +4163,7 @@ ${renderDevConsoleStyles()}
         error.textContent = '';
 
         if (!pendingCell) {
-          error.textContent = 'Не выбрана клетка.';
+          error.textContent = 'No cell selected.';
           return;
         }
 
@@ -4171,24 +4171,24 @@ ${renderDevConsoleStyles()}
         const timeValue = document.getElementById('planTime').value.trim();
 
         if (!targetLanguage) {
-          error.textContent = 'Выбери язык.';
+          error.textContent = 'Choose a language.';
           return;
         }
 
         if (!timeValue) {
-          error.textContent = 'Выбери время.';
+          error.textContent = 'Choose a time.';
           return;
         }
 
         const publishAt = new Date(pendingCell.dayKey + 'T' + timeValue + ':00');
         if (Number.isNaN(publishAt.getTime())) {
-          error.textContent = 'Некорректное время публикации.';
+          error.textContent = 'Invalid publish time.';
           return;
         }
 
         const now = new Date();
         if (publishAt.getTime() <= now.getTime()) {
-          error.textContent = 'Нельзя планировать публикацию на уже прошедшее время.';
+          error.textContent = 'Cannot schedule a publication in the past.';
           return;
         }
 
@@ -4320,7 +4320,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderReviewPage(): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -4576,15 +4576,15 @@ ${renderDevConsoleStyles()}
   <body>
     <div class="wrap">
       <section class="hero">
-        <h1>Страница 2. Генерация adaptation</h1>
-        <p>После загрузки страницы генерация стартует автоматически для выбранных каналов. Пока текст не готов, показывается плейсхолдер.</p>
+        <h1>Step 2. Generate adaptations</h1>
+        <p>Generation starts automatically for the selected channels when the page loads. A placeholder is shown until the text is ready.</p>
       </section>
 
       <div class="layout">
         <section class="cards" id="cards"></section>
 
         <aside class="panel control-panel">
-          <h2 style="margin:0 0 10px;">Управление</h2>
+          <h2 style="margin:0 0 10px;">Controls</h2>
           <div class="meta">
             <div class="meta-line"><strong>Article ID:</strong> <span id="articleIdLabel" class="meta-value"></span></div>
             <div class="meta-line"><strong>Adaptations:</strong> <span id="adaptationCount" class="meta-value">0</span></div>
@@ -4663,7 +4663,7 @@ ${renderDevConsoleStyles()}
               </div>
               <div class="stage">
                 <div id="\${key}Placeholder" class="placeholder">
-                  <div class="placeholder-title">Генерируем adaptation для \${escapeHtml(adaptation.displayName)}...</div>
+                  <div class="placeholder-title">Generating adaptation for \${escapeHtml(adaptation.displayName)}...</div>
                   <div class="placeholder-lines">
                     <div class="placeholder-line"></div>
                     <div class="placeholder-line"></div>
@@ -4833,7 +4833,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderTranslationsPage(): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -5128,15 +5128,15 @@ ${renderDevConsoleStyles()}
   <body>
     <div class="wrap">
       <section class="hero">
-        <h1>Страница 3. Генерация translations</h1>
-        <p>После approve adaptation переводы стартуют уже на отдельной странице. Пока перевод не готов, показывается плейсхолдер.</p>
+        <h1>Step 3. Generate translations</h1>
+        <p>After adaptation approval, translations start on a separate page. A placeholder is shown until the translation is ready.</p>
       </section>
 
       <div class="layout">
         <section class="cards" id="cards"></section>
 
         <aside class="panel control-panel">
-          <h2 style="margin:0 0 10px;">Управление</h2>
+          <h2 style="margin:0 0 10px;">Controls</h2>
           <div class="meta">
             <div class="meta-line"><strong>Article ID:</strong> <span id="articleIdLabel" class="meta-value"></span></div>
             <div class="meta-line"><strong>Adaptations:</strong> <span id="adaptationCount" class="meta-value">0</span></div>
@@ -5225,7 +5225,7 @@ ${renderDevConsoleStyles()}
         if (!value) return 'not scheduled';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -5329,7 +5329,7 @@ ${renderDevConsoleStyles()}
                 </div>
                 <div class="stage">
                   <div id="\${key}TranslationPlaceholder_\${plan.targetLanguage}" class="placeholder \${content ? 'hidden' : ''}">
-                    <div class="placeholder-title">\${originalPlan ? 'Используем approved adaptation как локализацию...' : 'Генерируем translation для ' + escapeHtml(adaptation.displayName) + '...'}</div>
+                    <div class="placeholder-title">\${originalPlan ? 'Using the approved adaptation as the localization...' : 'Generating translation for ' + escapeHtml(adaptation.displayName) + '...'}</div>
                     <div class="placeholder-lines">
                       <div class="placeholder-line"></div>
                       <div class="placeholder-line"></div>
@@ -5574,7 +5574,7 @@ ${renderDevConsoleStyles()}
         }
 
         if (issues.length) {
-          setPlanWarning('Измени дату и время для: ' + issues.join(', ') + '. Эти публикации уже просрочены.');
+          setPlanWarning('Update date and time for: ' + issues.join(', ') + '. These publications are already overdue.');
           return false;
         }
 
@@ -5636,7 +5636,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderPublishingPage(): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -5847,15 +5847,15 @@ ${renderDevConsoleStyles()}
   <body>
     <div class="wrap">
       <section class="hero">
-        <h1>Страница 4. Publication Queue</h1>
-        <p>Здесь мы подтверждаем planned localizations и создаем реальные публикации в backend. Если у локализации стоит отложенное время, сервер сам отправит ее в нужный канал позже.</p>
+        <h1>Step 4. Publication queue</h1>
+        <p>Here we confirm planned localizations and create real backend publications. If a localization has a delayed time, the server will post it to the target channel later.</p>
       </section>
 
       <div class="layout">
         <section id="statusList" class="status-list"></section>
 
         <aside class="panel">
-          <h2 style="margin:0 0 10px;">Управление</h2>
+          <h2 style="margin:0 0 10px;">Controls</h2>
           <div class="meta">
             <div class="meta-row"><strong>Article ID:</strong> <span id="articleIdLabel" class="meta-value"></span></div>
             <div class="meta-row"><strong>Total:</strong> <span id="totalCount" class="meta-value">0</span></div>
@@ -5934,7 +5934,7 @@ ${renderDevConsoleStyles()}
         if (!value) return 'not scheduled';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -5944,10 +5944,10 @@ ${renderDevConsoleStyles()}
       }
 
       function formatHumanDateTime(value) {
-        if (!value) return 'без даты';
+        if (!value) return 'no date';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat('en-GB', {
           day: 'numeric',
           month: 'long',
           hour: '2-digit',
@@ -5993,23 +5993,23 @@ ${renderDevConsoleStyles()}
       function previewTextForPublication(publication) {
         const adaptation = adaptationForPublication(publication);
         if (!adaptation) {
-          return 'Контент локализации пока не найден.';
+          return 'Localization content is not available yet.';
         }
 
         const articleLanguage = currentArticle?.original?.language;
         if (publication.targetLanguage === articleLanguage) {
-          return adaptation.adaptedContent || 'Контент adaptation пока пустой.';
+          return adaptation.adaptedContent || 'Adaptation content is still empty.';
         }
 
         const translations = Array.isArray(adaptation.translations) ? adaptation.translations : [];
         const translation = translations.find((item) => item.targetLanguage === publication.targetLanguage);
-        return translation?.translatedContent || 'Перевод пока не найден.';
+        return translation?.translatedContent || 'Translation not found yet.';
       }
 
       function shortPreview(text) {
         const normalized = String(text || '').trim();
         if (!normalized) {
-          return 'Пустая публикация.';
+          return 'Empty publication.';
         }
 
         if (normalized.length <= 220) {
@@ -6021,30 +6021,30 @@ ${renderDevConsoleStyles()}
 
       function statusSummary(publication) {
         if (publication.status === 'published') {
-          const publishedAt = publication.publishedAt ? formatDateTime(publication.publishedAt) : 'только что';
+          const publishedAt = publication.publishedAt ? formatDateTime(publication.publishedAt) : 'just now';
           return {
             className: 'published',
-            text: 'Опубликовано' + (publishedAt ? ' · ' + publishedAt : ''),
+            text: 'Published' + (publishedAt ? ' · ' + publishedAt : ''),
           };
         }
 
         if (publication.status === 'failed') {
           return {
             className: 'failed',
-            text: 'Ошибка публикации',
+            text: 'Publishing error',
           };
         }
 
         if (publication.status === 'publishing') {
           return {
             className: 'scheduled',
-            text: 'Публикуем сейчас',
+            text: 'Publishing now',
           };
         }
 
         return {
           className: 'scheduled',
-          text: 'Будет опубликовано ' + formatHumanDateTime(publication.publishAt),
+          text: 'Will be published ' + formatHumanDateTime(publication.publishAt),
         };
       }
 
@@ -6053,7 +6053,7 @@ ${renderDevConsoleStyles()}
         const items = Array.isArray(currentPublications) ? currentPublications : [];
 
         if (items.length === 0) {
-          list.innerHTML = '<div class="empty-state">Публикации для этой статьи пока не созданы.</div>';
+          list.innerHTML = '<div class="empty-state">No publications have been created for this article yet.</div>';
           document.getElementById('totalCount').textContent = '0';
           document.getElementById('publishedCount').textContent = '0';
           document.getElementById('failedCount').textContent = '0';
@@ -6240,7 +6240,7 @@ ${renderDevConsoleScript()}
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderEditorPage(): string {
     return `<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -6598,8 +6598,8 @@ ${renderDevConsoleStyles()}
         <div class="hero-top">
           <button id="backBtn" class="secondary" onclick="goBack()">Back</button>
           <div class="hero-copy">
-            <h1>Редактор adaptation</h1>
-            <p>Здесь можно вручную поправить готовую adaptation, сохранить изменения и вернуться к экрану review.</p>
+            <h1>Adaptation editor</h1>
+            <p>Here you can manually adjust a ready adaptation, save changes, and return to the review screen.</p>
           </div>
         </div>
         <div class="meta">
@@ -6612,7 +6612,7 @@ ${renderDevConsoleStyles()}
       <section class="panel">
         <div class="version-strip">
           <h3>Versions</h3>
-          <p>Текущая версия выделена синим. Если выбрать другую цифру, окно перейдет в preview mode.</p>
+          <p>The current version is highlighted in blue. If you choose another number, the window switches to preview mode.</p>
           <div id="versionList" class="version-list"></div>
           <div id="versionCaption" class="version-caption"></div>
         </div>
@@ -6636,10 +6636,10 @@ ${renderDevConsoleStyles()}
 
             <div id="aiPanel" class="ai-panel">
               <h3>AI fix selection</h3>
-              <p>Выдели курсором фрагмент в тексте слева, опиши что тебе не нравится, и DeepSeek создаст новую версию adaptation.</p>
+              <p>Select a text fragment on the left, describe what should change, and DeepSeek will create a new adaptation version.</p>
               <div>
                 <strong>Instruction for DeepSeek</strong>
-                <textarea id="aiPrompt" class="ai-prompt" placeholder="Например: сделай эту мысль мягче, убери кликбейт, сократи, сделай формулировку точнее"></textarea>
+                <textarea id="aiPrompt" class="ai-prompt" placeholder="For example: make this idea softer, remove clickbait, shorten it, make the phrasing more precise"></textarea>
               </div>
               <div class="actions" style="margin-top:0;">
                 <button id="aiReviseBtn" class="secondary" onclick="reviseSelectionWithAi()">AI fix selection</button>
@@ -6666,7 +6666,7 @@ ${renderDevConsoleStyles()}
         if (!value) return '';
 
         try {
-          return new Date(value).toLocaleString('ru-RU', {
+          return new Date(value).toLocaleString('en-GB', {
             day: '2-digit',
             month: '2-digit',
             hour: '2-digit',
@@ -6754,7 +6754,7 @@ ${renderDevConsoleStyles()}
 
         if (versions.length === 0) {
           list.innerHTML = '';
-          caption.textContent = 'У этой adaptation пока нет сохраненных версий.';
+          caption.textContent = 'This adaptation has no saved versions yet.';
           return;
         }
 
@@ -6823,7 +6823,7 @@ ${renderDevConsoleStyles()}
         }
         syncEditorMode();
         updateSelectionPreview();
-        setMessage('Это preview версии. Если она подходит, нажми Use preview as current.', 'success');
+        setMessage('This is a preview version. If it works, click Use preview as current.', 'success');
       }
 
       function syncEditorMode() {
@@ -6843,7 +6843,7 @@ ${renderDevConsoleStyles()}
           usePreviewBtn.classList.remove('ghost');
           banner.classList.remove('gone');
           banner.classList.remove('ghost');
-          banner.textContent = 'Preview mode: эта версия открыта только для просмотра. Нажми Use preview as current, если хочешь сделать ее рабочей. Чтобы вернуться к текущей версии без выбора, нажми сверху на синий кружок текущей версии.';
+          banner.textContent = 'Preview mode: this version is open in read-only mode. Click Use preview as current if you want to make it the working version. To go back without selecting it, click the blue dot of the current version above.';
         } else {
           saveBtn.classList.remove('gone');
           aiPanel.classList.remove('gone');
@@ -6872,7 +6872,7 @@ ${renderDevConsoleStyles()}
         renderVersionList(currentAdaptation);
         syncEditorMode();
         updateSelectionPreview();
-        setMessage('Возврат к текущей версии.', 'success');
+        setMessage('Returned to the current version.', 'success');
       }
 
       function selectedFragment() {
@@ -6956,7 +6956,7 @@ ${renderDevConsoleStyles()}
         const saveBtn = document.getElementById('saveBtn');
 
         if (isPreviewMode) {
-          setMessage('В preview-режиме редактирование отключено. Сначала нажми Use preview as current или Return to current.', 'error');
+          setMessage('Editing is disabled in preview mode. Click Use preview as current or Return to current first.', 'error');
           return;
         }
 
@@ -6978,13 +6978,13 @@ ${renderDevConsoleStyles()}
           );
 
           await reloadAdaptation();
-          setMessage('Изменения сохранены.', 'success');
+          setMessage('Changes saved.', 'success');
 
           if (window.opener && typeof window.opener.refreshArticle === 'function') {
             window.opener.refreshArticle().catch(() => {});
           }
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : 'Не удалось сохранить изменения.', 'error');
+          setMessage(error instanceof Error ? error.message : 'Failed to save changes.', 'error');
         } finally {
           saveBtn.disabled = false;
         }
@@ -7011,13 +7011,13 @@ ${renderDevConsoleStyles()}
           syncEditorMode();
           clearPersistentSelection();
           syncSaveAvailability();
-          setMessage('Текущая версия переключена.', 'success');
+          setMessage('Current version switched.', 'success');
 
           if (window.opener && typeof window.opener.refreshArticle === 'function') {
             window.opener.refreshArticle().catch(() => {});
           }
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : 'Не удалось переключить версию.', 'error');
+          setMessage(error instanceof Error ? error.message : 'Failed to switch version.', 'error');
         }
       }
 
@@ -7028,17 +7028,17 @@ ${renderDevConsoleStyles()}
         const selectedText = selectedFragment();
 
         if (isPreviewMode) {
-          setMessage('В preview-режиме AI-правки отключены. Сначала нажми Use preview as current или Return to current.', 'error');
+          setMessage('AI edits are disabled in preview mode. Click Use preview as current or Return to current first.', 'error');
           return;
         }
 
         if (!selectedText.trim()) {
-          setMessage('Сначала выдели фрагмент текста, который нужно поправить.', 'error');
+          setMessage('Select the text fragment you want to revise first.', 'error');
           return;
         }
 
         if (!instruction) {
-          setMessage('Сначала напиши инструкцию для DeepSeek.', 'error');
+          setMessage('Write an instruction for DeepSeek first.', 'error');
           return;
         }
 
@@ -7065,13 +7065,13 @@ ${renderDevConsoleStyles()}
           document.getElementById('content').value = result.adaptedContent;
           clearPersistentSelection();
           updateSelectionPreview();
-          setMessage('DeepSeek создал новую промежуточную версию и сделал ее текущей.', 'success');
+          setMessage('DeepSeek created a new intermediate version and made it current.', 'success');
 
           if (window.opener && typeof window.opener.refreshArticle === 'function') {
             window.opener.refreshArticle().catch(() => {});
           }
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : 'Не удалось получить AI-правку.', 'error');
+          setMessage(error instanceof Error ? error.message : 'Failed to get the AI revision.', 'error');
         } finally {
           reviseBtn.disabled = false;
         }
