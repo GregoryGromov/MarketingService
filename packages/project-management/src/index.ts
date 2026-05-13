@@ -1,10 +1,79 @@
 export {
+  type BrandMemory,
+  type BrandMemoryDocument,
   type CreateProjectParams,
   Project,
   type ProjectId,
   type ProjectProps,
 } from './domain/project.aggregate.js';
 export { ProjectRepository } from './domain/project.repository.js';
+export {
+  type CampaignPresetPublicationId,
+  CampaignPresetPublication,
+  type CampaignPresetPublicationProps,
+  type CreateCampaignPresetPublicationParams,
+} from './domain/campaign-preset-publication.entity.js';
+export {
+  type CampaignPresetId,
+  CampaignPreset,
+  type CampaignPresetProps,
+  type CreateCampaignPresetParams,
+} from './domain/campaign-preset.aggregate.js';
+export { CampaignPresetRepository } from './domain/campaign-preset.repository.js';
+export {
+  type CampaignId,
+  type CampaignStatus,
+  Campaign,
+  type CampaignProps,
+  type CreateCampaignParams,
+} from './domain/campaign.aggregate.js';
+export { CampaignRepository } from './domain/campaign.repository.js';
+export {
+  type CreatePlannedPublicationParams,
+  type PlannedPublicationId,
+  type PlannedPublicationProps,
+  type PlannedPublicationPublishMode,
+  type PlannedPublicationStatus,
+  PlannedPublication,
+} from './domain/planned-publication.entity.js';
+export { PlannedPublicationRepository } from './domain/planned-publication.repository.js';
+export {
+  type CampaignArtifactId,
+  type CampaignArtifactProps,
+  type CampaignArtifactType,
+  CampaignArtifact,
+  type CreateCampaignArtifactParams,
+} from './domain/campaign-artifact.entity.js';
+export { CampaignArtifactRepository } from './domain/campaign-artifact.repository.js';
+export {
+  type ApprovalItemId,
+  type ApprovalItemPayload,
+  type ApprovalItemProps,
+  type ApprovalItemSeverity,
+  type ApprovalItemStatus,
+  type ApprovalItemType,
+  ApprovalItem,
+  type CreateApprovalItemParams,
+} from './domain/approval-item.aggregate.js';
+export { ApprovalItemRepository } from './domain/approval-item.repository.js';
+export {
+  type CreateQualityCheckResultParams,
+  type QualityCheckOutcome,
+  type QualityCheckReason,
+  type QualityCheckResultId,
+  type QualityCheckResultProps,
+  type QualityCheckType,
+  QualityCheckResult,
+} from './domain/quality-check-result.entity.js';
+export { QualityCheckResultRepository } from './domain/quality-check-result.repository.js';
+export {
+  type CreateWorkflowRunParams,
+  type WorkflowRunId,
+  type WorkflowRunProps,
+  type WorkflowRunStatus,
+  WorkflowRun,
+} from './domain/workflow-run.aggregate.js';
+export { WorkflowRunRepository } from './domain/workflow-run.repository.js';
 export {
   type CreateProjectMarkerParams,
   ProjectMarker,

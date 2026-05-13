@@ -1,4 +1,12 @@
 export {
+  ArticleSourceVersion,
+  type ArticleSourceVersionId,
+  type ArticleSourceVersionKind,
+  type ArticleSourceVersionProps,
+  type CreateArticleSourceVersionParams,
+} from './domain/article-source-version.entity.js';
+export { ArticleSourceVersionRepository } from './domain/article-source-version.repository.js';
+export {
   AdaptationVersion,
   type AdaptationVersionId,
   type AdaptationVersionKind,
@@ -32,6 +40,14 @@ export {
   type TranslationProps,
 } from './domain/translation.aggregate.js';
 export { TranslationRepository } from './domain/translation.repository.js';
+export {
+  type CreateTranslationVersionParams,
+  TranslationVersion,
+  type TranslationVersionId,
+  type TranslationVersionKind,
+  type TranslationVersionProps,
+} from './domain/translation-version.entity.js';
+export { TranslationVersionRepository } from './domain/translation-version.repository.js';
 export { EditorialModule } from './editorial.module.js';
 export {
   AdaptationGeneratorPort,

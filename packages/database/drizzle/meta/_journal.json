@@ -71,6 +71,13 @@
       "when": 1778165874389,
       "tag": "0009_magenta_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778695774204,
+      "tag": "0010_many_amphibian",
+      "breakpoints": true
     }
   ]
 }

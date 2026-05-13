@@ -22,6 +22,20 @@ export const articles = pgTable('articles', {
 export type ArticleRow = typeof articles.$inferSelect;
 export type NewArticleRow = typeof articles.$inferInsert;
 
+export const articleSourceVersions = pgTable('article_source_versions', {
+  id: text('id').primaryKey(),
+  articleId: text('article_id').notNull(),
+  content: text('content').notNull(),
+  language: text('language').notNull(),
+  kind: text('kind').notNull(),
+  sourceVersionId: text('source_version_id'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ArticleSourceVersionRow = typeof articleSourceVersions.$inferSelect;
+export type NewArticleSourceVersionRow = typeof articleSourceVersions.$inferInsert;
+
 export const channelAdaptations = pgTable('channel_adaptations', {
   id: text('id').primaryKey(),
   articleId: text('article_id').notNull(),
@@ -66,3 +80,16 @@ export const translations = pgTable('translations', {
 
 export type TranslationRow = typeof translations.$inferSelect;
 export type NewTranslationRow = typeof translations.$inferInsert;
+
+export const translationVersions = pgTable('translation_versions', {
+  id: text('id').primaryKey(),
+  translationId: text('translation_id').notNull(),
+  content: text('content').notNull(),
+  kind: text('kind').notNull(),
+  sourceVersionId: text('source_version_id'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TranslationVersionRow = typeof translationVersions.$inferSelect;
+export type NewTranslationVersionRow = typeof translationVersions.$inferInsert;
