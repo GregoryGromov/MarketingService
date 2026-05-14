@@ -8,6 +8,8 @@ import postgres from 'postgres';
 
 export const DRIZZLE = Symbol('DRIZZLE');
 export type DrizzleDB = PostgresJsDatabase<typeof schema>;
+export type DrizzleTx = Parameters<Parameters<DrizzleDB['transaction']>[0]>[0];
+export type DrizzleExecutor = DrizzleDB | DrizzleTx;
 
 @Global()
 @Module({

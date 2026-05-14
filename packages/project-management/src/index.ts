@@ -106,7 +106,15 @@ export {
   type ValidateSourceLongreadParams,
   type ValidateSourceLongreadResult,
 } from './ports/ai-gateway.port.js';
+export {
+  CampaignFlowTransactionPort,
+  type CampaignFlowTransactionContext,
+} from './ports/campaign-flow-transaction.port.js';
 export { ProjectManagementModule } from './project-management.module.js';
+export { AttachCampaignSourceCommand } from './use-cases/attach-campaign-source/attach-campaign-source.command.js';
+export type { AttachCampaignSourceResult } from './use-cases/attach-campaign-source/attach-campaign-source.handler.js';
+export { CreateCampaignCommand } from './use-cases/create-campaign/create-campaign.command.js';
+export type { CreateCampaignResult } from './use-cases/create-campaign/create-campaign.handler.js';
 export { CreateProjectCommand } from './use-cases/create-project/create-project.command.js';
 export { CreateProjectMarkerCommand } from './use-cases/create-project-marker/create-project-marker.command.js';
 export { CreateProjectMarkerPlacementCommand } from './use-cases/create-project-marker-placement/create-project-marker-placement.command.js';
@@ -119,3 +127,12 @@ export type { ListProjectMarkersResultItem } from './use-cases/list-project-mark
 export { ListProjectMarkersQuery } from './use-cases/list-project-markers/list-project-markers.query.js';
 export type { ListProjectsResultItem } from './use-cases/list-projects/list-projects.handler.js';
 export { ListProjectsQuery } from './use-cases/list-projects/list-projects.query.js';
+export { ReviewSourceIssueCommand } from './use-cases/review-source-issue/review-source-issue.command.js';
+export type { ReviewSourceIssueResult } from './use-cases/review-source-issue/review-source-issue.handler.js';
+export { RunCampaignStage1Command } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.command.js';
+export type {
+  RunCampaignStage1ItemResult,
+  RunCampaignStage1Result,
+} from './use-cases/run-campaign-stage-1/run-campaign-stage-1.handler.js';
+export { StartCampaignProductionCommand } from './use-cases/start-campaign-production/start-campaign-production.command.js';
+export type { StartCampaignProductionResult } from './use-cases/start-campaign-production/start-campaign-production.handler.js';

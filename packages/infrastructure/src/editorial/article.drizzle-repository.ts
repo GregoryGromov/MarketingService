@@ -7,11 +7,11 @@ import {
   type ArticleId,
   type ArticleProps,
 } from '@marketing-service/editorial';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class ArticleDrizzleRepository extends ArticleRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 

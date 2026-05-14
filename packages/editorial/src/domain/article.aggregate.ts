@@ -136,4 +136,11 @@ export class Article extends AggregateRoot {
       }),
     );
   }
+
+  replaceOriginal(content: string, language: string, uploadedAt: Date = new Date()): void {
+    this.original.content = content;
+    this.original.language = language;
+    this.original.uploadedAt = uploadedAt;
+    this.updatedAt = new Date();
+  }
 }

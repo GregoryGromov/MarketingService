@@ -13,11 +13,11 @@ import {
   type ChannelAdaptationProps,
   type ChannelId,
 } from '@marketing-service/editorial';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class ChannelAdaptationDrizzleRepository extends ChannelAdaptationRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 

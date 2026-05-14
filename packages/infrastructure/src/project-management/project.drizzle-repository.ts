@@ -2,16 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 import { asc, desc, eq } from 'drizzle-orm';
 import { projects, type NewProjectRow, type ProjectRow } from '@marketing-service/database';
 import {
+  type BrandMemoryDocument,
   Project,
   ProjectRepository,
   type ProjectId,
   type ProjectProps,
 } from '@marketing-service/project-management';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class ProjectDrizzleRepository extends ProjectRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 
@@ -45,6 +46,17 @@ export class ProjectDrizzleRepository extends ProjectRepository {
     return {
       id: row.id as ProjectId,
       name: row.name,
+      brandMemory: {
+        brandName: row.brandName,
+        productDescription: row.productDescription,
+        targetAudience: row.targetAudience,
+        approvedFacts: (row.approvedFacts as string[] | null) ?? [],
+        forbiddenClaims: (row.forbiddenClaims as string[] | null) ?? [],
+        glossary: (row.glossary as Record<string, string> | null) ?? {},
+        bannedPhrases: (row.bannedPhrases as string[] | null) ?? [],
+        requiredPhrases: (row.requiredPhrases as string[] | null) ?? [],
+        brandDocs: (row.brandDocs as BrandMemoryDocument[] | null) ?? [],
+      },
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -54,6 +66,15 @@ export class ProjectDrizzleRepository extends ProjectRepository {
     return {
       id: project.id,
       name: project.name,
+      brandName: project.brandMemory.brandName,
+      productDescription: project.brandMemory.productDescription,
+      targetAudience: project.brandMemory.targetAudience,
+      approvedFacts: project.brandMemory.approvedFacts,
+      forbiddenClaims: project.brandMemory.forbiddenClaims,
+      glossary: project.brandMemory.glossary,
+      bannedPhrases: project.brandMemory.bannedPhrases,
+      requiredPhrases: project.brandMemory.requiredPhrases,
+      brandDocs: project.brandMemory.brandDocs,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };

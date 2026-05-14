@@ -124,6 +124,11 @@ export class PlannedPublication {
     this.updatedAt = new Date();
   }
 
+  markPending(): void {
+    this.status = 'pending';
+    this.updatedAt = new Date();
+  }
+
   markAdapting(): void {
     this.status = 'adapting';
     this.updatedAt = new Date();
