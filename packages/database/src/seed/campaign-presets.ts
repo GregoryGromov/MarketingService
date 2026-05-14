@@ -38,9 +38,45 @@ interface SeedPreset {
   publications: SeedPublication[];
 }
 
+const PRESET_IDS = {
+  marketInsight: 'campaign_preset_0000000000e008000000000001',
+  productUpdate: 'campaign_preset_0000000000e008000000000002',
+  launchBurst: 'campaign_preset_0000000000e008000000000003',
+  thoughtLeadership: 'campaign_preset_0000000000e008000000000004',
+  communityRoundup: 'campaign_preset_0000000000e008000000000005',
+} as const;
+
+const PUBLICATION_IDS = {
+  marketInsightTelegramEnD0P1: 'campaign_preset_publication_0000000000e008000000000081',
+  marketInsightXEnD0P2: 'campaign_preset_publication_0000000000e008000000000082',
+  marketInsightDiscordEnD0P3: 'campaign_preset_publication_0000000000e008000000000083',
+  marketInsightTelegramEsD1P4: 'campaign_preset_publication_0000000000e008000000000084',
+  marketInsightTelegramRuD1P5: 'campaign_preset_publication_0000000000e008000000000085',
+  productUpdateTelegramEnD0P1: 'campaign_preset_publication_0000000000e0080000000000g1',
+  productUpdateXEnD0P2: 'campaign_preset_publication_0000000000e0080000000000g2',
+  productUpdateDiscordEnD0P3: 'campaign_preset_publication_0000000000e0080000000000g3',
+  productUpdateTelegramEsD1P4: 'campaign_preset_publication_0000000000e0080000000000g4',
+  productUpdateTelegramRuD1P5: 'campaign_preset_publication_0000000000e0080000000000g5',
+  launchBurstTelegramEnD0P1: 'campaign_preset_publication_0000000000e0080000000000r1',
+  launchBurstXEnD0P2: 'campaign_preset_publication_0000000000e0080000000000r2',
+  launchBurstDiscordEnD0P3: 'campaign_preset_publication_0000000000e0080000000000r3',
+  launchBurstTelegramEsD1P4: 'campaign_preset_publication_0000000000e0080000000000r4',
+  launchBurstXEsD1P5: 'campaign_preset_publication_0000000000e0080000000000r5',
+  launchBurstTelegramRuD2P6: 'campaign_preset_publication_0000000000e0080000000000r6',
+  thoughtLeadershipTelegramEnD0P1: 'campaign_preset_publication_0000000000e008000000000101',
+  thoughtLeadershipXEnD0P2: 'campaign_preset_publication_0000000000e008000000000102',
+  thoughtLeadershipTelegramEsD1P3: 'campaign_preset_publication_0000000000e008000000000103',
+  thoughtLeadershipTelegramRuD2P4: 'campaign_preset_publication_0000000000e008000000000104',
+  thoughtLeadershipDiscordEnD2P5: 'campaign_preset_publication_0000000000e008000000000105',
+  communityRoundupDiscordEnD0P1: 'campaign_preset_publication_0000000000e008000000000181',
+  communityRoundupTelegramEnD0P2: 'campaign_preset_publication_0000000000e008000000000182',
+  communityRoundupXEnD0P3: 'campaign_preset_publication_0000000000e008000000000183',
+  communityRoundupTelegramEsD1P4: 'campaign_preset_publication_0000000000e008000000000184',
+} as const;
+
 const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
   {
-    id: 'campaign_preset_market_insight',
+    id: PRESET_IDS.marketInsight,
     name: 'Market Insight',
     description:
       'Turns one source longread into an insight-led sequence for Telegram, X, and community follow-up.',
@@ -48,7 +84,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     sourceType: 'market_insight',
     publications: [
       {
-        id: 'campaign_preset_publication_market_insight_telegram_en_d0_p1',
+        id: PUBLICATION_IDS.marketInsightTelegramEnD0P1,
         dayOffset: 0,
         localTime: '09:00',
         channel: 'channel_telegram',
@@ -58,7 +94,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 1,
       },
       {
-        id: 'campaign_preset_publication_market_insight_x_en_d0_p2',
+        id: PUBLICATION_IDS.marketInsightXEnD0P2,
         dayOffset: 0,
         localTime: '12:30',
         channel: 'channel_x',
@@ -68,7 +104,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 2,
       },
       {
-        id: 'campaign_preset_publication_market_insight_discord_en_d0_p3',
+        id: PUBLICATION_IDS.marketInsightDiscordEnD0P3,
         dayOffset: 0,
         localTime: '17:00',
         channel: 'channel_discord',
@@ -78,7 +114,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 3,
       },
       {
-        id: 'campaign_preset_publication_market_insight_telegram_es_d1_p4',
+        id: PUBLICATION_IDS.marketInsightTelegramEsD1P4,
         dayOffset: 1,
         localTime: '09:00',
         channel: 'channel_telegram',
@@ -88,7 +124,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 4,
       },
       {
-        id: 'campaign_preset_publication_market_insight_telegram_ru_d1_p5',
+        id: PUBLICATION_IDS.marketInsightTelegramRuD1P5,
         dayOffset: 1,
         localTime: '18:00',
         channel: 'channel_telegram',
@@ -100,7 +136,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     ],
   },
   {
-    id: 'campaign_preset_product_update',
+    id: PRESET_IDS.productUpdate,
     name: 'Product Update',
     description:
       'Ships a clear product announcement with short social and community follow-ups across the first 24 hours.',
@@ -108,7 +144,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     sourceType: 'product_update',
     publications: [
       {
-        id: 'campaign_preset_publication_product_update_telegram_en_d0_p1',
+        id: PUBLICATION_IDS.productUpdateTelegramEnD0P1,
         dayOffset: 0,
         localTime: '10:00',
         channel: 'channel_telegram',
@@ -118,7 +154,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 1,
       },
       {
-        id: 'campaign_preset_publication_product_update_x_en_d0_p2',
+        id: PUBLICATION_IDS.productUpdateXEnD0P2,
         dayOffset: 0,
         localTime: '11:30',
         channel: 'channel_x',
@@ -128,7 +164,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 2,
       },
       {
-        id: 'campaign_preset_publication_product_update_discord_en_d0_p3',
+        id: PUBLICATION_IDS.productUpdateDiscordEnD0P3,
         dayOffset: 0,
         localTime: '15:00',
         channel: 'channel_discord',
@@ -138,7 +174,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 3,
       },
       {
-        id: 'campaign_preset_publication_product_update_telegram_es_d1_p4',
+        id: PUBLICATION_IDS.productUpdateTelegramEsD1P4,
         dayOffset: 1,
         localTime: '09:30',
         channel: 'channel_telegram',
@@ -148,7 +184,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 4,
       },
       {
-        id: 'campaign_preset_publication_product_update_telegram_ru_d1_p5',
+        id: PUBLICATION_IDS.productUpdateTelegramRuD1P5,
         dayOffset: 1,
         localTime: '16:00',
         channel: 'channel_telegram',
@@ -160,7 +196,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     ],
   },
   {
-    id: 'campaign_preset_launch_burst',
+    id: PRESET_IDS.launchBurst,
     name: 'Launch Burst',
     description:
       'Runs a tighter launch cadence with announcement, social proof, and community touchpoints over three days.',
@@ -168,7 +204,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     sourceType: 'launch_brief',
     publications: [
       {
-        id: 'campaign_preset_publication_launch_burst_telegram_en_d0_p1',
+        id: PUBLICATION_IDS.launchBurstTelegramEnD0P1,
         dayOffset: 0,
         localTime: '08:30',
         channel: 'channel_telegram',
@@ -178,7 +214,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 1,
       },
       {
-        id: 'campaign_preset_publication_launch_burst_x_en_d0_p2',
+        id: PUBLICATION_IDS.launchBurstXEnD0P2,
         dayOffset: 0,
         localTime: '09:15',
         channel: 'channel_x',
@@ -188,7 +224,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 2,
       },
       {
-        id: 'campaign_preset_publication_launch_burst_discord_en_d0_p3',
+        id: PUBLICATION_IDS.launchBurstDiscordEnD0P3,
         dayOffset: 0,
         localTime: '13:00',
         channel: 'channel_discord',
@@ -198,7 +234,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 3,
       },
       {
-        id: 'campaign_preset_publication_launch_burst_telegram_es_d1_p4',
+        id: PUBLICATION_IDS.launchBurstTelegramEsD1P4,
         dayOffset: 1,
         localTime: '10:00',
         channel: 'channel_telegram',
@@ -208,7 +244,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 4,
       },
       {
-        id: 'campaign_preset_publication_launch_burst_x_es_d1_p5',
+        id: PUBLICATION_IDS.launchBurstXEsD1P5,
         dayOffset: 1,
         localTime: '18:00',
         channel: 'channel_x',
@@ -218,7 +254,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 5,
       },
       {
-        id: 'campaign_preset_publication_launch_burst_telegram_ru_d2_p6',
+        id: PUBLICATION_IDS.launchBurstTelegramRuD2P6,
         dayOffset: 2,
         localTime: '10:00',
         channel: 'channel_telegram',
@@ -230,7 +266,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     ],
   },
   {
-    id: 'campaign_preset_thought_leadership',
+    id: PRESET_IDS.thoughtLeadership,
     name: 'Thought Leadership',
     description:
       'Builds an authority sequence from one opinionated longread into editorial and discussion-ready outputs.',
@@ -238,7 +274,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     sourceType: 'thought_leadership',
     publications: [
       {
-        id: 'campaign_preset_publication_thought_leadership_telegram_en_d0_p1',
+        id: PUBLICATION_IDS.thoughtLeadershipTelegramEnD0P1,
         dayOffset: 0,
         localTime: '09:00',
         channel: 'channel_telegram',
@@ -248,7 +284,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 1,
       },
       {
-        id: 'campaign_preset_publication_thought_leadership_x_en_d0_p2',
+        id: PUBLICATION_IDS.thoughtLeadershipXEnD0P2,
         dayOffset: 0,
         localTime: '14:00',
         channel: 'channel_x',
@@ -258,7 +294,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 2,
       },
       {
-        id: 'campaign_preset_publication_thought_leadership_telegram_es_d1_p3',
+        id: PUBLICATION_IDS.thoughtLeadershipTelegramEsD1P3,
         dayOffset: 1,
         localTime: '11:00',
         channel: 'channel_telegram',
@@ -268,7 +304,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 3,
       },
       {
-        id: 'campaign_preset_publication_thought_leadership_telegram_ru_d2_p4',
+        id: PUBLICATION_IDS.thoughtLeadershipTelegramRuD2P4,
         dayOffset: 2,
         localTime: '09:00',
         channel: 'channel_telegram',
@@ -278,7 +314,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 4,
       },
       {
-        id: 'campaign_preset_publication_thought_leadership_discord_en_d2_p5',
+        id: PUBLICATION_IDS.thoughtLeadershipDiscordEnD2P5,
         dayOffset: 2,
         localTime: '17:00',
         channel: 'channel_discord',
@@ -290,7 +326,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     ],
   },
   {
-    id: 'campaign_preset_community_roundup',
+    id: PRESET_IDS.communityRoundup,
     name: 'Community Roundup',
     description:
       'Packages one source article into a weekly-style community digest with a short social teaser.',
@@ -298,7 +334,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
     sourceType: 'community_roundup',
     publications: [
       {
-        id: 'campaign_preset_publication_community_roundup_discord_en_d0_p1',
+        id: PUBLICATION_IDS.communityRoundupDiscordEnD0P1,
         dayOffset: 0,
         localTime: '09:00',
         channel: 'channel_discord',
@@ -308,7 +344,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 1,
       },
       {
-        id: 'campaign_preset_publication_community_roundup_telegram_en_d0_p2',
+        id: PUBLICATION_IDS.communityRoundupTelegramEnD0P2,
         dayOffset: 0,
         localTime: '11:00',
         channel: 'channel_telegram',
@@ -318,7 +354,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 2,
       },
       {
-        id: 'campaign_preset_publication_community_roundup_x_en_d0_p3',
+        id: PUBLICATION_IDS.communityRoundupXEnD0P3,
         dayOffset: 0,
         localTime: '13:00',
         channel: 'channel_x',
@@ -328,7 +364,7 @@ const SYSTEM_CAMPAIGN_PRESETS: SeedPreset[] = [
         position: 3,
       },
       {
-        id: 'campaign_preset_publication_community_roundup_telegram_es_d1_p4',
+        id: PUBLICATION_IDS.communityRoundupTelegramEsD1P4,
         dayOffset: 1,
         localTime: '09:00',
         channel: 'channel_telegram',

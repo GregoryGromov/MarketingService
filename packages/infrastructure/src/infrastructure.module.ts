@@ -10,12 +10,14 @@ import {
   XPublisherPort,
 } from '@marketing-service/editorial';
 import {
+  AiGatewayPort,
   ProjectMarkerPlacementRepository,
   ProjectMarkerRepository,
   ProjectRepository,
 } from '@marketing-service/project-management';
 import { PublicationPlanRepository, PublicationRepository } from '@marketing-service/publishing';
 import { Global, Module } from '@nestjs/common';
+import { DeepSeekAiGateway } from './ai/deepseek-ai-gateway.js';
 import { DatabaseModule } from './database.module.js';
 import { AdaptationVersionDrizzleRepository } from './editorial/adaptation-version.drizzle-repository.js';
 import { ArticleDrizzleRepository } from './editorial/article.drizzle-repository.js';
@@ -52,6 +54,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
 @Module({
   imports: [DatabaseModule],
   providers: [
+    DeepSeekAiGateway,
     DeepSeekAdaptationGenerator,
     DiscordWebhookPublisher,
     TelegramBotApiPublisher,
@@ -65,6 +68,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     ArticleDrizzleRepository,
     ChannelAdaptationDrizzleRepository,
     TranslationDrizzleRepository,
+    { provide: AiGatewayPort, useExisting: DeepSeekAiGateway },
     { provide: AdaptationGeneratorPort, useClass: DeepSeekAdaptationGenerator },
     { provide: TranslationGeneratorPort, useExisting: DeepSeekAdaptationGenerator },
     { provide: DiscordPublisherPort, useClass: DiscordWebhookPublisher },
@@ -86,6 +90,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
   exports: [
     AdaptationVersionRepository,
     AdaptationGeneratorPort,
+    AiGatewayPort,
     ArticleRepository,
     ChannelAdaptationRepository,
     DiscordPublisherPort,

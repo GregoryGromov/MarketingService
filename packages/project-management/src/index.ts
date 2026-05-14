@@ -88,6 +88,24 @@ export {
   type ProjectMarkerPlacementProps,
 } from './domain/project-marker-placement.aggregate.js';
 export { ProjectMarkerPlacementRepository } from './domain/project-marker-placement.repository.js';
+export {
+  type AiGeneratedTextResult,
+  type AiGatewayQualityOutcome,
+  type AiGatewayReason,
+  type AiGatewaySeverity,
+  type AiGatewaySourceValidationOutcome,
+  type AiGatewaySuggestedFix,
+  type AiQualityCheckResult,
+  AiGatewayPort,
+  type CheckAdaptationQualityParams,
+  type CheckTranslationFidelityParams,
+  type GenerateAdaptationAiParams,
+  type GenerateTranslationAiParams,
+  type ReviseAdaptationAiParams,
+  type ReviseTranslationAiParams,
+  type ValidateSourceLongreadParams,
+  type ValidateSourceLongreadResult,
+} from './ports/ai-gateway.port.js';
 export { ProjectManagementModule } from './project-management.module.js';
 export { CreateProjectCommand } from './use-cases/create-project/create-project.command.js';
 export { CreateProjectMarkerCommand } from './use-cases/create-project-marker/create-project-marker.command.js';
