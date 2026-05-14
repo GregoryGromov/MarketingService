@@ -3,6 +3,8 @@ import type {
   ArticleRepository,
   ArticleSourceVersionRepository,
   ChannelAdaptationRepository,
+  TranslationRepository,
+  TranslationVersionRepository,
 } from '@marketing-service/editorial';
 import type { ApprovalItemRepository } from '../domain/approval-item.repository.js';
 import type { CampaignArtifactRepository } from '../domain/campaign-artifact.repository.js';
@@ -12,6 +14,7 @@ import type { PlannedPublicationRepository } from '../domain/planned-publication
 import type { ProjectRepository } from '../domain/project.repository.js';
 import type { QualityCheckResultRepository } from '../domain/quality-check-result.repository.js';
 import type { WorkflowRunRepository } from '../domain/workflow-run.repository.js';
+import type { CampaignPublishingPort } from './campaign-publishing.port.js';
 
 export interface CampaignFlowTransactionContext {
   projectRepository: ProjectRepository;
@@ -26,6 +29,9 @@ export interface CampaignFlowTransactionContext {
   articleSourceVersionRepository: ArticleSourceVersionRepository;
   channelAdaptationRepository: ChannelAdaptationRepository;
   adaptationVersionRepository: AdaptationVersionRepository;
+  translationRepository: TranslationRepository;
+  translationVersionRepository: TranslationVersionRepository;
+  campaignPublishingPort: CampaignPublishingPort;
 }
 
 export abstract class CampaignFlowTransactionPort {

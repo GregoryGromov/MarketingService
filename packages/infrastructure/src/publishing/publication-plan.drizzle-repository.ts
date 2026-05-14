@@ -12,11 +12,12 @@ import {
   type PublicationPlanProps,
 } from '@marketing-service/publishing';
 import type { ArticleId, ChannelId, ProjectId } from '@marketing-service/editorial';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import type { PlannedPublicationId } from '@marketing-service/project-management';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class PublicationPlanDrizzleRepository extends PublicationPlanRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 
@@ -38,6 +39,18 @@ export class PublicationPlanDrizzleRepository extends PublicationPlanRepository 
       .orderBy(asc(publicationPlans.publishAt), asc(publicationPlans.createdAt));
 
     return rows.map((row) => PublicationPlan.rehydrate(this.toDomainProps(row)));
+  }
+
+  async findByPlannedPublicationId(
+    plannedPublicationId: PlannedPublicationId,
+  ): Promise<PublicationPlan | null> {
+    const [row] = await this.db
+      .select()
+      .from(publicationPlans)
+      .where(eq(publicationPlans.plannedPublicationId, plannedPublicationId))
+      .limit(1);
+
+    return row ? PublicationPlan.rehydrate(this.toDomainProps(row)) : null;
   }
 
   async findByProjectId(
@@ -104,6 +117,7 @@ export class PublicationPlanDrizzleRepository extends PublicationPlanRepository 
       id: row.id as PublicationPlanId,
       articleId: row.articleId as ArticleId,
       projectId: row.projectId as ProjectId,
+      plannedPublicationId: row.plannedPublicationId as PublicationPlanProps['plannedPublicationId'],
       channelId: row.channelId as ChannelId,
       targetLanguage: row.targetLanguage,
       publishAt: row.publishAt,
@@ -117,6 +131,7 @@ export class PublicationPlanDrizzleRepository extends PublicationPlanRepository 
       id: plan.id,
       articleId: plan.articleId,
       projectId: plan.projectId,
+      plannedPublicationId: plan.plannedPublicationId,
       channelId: plan.channelId,
       targetLanguage: plan.targetLanguage,
       publishAt: plan.publishAt,

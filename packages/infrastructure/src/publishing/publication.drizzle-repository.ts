@@ -12,11 +12,12 @@ import {
   type PublicationProps,
 } from '@marketing-service/publishing';
 import type { AdaptationId, ArticleId, ChannelId } from '@marketing-service/editorial';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import type { PlannedPublicationId } from '@marketing-service/project-management';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class PublicationDrizzleRepository extends PublicationRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 
@@ -38,6 +39,18 @@ export class PublicationDrizzleRepository extends PublicationRepository {
       .orderBy(asc(publications.publishAt), asc(publications.createdAt));
 
     return rows.map((row) => Publication.rehydrate(this.toDomainProps(row)));
+  }
+
+  async findByPlannedPublicationId(
+    plannedPublicationId: PlannedPublicationId,
+  ): Promise<Publication | null> {
+    const [row] = await this.db
+      .select()
+      .from(publications)
+      .where(eq(publications.plannedPublicationId, plannedPublicationId))
+      .limit(1);
+
+    return row ? Publication.rehydrate(this.toDomainProps(row)) : null;
   }
 
   async findByLogicalKey(
@@ -95,6 +108,7 @@ export class PublicationDrizzleRepository extends PublicationRepository {
       id: row.id as PublicationId,
       articleId: row.articleId as ArticleId,
       adaptationId: row.adaptationId as AdaptationId,
+      plannedPublicationId: row.plannedPublicationId as PublicationProps['plannedPublicationId'],
       channelId: row.channelId as ChannelId,
       displayName: row.displayName,
       targetLanguage: row.targetLanguage,
@@ -114,6 +128,7 @@ export class PublicationDrizzleRepository extends PublicationRepository {
       id: publication.id,
       articleId: publication.articleId,
       adaptationId: publication.adaptationId,
+      plannedPublicationId: publication.plannedPublicationId,
       channelId: publication.channelId,
       displayName: publication.displayName,
       targetLanguage: publication.targetLanguage,

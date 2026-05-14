@@ -107,10 +107,19 @@ export {
   type ValidateSourceLongreadResult,
 } from './ports/ai-gateway.port.js';
 export {
+  CampaignPublishingPort,
+  type CampaignExportPlanRecord,
+  type CampaignScheduledPublicationRecord,
+  type UpsertCampaignExportPlanParams,
+  type UpsertCampaignScheduledPublicationParams,
+} from './ports/campaign-publishing.port.js';
+export {
   CampaignFlowTransactionPort,
   type CampaignFlowTransactionContext,
 } from './ports/campaign-flow-transaction.port.js';
 export { ProjectManagementModule } from './project-management.module.js';
+export { ApproveCampaignForPublishingCommand } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.command.js';
+export type { ApproveCampaignForPublishingResult } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.handler.js';
 export { AttachCampaignSourceCommand } from './use-cases/attach-campaign-source/attach-campaign-source.command.js';
 export type { AttachCampaignSourceResult } from './use-cases/attach-campaign-source/attach-campaign-source.handler.js';
 export { CreateCampaignCommand } from './use-cases/create-campaign/create-campaign.command.js';
@@ -119,6 +128,11 @@ export { CreateProjectCommand } from './use-cases/create-project/create-project.
 export { CreateProjectMarkerCommand } from './use-cases/create-project-marker/create-project-marker.command.js';
 export { CreateProjectMarkerPlacementCommand } from './use-cases/create-project-marker-placement/create-project-marker-placement.command.js';
 export { DeleteProjectMarkerCommand } from './use-cases/delete-project-marker/delete-project-marker.command.js';
+export type {
+  CampaignApprovalInboxItemResult,
+  GetCampaignApprovalInboxResult,
+} from './use-cases/get-campaign-approval-inbox/get-campaign-approval-inbox.handler.js';
+export { GetCampaignApprovalInboxQuery } from './use-cases/get-campaign-approval-inbox/get-campaign-approval-inbox.query.js';
 export type { GetProjectResult } from './use-cases/get-project/get-project.handler.js';
 export { GetProjectQuery } from './use-cases/get-project/get-project.query.js';
 export type { GetProjectMarkerPlacementsResultItem } from './use-cases/get-project-marker-placements/get-project-marker-placements.handler.js';
@@ -134,5 +148,10 @@ export type {
   RunCampaignStage1ItemResult,
   RunCampaignStage1Result,
 } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.handler.js';
+export { RunCampaignStage2Command } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.command.js';
+export type {
+  RunCampaignStage2ItemResult,
+  RunCampaignStage2Result,
+} from './use-cases/run-campaign-stage-2/run-campaign-stage-2.handler.js';
 export { StartCampaignProductionCommand } from './use-cases/start-campaign-production/start-campaign-production.command.js';
 export type { StartCampaignProductionResult } from './use-cases/start-campaign-production/start-campaign-production.handler.js';

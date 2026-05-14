@@ -7,8 +7,11 @@ import { AdaptationVersionDrizzleRepository } from '../editorial/adaptation-vers
 import { ArticleDrizzleRepository } from '../editorial/article.drizzle-repository.js';
 import { ArticleSourceVersionDrizzleRepository } from '../editorial/article-source-version.drizzle-repository.js';
 import { ChannelAdaptationDrizzleRepository } from '../editorial/channel-adaptation.drizzle-repository.js';
+import { TranslationDrizzleRepository } from '../editorial/translation.drizzle-repository.js';
+import { TranslationVersionDrizzleRepository } from '../editorial/translation-version.drizzle-repository.js';
 import { DRIZZLE, type DrizzleDB, type DrizzleTx } from '../database.module.js';
 import { ApprovalItemDrizzleRepository } from './approval-item.drizzle-repository.js';
+import { CampaignPublishingDrizzlePort } from './campaign-publishing.drizzle-port.js';
 import { CampaignArtifactDrizzleRepository } from './campaign-artifact.drizzle-repository.js';
 import { CampaignDrizzleRepository } from './campaign.drizzle-repository.js';
 import { CampaignPresetDrizzleRepository } from './campaign-preset.drizzle-repository.js';
@@ -31,6 +34,9 @@ function createTransactionContext(tx: DrizzleTx): CampaignFlowTransactionContext
     articleSourceVersionRepository: new ArticleSourceVersionDrizzleRepository(tx),
     channelAdaptationRepository: new ChannelAdaptationDrizzleRepository(tx),
     adaptationVersionRepository: new AdaptationVersionDrizzleRepository(tx),
+    translationRepository: new TranslationDrizzleRepository(tx),
+    translationVersionRepository: new TranslationVersionDrizzleRepository(tx),
+    campaignPublishingPort: new CampaignPublishingDrizzlePort(tx),
   };
 }
 

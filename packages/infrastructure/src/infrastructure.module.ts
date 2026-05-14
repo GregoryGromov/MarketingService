@@ -8,6 +8,7 @@ import {
   TelegramPublisherPort,
   TranslationGeneratorPort,
   TranslationRepository,
+  TranslationVersionRepository,
   XPublisherPort,
 } from '@marketing-service/editorial';
 import {
@@ -34,6 +35,7 @@ import { ArticleSourceVersionDrizzleRepository } from './editorial/article-sourc
 import { ChannelAdaptationDrizzleRepository } from './editorial/channel-adaptation.drizzle-repository.js';
 import { DeepSeekAdaptationGenerator } from './editorial/deepseek-adaptation-generator.js';
 import { TranslationDrizzleRepository } from './editorial/translation.drizzle-repository.js';
+import { TranslationVersionDrizzleRepository } from './editorial/translation-version.drizzle-repository.js';
 import { ApprovalItemDrizzleRepository } from './project-management/approval-item.drizzle-repository.js';
 import { CampaignFlowDrizzleTransaction } from './project-management/campaign-flow-drizzle-transaction.js';
 import { CampaignArtifactDrizzleRepository } from './project-management/campaign-artifact.drizzle-repository.js';
@@ -94,6 +96,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     PlannedPublicationDrizzleRepository,
     QualityCheckResultDrizzleRepository,
     TranslationDrizzleRepository,
+    TranslationVersionDrizzleRepository,
     WorkflowRunDrizzleRepository,
     { provide: AiGatewayPort, useExisting: DeepSeekAiGateway },
     { provide: CampaignFlowTransactionPort, useExisting: CampaignFlowDrizzleTransaction },
@@ -121,6 +124,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     { provide: PlannedPublicationRepository, useClass: PlannedPublicationDrizzleRepository },
     { provide: QualityCheckResultRepository, useClass: QualityCheckResultDrizzleRepository },
     { provide: TranslationRepository, useClass: TranslationDrizzleRepository },
+    { provide: TranslationVersionRepository, useClass: TranslationVersionDrizzleRepository },
     { provide: WorkflowRunRepository, useClass: WorkflowRunDrizzleRepository },
   ],
   exports: [
@@ -147,6 +151,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     ProjectRepository,
     QualityCheckResultRepository,
     TranslationRepository,
+    TranslationVersionRepository,
     WorkflowRunRepository,
   ],
 })

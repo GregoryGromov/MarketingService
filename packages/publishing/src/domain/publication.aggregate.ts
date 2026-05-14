@@ -7,11 +7,13 @@ import {
 import type { AdaptationId, ArticleId, ChannelId } from '@marketing-service/editorial';
 
 export type PublicationId = TypedId<'publication'>;
+export type PlannedPublicationId = TypedId<'planned_publication'>;
 export type PublicationStatus = 'scheduled' | 'publishing' | 'published' | 'failed';
 
 export interface CreatePublicationParams {
   articleId: ArticleId;
   adaptationId: AdaptationId;
+  plannedPublicationId?: PlannedPublicationId | null;
   channelId: ChannelId;
   displayName: string;
   targetLanguage: string;
@@ -22,6 +24,7 @@ export interface PublicationProps {
   id: PublicationId;
   articleId: ArticleId;
   adaptationId: AdaptationId;
+  plannedPublicationId: PlannedPublicationId | null;
   channelId: ChannelId;
   displayName: string;
   targetLanguage: string;
@@ -40,6 +43,7 @@ export class Publication extends AggregateRoot {
     public readonly id: PublicationId,
     public readonly articleId: ArticleId,
     public readonly adaptationId: AdaptationId,
+    public readonly plannedPublicationId: PlannedPublicationId | null,
     public readonly channelId: ChannelId,
     public readonly displayName: string,
     public readonly targetLanguage: string,
@@ -61,6 +65,7 @@ export class Publication extends AggregateRoot {
       generateId('publication'),
       params.articleId,
       params.adaptationId,
+      params.plannedPublicationId ?? null,
       params.channelId,
       params.displayName,
       params.targetLanguage.toLowerCase(),
@@ -89,6 +94,7 @@ export class Publication extends AggregateRoot {
       props.id,
       props.articleId,
       props.adaptationId,
+      props.plannedPublicationId,
       props.channelId,
       props.displayName,
       props.targetLanguage,

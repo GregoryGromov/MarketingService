@@ -12,11 +12,11 @@ import {
   type TranslationId,
   type TranslationProps,
 } from '@marketing-service/editorial';
-import { DRIZZLE, type DrizzleDB } from '../database.module.js';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
 export class TranslationDrizzleRepository extends TranslationRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleExecutor) {
     super();
   }
 

@@ -1,5 +1,6 @@
 export {
   type CreatePublicationParams,
+  type PlannedPublicationId,
   Publication,
   type PublicationId,
   type PublicationProps,
