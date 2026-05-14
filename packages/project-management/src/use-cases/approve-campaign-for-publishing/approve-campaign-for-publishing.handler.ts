@@ -273,7 +273,13 @@ export class ApproveCampaignForPublishingHandler
           campaign.approveForPublishing();
         }
 
-        if (hasAutoPublishOutput) {
+        const allTerminalAfterApproval = plannedPublications.every((plannedPublication) =>
+          plannedPublication.status === 'published' || plannedPublication.status === 'exported',
+        );
+
+        if (allTerminalAfterApproval) {
+          campaign.complete();
+        } else if (hasAutoPublishOutput) {
           campaign.markPublishing();
         }
 

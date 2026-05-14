@@ -3,6 +3,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { ChannelAdaptationRepository } from '@marketing-service/editorial';
 import { Publication } from '../../domain/publication.aggregate.js';
 import { PublicationRepository } from '../../domain/publication.repository.js';
+import { PublicationOutcomePort } from '../../ports/publication-outcome.port.js';
 import { ScheduleDiscordPublicationCommand } from './schedule-discord-publication.command.js';
 
 @CommandHandler(ScheduleDiscordPublicationCommand)
@@ -14,6 +15,8 @@ export class ScheduleDiscordPublicationHandler
     private readonly channelAdaptationRepository: ChannelAdaptationRepository,
     @Inject(PublicationRepository)
     private readonly publicationRepository: PublicationRepository,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   async execute(
@@ -43,6 +46,7 @@ export class ScheduleDiscordPublicationHandler
     if (existing) {
       existing.reschedule(command.publishAt);
       await this.publicationRepository.save(existing);
+      await this.syncPublicationOutcome(existing);
       return { id: existing.id, status: existing.status };
     }
 
@@ -56,6 +60,20 @@ export class ScheduleDiscordPublicationHandler
     });
 
     await this.publicationRepository.save(publication);
+    await this.syncPublicationOutcome(publication);
     return { id: publication.id, status: publication.status };
+  }
+
+  private async syncPublicationOutcome(publication: Publication): Promise<void> {
+    await this.publicationOutcomePort.syncPublicationOutcome({
+      publicationId: publication.id,
+      plannedPublicationId: publication.plannedPublicationId,
+      status: publication.status,
+      publishAt: publication.publishAt,
+      externalAccountRef: publication.telegramChatId,
+      externalPostId: publication.telegramMessageId,
+      publishedAt: publication.publishedAt,
+      errorMessage: publication.errorMessage,
+    });
   }
 }

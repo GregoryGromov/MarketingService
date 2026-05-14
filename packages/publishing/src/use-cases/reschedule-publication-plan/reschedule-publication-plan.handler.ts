@@ -2,6 +2,7 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { PublicationPlanRepository } from '../../domain/publication-plan.repository.js';
 import { PublicationRepository } from '../../domain/publication.repository.js';
+import { PublicationOutcomePort } from '../../ports/publication-outcome.port.js';
 import { ReschedulePublicationPlanCommand } from './reschedule-publication-plan.command.js';
 
 @CommandHandler(ReschedulePublicationPlanCommand)
@@ -13,6 +14,8 @@ export class ReschedulePublicationPlanHandler
     private readonly publicationPlanRepository: PublicationPlanRepository,
     @Inject(PublicationRepository)
     private readonly publicationRepository: PublicationRepository,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   async execute(
@@ -44,6 +47,16 @@ export class ReschedulePublicationPlanHandler
     if (linkedPublication) {
       linkedPublication.reschedule(command.publishAt);
       await this.publicationRepository.save(linkedPublication);
+      await this.publicationOutcomePort.syncPublicationOutcome({
+        publicationId: linkedPublication.id,
+        plannedPublicationId: linkedPublication.plannedPublicationId,
+        status: linkedPublication.status,
+        publishAt: linkedPublication.publishAt,
+        externalAccountRef: linkedPublication.telegramChatId,
+        externalPostId: linkedPublication.telegramMessageId,
+        publishedAt: linkedPublication.publishedAt,
+        errorMessage: linkedPublication.errorMessage,
+      });
     }
 
     return {

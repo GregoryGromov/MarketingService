@@ -2,6 +2,7 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { ArticleRepository } from '@marketing-service/editorial';
 import { PublicationRepository } from '../../domain/publication.repository.js';
+import { PublicationOutcomePort } from '../../ports/publication-outcome.port.js';
 import { CancelPublicationCommand } from './cancel-publication.command.js';
 
 @CommandHandler(CancelPublicationCommand)
@@ -13,6 +14,8 @@ export class CancelPublicationHandler
     private readonly publicationRepository: PublicationRepository,
     @Inject(ArticleRepository)
     private readonly articleRepository: ArticleRepository,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   async execute(command: CancelPublicationCommand): Promise<{ id: string; status: 'cancelled' }> {
@@ -34,6 +37,9 @@ export class CancelPublicationHandler
 
     await this.articleRepository.save(article);
     await this.publicationRepository.deleteById(publication.id);
+    await this.publicationOutcomePort.syncPublishingLinkRemoved({
+      plannedPublicationId: publication.plannedPublicationId,
+    });
 
     return {
       id: publication.id,

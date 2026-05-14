@@ -1276,6 +1276,7 @@ ${renderDevConsoleStyles()}
           </div>
           <div class="hero-actions">
             <a class="btn" href="/test-ui">All projects</a>
+            <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Campaigns</a>
             <a class="btn" id="newArticleBtn" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
           </div>
         </div>

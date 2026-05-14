@@ -11,6 +11,10 @@ export interface CampaignScheduledPublicationRecord {
   plannedPublicationId: PlannedPublicationId;
   status: 'scheduled' | 'publishing' | 'published' | 'failed';
   publishAt: Date;
+  externalAccountRef: string | null;
+  externalPostId: string | null;
+  publishedAt: Date | null;
+  errorMessage: string | null;
 }
 
 export interface CampaignExportPlanRecord {
@@ -39,6 +43,14 @@ export interface UpsertCampaignExportPlanParams {
 }
 
 export abstract class CampaignPublishingPort {
+  abstract findScheduledPublication(
+    plannedPublicationId: PlannedPublicationId,
+  ): Promise<CampaignScheduledPublicationRecord | null>;
+
+  abstract findExportPlan(
+    plannedPublicationId: PlannedPublicationId,
+  ): Promise<CampaignExportPlanRecord | null>;
+
   abstract upsertScheduledPublication(
     params: UpsertCampaignScheduledPublicationParams,
   ): Promise<CampaignScheduledPublicationRecord>;

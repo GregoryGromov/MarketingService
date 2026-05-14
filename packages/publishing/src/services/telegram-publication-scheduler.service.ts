@@ -8,6 +8,8 @@ import {
 } from '@marketing-service/editorial';
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { PublicationRepository } from '../domain/publication.repository.js';
+import type { Publication } from '../domain/publication.aggregate.js';
+import { PublicationOutcomePort } from '../ports/publication-outcome.port.js';
 
 @Injectable()
 export class PublicationSchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -27,6 +29,8 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     private readonly telegramPublisher: TelegramPublisherPort,
     @Inject(XPublisherPort)
     private readonly xPublisher: XPublisherPort,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   onModuleInit(): void {
@@ -58,12 +62,15 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
         try {
           publication.markPublishing();
           await this.publicationRepository.save(publication);
+          await this.syncPublicationOutcome(publication);
 
           await this.publish(publication);
           await this.publicationRepository.save(publication);
+          await this.syncPublicationOutcome(publication);
         } catch (error) {
           publication.markFailed(error instanceof Error ? error.message : String(error));
           await this.publicationRepository.save(publication);
+          await this.syncPublicationOutcome(publication);
         }
       }
     } finally {
@@ -160,5 +167,18 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     return translation.translatedContent;
+  }
+
+  private async syncPublicationOutcome(publication: Publication): Promise<void> {
+    await this.publicationOutcomePort.syncPublicationOutcome({
+      publicationId: publication.id,
+      plannedPublicationId: publication.plannedPublicationId,
+      status: publication.status,
+      publishAt: publication.publishAt,
+      externalAccountRef: publication.telegramChatId,
+      externalPostId: publication.telegramMessageId,
+      publishedAt: publication.publishedAt,
+      errorMessage: publication.errorMessage,
+    });
   }
 }

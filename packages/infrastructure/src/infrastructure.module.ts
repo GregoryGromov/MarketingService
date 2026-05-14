@@ -15,6 +15,7 @@ import {
   ApprovalItemRepository,
   AiGatewayPort,
   CampaignFlowTransactionPort,
+  CampaignPublishingPort,
   CampaignArtifactRepository,
   CampaignPresetRepository,
   CampaignRepository,
@@ -25,7 +26,11 @@ import {
   QualityCheckResultRepository,
   WorkflowRunRepository,
 } from '@marketing-service/project-management';
-import { PublicationPlanRepository, PublicationRepository } from '@marketing-service/publishing';
+import {
+  PublicationOutcomePort,
+  PublicationPlanRepository,
+  PublicationRepository,
+} from '@marketing-service/publishing';
 import { Global, Module } from '@nestjs/common';
 import { DeepSeekAiGateway } from './ai/deepseek-ai-gateway.js';
 import { DatabaseModule } from './database.module.js';
@@ -48,10 +53,12 @@ import { ProjectMarkerPlacementDrizzleRepository } from './project-management/pr
 import { QualityCheckResultDrizzleRepository } from './project-management/quality-check-result.drizzle-repository.js';
 import { WorkflowRunDrizzleRepository } from './project-management/workflow-run.drizzle-repository.js';
 import { DiscordWebhookPublisher } from './publishing/discord-webhook.publisher.js';
+import { PublicationOutcomeDrizzlePort } from './publishing/publication-outcome.drizzle-port.js';
 import { PublicationDrizzleRepository } from './publishing/publication.drizzle-repository.js';
 import { PublicationPlanDrizzleRepository } from './publishing/publication-plan.drizzle-repository.js';
 import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher.js';
 import { XApiPublisher } from './publishing/x-api.publisher.js';
+import { CampaignPublishingDrizzlePort } from './project-management/campaign-publishing.drizzle-port.js';
 
 // TODO: import DatabaseModule
 // TODO: import and bind adapters to ports:
@@ -80,8 +87,10 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     TelegramBotApiPublisher,
     XApiPublisher,
     CampaignFlowDrizzleTransaction,
+    CampaignPublishingDrizzlePort,
     PublicationDrizzleRepository,
     PublicationPlanDrizzleRepository,
+    PublicationOutcomeDrizzlePort,
     ProjectMarkerPlacementDrizzleRepository,
     ProjectMarkerDrizzleRepository,
     ProjectDrizzleRepository,
@@ -100,6 +109,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     WorkflowRunDrizzleRepository,
     { provide: AiGatewayPort, useExisting: DeepSeekAiGateway },
     { provide: CampaignFlowTransactionPort, useExisting: CampaignFlowDrizzleTransaction },
+    { provide: CampaignPublishingPort, useExisting: CampaignPublishingDrizzlePort },
     { provide: AdaptationGeneratorPort, useClass: DeepSeekAdaptationGenerator },
     { provide: TranslationGeneratorPort, useExisting: DeepSeekAdaptationGenerator },
     { provide: DiscordPublisherPort, useClass: DiscordWebhookPublisher },
@@ -107,6 +117,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     { provide: XPublisherPort, useClass: XApiPublisher },
     { provide: PublicationRepository, useClass: PublicationDrizzleRepository },
     { provide: PublicationPlanRepository, useClass: PublicationPlanDrizzleRepository },
+    { provide: PublicationOutcomePort, useClass: PublicationOutcomeDrizzlePort },
     {
       provide: ProjectMarkerPlacementRepository,
       useClass: ProjectMarkerPlacementDrizzleRepository,
@@ -132,6 +143,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     AdaptationGeneratorPort,
     ApprovalItemRepository,
     AiGatewayPort,
+    CampaignPublishingPort,
     CampaignFlowTransactionPort,
     ArticleRepository,
     ArticleSourceVersionRepository,
@@ -145,6 +157,7 @@ import { XApiPublisher } from './publishing/x-api.publisher.js';
     TelegramPublisherPort,
     XPublisherPort,
     PublicationPlanRepository,
+    PublicationOutcomePort,
     PublicationRepository,
     ProjectMarkerPlacementRepository,
     ProjectMarkerRepository,

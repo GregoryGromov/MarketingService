@@ -149,6 +149,11 @@ export class Campaign extends AggregateRoot {
     this.updatedAt = this.finalApprovedAt;
   }
 
+  markApprovedForPublishing(): void {
+    this.status = 'approved_for_publishing';
+    this.updatedAt = new Date();
+  }
+
   markPublishing(): void {
     this.status = 'publishing';
     this.updatedAt = new Date();

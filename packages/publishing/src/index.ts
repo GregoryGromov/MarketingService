@@ -14,6 +14,11 @@ export {
   type PublicationPlanProps,
 } from './domain/publication-plan.aggregate.js';
 export { PublicationPlanRepository } from './domain/publication-plan.repository.js';
+export {
+  PublicationOutcomePort,
+  type SyncPublishingLinkRemovedParams,
+  type SyncPublicationOutcomeParams,
+} from './ports/publication-outcome.port.js';
 export { PublishingModule } from './publishing.module.js';
 export { CancelPlannedPublicationCommand } from './use-cases/cancel-planned-publication/cancel-planned-publication.command.js';
 export { CancelPublicationCommand } from './use-cases/cancel-publication/cancel-publication.command.js';

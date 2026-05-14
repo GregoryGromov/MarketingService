@@ -2,6 +2,7 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { PublicationRepository } from '../../domain/publication.repository.js';
 import { PublicationPlanRepository } from '../../domain/publication-plan.repository.js';
+import { PublicationOutcomePort } from '../../ports/publication-outcome.port.js';
 import { CancelPublicationPlanCommand } from './cancel-publication-plan.command.js';
 
 @CommandHandler(CancelPublicationPlanCommand)
@@ -13,6 +14,8 @@ export class CancelPublicationPlanHandler
     private readonly publicationPlanRepository: PublicationPlanRepository,
     @Inject(PublicationRepository)
     private readonly publicationRepository: PublicationRepository,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   async execute(command: CancelPublicationPlanCommand): Promise<{ id: string; status: 'cancelled' }> {
@@ -36,11 +39,17 @@ export class CancelPublicationPlanHandler
       throw new Error('Publication is being delivered right now and cannot be cancelled');
     }
 
+    const plannedPublicationId =
+      linkedPublication?.plannedPublicationId ?? plan.plannedPublicationId;
+
     if (linkedPublication) {
       await this.publicationRepository.deleteById(linkedPublication.id);
     }
 
     await this.publicationPlanRepository.deleteById(plan.id);
+    await this.publicationOutcomePort.syncPublishingLinkRemoved({
+      plannedPublicationId,
+    });
 
     return {
       id: plan.id,

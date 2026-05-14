@@ -3,6 +3,7 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { Publication } from '../../domain/publication.aggregate.js';
 import { PublicationRepository } from '../../domain/publication.repository.js';
+import { PublicationOutcomePort } from '../../ports/publication-outcome.port.js';
 import { ScheduleXPublicationCommand } from './schedule-x-publication.command.js';
 
 @CommandHandler(ScheduleXPublicationCommand)
@@ -14,6 +15,8 @@ export class ScheduleXPublicationHandler
     private readonly channelAdaptationRepository: ChannelAdaptationRepository,
     @Inject(PublicationRepository)
     private readonly publicationRepository: PublicationRepository,
+    @Inject(PublicationOutcomePort)
+    private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
 
   async execute(command: ScheduleXPublicationCommand): Promise<{ id: string; status: string }> {
@@ -43,6 +46,7 @@ export class ScheduleXPublicationHandler
     if (existing) {
       existing.reschedule(command.publishAt);
       await this.publicationRepository.save(existing);
+      await this.syncPublicationOutcome(existing);
       return { id: existing.id, status: existing.status };
     }
 
@@ -56,6 +60,20 @@ export class ScheduleXPublicationHandler
     });
 
     await this.publicationRepository.save(publication);
+    await this.syncPublicationOutcome(publication);
     return { id: publication.id, status: publication.status };
+  }
+
+  private async syncPublicationOutcome(publication: Publication): Promise<void> {
+    await this.publicationOutcomePort.syncPublicationOutcome({
+      publicationId: publication.id,
+      plannedPublicationId: publication.plannedPublicationId,
+      status: publication.status,
+      publishAt: publication.publishAt,
+      externalAccountRef: publication.telegramChatId,
+      externalPostId: publication.telegramMessageId,
+      publishedAt: publication.publishedAt,
+      errorMessage: publication.errorMessage,
+    });
   }
 }

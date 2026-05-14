@@ -133,12 +133,27 @@ export type {
   GetCampaignApprovalInboxResult,
 } from './use-cases/get-campaign-approval-inbox/get-campaign-approval-inbox.handler.js';
 export { GetCampaignApprovalInboxQuery } from './use-cases/get-campaign-approval-inbox/get-campaign-approval-inbox.query.js';
+export type { GetCampaignDetailResult } from './use-cases/get-campaign-detail/get-campaign-detail.handler.js';
+export { GetCampaignDetailQuery } from './use-cases/get-campaign-detail/get-campaign-detail.query.js';
+export type {
+  CampaignPublishingOverviewItemResult,
+  CampaignPublishingOverviewMetrics,
+  GetCampaignPublishingOverviewResult,
+} from './use-cases/get-campaign-publishing-overview/get-campaign-publishing-overview.handler.js';
+export { GetCampaignPublishingOverviewQuery } from './use-cases/get-campaign-publishing-overview/get-campaign-publishing-overview.query.js';
 export type { GetProjectResult } from './use-cases/get-project/get-project.handler.js';
 export { GetProjectQuery } from './use-cases/get-project/get-project.query.js';
 export type { GetProjectMarkerPlacementsResultItem } from './use-cases/get-project-marker-placements/get-project-marker-placements.handler.js';
 export { GetProjectMarkerPlacementsQuery } from './use-cases/get-project-marker-placements/get-project-marker-placements.query.js';
 export type { ListProjectMarkersResultItem } from './use-cases/list-project-markers/list-project-markers.handler.js';
 export { ListProjectMarkersQuery } from './use-cases/list-project-markers/list-project-markers.query.js';
+export type {
+  ListCampaignPresetPublicationResultItem,
+  ListCampaignPresetsResultItem,
+} from './use-cases/list-campaign-presets/list-campaign-presets.handler.js';
+export { ListCampaignPresetsQuery } from './use-cases/list-campaign-presets/list-campaign-presets.query.js';
+export type { ListProjectCampaignsResultItem } from './use-cases/list-project-campaigns/list-project-campaigns.handler.js';
+export { ListProjectCampaignsQuery } from './use-cases/list-project-campaigns/list-project-campaigns.query.js';
 export type { ListProjectsResultItem } from './use-cases/list-projects/list-projects.handler.js';
 export { ListProjectsQuery } from './use-cases/list-projects/list-projects.query.js';
 export { ReviewSourceIssueCommand } from './use-cases/review-source-issue/review-source-issue.command.js';
@@ -155,3 +170,5 @@ export type {
 } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.handler.js';
 export { StartCampaignProductionCommand } from './use-cases/start-campaign-production/start-campaign-production.command.js';
 export type { StartCampaignProductionResult } from './use-cases/start-campaign-production/start-campaign-production.handler.js';
+export { UpdateProjectBrandMemoryCommand } from './use-cases/update-project-brand-memory/update-project-brand-memory.command.js';
+export type { UpdateProjectBrandMemoryResult } from './use-cases/update-project-brand-memory/update-project-brand-memory.handler.js';

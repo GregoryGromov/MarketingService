@@ -1,4 +1,5 @@
-import type { DrizzleExecutor } from '../database.module.js';
+import { Inject, Injectable } from '@nestjs/common';
+import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 import { PublicationDrizzleRepository } from '../publishing/publication.drizzle-repository.js';
 import { PublicationPlanDrizzleRepository } from '../publishing/publication-plan.drizzle-repository.js';
 import {
@@ -16,6 +17,10 @@ function mapPublication(publication: Publication): CampaignScheduledPublicationR
     plannedPublicationId: publication.plannedPublicationId as CampaignScheduledPublicationRecord['plannedPublicationId'],
     status: publication.status,
     publishAt: publication.publishAt,
+    externalAccountRef: publication.telegramChatId,
+    externalPostId: publication.telegramMessageId,
+    publishedAt: publication.publishedAt,
+    errorMessage: publication.errorMessage,
   };
 }
 
@@ -27,14 +32,35 @@ function mapPublicationPlan(plan: PublicationPlan): CampaignExportPlanRecord {
   };
 }
 
+@Injectable()
 export class CampaignPublishingDrizzlePort extends CampaignPublishingPort {
   private readonly publicationRepository: PublicationDrizzleRepository;
   private readonly publicationPlanRepository: PublicationPlanDrizzleRepository;
 
-  constructor(db: DrizzleExecutor) {
+  constructor(@Inject(DRIZZLE) db: DrizzleExecutor) {
     super();
     this.publicationRepository = new PublicationDrizzleRepository(db);
     this.publicationPlanRepository = new PublicationPlanDrizzleRepository(db);
+  }
+
+  async findScheduledPublication(
+    plannedPublicationId: UpsertCampaignScheduledPublicationParams['plannedPublicationId'],
+  ): Promise<CampaignScheduledPublicationRecord | null> {
+    const publication = await this.publicationRepository.findByPlannedPublicationId(
+      plannedPublicationId,
+    );
+
+    return publication ? mapPublication(publication) : null;
+  }
+
+  async findExportPlan(
+    plannedPublicationId: UpsertCampaignExportPlanParams['plannedPublicationId'],
+  ): Promise<CampaignExportPlanRecord | null> {
+    const plan = await this.publicationPlanRepository.findByPlannedPublicationId(
+      plannedPublicationId,
+    );
+
+    return plan ? mapPublicationPlan(plan) : null;
   }
 
   async upsertScheduledPublication(
