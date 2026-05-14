@@ -13,6 +13,7 @@
     "typecheck": "turbo run typecheck",
     "db:generate": "pnpm --filter @marketing-service/database drizzle-kit generate",
     "db:migrate": "pnpm --filter @marketing-service/database drizzle-kit migrate",
+    "db:seed:campaign-presets": "pnpm --filter @marketing-service/database build && pnpm --filter @marketing-service/database seed:campaign-presets",
     "db:studio": "pnpm --filter @marketing-service/database drizzle-kit studio"
   },
   "devDependencies": {
