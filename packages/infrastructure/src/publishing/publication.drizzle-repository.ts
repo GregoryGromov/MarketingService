@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import {
+  articles,
   publications,
   type NewPublicationRow,
   type PublicationRow,
@@ -11,7 +12,7 @@ import {
   type PublicationId,
   type PublicationProps,
 } from '@marketing-service/publishing';
-import type { AdaptationId, ArticleId, ChannelId } from '@marketing-service/editorial';
+import type { AdaptationId, ArticleId, ChannelId, ProjectId } from '@marketing-service/editorial';
 import type { PlannedPublicationId } from '@marketing-service/project-management';
 import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
@@ -39,6 +40,33 @@ export class PublicationDrizzleRepository extends PublicationRepository {
       .orderBy(asc(publications.publishAt), asc(publications.createdAt));
 
     return rows.map((row) => Publication.rehydrate(this.toDomainProps(row)));
+  }
+
+  async findByProjectId(
+    projectId: ProjectId,
+    options?: {
+      from?: Date | null;
+      to?: Date | null;
+    },
+  ): Promise<Publication[]> {
+    const conditions = [eq(articles.projectId, projectId)];
+
+    if (options?.from) {
+      conditions.push(gte(publications.publishAt, options.from));
+    }
+
+    if (options?.to) {
+      conditions.push(lte(publications.publishAt, options.to));
+    }
+
+    const rows = await this.db
+      .select({ publication: publications })
+      .from(publications)
+      .innerJoin(articles, eq(publications.articleId, articles.id))
+      .where(and(...conditions))
+      .orderBy(asc(publications.publishAt), asc(publications.createdAt));
+
+    return rows.map(({ publication }) => Publication.rehydrate(this.toDomainProps(publication)));
   }
 
   async findByPlannedPublicationId(

@@ -65,17 +65,30 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
 
   private resolveChannelConfig(language: string): { botToken: string; chatId: string } {
     const normalized = language.trim().toUpperCase();
-    const botToken = this.config.get<string>(`TELEGRAM_PUBLISH_${normalized}_BOT_TOKEN`);
-    const chatId = this.config.get<string>(`TELEGRAM_PUBLISH_${normalized}_CHAT_ID`);
+    const candidates = this.resolveLanguageCandidates(normalized);
 
-    if (!botToken) {
-      throw new Error(`TELEGRAM_PUBLISH_${normalized}_BOT_TOKEN is not configured`);
+    for (const candidate of candidates) {
+      const botToken = this.config.get<string>(`TELEGRAM_PUBLISH_${candidate}_BOT_TOKEN`);
+      const chatId = this.config.get<string>(`TELEGRAM_PUBLISH_${candidate}_CHAT_ID`);
+
+      if (botToken && chatId) {
+        return { botToken, chatId };
+      }
     }
 
-    if (!chatId) {
-      throw new Error(`TELEGRAM_PUBLISH_${normalized}_CHAT_ID is not configured`);
-    }
+    throw new Error(
+      candidates.length > 1
+        ? `Telegram publish is not configured for ${normalized}; also no fallback config was found for ${candidates.slice(1).join(', ')}`
+        : `TELEGRAM_PUBLISH_${normalized}_BOT_TOKEN / TELEGRAM_PUBLISH_${normalized}_CHAT_ID are not configured`,
+    );
+  }
 
-    return { botToken, chatId };
+  private resolveLanguageCandidates(language: string): string[] {
+    switch (language) {
+      case 'ES':
+        return ['ES', 'EN'];
+      default:
+        return [language];
+    }
   }
 }

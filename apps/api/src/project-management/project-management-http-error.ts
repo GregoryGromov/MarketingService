@@ -19,6 +19,11 @@ const BAD_REQUEST_PATTERNS = [
   /\bdoes not belong to campaign\b/i,
   /\bis not a source issue\b/i,
   /\brequires source content\b/i,
+  /\bplanned publication override\b/i,
+  /\bcampaign plan cannot be empty\b/i,
+  /\bmust use hh:mm format\b/i,
+  /\bmust use a valid 24-hour time\b/i,
+  /\bdayoffset must be an integer\b/i,
 ];
 
 const CONFLICT_PATTERNS = [

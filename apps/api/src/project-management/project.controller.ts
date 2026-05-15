@@ -1,5 +1,6 @@
 import {
   CreateCampaignCommand,
+  type CreateCampaignPlannedPublicationOverride,
   CreateProjectCommand,
   CreateProjectMarkerCommand,
   CreateProjectMarkerPlacementCommand,
@@ -85,6 +86,23 @@ const CreateCampaignSchema = v.object({
   startDate: v.pipe(v.string(), v.trim(), v.minLength(1)),
   sourceLanguage: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)))),
   extraInstructions: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(5000)))),
+  plannedPublicationOverrides: v.optional(
+    v.nullish(
+      v.array(
+        v.object({
+          presetPublicationId: v.optional(
+            v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1))),
+          ),
+          dayOffset: v.pipe(v.string(), v.trim(), v.minLength(1)),
+          localTime: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(5)),
+          channel: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(64)),
+          language: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)),
+          publicationType: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(64)),
+          style: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(64)),
+        }),
+      ),
+    ),
+  ),
 });
 
 type CreateProjectDto = v.InferOutput<typeof CreateProjectSchema>;
@@ -100,6 +118,54 @@ function parseDateInput(value: string, field: string): Date {
   }
 
   return date;
+}
+
+function parseDayOffsetInput(value: string): number {
+  if (!/^-?\d+$/.test(value)) {
+    throw new BadRequestException('plannedPublicationOverrides.dayOffset must be an integer');
+  }
+
+  return Number.parseInt(value, 10);
+}
+
+function normalizeLocalTimeInput(value: string): string {
+  const trimmed = value.trim();
+  const match = /^(\d{2}):(\d{2})$/.exec(trimmed);
+
+  if (!match) {
+    throw new BadRequestException(
+      'plannedPublicationOverrides.localTime must use HH:MM format',
+    );
+  }
+
+  const hours = Number.parseInt(match[1] ?? '0', 10);
+  const minutes = Number.parseInt(match[2] ?? '0', 10);
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new BadRequestException(
+      'plannedPublicationOverrides.localTime must use a valid 24-hour time',
+    );
+  }
+
+  return trimmed;
+}
+
+function normalizePlannedPublicationOverrides(
+  overrides: CreateCampaignDto['plannedPublicationOverrides'],
+): CreateCampaignPlannedPublicationOverride[] | undefined {
+  if (overrides == null) {
+    return undefined;
+  }
+
+  return overrides.map((override) => ({
+    presetPublicationId: override.presetPublicationId ?? null,
+    dayOffset: parseDayOffsetInput(override.dayOffset),
+    localTime: normalizeLocalTimeInput(override.localTime),
+    channel: override.channel,
+    language: override.language,
+    publicationType: override.publicationType,
+    style: override.style,
+  }));
 }
 
 function normalizeBrandMemoryUpdate(
@@ -233,6 +299,7 @@ export class ProjectController {
           parseDateInput(dto.startDate, 'startDate'),
           dto.sourceLanguage ?? undefined,
           dto.extraInstructions ?? null,
+          normalizePlannedPublicationOverrides(dto.plannedPublicationOverrides),
         ),
       );
     } catch (error) {

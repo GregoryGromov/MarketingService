@@ -159,6 +159,11 @@ export class Campaign extends AggregateRoot {
     this.updatedAt = new Date();
   }
 
+  restoreStatus(status: CampaignStatus): void {
+    this.status = status;
+    this.updatedAt = new Date();
+  }
+
   complete(): void {
     this.status = 'completed';
     this.updatedAt = new Date();

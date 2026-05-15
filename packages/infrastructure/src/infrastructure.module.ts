@@ -15,6 +15,7 @@ import {
   ApprovalItemRepository,
   AiGatewayPort,
   CampaignFlowTransactionPort,
+  CampaignProductionJobPort,
   CampaignPublishingPort,
   CampaignArtifactRepository,
   CampaignPresetRepository,
@@ -42,6 +43,7 @@ import { DeepSeekAdaptationGenerator } from './editorial/deepseek-adaptation-gen
 import { TranslationDrizzleRepository } from './editorial/translation.drizzle-repository.js';
 import { TranslationVersionDrizzleRepository } from './editorial/translation-version.drizzle-repository.js';
 import { ApprovalItemDrizzleRepository } from './project-management/approval-item.drizzle-repository.js';
+import { CampaignProductionJobBullMqPort } from './project-management/campaign-production-job.bullmq-port.js';
 import { CampaignFlowDrizzleTransaction } from './project-management/campaign-flow-drizzle-transaction.js';
 import { CampaignArtifactDrizzleRepository } from './project-management/campaign-artifact.drizzle-repository.js';
 import { CampaignDrizzleRepository } from './project-management/campaign.drizzle-repository.js';
@@ -86,6 +88,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     DiscordWebhookPublisher,
     TelegramBotApiPublisher,
     XApiPublisher,
+    CampaignProductionJobBullMqPort,
     CampaignFlowDrizzleTransaction,
     CampaignPublishingDrizzlePort,
     PublicationDrizzleRepository,
@@ -109,6 +112,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     WorkflowRunDrizzleRepository,
     { provide: AiGatewayPort, useExisting: DeepSeekAiGateway },
     { provide: CampaignFlowTransactionPort, useExisting: CampaignFlowDrizzleTransaction },
+    { provide: CampaignProductionJobPort, useExisting: CampaignProductionJobBullMqPort },
     { provide: CampaignPublishingPort, useExisting: CampaignPublishingDrizzlePort },
     { provide: AdaptationGeneratorPort, useClass: DeepSeekAdaptationGenerator },
     { provide: TranslationGeneratorPort, useExisting: DeepSeekAdaptationGenerator },
@@ -145,6 +149,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     AiGatewayPort,
     CampaignPublishingPort,
     CampaignFlowTransactionPort,
+    CampaignProductionJobPort,
     ArticleRepository,
     ArticleSourceVersionRepository,
     CampaignArtifactRepository,

@@ -1,4 +1,4 @@
-import type { AdaptationId, ArticleId, ChannelId } from '@marketing-service/editorial';
+import type { AdaptationId, ArticleId, ChannelId, ProjectId } from '@marketing-service/editorial';
 import type {
   PlannedPublicationId,
   Publication,
@@ -8,6 +8,13 @@ import type {
 export abstract class PublicationRepository {
   abstract findById(id: PublicationId): Promise<Publication | null>;
   abstract findByArticleId(articleId: ArticleId): Promise<Publication[]>;
+  abstract findByProjectId(
+    projectId: ProjectId,
+    options?: {
+      from?: Date | null;
+      to?: Date | null;
+    },
+  ): Promise<Publication[]>;
   abstract findByPlannedPublicationId(
     plannedPublicationId: PlannedPublicationId,
   ): Promise<Publication | null>;

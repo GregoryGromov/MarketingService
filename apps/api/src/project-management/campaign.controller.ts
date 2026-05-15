@@ -3,10 +3,12 @@ import {
   AttachCampaignSourceCommand,
   GetCampaignApprovalInboxQuery,
   GetCampaignDetailQuery,
+  GetCampaignExecutionHistoryQuery,
   GetCampaignPublishingOverviewQuery,
   type CampaignId,
   type GetCampaignApprovalInboxResult,
   type GetCampaignDetailResult,
+  type GetCampaignExecutionHistoryResult,
   type GetCampaignPublishingOverviewResult,
   ReviewSourceIssueCommand,
   RunCampaignStage1Command,
@@ -111,6 +113,20 @@ export class CampaignController {
     }
 
     return inbox;
+  }
+
+  @Get(':id/execution-history')
+  async getExecutionHistory(
+    @Param('id') id: string,
+  ): Promise<GetCampaignExecutionHistoryResult> {
+    const executionHistory = await this.queryBus.execute(
+      new GetCampaignExecutionHistoryQuery(id as CampaignId),
+    );
+    if (!executionHistory) {
+      throw new NotFoundException(`Campaign ${id} not found`);
+    }
+
+    return executionHistory;
   }
 
   @Post(':id/source-issues/review')

@@ -3,7 +3,10 @@ import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { Campaign } from '../../domain/campaign.aggregate.js';
 import { PlannedPublication } from '../../domain/planned-publication.entity.js';
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
-import { CreateCampaignCommand } from './create-campaign.command.js';
+import {
+  CreateCampaignCommand,
+  type CreateCampaignPlannedPublicationOverride,
+} from './create-campaign.command.js';
 
 export interface CreateCampaignResult {
   campaignId: string;
@@ -24,6 +27,26 @@ function materializeScheduledFor(startDate: Date, dayOffset: number, localTime: 
   scheduledFor.setUTCHours(hours, minutes, 0, 0);
 
   return scheduledFor;
+}
+
+function assertDistinctPresetPublicationOverrides(
+  overrides: CreateCampaignPlannedPublicationOverride[],
+): void {
+  const seen = new Set<string>();
+
+  for (const override of overrides) {
+    if (!override.presetPublicationId) {
+      continue;
+    }
+
+    if (seen.has(override.presetPublicationId)) {
+      throw new Error(
+        `Duplicate planned publication override for preset publication ${override.presetPublicationId}`,
+      );
+    }
+
+    seen.add(override.presetPublicationId);
+  }
 }
 
 @CommandHandler(CreateCampaignCommand)
@@ -61,6 +84,31 @@ export class CreateCampaignHandler
           throw new Error(`Campaign preset ${command.presetId} is inactive`);
         }
 
+        const submittedPlan = command.plannedPublicationOverrides;
+        const presetPublicationIds = new Set(
+          preset.publications.map((publication) => publication.id),
+        );
+
+        if (submittedPlan) {
+          if (submittedPlan.length === 0) {
+            throw new Error('Campaign plan cannot be empty');
+          }
+
+          assertDistinctPresetPublicationOverrides(submittedPlan);
+
+          for (const row of submittedPlan) {
+            if (!row.presetPublicationId) {
+              continue;
+            }
+
+            if (!presetPublicationIds.has(row.presetPublicationId as never)) {
+              throw new Error(
+                `Planned publication override ${row.presetPublicationId} does not belong to preset ${preset.id}`,
+              );
+            }
+          }
+        }
+
         const createdCampaign = Campaign.create({
           projectId: project.id,
           presetId: preset.id,
@@ -71,26 +119,39 @@ export class CreateCampaignHandler
         });
         campaign = createdCampaign;
 
-        plannedPublications = [...preset.publications]
-          .sort((left, right) => left.position - right.position)
-          .map((publication) =>
-            PlannedPublication.create({
-              campaignId: createdCampaign.id,
-              presetPublicationId: publication.id,
-              dayOffset: publication.dayOffset,
-              localTime: publication.localTime,
-              scheduledFor: materializeScheduledFor(
-                createdCampaign.startDate,
-                publication.dayOffset,
-                publication.localTime,
-              ),
-              channel: publication.channel,
-              language: publication.language,
-              publicationType: publication.publicationType,
-              style: publication.style,
-              publishMode: 'auto_publish',
-            }),
-          );
+        const campaignPlan =
+          submittedPlan && submittedPlan.length > 0
+            ? submittedPlan
+            : [...preset.publications]
+                .sort((left, right) => left.position - right.position)
+                .map((publication) => ({
+                  presetPublicationId: publication.id,
+                  dayOffset: publication.dayOffset,
+                  localTime: publication.localTime,
+                  channel: publication.channel,
+                  language: publication.language,
+                  publicationType: publication.publicationType,
+                  style: publication.style,
+                }));
+
+        plannedPublications = campaignPlan.map((publication) =>
+          PlannedPublication.create({
+            campaignId: createdCampaign.id,
+            presetPublicationId: (publication.presetPublicationId ?? null) as never,
+            dayOffset: publication.dayOffset,
+            localTime: publication.localTime,
+            scheduledFor: materializeScheduledFor(
+              createdCampaign.startDate,
+              publication.dayOffset,
+              publication.localTime,
+            ),
+            channel: publication.channel,
+            language: publication.language,
+            publicationType: publication.publicationType,
+            style: publication.style,
+            publishMode: 'auto_publish',
+          }),
+        );
 
         await campaignRepository.save(createdCampaign);
         await plannedPublicationRepository.saveMany(plannedPublications);

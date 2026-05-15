@@ -1,25 +1,37 @@
 import type { ArticleSourceVersion } from '@marketing-service/editorial';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
+import { WorkflowRun } from '../../domain/workflow-run.aggregate.js';
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
 import { CampaignProductionJobPort } from '../../ports/campaign-production-job.port.js';
-import type { CampaignStatus } from '../../domain/campaign.aggregate.js';
-import { WorkflowRun } from '../../domain/workflow-run.aggregate.js';
-import { StartCampaignProductionCommand } from './start-campaign-production.command.js';
+import { RunCampaignStage1Command } from './run-campaign-stage-1.command.js';
 
-export interface StartCampaignProductionResult {
-  workflowRunId: string;
-  jobId: string;
-  status: 'queued';
-}
+const TERMINAL_CAMPAIGN_STATUSES = new Set([
+  'draft',
+  'source_checking',
+  'source_needs_review',
+  'approved_for_publishing',
+  'publishing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
 
 function getLatestSourceVersion(versions: ArticleSourceVersion[]): ArticleSourceVersion | null {
   return [...versions].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()).at(-1) ?? null;
 }
 
-@CommandHandler(StartCampaignProductionCommand)
-export class StartCampaignProductionHandler
-  implements ICommandHandler<StartCampaignProductionCommand, StartCampaignProductionResult>
+export interface RunCampaignStage1QueuedResult {
+  workflowRunId: string;
+  jobId: string;
+  campaignId: string;
+  pendingPublicationCount: number;
+  status: 'queued';
+}
+
+@CommandHandler(RunCampaignStage1Command)
+export class RunCampaignStage1Handler
+  implements ICommandHandler<RunCampaignStage1Command, RunCampaignStage1QueuedResult>
 {
   constructor(
     @Inject(CampaignFlowTransactionPort)
@@ -29,13 +41,14 @@ export class StartCampaignProductionHandler
     private readonly eventBus: EventBus,
   ) {}
 
-  async execute(command: StartCampaignProductionCommand): Promise<StartCampaignProductionResult> {
+  async execute(command: RunCampaignStage1Command): Promise<RunCampaignStage1QueuedResult> {
     let workflowRun!: WorkflowRun;
-    let previousStatus!: CampaignStatus;
+    let pendingPublicationCount = 0;
 
     await this.transaction.run(
       async ({
         campaignRepository,
+        plannedPublicationRepository,
         articleRepository,
         articleSourceVersionRepository,
         workflowRunRepository,
@@ -43,6 +56,12 @@ export class StartCampaignProductionHandler
         const campaign = await campaignRepository.findById(command.campaignId as never);
         if (!campaign) {
           throw new Error(`Campaign ${command.campaignId} not found`);
+        }
+
+        if (TERMINAL_CAMPAIGN_STATUSES.has(campaign.status)) {
+          throw new Error(
+            `Campaign ${command.campaignId} is not ready for Stage 1 from status "${campaign.status}"`,
+          );
         }
 
         if (!campaign.sourceArticleId) {
@@ -65,14 +84,20 @@ export class StartCampaignProductionHandler
           throw new Error(`Article ${article.id} has no source versions`);
         }
 
-        previousStatus = campaign.status;
+        const pendingPublications = (
+          await plannedPublicationRepository.findByCampaignIdAndStatus(campaign.id, 'pending')
+        ).sort((left, right) => left.scheduledFor.getTime() - right.scheduledFor.getTime());
+
+        if (pendingPublications.length === 0) {
+          throw new Error(`Campaign ${command.campaignId} has no pending planned publications`);
+        }
+
+        pendingPublicationCount = pendingPublications.length;
         workflowRun = WorkflowRun.create({
           campaignId: campaign.id,
-          currentStep: 'source_check',
+          currentStep: 'stage_1_adaptation',
         });
 
-        campaign.markSourceChecking();
-        await campaignRepository.save(campaign);
         await workflowRunRepository.save(workflowRun);
       },
     );
@@ -80,7 +105,7 @@ export class StartCampaignProductionHandler
     this.eventBus.publishAll(workflowRun.pullEvents());
 
     try {
-      const job = await this.jobs.enqueueSourceCheck({
+      const job = await this.jobs.enqueueStage1({
         campaignId: command.campaignId,
         workflowRunId: workflowRun.id,
       });
@@ -88,23 +113,18 @@ export class StartCampaignProductionHandler
       return {
         workflowRunId: workflowRun.id,
         jobId: job.jobId,
+        campaignId: command.campaignId,
+        pendingPublicationCount,
         status: 'queued',
       };
     } catch (error) {
-      await this.transaction.run(async ({ campaignRepository, workflowRunRepository }) => {
-        const campaign = await campaignRepository.findById(command.campaignId as never);
+      await this.transaction.run(async ({ workflowRunRepository }) => {
         const persistedWorkflowRun = await workflowRunRepository.findById(workflowRun.id);
-
-        if (campaign) {
-          campaign.restoreStatus(previousStatus);
-          await campaignRepository.save(campaign);
-        }
-
         if (persistedWorkflowRun && persistedWorkflowRun.status === 'running') {
           persistedWorkflowRun.fail(
             error instanceof Error
               ? error.message
-              : 'Campaign source check could not be enqueued',
+              : 'Campaign Stage 1 could not be enqueued',
           );
           await workflowRunRepository.save(persistedWorkflowRun);
         }

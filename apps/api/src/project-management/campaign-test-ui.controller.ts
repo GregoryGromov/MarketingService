@@ -206,6 +206,44 @@ function renderCampaignUiStyles(): string {
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
       }
+      .stage-button.is-running {
+        background: rgba(18, 18, 18, 0.92);
+        color: #fff;
+        border-color: rgba(18, 18, 18, 0.92);
+        animation: stage-breathe 1.9s ease-in-out infinite;
+      }
+      .stage-button.is-success {
+        background: rgba(17, 122, 67, 0.12);
+        color: #117a43;
+        border-color: rgba(17, 122, 67, 0.24);
+      }
+      .stage-button.is-success[disabled] {
+        opacity: 1;
+      }
+      .stage-button.is-warning {
+        background: rgba(181, 71, 8, 0.12);
+        color: #a14c0a;
+        border-color: rgba(181, 71, 8, 0.24);
+      }
+      .stage-button.is-danger {
+        background: rgba(180, 35, 24, 0.12);
+        color: #b42318;
+        border-color: rgba(180, 35, 24, 0.22);
+      }
+      .stage-button.is-running[disabled] {
+        opacity: 1;
+      }
+      @keyframes stage-breathe {
+        0%,
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 rgba(18, 18, 18, 0);
+        }
+        50% {
+          transform: scale(1.015);
+          box-shadow: 0 10px 24px rgba(18, 18, 18, 0.12);
+        }
+      }
       .btn.danger,
       button.danger {
         background: var(--danger-soft);
@@ -295,6 +333,13 @@ function renderCampaignUiStyles(): string {
         color: var(--text);
         font: inherit;
       }
+      .table-editor input,
+      .table-editor select {
+        min-width: 96px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.94);
+      }
       textarea {
         min-height: 140px;
         resize: vertical;
@@ -334,6 +379,54 @@ function renderCampaignUiStyles(): string {
       }
       tr:last-child td {
         border-bottom: 0;
+      }
+      .inline-note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .stepper {
+        display: grid;
+        gap: 10px;
+        align-items: start;
+      }
+      .step-item {
+        display: grid;
+        gap: 8px;
+        justify-items: center;
+      }
+      .step-item button {
+        width: fit-content;
+        min-width: 260px;
+      }
+      .stage-status {
+        min-width: 260px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.34);
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .stage-status.is-muted {
+        background: rgba(17, 122, 67, 0.06);
+        border-color: rgba(17, 122, 67, 0.16);
+        color: #4b6e59;
+      }
+      .step-arrow {
+        color: var(--muted);
+        font-size: 28px;
+        line-height: 1;
+        justify-self: center;
+      }
+      button[disabled],
+      .btn[disabled],
+      a.btn[aria-disabled="true"] {
+        opacity: 0.42;
+        cursor: not-allowed;
+        pointer-events: none;
       }
       .mono {
         font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -612,14 +705,10 @@ export class CampaignTestUiController {
       body: `
         <section class="panel stack">
           <div class="nav-row">
-            <div class="tabs">
-              <a href="/test-ui/project?projectId=${escapeHtml(projectId)}">Project dashboard</a>
-              <a class="active" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Campaigns</a>
-              <a href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
-              <a href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create Campaign</a>
-            </div>
             <div class="actions">
               <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">Back to project</a>
+            </div>
+            <div class="actions">
               <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
               <a class="btn primary" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
             </div>
@@ -671,7 +760,6 @@ export class CampaignTestUiController {
             '<a class="btn" href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Open</a>',
             '<a class="btn" href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a class="btn" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a class="btn" href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
             '<a class="btn" href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
           ].join('');
         }
@@ -748,16 +836,10 @@ export class CampaignTestUiController {
       eyebrow: 'Campaigns',
       heading: 'Create campaign',
       summary:
-        'Create a campaign from a system preset. The preset materializes the planned publications immediately.',
+        'Create a campaign from a system preset. You can customize, remove, or add publications for this campaign without changing the preset.',
       body: `
         <section class="panel stack">
           <div class="nav-row">
-            <div class="tabs">
-              <a href="/test-ui/project?projectId=${escapeHtml(projectId)}">Project dashboard</a>
-              <a href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Campaigns</a>
-              <a href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
-              <a class="active" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create Campaign</a>
-            </div>
             <div class="actions">
               <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
             </div>
@@ -769,7 +851,7 @@ export class CampaignTestUiController {
             <div class="section-copy">
               <span class="eyebrow">Create</span>
               <h2 id="projectName">Loading project</h2>
-              <p id="projectSummary">Select a preset, set a start date and optionally override source language or extra instructions.</p>
+              <p id="projectSummary">Select a preset, set a start date, adjust the campaign plan if needed, and optionally add extra instructions.</p>
             </div>
             <form id="createCampaignForm" class="stack">
               <div class="form-grid">
@@ -785,10 +867,6 @@ export class CampaignTestUiController {
                   Preset
                   <select id="presetId" required></select>
                 </label>
-                <label class="field">
-                  Source language override
-                  <input id="sourceLanguage" type="text" maxlength="16" placeholder="Leave empty to use preset default" />
-                </label>
                 <label class="field full">
                   Extra instructions
                   <textarea id="extraInstructions" placeholder="Optional campaign-level instructions for source check and AI stages."></textarea>
@@ -796,23 +874,23 @@ export class CampaignTestUiController {
               </div>
               <div class="actions">
                 <button class="primary" type="submit">Create campaign</button>
-                <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Edit Brand Memory first</a>
               </div>
             </form>
           </section>
 
           <section class="panel stack">
             <div class="section-copy">
-              <span class="eyebrow">Preset preview</span>
+              <span class="eyebrow">Campaign plan</span>
               <h2 id="presetName">Pick a preset</h2>
-              <p id="presetDescription">The right side shows exactly which planned publications will be materialized.</p>
+              <p id="presetDescription">Edit, remove, or add planned publications for this campaign. The underlying preset will stay unchanged.</p>
             </div>
             <div class="kv">
               <div class="meta-item"><label>Source language</label><strong id="presetSourceLanguage">—</strong></div>
               <div class="meta-item"><label>Source type</label><strong id="presetSourceType">—</strong></div>
             </div>
+            <p class="inline-note">Changes below apply only to this campaign. They do not modify the preset.</p>
             <div class="table-wrap">
-              <table>
+              <table class="table-editor">
                 <thead>
                   <tr>
                     <th>Position</th>
@@ -822,10 +900,14 @@ export class CampaignTestUiController {
                     <th>Language</th>
                     <th>Type</th>
                     <th>Style</th>
+                    <th>Row</th>
                   </tr>
                 </thead>
                 <tbody id="presetRows"></tbody>
               </table>
+            </div>
+            <div class="actions">
+              <button type="button" id="addCampaignPlanRow">Add publication</button>
             </div>
           </section>
         </div>
@@ -833,6 +915,112 @@ export class CampaignTestUiController {
       script: `
         const projectId = ${JSON.stringify(projectId)};
         let presets = [];
+        let campaignPlan = [];
+        let customPublicationCounter = 0;
+        const channelOptions = [
+          ['channel_telegram', 'Telegram'],
+          ['channel_x', 'X'],
+          ['channel_discord', 'Discord'],
+        ];
+
+        function buildChannelSelectOptions(selectedValue) {
+          return channelOptions
+            .map(([value, label]) =>
+              '<option value="' + escapeHtml(value) + '"' +
+              (value === selectedValue ? ' selected' : '') +
+              '>' + escapeHtml(label) + '</option>'
+            )
+            .join('');
+        }
+
+        function buildCampaignPlanFromPreset(preset) {
+          customPublicationCounter = 0;
+          return (preset.publications || [])
+            .slice()
+            .sort((left, right) => left.position - right.position)
+            .map((publication) => ({
+              rowKey: publication.id,
+              presetPublicationId: publication.id,
+              rowType: 'preset',
+              position: publication.position,
+              dayOffset: String(publication.dayOffset),
+              localTime: publication.localTime,
+              channel: publication.channel,
+              language: String(publication.language || '').toUpperCase(),
+              publicationType: publication.publicationType,
+              style: publication.style,
+            }));
+        }
+
+        function buildNewCustomPublication() {
+          customPublicationCounter += 1;
+          return {
+            rowKey: 'custom-' + customPublicationCounter,
+            presetPublicationId: null,
+            rowType: 'custom',
+            position: campaignPlan.length + 1,
+            dayOffset: '0',
+            localTime: '09:00',
+            channel: 'channel_telegram',
+            language: 'EN',
+            publicationType: 'post',
+            style: 'default',
+          };
+        }
+
+        function syncCampaignPlanFromTable() {
+          campaignPlan = Array.from(document.querySelectorAll('#presetRows tr[data-row-key]'))
+            .map((row) => ({
+              rowKey: row.dataset.rowKey,
+              presetPublicationId: row.dataset.presetPublicationId || null,
+              rowType: row.dataset.rowType || 'preset',
+              position: Number(row.dataset.position || '0'),
+              dayOffset: row.querySelector('[data-field="dayOffset"]').value,
+              localTime: row.querySelector('[data-field="localTime"]').value,
+              channel: row.querySelector('[data-field="channel"]').value,
+              language: row.querySelector('[data-field="language"]').value.toUpperCase(),
+              publicationType: row.querySelector('[data-field="publicationType"]').value,
+              style: row.querySelector('[data-field="style"]').value,
+            }));
+        }
+
+        function removeCampaignPlanRow(rowKey) {
+          campaignPlan = campaignPlan
+            .filter((publication) => publication.rowKey !== rowKey)
+            .map((publication, index) => ({
+              ...publication,
+              position: index + 1,
+            }));
+          renderCampaignPlanRows(campaignPlan);
+        }
+
+        function renderCampaignPlanRows(rows) {
+          document.getElementById('presetRows').innerHTML = rows
+            .map((publication) => (
+              '<tr data-row-key="' + escapeHtml(publication.rowKey) + '" data-row-type="' + escapeHtml(publication.rowType) + '" data-preset-publication-id="' + escapeHtml(publication.presetPublicationId || '') + '" data-position="' + escapeHtml(String(publication.position)) + '">' +
+                '<td>' + escapeHtml(String(publication.position)) + '</td>' +
+                '<td><input data-field="dayOffset" type="number" step="1" value="' + escapeHtml(String(publication.dayOffset)) + '" /></td>' +
+                '<td><input data-field="localTime" type="time" value="' + escapeHtml(publication.localTime) + '" /></td>' +
+                '<td><select data-field="channel">' + buildChannelSelectOptions(publication.channel) + '</select></td>' +
+                '<td><input data-field="language" type="text" maxlength="16" value="' + escapeHtml(publication.language) + '" /></td>' +
+                '<td><input data-field="publicationType" type="text" maxlength="64" value="' + escapeHtml(publication.publicationType) + '" /></td>' +
+                '<td><input data-field="style" type="text" maxlength="64" value="' + escapeHtml(publication.style) + '" /></td>' +
+                '<td><button type="button" class="btn danger" data-remove-row="' + escapeHtml(publication.rowKey) + '">Remove</button></td>' +
+              '</tr>'
+            ))
+            .join('');
+
+          document.querySelectorAll('#presetRows input, #presetRows select').forEach((element) => {
+            element.addEventListener('input', syncCampaignPlanFromTable);
+            element.addEventListener('change', syncCampaignPlanFromTable);
+          });
+
+          document.querySelectorAll('[data-remove-row]').forEach((element) => {
+            element.addEventListener('click', () => removeCampaignPlanRow(element.dataset.removeRow));
+          });
+
+          syncCampaignPlanFromTable();
+        }
 
         function renderPresetPreview(presetId) {
           const preset = presets.find((item) => item.id === presetId) || null;
@@ -841,7 +1029,8 @@ export class CampaignTestUiController {
             document.getElementById('presetDescription').textContent = 'Preset details will appear here.';
             document.getElementById('presetSourceLanguage').textContent = '—';
             document.getElementById('presetSourceType').textContent = '—';
-            document.getElementById('presetRows').innerHTML = '<tr><td colspan="7" class="soft">No preset selected.</td></tr>';
+            document.getElementById('presetRows').innerHTML = '<tr><td colspan="8" class="soft">No preset selected.</td></tr>';
+            campaignPlan = [];
             return;
           }
 
@@ -849,19 +1038,8 @@ export class CampaignTestUiController {
           document.getElementById('presetDescription').textContent = preset.description;
           document.getElementById('presetSourceLanguage').textContent = String(preset.sourceLanguage || '').toUpperCase();
           document.getElementById('presetSourceType').textContent = toTitle(preset.sourceType);
-          document.getElementById('presetRows').innerHTML = preset.publications
-            .slice()
-            .sort((left, right) => left.position - right.position)
-            .map((publication) => '<tr>' +
-              '<td>' + escapeHtml(String(publication.position)) + '</td>' +
-              '<td>+' + escapeHtml(String(publication.dayOffset)) + '</td>' +
-              '<td>' + escapeHtml(publication.localTime) + '</td>' +
-              '<td>' + escapeHtml(toTitle(publication.channel.replace('channel_', ''))) + '</td>' +
-              '<td>' + escapeHtml(String(publication.language || '').toUpperCase()) + '</td>' +
-              '<td>' + escapeHtml(toTitle(publication.publicationType)) + '</td>' +
-              '<td>' + escapeHtml(toTitle(publication.style)) + '</td>' +
-            '</tr>')
-            .join('');
+          campaignPlan = buildCampaignPlanFromPreset(preset);
+          renderCampaignPlanRows(campaignPlan);
         }
 
         async function boot() {
@@ -885,6 +1063,16 @@ export class CampaignTestUiController {
           ).join('');
 
           presetSelect.addEventListener('change', () => renderPresetPreview(presetSelect.value));
+          document.getElementById('addCampaignPlanRow').addEventListener('click', () => {
+            campaignPlan = [
+              ...campaignPlan,
+              buildNewCustomPublication(),
+            ].map((publication, index) => ({
+              ...publication,
+              position: index + 1,
+            }));
+            renderCampaignPlanRows(campaignPlan);
+          });
           renderPresetPreview(presetSelect.value);
 
           document.getElementById('createCampaignForm').addEventListener('submit', async (event) => {
@@ -893,8 +1081,16 @@ export class CampaignTestUiController {
               presetId: presetSelect.value,
               name: document.getElementById('campaignName').value,
               startDate: new Date(document.getElementById('startDate').value + 'T09:00:00.000Z').toISOString(),
-              sourceLanguage: document.getElementById('sourceLanguage').value || null,
               extraInstructions: document.getElementById('extraInstructions').value || null,
+              plannedPublicationOverrides: campaignPlan.map((publication) => ({
+                presetPublicationId: publication.presetPublicationId,
+                dayOffset: publication.dayOffset,
+                localTime: publication.localTime,
+                channel: publication.channel,
+                language: publication.language,
+                publicationType: publication.publicationType,
+                style: publication.style,
+              })),
             };
 
             const created = await request(
@@ -1115,8 +1311,8 @@ export class CampaignTestUiController {
       body: `
         <section class="panel stack">
           <div class="nav-row">
-            <div class="tabs" id="campaignTabs"></div>
             <div class="actions" id="campaignBacklinks"></div>
+            <div class="tabs" id="campaignTabs"></div>
           </div>
         </section>
 
@@ -1143,27 +1339,16 @@ export class CampaignTestUiController {
           </article>
         </section>
 
-        <div class="detail-grid">
-          <section class="panel stack">
-            <div class="section-head">
-              <div class="section-copy">
-                <span class="eyebrow">Summary</span>
-                <h2 id="campaignName">Loading campaign</h2>
-                <p id="campaignMeta">Loading…</p>
-              </div>
-            </div>
-            <div id="campaignSummary" class="kv"></div>
-          </section>
-
-          <aside class="panel stack">
+        <section class="panel stack">
+          <div class="section-head">
             <div class="section-copy">
-              <span class="eyebrow">Navigation</span>
-              <h2>Next screens</h2>
-              <p>Use the dedicated screens below for production, inbox, final approval and publishing status.</p>
+              <span class="eyebrow">Summary</span>
+              <h2 id="campaignName">Loading campaign</h2>
+              <p id="campaignMeta">Loading…</p>
             </div>
-            <div class="actions" id="campaignActions"></div>
-          </aside>
-        </div>
+          </div>
+          <div id="campaignSummary" class="kv"></div>
+        </section>
 
         <section class="panel stack">
           <div class="section-head">
@@ -1190,15 +1375,6 @@ export class CampaignTestUiController {
           </div>
         </section>
 
-        <section class="panel stack">
-          <div class="section-head">
-            <div class="section-copy">
-              <span class="eyebrow">Workflow runs</span>
-              <h2>Production history</h2>
-            </div>
-          </div>
-          <div id="workflowRuns" class="workflow-list"></div>
-        </section>
       `,
       script: `
         const campaignId = ${JSON.stringify(campaignId)};
@@ -1209,9 +1385,8 @@ export class CampaignTestUiController {
             '<a class="active" href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
             '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
+            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
             '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
-            '<a href="/test-ui/campaigns?projectId=' + encodeURIComponent(projectId) + '">All campaigns</a>',
           ].join('');
         }
 
@@ -1236,12 +1411,6 @@ export class CampaignTestUiController {
             '<div class="meta-item"><label>' + escapeHtml(label) + '</label><strong>' + escapeHtml(String(value)) + '</strong></div>'
           ).join('');
 
-          document.getElementById('campaignActions').innerHTML = [
-            '<a class="btn" href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Open production</a>',
-            '<a class="btn" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Open inbox</a>',
-            '<a class="btn" href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
-            '<a class="btn" href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing status</a>',
-          ].join('');
         }
 
         function renderPlannedRows(campaign) {
@@ -1259,22 +1428,6 @@ export class CampaignTestUiController {
             '</tr>').join('');
         }
 
-        function renderWorkflowRuns(campaign) {
-          const runs = campaign.workflowRuns || [];
-          const root = document.getElementById('workflowRuns');
-          root.innerHTML = runs.length === 0
-            ? '<div class="empty-state">No workflow runs yet. Source check will create the first one.</div>'
-            : runs.map((run) => '<article class="workflow-item">' +
-              '<div class="card-head"><strong>' + escapeHtml(toTitle(run.currentStep)) + '</strong>' + renderBadge(run.status) + '</div>' +
-              '<div class="pill-row">' +
-                '<span class="pill mono">' + escapeHtml(run.id) + '</span>' +
-                '<span class="pill">Started ' + escapeHtml(formatDateTime(run.startedAt)) + '</span>' +
-                '<span class="pill">Completed ' + escapeHtml(run.completedAt ? formatDateTime(run.completedAt) : '—') + '</span>' +
-              '</div>' +
-              '<p>' + escapeHtml(run.errorMessage || 'No error message.') + '</p>' +
-            '</article>').join('');
-        }
-
         async function loadPage() {
           if (!campaignId) {
             document.getElementById('campaignName').textContent = 'Missing campaignId';
@@ -1287,7 +1440,6 @@ export class CampaignTestUiController {
             '<a class="btn" href="/test-ui/campaigns?projectId=' + encodeURIComponent(campaign.projectId) + '">Back to campaigns</a>';
           renderSummary(campaign);
           renderPlannedRows(campaign);
-          renderWorkflowRuns(campaign);
           setOutput(campaign);
         }
 
@@ -1364,62 +1516,235 @@ export class CampaignTestUiController {
             <div class="section-copy">
               <span class="eyebrow">Execution</span>
               <h2>Stage controls</h2>
-              <p>Run each stage explicitly so the pipeline stays inspectable.</p>
+              <p>Run each stage explicitly in order. The next step unlocks only after the previous one is complete.</p>
             </div>
-            <div class="actions">
-              <button id="startProductionBtn" class="primary" type="button">Start source check</button>
-              <button id="runStage1Btn" type="button">Run Stage 1 adaptations</button>
-              <button id="runStage2Btn" type="button">Run Stage 2 translations</button>
-              <button type="button" onclick="loadPage()">Refresh</button>
+            <div class="stepper">
+              <div class="step-item">
+                <button id="startProductionBtn" class="primary stage-button" type="button">1. Start source check</button>
+              </div>
+              <div class="step-arrow" aria-hidden="true">↓</div>
+              <div class="step-item">
+                <button id="runStage1Btn" type="button">2. Run Stage 1 adaptations</button>
+              </div>
+              <div id="stage2StepArrow" class="step-arrow" aria-hidden="true">↓</div>
+              <div id="stage2Step" class="step-item">
+                <button id="runStage2Btn" type="button">3. Run Stage 2 translations</button>
+              </div>
+              <div id="approveStepArrow" class="step-arrow" aria-hidden="true">↓</div>
+              <div class="step-item">
+                <button id="approveForPublishingBtn" type="button">4. Approve for publishing</button>
+              </div>
             </div>
             <div id="productionChecklist" class="checklist"></div>
           </section>
         </div>
 
         <section class="panel stack">
-          <div class="section-head">
-            <div class="section-copy">
-              <span class="eyebrow">Workflow runs</span>
-              <h2>Execution history</h2>
-            </div>
+          <div class="section-copy">
+            <span class="eyebrow">Readiness</span>
+            <h2>Publishing approval readiness</h2>
+            <p>Use these checks to see whether this campaign can already be approved for publishing.</p>
           </div>
-          <div id="workflowRuns" class="workflow-list"></div>
+          <div id="approvalChecklist" class="checklist"></div>
+          <div class="actions">
+            <a id="publishingLink" class="btn" href="#">Open publishing status</a>
+          </div>
         </section>
+
       `,
       script: `
         const campaignId = ${JSON.stringify(campaignId)};
         let currentCampaign = null;
+        let refreshTimer = null;
 
         function renderCampaignTabs(campaign) {
           document.getElementById('campaignTabs').innerHTML = [
             '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
             '<a class="active" href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
+            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
             '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
           ].join('');
           document.getElementById('campaignBacklinks').innerHTML =
             '<a class="btn" href="/test-ui/campaigns?projectId=' + encodeURIComponent(campaign.projectId) + '">Back to campaigns</a>';
         }
 
-        function renderWorkflowRuns(campaign) {
-          const runs = campaign.workflowRuns || [];
-          document.getElementById('workflowRuns').innerHTML = runs.length === 0
-            ? '<div class="empty-state">No workflow runs yet.</div>'
-            : runs.map((run) => '<article class="workflow-item">' +
-              '<div class="card-head"><strong>' + escapeHtml(toTitle(run.currentStep)) + '</strong>' + renderBadge(run.status) + '</div>' +
-              '<div class="pill-row">' +
-                '<span class="pill">Started ' + escapeHtml(formatDateTime(run.startedAt)) + '</span>' +
-                '<span class="pill">Completed ' + escapeHtml(run.completedAt ? formatDateTime(run.completedAt) : '—') + '</span>' +
-              '</div>' +
-              '<p>' + escapeHtml(run.errorMessage || 'No error message.') + '</p>' +
-            '</article>').join('');
+        function getLatestWorkflowRunByStep(campaign, step) {
+          return [...(campaign.workflowRuns || [])]
+            .filter((run) => run.currentStep === step)
+            .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime())[0] || null;
         }
 
-        function renderChecklist(campaign) {
+        function getSourceCheckVisualState(campaign, activeWorkflowRun) {
+          if (activeWorkflowRun && activeWorkflowRun.currentStep === 'source_check') {
+            return {
+              label: '1. Source check in progress',
+              className: 'stage-button is-running',
+              title: 'Source check is currently running.',
+            };
+          }
+
+          const latestSourceCheckRun = getLatestWorkflowRunByStep(campaign, 'source_check');
+          if (!latestSourceCheckRun) {
+            return {
+              label: '1. Start source check',
+              className: 'primary stage-button',
+              title: '',
+            };
+          }
+
+          if (latestSourceCheckRun.status === 'completed') {
+            return {
+              label: '1. Source check passed',
+              className: 'stage-button is-success',
+              title: 'Source check completed successfully.',
+            };
+          }
+
+          const errorMessage = String(latestSourceCheckRun.errorMessage || '').toLowerCase();
+          if (errorMessage.includes('review')) {
+            return {
+              label: '1. Source check needs review',
+              className: 'stage-button is-warning',
+              title: 'Source check requires review before Stage 1.',
+            };
+          }
+
+          if (errorMessage.includes('blocked')) {
+            return {
+              label: '1. Source check blocked',
+              className: 'stage-button is-danger',
+              title: 'Source check blocked this campaign.',
+            };
+          }
+
+          return {
+            label: '1. Source check failed',
+            className: 'stage-button is-danger',
+            title: latestSourceCheckRun.errorMessage || 'Source check failed.',
+          };
+        }
+
+        function getStage1VisualState(campaign, activeWorkflowRun) {
+          if (activeWorkflowRun && activeWorkflowRun.currentStep === 'stage_1_adaptation') {
+            return {
+              label: '2. Stage 1 in progress',
+              className: 'stage-button is-running',
+              title: 'Stage 1 adaptations are currently running.',
+            };
+          }
+
+          const latestStage1Run = getLatestWorkflowRunByStep(campaign, 'stage_1_adaptation');
+          if (!latestStage1Run) {
+            return {
+              label: '2. Run Stage 1 adaptations',
+              className: 'stage-button',
+              title: '',
+            };
+          }
+
+          if (latestStage1Run.status === 'completed') {
+            return {
+              label: '2. Stage 1 completed',
+              className: 'stage-button is-success',
+              title: 'Stage 1 adaptations completed successfully.',
+            };
+          }
+
+          const hasStage1FailedItems = (campaign.plannedPublications || []).some(
+            (item) => item.status === 'stage_1_failed',
+          );
+
+          if (hasStage1FailedItems || campaign.pendingApprovalCount > 0) {
+            return {
+              label: '2. Stage 1 needs review',
+              className: 'stage-button is-warning',
+              title: 'Stage 1 created issues that need review.',
+            };
+          }
+
+          return {
+            label: '2. Stage 1 failed',
+            className: 'stage-button is-danger',
+            title: latestStage1Run.errorMessage || 'Stage 1 failed.',
+          };
+        }
+
+        function getStage2VisualState(campaign, activeWorkflowRun) {
+          if (activeWorkflowRun && activeWorkflowRun.currentStep === 'stage_2_translation') {
+            return {
+              label: '3. Stage 2 in progress',
+              className: 'stage-button is-running',
+              title: 'Stage 2 translations are currently running.',
+            };
+          }
+
+          const latestStage2Run = getLatestWorkflowRunByStep(campaign, 'stage_2_translation');
+          if (!latestStage2Run) {
+            return {
+              label: '3. Run Stage 2 translations',
+              className: 'stage-button',
+              title: '',
+            };
+          }
+
+          if (latestStage2Run.status === 'completed') {
+            return {
+              label: '3. Stage 2 completed',
+              className: 'stage-button is-success',
+              title: 'Stage 2 translations completed successfully.',
+            };
+          }
+
+          const hasStage2FailedItems = (campaign.plannedPublications || []).some(
+            (item) => item.status === 'stage_2_failed',
+          );
+
+          if (hasStage2FailedItems || campaign.pendingApprovalCount > 0) {
+            return {
+              label: '3. Stage 2 needs review',
+              className: 'stage-button is-warning',
+              title: 'Stage 2 created issues that need review.',
+            };
+          }
+
+          return {
+            label: '3. Stage 2 failed',
+            className: 'stage-button is-danger',
+            title: latestStage2Run.errorMessage || 'Stage 2 failed.',
+          };
+        }
+
+        function renderChecklist(campaign, overview) {
           const planned = campaign.plannedPublications || [];
           const stage1Queue = planned.filter((item) => ['pending', 'adapting', 'stage_1_failed', 'source_blocked'].includes(item.status)).length;
           const stage2Queue = planned.filter((item) => ['translating', 'stage_2_failed'].includes(item.status)).length;
+          const activeWorkflowRun = (campaign.workflowRuns || []).find((run) => run.status === 'running') || null;
+          const stage1RunnableCount = planned.filter((item) => item.status === 'pending').length;
+          const stage2RunnableCount = planned.filter((item) => item.status === 'translating').length;
+          const hasTranslationTargets = planned.some((item) => item.language !== campaign.sourceLanguage);
+          const hasSourceBlocked = planned.some((item) => item.status === 'source_blocked');
+          const allReadyForApproval = planned.every((item) =>
+            ['ready', 'publication_scheduled', 'exported', 'published'].includes(item.status),
+          );
+          const alreadyApproved = Boolean(campaign.finalApprovedAt) || ['approved_for_publishing', 'publishing', 'completed'].includes(campaign.status);
+          const sourceReadyForStage1 =
+            Boolean(campaign.sourceArticleId) &&
+            !['draft', 'source_checking', 'source_needs_review'].includes(campaign.status) &&
+            !hasSourceBlocked;
+          const canStartSourceCheck = Boolean(campaign.sourceArticleId) && !activeWorkflowRun;
+          const canRunStage1 = sourceReadyForStage1 && !activeWorkflowRun && stage1RunnableCount > 0;
+          const canRunStage2 =
+            sourceReadyForStage1 &&
+            !activeWorkflowRun &&
+            stage1RunnableCount === 0 &&
+            stage2RunnableCount > 0;
+          const canApproveForPublishing =
+            !activeWorkflowRun &&
+            campaign.pendingApprovalCount === 0 &&
+            allReadyForApproval &&
+            campaign.status === 'ready_for_final_approval';
+
           document.getElementById('campaignStatus').textContent = toTitle(campaign.status);
           document.getElementById('campaignBadge').innerHTML = renderBadge(campaign.status);
           document.getElementById('sourceAttached').textContent = campaign.sourceArticleId ? 'Yes' : 'No';
@@ -1472,6 +1797,154 @@ export class CampaignTestUiController {
           document.getElementById('attachSourceForm').querySelectorAll('input, textarea, button').forEach((node) => {
             node.disabled = Boolean(campaign.sourceArticleId);
           });
+
+          const startProductionBtn = document.getElementById('startProductionBtn');
+          const runStage1Btn = document.getElementById('runStage1Btn');
+          const runStage2Btn = document.getElementById('runStage2Btn');
+          const stage2Step = document.getElementById('stage2Step');
+          const stage2StepArrow = document.getElementById('stage2StepArrow');
+          const approveStepArrow = document.getElementById('approveStepArrow');
+          const approveForPublishingBtn = document.getElementById('approveForPublishingBtn');
+          const publishingLink = document.getElementById('publishingLink');
+          const sourceCheckVisualState = getSourceCheckVisualState(campaign, activeWorkflowRun);
+          const stage1VisualState = getStage1VisualState(campaign, activeWorkflowRun);
+          const stage2VisualState = getStage2VisualState(campaign, activeWorkflowRun);
+          const approveStepNumber = hasTranslationTargets ? 4 : 3;
+          const sourceCheckCompleted = sourceCheckVisualState.className.includes('is-success');
+          const stage1Completed = stage1VisualState.className.includes('is-success');
+          const stage2Completed = stage2VisualState.className.includes('is-success');
+
+          startProductionBtn.disabled = !canStartSourceCheck || sourceCheckCompleted;
+          runStage1Btn.disabled = !canRunStage1 || stage1Completed;
+          runStage2Btn.disabled = !canRunStage2 || stage2Completed;
+          approveForPublishingBtn.disabled = !canApproveForPublishing;
+
+          startProductionBtn.className = sourceCheckVisualState.className;
+          startProductionBtn.textContent = sourceCheckVisualState.label;
+          runStage1Btn.className = stage1VisualState.className;
+          runStage1Btn.textContent = stage1VisualState.label;
+          runStage2Btn.className = stage2VisualState.className;
+          runStage2Btn.textContent = stage2VisualState.label;
+          approveForPublishingBtn.textContent = alreadyApproved
+            ? approveStepNumber + '. Publishing already approved'
+            : approveStepNumber + '. Approve for publishing';
+
+          startProductionBtn.title = canStartSourceCheck
+            ? sourceCheckVisualState.title
+            : activeWorkflowRun && activeWorkflowRun.currentStep === 'source_check'
+              ? sourceCheckVisualState.title
+              : campaign.sourceArticleId
+                ? 'Wait until the current workflow run finishes.'
+                : 'Attach source before source check.';
+          runStage1Btn.title = canRunStage1
+            ? stage1VisualState.title
+            : activeWorkflowRun
+              ? stage1VisualState.title || 'Wait until the current workflow run finishes.'
+              : hasSourceBlocked || campaign.status === 'source_needs_review'
+                ? 'Resolve the source issue before Stage 1.'
+                : stage1RunnableCount === 0
+                  ? 'Stage 1 has no pending publications to process.'
+                  : 'Complete source check before Stage 1.';
+          runStage2Btn.title = canRunStage2
+            ? stage2VisualState.title
+            : activeWorkflowRun
+              ? stage2VisualState.title || 'Wait until the current workflow run finishes.'
+              : !hasTranslationTargets
+                ? ''
+                : stage1RunnableCount > 0
+                ? 'Complete Stage 1 before Stage 2.'
+                : stage2RunnableCount === 0
+                  ? 'Stage 2 has no translations waiting to run.'
+                  : 'Stage 2 is still locked.';
+          approveForPublishingBtn.title = canApproveForPublishing
+            ? ''
+            : alreadyApproved
+              ? 'Publishing has already been approved for this campaign.'
+              : activeWorkflowRun
+                ? 'Wait until the current workflow run finishes.'
+                : campaign.pendingApprovalCount > 0
+                  ? 'Resolve pending inbox items before approving for publishing.'
+                  : !allReadyForApproval
+                    ? 'Some planned publications are still in production or blocked.'
+                    : 'Campaign is not yet in ready_for_final_approval status.';
+
+          if (hasTranslationTargets) {
+            stage2Step.style.display = '';
+            stage2StepArrow.style.display = '';
+            approveStepArrow.style.display = '';
+            runStage2Btn.hidden = false;
+            stage2Step.hidden = false;
+            stage2StepArrow.hidden = false;
+            approveStepArrow.hidden = false;
+          } else {
+            stage2Step.style.display = 'none';
+            stage2StepArrow.style.display = '';
+            approveStepArrow.style.display = 'none';
+            stage2Step.hidden = true;
+            stage2StepArrow.hidden = false;
+            approveStepArrow.hidden = true;
+          }
+
+          publishingLink.href = '/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id);
+
+          const approvalChecks = [
+            {
+              label: 'Pending inbox items',
+              ok: campaign.pendingApprovalCount === 0,
+              text: campaign.pendingApprovalCount === 0
+                ? 'Inbox is clear.'
+                : campaign.pendingApprovalCount + ' item(s) still need review.',
+            },
+            {
+              label: 'Planned publication statuses',
+              ok: allReadyForApproval,
+              text: allReadyForApproval
+                ? 'Every planned publication is already ready, scheduled or terminal.'
+                : 'Some planned publications are still in production or blocked.',
+            },
+            {
+              label: 'Campaign status',
+              ok: ['ready_for_final_approval', 'approved_for_publishing', 'publishing', 'completed'].includes(campaign.status),
+              text: 'Current status: ' + campaign.status,
+            },
+            {
+              label: 'Final approval state',
+              ok: canApproveForPublishing || alreadyApproved,
+              text: alreadyApproved
+                ? 'Publishing approval has already been granted.'
+                : canApproveForPublishing
+                  ? 'Campaign can now be approved for publishing.'
+                  : 'Campaign is not ready for publishing approval yet.',
+            },
+            {
+              label: 'Publishing linkage',
+              ok: true,
+              text: 'Current overview counters: ' + JSON.stringify((overview && overview.metrics) || {}),
+            },
+          ];
+
+          document.getElementById('approvalChecklist').innerHTML = approvalChecks.map((item) =>
+            '<article class="check-item ' + (item.ok ? 'ok' : 'bad') + '">' +
+              '<label>' + escapeHtml(item.label) + '</label>' +
+              '<strong>' + escapeHtml(item.text) + '</strong>' +
+            '</article>'
+          ).join('');
+        }
+
+        function scheduleAutoRefresh(campaign) {
+          if (refreshTimer) {
+            clearTimeout(refreshTimer);
+            refreshTimer = null;
+          }
+
+          const hasActiveWorkflowRun = (campaign.workflowRuns || []).some((run) => run.status === 'running');
+          if (!hasActiveWorkflowRun) {
+            return;
+          }
+
+          refreshTimer = setTimeout(() => {
+            loadPage().catch((error) => setOutput(String(error)));
+          }, 4000);
         }
 
         async function loadPage() {
@@ -1480,11 +1953,15 @@ export class CampaignTestUiController {
             return;
           }
 
-          currentCampaign = await request('/campaigns/' + encodeURIComponent(campaignId), undefined, { renderResponse: false });
+          const [campaign, overview] = await Promise.all([
+            request('/campaigns/' + encodeURIComponent(campaignId), undefined, { renderResponse: false }),
+            request('/campaigns/' + encodeURIComponent(campaignId) + '/publishing-overview', undefined, { renderResponse: false }),
+          ]);
+          currentCampaign = campaign;
           renderCampaignTabs(currentCampaign);
-          renderChecklist(currentCampaign);
-          renderWorkflowRuns(currentCampaign);
-          setOutput(currentCampaign);
+          renderChecklist(currentCampaign, overview);
+          scheduleAutoRefresh(currentCampaign);
+          setOutput({ campaign: currentCampaign, overview });
         }
 
         async function executeAction(url, method, body) {
@@ -1523,7 +2000,161 @@ export class CampaignTestUiController {
           document.getElementById('runStage2Btn').addEventListener('click', async () => {
             await executeAction('/campaigns/' + encodeURIComponent(campaignId) + '/stage-2/run', 'POST');
           });
+
+          document.getElementById('approveForPublishingBtn').addEventListener('click', async () => {
+            await request(
+              '/campaigns/' + encodeURIComponent(campaignId) + '/final-approval',
+              { method: 'POST' },
+            );
+            window.location.href =
+              '/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaignId);
+          });
         });
+
+        loadPage().catch((error) => setOutput(String(error)));
+      `,
+    });
+  }
+
+  @Get('campaign-execution-history')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  renderCampaignExecutionHistoryPage(@Query('campaignId') campaignId = ''): string {
+    return renderCampaignUiPage({
+      title: 'Marketing Service - Execution History',
+      eyebrow: 'History',
+      heading: 'Execution history',
+      summary:
+        'Full workflow run history for this campaign: source check, Stage 1 and Stage 2 attempts with timestamps and errors.',
+      body: `
+        <section class="panel stack">
+          <div class="nav-row">
+            <div class="tabs" id="campaignTabs"></div>
+            <div class="actions" id="campaignBacklinks"></div>
+          </div>
+        </section>
+
+        <section class="metric-grid">
+          <article class="metric">
+            <span class="eyebrow">Campaign</span>
+            <strong id="campaignStatus">—</strong>
+            <div id="campaignBadge"></div>
+          </article>
+          <article class="metric">
+            <span class="eyebrow">Workflow runs</span>
+            <strong id="workflowCount">0</strong>
+            <p>Total source and stage execution attempts.</p>
+          </article>
+          <article class="metric">
+            <span class="eyebrow">Completed</span>
+            <strong id="completedCount">0</strong>
+            <p>Runs that reached a completed state.</p>
+          </article>
+          <article class="metric">
+            <span class="eyebrow">Failed</span>
+            <strong id="failedCount">0</strong>
+            <p>Runs that ended with an error or blocking outcome.</p>
+          </article>
+        </section>
+
+        <section class="panel stack">
+          <div class="section-head">
+            <div class="section-copy">
+              <span class="eyebrow">Campaign</span>
+              <h2 id="campaignName">Loading campaign</h2>
+              <p id="campaignMeta">Loading workflow timeline…</p>
+            </div>
+            <div class="actions">
+              <button onclick="loadPage()">Refresh</button>
+            </div>
+          </div>
+          <div id="workflowRuns" class="workflow-list"></div>
+        </section>
+      `,
+      script: `
+        const campaignId = ${JSON.stringify(campaignId)};
+
+        function renderCampaignTabs(campaign) {
+          document.getElementById('campaignTabs').innerHTML = [
+            '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.campaignId) + '">Detail</a>',
+            '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.campaignId) + '">Production</a>',
+            '<a href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.campaignId) + '">Inbox</a>',
+            '<a class="active" href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.campaignId) + '">Execution history</a>',
+            '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.campaignId) + '">Publishing</a>',
+          ].join('');
+          document.getElementById('campaignBacklinks').innerHTML =
+            '<a class="btn" href="/test-ui/campaigns?projectId=' + encodeURIComponent(campaign.projectId) + '">Back to campaigns</a>';
+        }
+
+        function attemptTone(result) {
+          if (result === 'passed') {
+            return 'ok';
+          }
+          if (result === 'warning') {
+            return 'warn';
+          }
+          return 'bad';
+        }
+
+        function renderWorkflowRuns(campaign) {
+          const runs = campaign.workflowRuns || [];
+          const completedCount = runs.filter((run) => run.status === 'completed').length;
+          const failedCount = runs.filter((run) => run.status === 'failed').length;
+
+          document.getElementById('campaignName').textContent = campaign.campaignName;
+          document.getElementById('campaignMeta').textContent =
+            'Campaign status: ' + campaign.campaignStatus + ' · source ' + String(campaign.sourceLanguage || '').toUpperCase();
+          document.getElementById('campaignStatus').textContent = toTitle(campaign.campaignStatus);
+          document.getElementById('campaignBadge').innerHTML = renderBadge(campaign.campaignStatus);
+          document.getElementById('workflowCount').textContent = String(runs.length);
+          document.getElementById('completedCount').textContent = String(completedCount);
+          document.getElementById('failedCount').textContent = String(failedCount);
+
+          const root = document.getElementById('workflowRuns');
+          root.innerHTML = runs.length === 0
+            ? '<div class="empty-state">No workflow runs yet. Source check will create the first one.</div>'
+            : runs.map((run) => '<article class="workflow-item">' +
+              '<div class="card-head"><strong>' + escapeHtml(toTitle(run.currentStep)) + '</strong>' + renderBadge(run.status) + '</div>' +
+              '<div class="pill-row">' +
+                '<span class="pill mono">' + escapeHtml(run.id) + '</span>' +
+                '<span class="pill">Started ' + escapeHtml(formatDateTime(run.startedAt)) + '</span>' +
+                '<span class="pill">Completed ' + escapeHtml(run.completedAt ? formatDateTime(run.completedAt) : '—') + '</span>' +
+              '</div>' +
+              '<p>' + escapeHtml(run.errorMessage || 'No error message.') + '</p>' +
+              (run.attempts && run.attempts.length > 0
+                ? '<div class="stack">' +
+                    '<span class="eyebrow">Attempts</span>' +
+                    '<div class="checklist">' +
+                      run.attempts.map((attempt) => '<article class="check-item ' + attemptTone(attempt.result) + '">' +
+                        '<div class="card-head">' +
+                          '<strong>Attempt ' + escapeHtml(String(attempt.attemptNumber)) + '</strong>' +
+                          renderBadge(attempt.result) +
+                        '</div>' +
+                        '<div class="pill-row">' +
+                          (attempt.plannedPublicationLabel
+                            ? '<span class="pill">' + escapeHtml(attempt.plannedPublicationLabel) + '</span>'
+                            : '<span class="pill">Source validation</span>') +
+                          '<span class="pill">Logged ' + escapeHtml(formatDateTime(attempt.createdAt)) + '</span>' +
+                          '<span class="pill">Reasons ' + escapeHtml(String(attempt.reasonCount)) + '</span>' +
+                        '</div>' +
+                        '<p>' + escapeHtml(attempt.summary || 'No summary.') + '</p>' +
+                      '</article>').join('') +
+                    '</div>' +
+                  '</div>'
+                : '<p class="soft">No per-attempt quality logs were recorded for this run.</p>') +
+            '</article>').join('');
+        }
+
+        async function loadPage() {
+          if (!campaignId) {
+            document.getElementById('campaignName').textContent = 'Missing campaignId';
+            return;
+          }
+
+          const campaign = await request('/campaigns/' + encodeURIComponent(campaignId) + '/execution-history', undefined, { renderResponse: false });
+          renderCampaignTabs(campaign);
+          renderWorkflowRuns(campaign);
+          setOutput(campaign);
+        }
 
         loadPage().catch((error) => setOutput(String(error)));
       `,
@@ -1591,22 +2222,24 @@ export class CampaignTestUiController {
             '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
             '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a class="active" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
+            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
             '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
           ].join('');
           document.getElementById('campaignBacklinks').innerHTML =
             '<a class="btn" href="/test-ui/campaigns?projectId=' + encodeURIComponent(campaign.projectId) + '">Back to campaigns</a>';
         }
 
+        function normalizeOptionalFieldValue(value) {
+          const normalized = String(value ?? '').trim();
+          return normalized ? normalized : null;
+        }
+
         function sourceIssueForm(campaign, item) {
-          return '<form class="stack" onsubmit="return submitSourceResolution(event, ' +
-            JSON.stringify(campaign.id) + ', ' +
-            JSON.stringify(item.id) +
-          ')">' +
+          return '<form class="stack source-resolution-form" data-campaign-id="' + escapeHtml(campaign.id) + '" data-approval-item-id="' + escapeHtml(item.id) + '">' +
             '<div class="form-grid">' +
               '<label class="field">' +
                 'Action' +
-                '<select name="action">' +
+                '<select name="resolutionAction">' +
                   '<option value="accept_fix">accept_fix</option>' +
                   '<option value="manual_edit">manual_edit</option>' +
                   '<option value="ignore">ignore</option>' +
@@ -1675,17 +2308,24 @@ export class CampaignTestUiController {
                 : '<p class="soft">Manual UI resolution exists only for source issues in this MVP. Other exceptions are visible here for operator awareness.</p>') +
             '</article>';
           }).join('');
+
+          root.querySelectorAll('.source-resolution-form').forEach((form) => {
+            form.addEventListener('submit', submitSourceResolution);
+          });
         }
 
-        async function submitSourceResolution(event, campaignIdValue, approvalItemId) {
+        async function submitSourceResolution(event) {
           event.preventDefault();
           const form = event.currentTarget;
+          const campaignIdValue = form.dataset.campaignId;
+          const approvalItemId = form.dataset.approvalItemId;
+          const formData = new FormData(form);
           const payload = {
             approvalItemId,
-            action: form.action.value,
-            content: form.content.value || null,
-            language: form.language.value || null,
-            note: form.note.value || null,
+            action: String(formData.get('resolutionAction') || ''),
+            content: normalizeOptionalFieldValue(formData.get('content')),
+            language: normalizeOptionalFieldValue(formData.get('language')),
+            note: normalizeOptionalFieldValue(formData.get('note')),
           };
 
           await request(
@@ -1770,7 +2410,7 @@ export class CampaignTestUiController {
             '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
             '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a class="active" href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
+            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
             '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
           ].join('');
           document.getElementById('campaignBacklinks').innerHTML =
@@ -1930,7 +2570,7 @@ export class CampaignTestUiController {
             '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
             '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
             '<a href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a href="/test-ui/campaign-final-approval?campaignId=' + encodeURIComponent(campaign.id) + '">Final approval</a>',
+            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
             '<a class="active" href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
           ].join('');
           document.getElementById('campaignBacklinks').innerHTML =

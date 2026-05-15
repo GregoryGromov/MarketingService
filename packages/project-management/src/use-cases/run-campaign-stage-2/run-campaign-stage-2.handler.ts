@@ -4,13 +4,12 @@ import type {
 } from '@marketing-service/editorial';
 import { Translation, TranslationVersion } from '@marketing-service/editorial';
 import type { DomainEvent } from '@marketing-service/shared';
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { EventBus } from '@nestjs/cqrs';
 import { ApprovalItem } from '../../domain/approval-item.aggregate.js';
 import { CampaignArtifact } from '../../domain/campaign-artifact.entity.js';
 import type { PlannedPublication } from '../../domain/planned-publication.entity.js';
 import { QualityCheckResult } from '../../domain/quality-check-result.entity.js';
-import { WorkflowRun } from '../../domain/workflow-run.aggregate.js';
 import type { BrandMemory } from '../../domain/project.aggregate.js';
 import {
   AiGatewayPort,
@@ -21,7 +20,6 @@ import {
   type AiQualityCheckResult,
 } from '../../ports/ai-gateway.port.js';
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
-import { RunCampaignStage2Command } from './run-campaign-stage-2.command.js';
 
 const MAX_STAGE_2_ATTEMPTS = 5;
 const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
@@ -145,10 +143,10 @@ function ensureTranslationApproved(translation: Translation): void {
   translation.approve();
 }
 
-@CommandHandler(RunCampaignStage2Command)
-export class RunCampaignStage2Handler
-  implements ICommandHandler<RunCampaignStage2Command, RunCampaignStage2Result>
-{
+@Injectable()
+export class RunCampaignStage2Executor {
+  private readonly logger = new Logger(RunCampaignStage2Executor.name);
+
   constructor(
     @Inject(CampaignFlowTransactionPort)
     private readonly transaction: CampaignFlowTransactionPort,
@@ -157,14 +155,18 @@ export class RunCampaignStage2Handler
     private readonly eventBus: EventBus,
   ) {}
 
-  async execute(command: RunCampaignStage2Command): Promise<RunCampaignStage2Result> {
-    let workflowRun!: WorkflowRun;
+  async execute(
+    campaignId: string,
+    workflowRunId: string,
+  ): Promise<RunCampaignStage2Result> {
     let snapshot!: Stage2Snapshot;
     let inProgressPlannedPublicationId: string | null = null;
 
-    try {
-      const initialEvents: DomainEvent[] = [];
+    this.logger.log(
+      `Stage 2 started: campaign=${campaignId} workflowRun=${workflowRunId}`,
+    );
 
+    try {
       await this.transaction.run(
         async ({
           campaignRepository,
@@ -172,20 +174,28 @@ export class RunCampaignStage2Handler
           projectRepository,
           workflowRunRepository,
         }) => {
-          const campaign = await campaignRepository.findById(command.campaignId as never);
+          const campaign = await campaignRepository.findById(campaignId as never);
           if (!campaign) {
-            throw new Error(`Campaign ${command.campaignId} not found`);
+            throw new Error(`Campaign ${campaignId} not found`);
           }
 
           if (TERMINAL_CAMPAIGN_STATUSES.has(campaign.status)) {
             throw new Error(
-              `Campaign ${command.campaignId} is not ready for Stage 2 from status "${campaign.status}"`,
+              `Campaign ${campaignId} is not ready for Stage 2 from status "${campaign.status}"`,
             );
           }
 
-          const activeRun = await workflowRunRepository.findActiveByCampaignId(campaign.id);
-          if (activeRun) {
-            throw new Error(`Campaign ${command.campaignId} already has an active workflow run`);
+          const workflowRun = await workflowRunRepository.findById(workflowRunId as never);
+          if (!workflowRun) {
+            throw new Error(`Workflow run ${workflowRunId} not found`);
+          }
+
+          if (workflowRun.campaignId !== campaign.id) {
+            throw new Error(`Workflow run ${workflowRunId} does not belong to campaign ${campaignId}`);
+          }
+
+          if (workflowRun.status !== 'running') {
+            throw new Error(`Workflow run ${workflowRunId} is not running`);
           }
 
           const project = await projectRepository.findById(campaign.projectId);
@@ -198,16 +208,8 @@ export class RunCampaignStage2Handler
           ).sort((left, right) => left.scheduledFor.getTime() - right.scheduledFor.getTime());
 
           if (translatingPublications.length === 0) {
-            throw new Error(`Campaign ${command.campaignId} has no planned publications waiting for Stage 2`);
+            throw new Error(`Campaign ${campaignId} has no planned publications waiting for Stage 2`);
           }
-
-          workflowRun = WorkflowRun.create({
-            campaignId: campaign.id,
-            currentStep: 'stage_2_translation',
-          });
-
-          await workflowRunRepository.save(workflowRun);
-          initialEvents.push(...workflowRun.pullEvents());
 
           snapshot = {
             campaignId: campaign.id,
@@ -219,15 +221,19 @@ export class RunCampaignStage2Handler
         },
       );
 
-      this.eventBus.publishAll(initialEvents);
-
       const items: RunCampaignStage2ItemResult[] = [];
 
       for (const plannedPublicationId of snapshot.translatingPlannedPublicationIds) {
         inProgressPlannedPublicationId = plannedPublicationId;
         const publicationContext = await this.preparePlannedPublication(plannedPublicationId, snapshot);
+        this.logger.log(
+          `Stage 2 publication started: campaign=${snapshot.campaignId} workflowRun=${workflowRunId} plannedPublication=${publicationContext.plannedPublicationId} channel=${publicationContext.channel} language=${publicationContext.targetLanguage} type=${publicationContext.publicationType} style=${publicationContext.style}`,
+        );
         const itemResult = await this.runTranslationLoop(publicationContext, snapshot);
         items.push(itemResult);
+        this.logger.log(
+          `Stage 2 publication completed: campaign=${snapshot.campaignId} workflowRun=${workflowRunId} plannedPublication=${itemResult.plannedPublicationId} status=${itemResult.status} attempts=${itemResult.attempts} approvalItem=${itemResult.approvalItemId ?? 'none'}`,
+        );
         inProgressPlannedPublicationId = null;
       }
 
@@ -240,9 +246,9 @@ export class RunCampaignStage2Handler
             throw new Error(`Campaign ${snapshot.campaignId} not found`);
           }
 
-          const persistedWorkflowRun = await workflowRunRepository.findById(workflowRun.id);
+          const persistedWorkflowRun = await workflowRunRepository.findById(workflowRunId as never);
           if (!persistedWorkflowRun) {
-            throw new Error(`Workflow run ${workflowRun.id} not found`);
+            throw new Error(`Workflow run ${workflowRunId} not found`);
           }
 
           const plannedPublications = await plannedPublicationRepository.findByCampaignId(campaign.id);
@@ -278,18 +284,22 @@ export class RunCampaignStage2Handler
         },
       );
 
+      this.logger.log(
+        `Stage 2 completed: campaign=${snapshot.campaignId} workflowRun=${workflowRunId} outcome=${outcome} publications=${items.length} ready=${items.filter((item) => item.status === 'ready').length} failed=${items.filter((item) => item.status === 'stage_2_failed').length}`,
+      );
+
       return {
-        workflowRunId: workflowRun.id,
+        workflowRunId,
         campaignId: snapshot.campaignId,
         outcome,
         items,
       };
     } catch (error) {
-      if (workflowRun && snapshot) {
+      if (snapshot) {
         await this.transaction.run(
           async ({ campaignRepository, plannedPublicationRepository, workflowRunRepository }) => {
             const campaign = await campaignRepository.findById(snapshot.campaignId as never);
-            const persistedWorkflowRun = await workflowRunRepository.findById(workflowRun.id);
+            const persistedWorkflowRun = await workflowRunRepository.findById(workflowRunId as never);
 
             if (inProgressPlannedPublicationId) {
               const plannedPublication = await plannedPublicationRepository.findById(
@@ -317,6 +327,10 @@ export class RunCampaignStage2Handler
         );
       }
 
+      this.logger.error(
+        error instanceof Error ? error.message : String(error),
+        `Stage 2 failed: campaign=${campaignId} workflowRun=${workflowRunId} plannedPublication=${inProgressPlannedPublicationId ?? 'none'}`,
+      );
       throw error;
     }
   }
@@ -458,6 +472,10 @@ export class RunCampaignStage2Handler
         await plannedPublicationRepository.save(plannedPublication);
       });
 
+      this.logger.log(
+        `Stage 2 skipped: campaign=${snapshot.campaignId} plannedPublication=${publicationContext.plannedPublicationId} reason=same_language language=${publicationContext.targetLanguage}`,
+      );
+
       return {
         plannedPublicationId: publicationContext.plannedPublicationId,
         translationId: publicationContext.translationId,
@@ -547,6 +565,10 @@ export class RunCampaignStage2Handler
       });
 
       lastQualityResult = qualityResult;
+
+      this.logger.log(
+        `Stage 2 attempt result: campaign=${snapshot.campaignId} plannedPublication=${publicationContext.plannedPublicationId} attempt=${attempt}/${MAX_STAGE_2_ATTEMPTS} quality=${qualityResult.outcome} reasons=${qualityResult.reasons.length}`,
+      );
 
       const finalStatus = await this.persistQualityCheckOutcome(
         publicationContext,

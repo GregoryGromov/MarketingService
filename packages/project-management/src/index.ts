@@ -107,6 +107,15 @@ export {
   type ValidateSourceLongreadResult,
 } from './ports/ai-gateway.port.js';
 export {
+  CAMPAIGN_PRODUCTION_QUEUE,
+  CAMPAIGN_SOURCE_CHECK_JOB,
+  CAMPAIGN_STAGE_1_JOB,
+  CAMPAIGN_STAGE_2_JOB,
+  CampaignProductionJobPort,
+  type CampaignProductionJobPayload,
+  type EnqueuedCampaignProductionJob,
+} from './ports/campaign-production-job.port.js';
+export {
   CampaignPublishingPort,
   type CampaignExportPlanRecord,
   type CampaignScheduledPublicationRecord,
@@ -122,7 +131,10 @@ export { ApproveCampaignForPublishingCommand } from './use-cases/approve-campaig
 export type { ApproveCampaignForPublishingResult } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.handler.js';
 export { AttachCampaignSourceCommand } from './use-cases/attach-campaign-source/attach-campaign-source.command.js';
 export type { AttachCampaignSourceResult } from './use-cases/attach-campaign-source/attach-campaign-source.handler.js';
-export { CreateCampaignCommand } from './use-cases/create-campaign/create-campaign.command.js';
+export {
+  CreateCampaignCommand,
+  type CreateCampaignPlannedPublicationOverride,
+} from './use-cases/create-campaign/create-campaign.command.js';
 export type { CreateCampaignResult } from './use-cases/create-campaign/create-campaign.handler.js';
 export { CreateProjectCommand } from './use-cases/create-project/create-project.command.js';
 export { CreateProjectMarkerCommand } from './use-cases/create-project-marker/create-project-marker.command.js';
@@ -135,6 +147,12 @@ export type {
 export { GetCampaignApprovalInboxQuery } from './use-cases/get-campaign-approval-inbox/get-campaign-approval-inbox.query.js';
 export type { GetCampaignDetailResult } from './use-cases/get-campaign-detail/get-campaign-detail.handler.js';
 export { GetCampaignDetailQuery } from './use-cases/get-campaign-detail/get-campaign-detail.query.js';
+export type {
+  CampaignExecutionHistoryAttemptResult,
+  CampaignExecutionHistoryWorkflowRunResult,
+  GetCampaignExecutionHistoryResult,
+} from './use-cases/get-campaign-execution-history/get-campaign-execution-history.handler.js';
+export { GetCampaignExecutionHistoryQuery } from './use-cases/get-campaign-execution-history/get-campaign-execution-history.query.js';
 export type {
   CampaignPublishingOverviewItemResult,
   CampaignPublishingOverviewMetrics,
@@ -159,16 +177,22 @@ export { ListProjectsQuery } from './use-cases/list-projects/list-projects.query
 export { ReviewSourceIssueCommand } from './use-cases/review-source-issue/review-source-issue.command.js';
 export type { ReviewSourceIssueResult } from './use-cases/review-source-issue/review-source-issue.handler.js';
 export { RunCampaignStage1Command } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.command.js';
+export { RunCampaignStage1Executor } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.handler.js';
 export type {
   RunCampaignStage1ItemResult,
   RunCampaignStage1Result,
 } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.handler.js';
+export type { RunCampaignStage1QueuedResult } from './use-cases/run-campaign-stage-1/run-campaign-stage-1.enqueue-handler.js';
 export { RunCampaignStage2Command } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.command.js';
+export { RunCampaignStage2Executor } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.handler.js';
 export type {
   RunCampaignStage2ItemResult,
   RunCampaignStage2Result,
 } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.handler.js';
+export type { RunCampaignStage2QueuedResult } from './use-cases/run-campaign-stage-2/run-campaign-stage-2.enqueue-handler.js';
 export { StartCampaignProductionCommand } from './use-cases/start-campaign-production/start-campaign-production.command.js';
 export type { StartCampaignProductionResult } from './use-cases/start-campaign-production/start-campaign-production.handler.js';
+export { StartCampaignProductionExecutor } from './use-cases/start-campaign-production/start-campaign-production.executor.js';
+export type { StartCampaignProductionExecutionResult } from './use-cases/start-campaign-production/start-campaign-production.executor.js';
 export { UpdateProjectBrandMemoryCommand } from './use-cases/update-project-brand-memory/update-project-brand-memory.command.js';
 export type { UpdateProjectBrandMemoryResult } from './use-cases/update-project-brand-memory/update-project-brand-memory.handler.js';
