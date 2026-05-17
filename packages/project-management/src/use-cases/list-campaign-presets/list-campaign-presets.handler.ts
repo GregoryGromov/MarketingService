@@ -38,10 +38,13 @@ export class ListCampaignPresetsHandler
     private readonly campaignPresetRepository: CampaignPresetRepository,
   ) {}
 
-  async execute(): Promise<ListCampaignPresetsResultItem[]> {
-    const presets = await this.campaignPresetRepository.findActiveSystemPresets();
+  async execute(query: ListCampaignPresetsQuery): Promise<ListCampaignPresetsResultItem[]> {
+    const presets = await this.campaignPresetRepository.findAll();
+    const visiblePresets = query.includeInactive
+      ? presets
+      : presets.filter((preset) => preset.isActive);
 
-    return [...presets]
+    return [...visiblePresets]
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((preset) => ({
         id: preset.id,

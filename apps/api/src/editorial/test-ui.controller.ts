@@ -397,6 +397,60 @@ export class TestUiController {
         margin-top: 4px;
         background: rgba(255, 255, 255, 0.5);
       }
+      .project-actions {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .project-menu {
+        position: relative;
+      }
+      .project-menu summary {
+        list-style: none;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.5);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+      }
+      .project-menu summary::-webkit-details-marker {
+        display: none;
+      }
+      .project-menu-popover {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 140px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 18px 40px rgba(18, 18, 18, 0.12);
+        display: none;
+        z-index: 2;
+      }
+      .project-menu[open] .project-menu-popover {
+        display: grid;
+      }
+      .project-menu-item {
+        width: 100%;
+        justify-content: flex-start;
+        white-space: nowrap;
+      }
+      .project-menu-item.danger {
+        color: var(--danger);
+        border-color: rgba(180, 35, 24, 0.18);
+        background: rgba(180, 35, 24, 0.08);
+      }
       .empty {
         padding: 18px 0;
         color: var(--muted);
@@ -582,6 +636,38 @@ ${renderDevConsoleStyles()}
         }
       }
 
+      async function deleteProject(event, projectId) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const menu = event.currentTarget.closest('details');
+        if (menu) {
+          menu.open = false;
+        }
+
+        const project = currentProjects.find((item) => item.id === projectId);
+        const projectName = project?.name || projectId;
+
+        const confirmed = window.confirm(
+          'Delete project "' + projectName + '" and all related data? This cannot be undone.'
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        document.getElementById('error').textContent = '';
+        try {
+          await request('/projects/' + encodeURIComponent(projectId), {
+            method: 'DELETE',
+          });
+          await loadProjects();
+        } catch (err) {
+          document.getElementById('error').textContent =
+            err instanceof Error ? err.message : String(err);
+        }
+      }
+
       async function loadProjects() {
         document.getElementById('error').textContent = '';
         const projects = await request('/projects');
@@ -611,15 +697,29 @@ ${renderDevConsoleStyles()}
         root.innerHTML = currentProjects.map((project) => {
           const articleCount = currentArticleCounts.get(project.id) || 0;
           return \`
-            <a class="project-card project-link" href="/test-ui/project?projectId=\${escapeHtml(project.id)}">
+            <article class="project-card">
               <div class="project-row">
                 <div>
                   <h3>\${escapeHtml(project.name)}</h3>
                   <div class="project-meta">Articles: \${escapeHtml(String(articleCount))}</div>
                 </div>
-                <span class="btn project-open">Open project</span>
+                <div class="project-actions">
+                  <details class="project-menu">
+                    <summary aria-label="Project actions">⋯</summary>
+                    <div class="project-menu-popover">
+                      <button
+                        type="button"
+                        class="btn project-menu-item danger"
+                        onclick="deleteProject(event, '\${escapeHtml(project.id)}')"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
+                  <a class="btn project-open" href="/test-ui/project?projectId=\${escapeHtml(project.id)}">Open project</a>
+                </div>
               </div>
-            </a>
+            </article>
           \`;
         }).join('');
       }
@@ -728,6 +828,15 @@ ${renderDevConsoleScript()}
       }
       button:hover, a.btn:hover {
         background: rgba(255, 255, 255, 0.56);
+      }
+      a.btn.marker-linked {
+        border-color: var(--marker-border);
+        background: var(--marker-bg);
+        color: var(--marker-text);
+      }
+      a.btn.marker-linked:hover {
+        background: var(--marker-bg);
+        transform: translateY(-1px);
       }
       .hero-copy,
       .section-copy {
@@ -1276,8 +1385,9 @@ ${renderDevConsoleStyles()}
           </div>
           <div class="hero-actions">
             <a class="btn" href="/test-ui">All projects</a>
-            <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Campaigns</a>
-            <a class="btn" id="newArticleBtn" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
+            <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand memory</a>
+            <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
+            <a class="btn" id="createCampaignBtn" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
           </div>
         </div>
       </section>
@@ -1312,8 +1422,8 @@ ${renderDevConsoleStyles()}
         <div class="week-header"></div>
         <div class="calendar-switch-row">
           <div class="calendar-switch">
-            <button id="postsModeBtn" class="is-active" onclick="setCalendarMode('posts')">Posts</button>
-            <button id="markersModeBtn" onclick="setCalendarMode('markers')">Markers</button>
+            <button id="postsModeBtn" class="is-active" onclick="setCalendarMode('posts')">Publications</button>
+            <button id="markersModeBtn" onclick="setCalendarMode('markers')">Plans</button>
           </div>
         </div>
         <div class="schedule-shell">
@@ -1391,6 +1501,7 @@ ${renderDevConsoleStyles()}
         { id: 'channel_telegram', label: 'Telegram', hint: 'Adaptation' },
         { id: 'channel_x', label: 'X', hint: 'Adaptation' },
         { id: 'channel_discord', label: 'Discord', hint: 'Adaptation' },
+        { id: 'channel_blog', label: 'Blog', hint: 'Adaptation' },
       ];
       const articleColorThemes = [
         { bg: '#eaf0ff', border: '#cfdbff', text: '#173b93', time: '#35507d' },
@@ -1501,9 +1612,31 @@ ${renderDevConsoleStyles()}
 
       function renderProjectHero() {
         const projectName = currentProject?.name || currentProjectId;
+        const createCampaignBtn = document.getElementById('createCampaignBtn');
+        const activeMarker = markerById(activeMarkerId);
+        const hasMarkerPlacements = activeMarker
+          ? currentProjectMarkerPlacements.some((placement) => placement.markerId === activeMarker.id)
+          : false;
+        const createCampaignUrl = '/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) +
+          (activeMarker && hasMarkerPlacements
+            ? '&markerId=' + encodeURIComponent(activeMarker.id)
+            : '');
 
         document.title = 'Marketing Service - ' + projectName;
         document.getElementById('projectName').textContent = projectName;
+        if (createCampaignBtn) {
+          createCampaignBtn.setAttribute('href', createCampaignUrl);
+          createCampaignBtn.classList.toggle('marker-linked', Boolean(activeMarker));
+          if (activeMarker) {
+            createCampaignBtn.style.setProperty('--marker-bg', activeMarker.colorBg);
+            createCampaignBtn.style.setProperty('--marker-border', activeMarker.colorBorder);
+            createCampaignBtn.style.setProperty('--marker-text', activeMarker.colorText);
+          } else {
+            createCampaignBtn.style.removeProperty('--marker-bg');
+            createCampaignBtn.style.removeProperty('--marker-border');
+            createCampaignBtn.style.removeProperty('--marker-text');
+          }
+        }
       }
 
       function startOfWeek(date) {
@@ -1611,6 +1744,7 @@ ${renderDevConsoleStyles()}
           return;
         }
         activeMarkerId = activeMarkerId === markerId ? null : markerId;
+        renderProjectHero();
         renderMarkers();
         renderWeekDashboard();
       }
@@ -1757,8 +1891,10 @@ ${renderDevConsoleStyles()}
       }
 
       function handleCellPress(channelId, dayKey) {
-        if (calendarMode === 'markers' && activeMarkerId) {
-          openMarkerPlacementModal(null, channelId, dayKey);
+        if (calendarMode === 'markers') {
+          if (activeMarkerId) {
+            openMarkerPlacementModal(null, channelId, dayKey);
+          }
           return;
         }
 
@@ -2003,7 +2139,7 @@ ${renderDevConsoleStyles()}
         const root = document.getElementById('articles');
 
         if (!Array.isArray(items) || items.length === 0) {
-          root.innerHTML = '<div class="empty">No articles in this project yet. Click <strong>New article</strong> to start the first workflow.</div>';
+          root.innerHTML = '<div class="empty">No articles in this project yet. Use campaign creation to start a new workflow.</div>';
           document.getElementById('articleSectionMeta').textContent = 'No articles in this project yet.';
           renderProjectHero();
           return;
@@ -2040,7 +2176,10 @@ ${renderDevConsoleStyles()}
 
       async function refreshProject() {
         document.getElementById('error').textContent = '';
-        document.getElementById('newArticleBtn').href = '/test-ui/new?projectId=' + encodeURIComponent(currentProjectId);
+        const newArticleBtn = document.getElementById('newArticleBtn');
+        if (newArticleBtn) {
+          newArticleBtn.href = '/test-ui/new?projectId=' + encodeURIComponent(currentProjectId);
+        }
 
         try {
           const [project, articles, markers] = await Promise.all([
@@ -2298,7 +2437,7 @@ ${renderDevConsoleStyles()}
         <div class="hero-top">
           <div class="topbar">
             <a class="btn secondary" href="/test-ui/project?projectId=${escapeHtml(projectId)}">← Back to project dashboard</a>
-            <a class="btn secondary" href="/test-ui/new?projectId=${escapeHtml(projectId)}">New article</a>
+            <a class="btn secondary" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Create campaign</a>
           </div>
           <div>
             <h1 id="pageTitle">Loading...</h1>
@@ -2320,6 +2459,7 @@ ${renderDevConsoleStyles()}
         { id: 'channel_telegram', label: 'Telegram' },
         { id: 'channel_x', label: 'X' },
         { id: 'channel_discord', label: 'Discord' },
+        { id: 'channel_blog', label: 'Blog' },
       ];
       const articleColorThemes = [
         { bg: '#eaf0ff', border: '#cfdbff', text: '#173b93', time: '#35507d' },
@@ -3046,6 +3186,12 @@ ${renderDevConsoleStyles()}
           promptInstructions: '',
           builtIn: true,
         },
+        {
+          channelId: 'channel_blog',
+          displayName: 'Blog',
+          promptInstructions: '',
+          builtIn: true,
+        },
       ];
       let editingTypeId = null;
 
@@ -3096,6 +3242,18 @@ ${renderDevConsoleStyles()}
             'Use very plain words and short phrases.',
             'Make it understandable immediately for a non-expert reader.',
             'Do not use jargon unless absolutely necessary.',
+            'Do not use hashtags.',
+            'Do not use emojis.',
+            'Return only the final post text with no commentary.',
+          ].join(' ');
+        }
+
+        if (channelId === 'channel_blog') {
+          return [
+            'Rewrite the provided long-form article into a short blog post in the same language.',
+            'Preserve the core meaning and factual accuracy.',
+            'Return 2 to 4 short paragraphs.',
+            'Keep the tone clear, informative, and readable.',
             'Do not use hashtags.',
             'Do not use emojis.',
             'Return only the final post text with no commentary.',
@@ -3833,11 +3991,13 @@ ${renderDevConsoleStyles()}
         { id: 'channel_telegram', label: 'Telegram', hint: 'Adaptation' },
         { id: 'channel_x', label: 'X', hint: 'Adaptation' },
         { id: 'channel_discord', label: 'Discord', hint: 'Adaptation' },
+        { id: 'channel_blog', label: 'Blog', hint: 'Adaptation' },
       ];
       const DEFAULT_TYPES = [
         { channelId: 'channel_telegram', displayName: 'Telegram', promptInstructions: '' },
         { channelId: 'channel_x', displayName: 'X', promptInstructions: '' },
         { channelId: 'channel_discord', displayName: 'Discord', promptInstructions: '' },
+        { channelId: 'channel_blog', displayName: 'Blog', promptInstructions: '' },
       ];
       const CUSTOM_TYPES_KEY = 'ms:test-ui-adaptation-overrides';
       let currentWeekStart = startOfWeek(new Date());
@@ -3954,6 +4114,18 @@ ${renderDevConsoleStyles()}
             'Make it understandable immediately for a non-expert reader.',
             'Do not use jargon unless absolutely necessary.',
             'Do not use hashtags.',
+            'Return only the final post text with no commentary.',
+          ].join(' ');
+        }
+
+        if (channelId === 'channel_blog') {
+          return [
+            'Rewrite the provided long-form article into a short blog post in the same language.',
+            'Preserve the core meaning and factual accuracy.',
+            'Return 2 to 4 short paragraphs.',
+            'Keep the tone clear, informative, and readable.',
+            'Do not use hashtags.',
+            'Do not use emojis.',
             'Return only the final post text with no commentary.',
           ].join(' ');
         }
@@ -5302,7 +5474,17 @@ ${renderDevConsoleStyles()}
               : (translation?.translatedContent || '');
             const published = publishedLocalizations.get(publishKey(adaptation.id, plan.targetLanguage));
             const publishMarkup = published
-              ? '<p class="publish-note">Published to Telegram · message #' + escapeHtml(String(published.messageId)) + '</p>'
+              ? '<p class="publish-note">' +
+                  escapeHtml(
+                    adaptation.channelId === 'channel_discord'
+                      ? 'Published to Discord'
+                      : adaptation.channelId === 'channel_x'
+                        ? 'Published to X · post #' + String(published.messageId)
+                        : adaptation.channelId === 'channel_blog'
+                          ? 'Published to Blog'
+                          : 'Published to Telegram · message #' + String(published.messageId),
+                  ) +
+                '</p>'
               : '';
             return \`
               <div class="translation-block">
@@ -5641,7 +5823,7 @@ ${renderDevConsoleScript()}
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Marketing Service - Publish to Telegram</title>
+    <title>Marketing Service - Publishing Queue</title>
     <style>
       :root {
         --bg: #f4f7fb;
@@ -5968,7 +6150,8 @@ ${renderDevConsoleStyles()}
                 (
                   item.channelId === 'channel_telegram' ||
                   item.channelId === 'channel_discord' ||
-                  item.channelId === 'channel_x'
+                  item.channelId === 'channel_x' ||
+                  item.channelId === 'channel_blog'
                 ),
             )
           : [];
@@ -6079,6 +6262,8 @@ ${renderDevConsoleStyles()}
                     ? 'Discord delivery confirmed'
                     : publication.channelId === 'channel_x'
                       ? 'X post #' + String(publication.telegramMessageId)
+                      : publication.channelId === 'channel_blog'
+                        ? 'Blog item marked as published'
                       : 'Telegram message #' + String(publication.telegramMessageId),
                 ) +
               '</div>'
@@ -6176,6 +6361,8 @@ ${renderDevConsoleStyles()}
                 ? '/publishing/discord/schedule'
                 : item.adaptation.channelId === 'channel_x'
                   ? '/publishing/x/schedule'
+                  : item.adaptation.channelId === 'channel_blog'
+                    ? '/publishing/blog/schedule'
                   : '/publishing/telegram/schedule',
               {
                 method: 'POST',

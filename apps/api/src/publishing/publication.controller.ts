@@ -19,6 +19,7 @@ import {
   type PublicationId,
   type PublicationPlanId,
   ReschedulePublicationPlanCommand,
+  ScheduleBlogPublicationCommand,
   ScheduleDiscordPublicationCommand,
   ScheduleTelegramPublicationCommand,
   ScheduleXPublicationCommand,
@@ -86,6 +87,21 @@ export class PublicationController {
   ): Promise<{ id: string; status: string }> {
     return this.commandBus.execute(
       new ScheduleXPublicationCommand(
+        body.articleId as ArticleId,
+        body.adaptationId as AdaptationId,
+        body.targetLanguage,
+        new Date(body.publishAt),
+      ),
+    );
+  }
+
+  @Post('blog/schedule')
+  async scheduleBlog(
+    @Body()
+    body: { articleId: string; adaptationId: string; targetLanguage: string; publishAt: string },
+  ): Promise<{ id: string; status: string }> {
+    return this.commandBus.execute(
+      new ScheduleBlogPublicationCommand(
         body.articleId as ArticleId,
         body.adaptationId as AdaptationId,
         body.targetLanguage,

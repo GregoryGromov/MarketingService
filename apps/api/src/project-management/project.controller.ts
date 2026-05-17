@@ -4,6 +4,7 @@ import {
   CreateProjectCommand,
   CreateProjectMarkerCommand,
   CreateProjectMarkerPlacementCommand,
+  DeleteProjectCommand,
   DeleteProjectMarkerCommand,
   GetProjectMarkerPlacementsQuery,
   GetProjectQuery,
@@ -31,6 +32,7 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import * as v from 'valibot';
 import { rethrowProjectManagementHttpError } from './project-management-http-error';
+import { normalizePublicationTypeInput as normalizePublicationTypeInputValue } from './publication-type-input';
 import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
 
 const CreateProjectSchema = v.object({
@@ -150,6 +152,14 @@ function normalizeLocalTimeInput(value: string): string {
   return trimmed;
 }
 
+function normalizePublicationTypeInput(channel: string, publicationType: string): string {
+  return normalizePublicationTypeInputValue(
+    channel,
+    publicationType,
+    'plannedPublicationOverrides.publicationType',
+  );
+}
+
 function normalizePlannedPublicationOverrides(
   overrides: CreateCampaignDto['plannedPublicationOverrides'],
 ): CreateCampaignPlannedPublicationOverride[] | undefined {
@@ -163,7 +173,10 @@ function normalizePlannedPublicationOverrides(
     localTime: normalizeLocalTimeInput(override.localTime),
     channel: override.channel,
     language: override.language,
-    publicationType: override.publicationType,
+    publicationType: normalizePublicationTypeInput(
+      override.channel,
+      override.publicationType,
+    ),
     style: override.style,
   }));
 }
@@ -234,6 +247,16 @@ export class ProjectController {
     }
 
     return project;
+  }
+
+  @Delete(':id')
+  async deleteProject(@Param('id') id: string): Promise<{ ok: true }> {
+    try {
+      await this.commandBus.execute(new DeleteProjectCommand(id as ProjectId));
+      return { ok: true };
+    } catch (error) {
+      rethrowProjectManagementHttpError(error);
+    }
   }
 
   @Get(':id/brand-memory')

@@ -14,6 +14,7 @@ import {
   type BrandMemory,
   type CheckAdaptationQualityParams,
   type CheckTranslationFidelityParams,
+  describePublicationTypeForChannel,
   type GenerateAdaptationAiParams,
   type GenerateTranslationAiParams,
   type ReviseAdaptationAiParams,
@@ -568,6 +569,17 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Do not use emojis.',
         'Return only the final post text with no commentary.',
       ].join(' ');
+    } else if (params.channel === 'channel_blog') {
+      basePrompt = [
+        'You are an editorial adaptation assistant.',
+        'Rewrite the provided long-form article into a short blog post in the same language.',
+        'Preserve the core meaning and factual accuracy.',
+        'Return 2 to 4 short paragraphs.',
+        'Keep the tone clear, informative, and readable.',
+        'Do not use hashtags.',
+        'Do not use emojis.',
+        'Return only the final post text with no commentary.',
+      ].join(' ');
     } else {
       basePrompt = [
         'You are an editorial adaptation assistant.',
@@ -648,6 +660,18 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'The final output must remain no more than 2 sentences.',
         'Keep the wording as simple and easy to understand as possible.',
         'Avoid jargon unless absolutely necessary.',
+        'Do not add commentary, quotes, explanations, or markdown.',
+        'Return only the final revised full text.',
+      ].join(' ');
+    } else if (params.channel === 'channel_blog') {
+      basePrompt = [
+        'You are an editorial adaptation editor.',
+        'You are given the full short blog post text, a selected fragment inside it, and a user instruction about how that fragment should change.',
+        'Revise only what is necessary to satisfy the instruction.',
+        'Keep the text in the same language and preserve the rest unless a small surrounding adjustment is required.',
+        'Return the complete revised short blog post, not just the fragment.',
+        'Keep the final result in 2 to 4 short paragraphs.',
+        'Keep the tone clear, informative, and easy to read.',
         'Do not add commentary, quotes, explanations, or markdown.',
         'Return only the final revised full text.',
       ].join(' ');
@@ -805,9 +829,12 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     publicationType?: string | null,
     style?: string | null,
   ): string {
+    const publicationTypeDescription = describePublicationTypeForChannel(channel, publicationType);
+
     return [
       `Channel ID: ${channel}`,
       `Publication type: ${this.normalizeOptionalText(publicationType) ?? 'not specified'}`,
+      `Publication type meaning: ${publicationTypeDescription}`,
       `Style: ${this.normalizeOptionalText(style) ?? 'not specified'}`,
     ].join('\n');
   }
@@ -844,6 +871,16 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         '- Avoid jargon unless necessary.',
         '- Do not use hashtags.',
         '- Do not use emojis unless they are part of the intended voice.',
+      ].join('\n');
+    }
+
+    if (channel === 'channel_blog') {
+      return [
+        'Channel-specific rules:',
+        '- Keep the tone informative and readable.',
+        '- Prefer 2 to 4 short paragraphs.',
+        '- Do not use hashtags.',
+        '- Do not use emojis.',
       ].join('\n');
     }
 

@@ -1,3 +1,4 @@
+import { PUBLICATION_TYPE_OPTIONS_BY_CHANNEL } from '@marketing-service/project-management';
 import { Controller, Get, Header, Query } from '@nestjs/common';
 
 function escapeHtml(value: string): string {
@@ -7,6 +8,23 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+const FALLBACK_PUBLICATION_TYPE_OPTIONS_BY_CHANNEL = {
+  channel_telegram: [{ value: 'default', label: 'Default' }],
+  channel_x: [
+    { value: 'long', label: 'Long' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'thread', label: 'Thread' },
+  ],
+  channel_discord: [{ value: 'default', label: 'Default' }],
+  channel_blog: [{ value: 'default', label: 'Default' }],
+};
+
+function renderPublicationTypeOptionsByChannel(): string {
+  return JSON.stringify(
+    PUBLICATION_TYPE_OPTIONS_BY_CHANNEL ?? FALLBACK_PUBLICATION_TYPE_OPTIONS_BY_CHANNEL,
+  );
 }
 
 function renderCampaignUiStyles(): string {
@@ -710,6 +728,7 @@ export class CampaignTestUiController {
             </div>
             <div class="actions">
               <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
+              <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
               <a class="btn primary" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
             </div>
           </div>
@@ -830,18 +849,24 @@ export class CampaignTestUiController {
 
   @Get('campaigns/new')
   @Header('Content-Type', 'text/html; charset=utf-8')
-  renderCreateCampaignPage(@Query('projectId') projectId = ''): string {
+  renderCreateCampaignPage(
+    @Query('projectId') projectId = '',
+    @Query('markerId') markerId = '',
+  ): string {
     return renderCampaignUiPage({
       title: 'Marketing Service - Create Campaign',
       eyebrow: 'Campaigns',
       heading: 'Create campaign',
       summary:
-        'Create a campaign from a system preset. You can customize, remove, or add publications for this campaign without changing the preset.',
+        'Create a campaign from a preset. You can customize, remove, or add publications for this campaign without changing the preset.',
       body: `
         <section class="panel stack">
           <div class="nav-row">
             <div class="actions">
               <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
+            </div>
+            <div class="actions">
+              <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
             </div>
           </div>
         </section>
@@ -863,7 +888,7 @@ export class CampaignTestUiController {
                   Start date
                   <input id="startDate" type="date" required />
                 </label>
-                <label class="field full">
+                <label id="presetField" class="field full">
                   Preset
                   <select id="presetId" required></select>
                 </label>
@@ -894,7 +919,7 @@ export class CampaignTestUiController {
                 <thead>
                   <tr>
                     <th>Position</th>
-                    <th>Day</th>
+                    <th>Publish date</th>
                     <th>Time</th>
                     <th>Channel</th>
                     <th>Language</th>
@@ -914,14 +939,19 @@ export class CampaignTestUiController {
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
+        const markerId = ${JSON.stringify(markerId)};
         let presets = [];
         let campaignPlan = [];
         let customPublicationCounter = 0;
+        let markerDrivenPreset = null;
         const channelOptions = [
           ['channel_telegram', 'Telegram'],
           ['channel_x', 'X'],
           ['channel_discord', 'Discord'],
+          ['channel_blog', 'Blog'],
         ];
+        const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
+        const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
 
         function buildChannelSelectOptions(selectedValue) {
           return channelOptions
@@ -931,6 +961,61 @@ export class CampaignTestUiController {
               '>' + escapeHtml(label) + '</option>'
             )
             .join('');
+        }
+
+        function getPublicationTypeOptions(channel) {
+          return publicationTypeOptionsByChannel[channel] ||
+            publicationTypeOptionsByChannel.channel_telegram ||
+            defaultPublicationTypeOptions;
+        }
+
+        function normalizePublicationTypeValue(channel, selectedValue) {
+          const options = getPublicationTypeOptions(channel);
+          const matched = options.find((option) => option.value === selectedValue);
+          return matched ? matched.value : (options[0]?.value || 'default');
+        }
+
+        function buildPublicationTypeSelectOptions(channel, selectedValue) {
+          const normalizedValue = normalizePublicationTypeValue(channel, selectedValue);
+          return getPublicationTypeOptions(channel)
+            .map((option) =>
+              '<option value="' + escapeHtml(option.value) + '"' +
+              (option.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(option.label) + '</option>'
+            )
+            .join('');
+        }
+
+        function parseDateInputValue(value) {
+          const [year, month, day] = String(value || '')
+            .split('-')
+            .map((part) => Number(part));
+          if (!year || !month || !day) {
+            return null;
+          }
+          return new Date(Date.UTC(year, month - 1, day));
+        }
+
+        function getSelectedStartDateValue() {
+          return document.getElementById('startDate')?.value || formatDateInputValue(new Date());
+        }
+
+        function buildPublishDateValue(dayOffset) {
+          const startDate = parseDateInputValue(getSelectedStartDateValue());
+          if (!startDate) {
+            return '';
+          }
+          startDate.setUTCDate(startDate.getUTCDate() + Number(dayOffset || '0'));
+          return formatDateInputValue(startDate);
+        }
+
+        function buildDayOffsetValue(publishDateValue) {
+          const startDate = parseDateInputValue(getSelectedStartDateValue());
+          const publishDate = parseDateInputValue(publishDateValue);
+          if (!startDate || !publishDate) {
+            return '0';
+          }
+          return String(Math.round((publishDate.getTime() - startDate.getTime()) / 86400000));
         }
 
         function buildCampaignPlanFromPreset(preset) {
@@ -947,9 +1032,61 @@ export class CampaignTestUiController {
               localTime: publication.localTime,
               channel: publication.channel,
               language: String(publication.language || '').toUpperCase(),
-              publicationType: publication.publicationType,
+              publicationType: normalizePublicationTypeValue(
+                publication.channel,
+                publication.publicationType,
+              ),
               style: publication.style,
             }));
+        }
+
+        function buildMarkerDrivenPreset(marker, placements) {
+          const orderedPlacements = [...placements]
+            .sort((left, right) => new Date(left.publishAt).getTime() - new Date(right.publishAt).getTime());
+
+          if (orderedPlacements.length === 0) {
+            return null;
+          }
+
+          const firstPlacementDate = new Date(orderedPlacements[0].publishAt);
+          firstPlacementDate.setHours(0, 0, 0, 0);
+
+          const publications = orderedPlacements.map((placement, index) => {
+            const publishAt = new Date(placement.publishAt);
+            const publishDay = new Date(publishAt);
+            publishDay.setHours(0, 0, 0, 0);
+            const dayOffset = Math.round(
+              (publishDay.getTime() - firstPlacementDate.getTime()) / 86400000,
+            );
+            const localTime = String(publishAt.getHours()).padStart(2, '0') + ':' +
+              String(publishAt.getMinutes()).padStart(2, '0');
+
+            return {
+              id: 'marker-placement-' + placement.id,
+              dayOffset,
+              localTime,
+              channel: placement.channelId,
+              language: String(placement.targetLanguage || '').toUpperCase(),
+              publicationType: normalizePublicationTypeValue(placement.channelId, null),
+              style: 'default',
+              position: index + 1,
+            };
+          });
+
+          return {
+            id: '__marker__',
+            name: 'Plan · ' + marker.title,
+            description: marker.notes || ('Generated from selected plan "' + marker.title + '".'),
+            sourceLanguage: 'EN',
+            sourceType: 'marker_plan',
+            isActive: true,
+            isSystem: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            markerTitle: marker.title,
+            firstPlacementDate: firstPlacementDate,
+            publications,
+          };
         }
 
         function buildNewCustomPublication() {
@@ -963,7 +1100,7 @@ export class CampaignTestUiController {
             localTime: '09:00',
             channel: 'channel_telegram',
             language: 'EN',
-            publicationType: 'post',
+            publicationType: normalizePublicationTypeValue('channel_telegram', null),
             style: 'default',
           };
         }
@@ -975,11 +1112,14 @@ export class CampaignTestUiController {
               presetPublicationId: row.dataset.presetPublicationId || null,
               rowType: row.dataset.rowType || 'preset',
               position: Number(row.dataset.position || '0'),
-              dayOffset: row.querySelector('[data-field="dayOffset"]').value,
+              dayOffset: buildDayOffsetValue(row.querySelector('[data-field="publishDate"]').value),
               localTime: row.querySelector('[data-field="localTime"]').value,
               channel: row.querySelector('[data-field="channel"]').value,
               language: row.querySelector('[data-field="language"]').value.toUpperCase(),
-              publicationType: row.querySelector('[data-field="publicationType"]').value,
+              publicationType: normalizePublicationTypeValue(
+                row.querySelector('[data-field="channel"]').value,
+                row.querySelector('[data-field="publicationType"]').value,
+              ),
               style: row.querySelector('[data-field="style"]').value,
             }));
         }
@@ -999,11 +1139,11 @@ export class CampaignTestUiController {
             .map((publication) => (
               '<tr data-row-key="' + escapeHtml(publication.rowKey) + '" data-row-type="' + escapeHtml(publication.rowType) + '" data-preset-publication-id="' + escapeHtml(publication.presetPublicationId || '') + '" data-position="' + escapeHtml(String(publication.position)) + '">' +
                 '<td>' + escapeHtml(String(publication.position)) + '</td>' +
-                '<td><input data-field="dayOffset" type="number" step="1" value="' + escapeHtml(String(publication.dayOffset)) + '" /></td>' +
+                '<td><input data-field="publishDate" type="date" value="' + escapeHtml(buildPublishDateValue(publication.dayOffset)) + '" /></td>' +
                 '<td><input data-field="localTime" type="time" value="' + escapeHtml(publication.localTime) + '" /></td>' +
                 '<td><select data-field="channel">' + buildChannelSelectOptions(publication.channel) + '</select></td>' +
                 '<td><input data-field="language" type="text" maxlength="16" value="' + escapeHtml(publication.language) + '" /></td>' +
-                '<td><input data-field="publicationType" type="text" maxlength="64" value="' + escapeHtml(publication.publicationType) + '" /></td>' +
+                '<td><select data-field="publicationType">' + buildPublicationTypeSelectOptions(publication.channel, publication.publicationType) + '</select></td>' +
                 '<td><input data-field="style" type="text" maxlength="64" value="' + escapeHtml(publication.style) + '" /></td>' +
                 '<td><button type="button" class="btn danger" data-remove-row="' + escapeHtml(publication.rowKey) + '">Remove</button></td>' +
               '</tr>'
@@ -1011,8 +1151,14 @@ export class CampaignTestUiController {
             .join('');
 
           document.querySelectorAll('#presetRows input, #presetRows select').forEach((element) => {
-            element.addEventListener('input', syncCampaignPlanFromTable);
-            element.addEventListener('change', syncCampaignPlanFromTable);
+            const syncAndMaybeRerender = () => {
+              syncCampaignPlanFromTable();
+              if (element.dataset.field === 'channel') {
+                renderCampaignPlanRows(campaignPlan);
+              }
+            };
+            element.addEventListener('input', syncAndMaybeRerender);
+            element.addEventListener('change', syncAndMaybeRerender);
           });
 
           document.querySelectorAll('[data-remove-row]').forEach((element) => {
@@ -1035,7 +1181,9 @@ export class CampaignTestUiController {
           }
 
           document.getElementById('presetName').textContent = preset.name;
-          document.getElementById('presetDescription').textContent = preset.description;
+          document.getElementById('presetDescription').textContent = preset.id === '__marker__'
+            ? 'Generated from the selected plan. Channel rows come directly from its placements.'
+            : preset.description;
           document.getElementById('presetSourceLanguage').textContent = String(preset.sourceLanguage || '').toUpperCase();
           document.getElementById('presetSourceType').textContent = toTitle(preset.sourceType);
           campaignPlan = buildCampaignPlanFromPreset(preset);
@@ -1058,11 +1206,39 @@ export class CampaignTestUiController {
           document.getElementById('startDate').value = formatDateInputValue(new Date());
 
           const presetSelect = document.getElementById('presetId');
+          if (markerId) {
+            const [markers, placements] = await Promise.all([
+              request('/projects/' + encodeURIComponent(projectId) + '/markers', undefined, {
+                renderResponse: false,
+              }),
+              request('/projects/' + encodeURIComponent(projectId) + '/marker-placements', undefined, {
+                renderResponse: false,
+              }),
+            ]);
+
+            const marker = (markers || []).find((item) => item.id === markerId) || null;
+            const markerPlacements = (placements || []).filter((item) => item.markerId === markerId);
+
+            if (marker && markerPlacements.length > 0) {
+              markerDrivenPreset = buildMarkerDrivenPreset(marker, markerPlacements);
+              if (markerDrivenPreset) {
+                presets = [markerDrivenPreset, ...presets];
+                document.getElementById('campaignName').value = marker.title;
+                document.getElementById('startDate').value = formatDateInputValue(markerDrivenPreset.firstPlacementDate);
+                document.getElementById('projectSummary').textContent =
+                  'This campaign is generated from the selected plan. Adaptation channels and schedule are taken from its placements.';
+                document.getElementById('presetField').style.display = 'none';
+              }
+            }
+          }
+
           presetSelect.innerHTML = presets.map((preset) =>
             '<option value="' + escapeHtml(preset.id) + '">' + escapeHtml(preset.name) + '</option>'
           ).join('');
 
           presetSelect.addEventListener('change', () => renderPresetPreview(presetSelect.value));
+          document.getElementById('startDate').addEventListener('input', () => renderCampaignPlanRows(campaignPlan));
+          document.getElementById('startDate').addEventListener('change', () => renderCampaignPlanRows(campaignPlan));
           document.getElementById('addCampaignPlanRow').addEventListener('click', () => {
             campaignPlan = [
               ...campaignPlan,
@@ -1077,12 +1253,47 @@ export class CampaignTestUiController {
 
           document.getElementById('createCampaignForm').addEventListener('submit', async (event) => {
             event.preventDefault();
+            syncCampaignPlanFromTable();
+            let presetId = presetSelect.value;
+            let shouldSendPlanOverrides = true;
+
+            if (markerDrivenPreset && presetId === markerDrivenPreset.id) {
+              const createdPreset = await request(
+                '/campaign-presets',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: markerDrivenPreset.name,
+                    description: markerDrivenPreset.description,
+                    sourceLanguage: 'en',
+                    sourceType: 'marker_plan',
+                    isActive: true,
+                    publications: campaignPlan.map((publication, index) => ({
+                      dayOffset: Number(publication.dayOffset || '0'),
+                      localTime: publication.localTime,
+                      channel: publication.channel,
+                      language: publication.language,
+                      publicationType: publication.publicationType,
+                      style: publication.style,
+                      position: index + 1,
+                    })),
+                  }),
+                },
+                { renderResponse: false },
+              );
+              presetId = createdPreset.id;
+              shouldSendPlanOverrides = false;
+            }
+
             const payload = {
-              presetId: presetSelect.value,
+              presetId,
               name: document.getElementById('campaignName').value,
               startDate: new Date(document.getElementById('startDate').value + 'T09:00:00.000Z').toISOString(),
               extraInstructions: document.getElementById('extraInstructions').value || null,
-              plannedPublicationOverrides: campaignPlan.map((publication) => ({
+            };
+            if (shouldSendPlanOverrides) {
+              payload.plannedPublicationOverrides = campaignPlan.map((publication) => ({
                 presetPublicationId: publication.presetPublicationId,
                 dayOffset: publication.dayOffset,
                 localTime: publication.localTime,
@@ -1090,8 +1301,8 @@ export class CampaignTestUiController {
                 language: publication.language,
                 publicationType: publication.publicationType,
                 style: publication.style,
-              })),
-            };
+              }));
+            }
 
             const created = await request(
               '/projects/' + encodeURIComponent(projectId) + '/campaigns',
@@ -1102,9 +1313,426 @@ export class CampaignTestUiController {
               },
             );
 
+            if (markerId) {
+              try {
+                await request(
+                  '/projects/' + encodeURIComponent(projectId) + '/markers/' + encodeURIComponent(markerId),
+                  { method: 'DELETE' },
+                  { renderResponse: false },
+                );
+              } catch (cleanupError) {
+                setOutput({
+                  warning: 'Campaign was created, but selected plan cleanup failed.',
+                  cleanupError: String(cleanupError),
+                });
+              }
+            }
+
             window.location.href = '/test-ui/campaign?campaignId=' + encodeURIComponent(created.campaignId);
           });
 
+          setOutput({ project, presets });
+        }
+
+        boot().catch((error) => setOutput(String(error)));
+      `,
+    });
+  }
+
+  @Get('campaign-presets')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  renderCampaignPresetManagementPage(@Query('projectId') projectId = ''): string {
+    return renderCampaignUiPage({
+      title: 'Marketing Service - Manage Campaign Presets',
+      eyebrow: 'Campaign Presets',
+      heading: 'Preset library',
+      summary:
+        'Create new presets, edit existing ones, and manage the publication plan template used during campaign creation.',
+      body: `
+        <section class="panel stack">
+          <div class="nav-row">
+            <div class="actions">
+              <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary" id="newPresetBtn">New preset</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="detail-grid">
+          <section class="panel stack">
+            <div class="section-copy">
+              <span class="eyebrow">Library</span>
+              <h2 id="presetLibraryTitle">Campaign presets</h2>
+              <p id="presetLibrarySummary">Loading presets…</p>
+            </div>
+            <div id="presetCards" class="card-grid"></div>
+          </section>
+
+          <section class="form-card stack">
+            <div class="section-copy">
+              <span class="eyebrow">Editor</span>
+              <h2 id="editorTitle">New preset</h2>
+              <p id="editorSummary">Define the source profile and the publication plan template.</p>
+            </div>
+            <form id="presetForm" class="stack">
+              <div class="form-grid">
+                <label class="field">
+                  Name
+                  <input id="presetNameInput" type="text" placeholder="Market insight burst" required />
+                </label>
+                <label class="field">
+                  Source language
+                  <input id="presetSourceLanguageInput" type="text" maxlength="16" placeholder="en" required />
+                </label>
+                <label class="field">
+                  Source type
+                  <input id="presetSourceTypeInput" type="text" maxlength="64" placeholder="market_insight" required />
+                </label>
+                <label class="field">
+                  Status
+                  <select id="presetStatusInput">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </label>
+                <label class="field full">
+                  Description
+                  <textarea id="presetDescriptionInput" placeholder="Describe how this preset should be used."></textarea>
+                </label>
+              </div>
+
+              <div class="section-copy">
+                <span class="eyebrow">Publications</span>
+                <h3>Template plan</h3>
+                <p>These rows will be materialized when a campaign is created from this preset.</p>
+              </div>
+
+              <div class="table-wrap">
+                <table class="table-editor">
+                  <thead>
+                    <tr>
+                      <th>Position</th>
+                      <th>Day</th>
+                      <th>Time</th>
+                      <th>Channel</th>
+                      <th>Language</th>
+                      <th>Type</th>
+                      <th>Style</th>
+                      <th>Row</th>
+                    </tr>
+                  </thead>
+                  <tbody id="presetEditorRows"></tbody>
+                </table>
+              </div>
+
+              <div class="actions">
+                <button type="button" id="addPresetRowBtn">Add publication</button>
+                <button type="submit" class="primary">Save preset</button>
+              </div>
+              <div id="presetSaveStatus" class="inline-note"></div>
+            </form>
+          </section>
+        </div>
+      `,
+      script: `
+        const projectId = ${JSON.stringify(projectId)};
+        let project = null;
+        let presets = [];
+        let selectedPresetId = null;
+        let editorRows = [];
+        let customPublicationCounter = 0;
+        const channelOptions = [
+          ['channel_telegram', 'Telegram'],
+          ['channel_x', 'X'],
+          ['channel_discord', 'Discord'],
+          ['channel_blog', 'Blog'],
+        ];
+        const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
+        const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
+
+        function buildChannelSelectOptions(selectedValue) {
+          return channelOptions
+            .map(([value, label]) =>
+              '<option value="' + escapeHtml(value) + '"' +
+              (value === selectedValue ? ' selected' : '') +
+              '>' + escapeHtml(label) + '</option>'
+            )
+            .join('');
+        }
+
+        function getPublicationTypeOptions(channel) {
+          return publicationTypeOptionsByChannel[channel] ||
+            publicationTypeOptionsByChannel.channel_telegram ||
+            defaultPublicationTypeOptions;
+        }
+
+        function normalizePublicationTypeValue(channel, selectedValue) {
+          const options = getPublicationTypeOptions(channel);
+          const matched = options.find((option) => option.value === selectedValue);
+          return matched ? matched.value : (options[0]?.value || 'default');
+        }
+
+        function buildPublicationTypeSelectOptions(channel, selectedValue) {
+          const normalizedValue = normalizePublicationTypeValue(channel, selectedValue);
+          return getPublicationTypeOptions(channel)
+            .map((option) =>
+              '<option value="' + escapeHtml(option.value) + '"' +
+              (option.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(option.label) + '</option>'
+            )
+            .join('');
+        }
+
+        function createEmptyRow() {
+          customPublicationCounter += 1;
+          return {
+            rowKey: 'new-' + customPublicationCounter,
+            position: editorRows.length + 1,
+            dayOffset: '0',
+            localTime: '09:00',
+            channel: 'channel_telegram',
+            language: 'EN',
+            publicationType: normalizePublicationTypeValue('channel_telegram', null),
+            style: 'default',
+          };
+        }
+
+        function createBlankPresetState() {
+          selectedPresetId = null;
+          customPublicationCounter = 0;
+          editorRows = [createEmptyRow()];
+          document.getElementById('editorTitle').textContent = 'New preset';
+          document.getElementById('editorSummary').textContent =
+            'Define the source profile and the publication plan template.';
+          document.getElementById('presetNameInput').value = '';
+          document.getElementById('presetSourceLanguageInput').value = 'en';
+          document.getElementById('presetSourceTypeInput').value = '';
+          document.getElementById('presetStatusInput').value = 'active';
+          document.getElementById('presetDescriptionInput').value = '';
+          renderEditorRows();
+        }
+
+        function selectPreset(presetId) {
+          const preset = presets.find((item) => item.id === presetId) || null;
+          if (!preset) {
+            createBlankPresetState();
+            return;
+          }
+
+          selectedPresetId = preset.id;
+          customPublicationCounter = 0;
+          editorRows = (preset.publications || [])
+            .slice()
+            .sort((left, right) => left.position - right.position)
+            .map((publication) => ({
+              rowKey: publication.id,
+              position: publication.position,
+              dayOffset: String(publication.dayOffset),
+              localTime: publication.localTime,
+              channel: publication.channel,
+              language: String(publication.language || '').toUpperCase(),
+              publicationType: normalizePublicationTypeValue(
+                publication.channel,
+                publication.publicationType,
+              ),
+              style: publication.style,
+            }));
+
+          document.getElementById('editorTitle').textContent = preset.name;
+          document.getElementById('editorSummary').textContent =
+            (preset.isSystem ? 'System preset' : 'Custom preset') + ' · updated ' + formatDateTime(preset.updatedAt);
+          document.getElementById('presetNameInput').value = preset.name;
+          document.getElementById('presetSourceLanguageInput').value = String(preset.sourceLanguage || '').toUpperCase();
+          document.getElementById('presetSourceTypeInput').value = preset.sourceType;
+          document.getElementById('presetStatusInput').value = preset.isActive ? 'active' : 'inactive';
+          document.getElementById('presetDescriptionInput').value = preset.description;
+          renderEditorRows();
+        }
+
+        function renderPresetCards() {
+          const root = document.getElementById('presetCards');
+          if (!Array.isArray(presets) || presets.length === 0) {
+            root.innerHTML = '<div class="empty-state">No presets yet. Create the first one.</div>';
+            return;
+          }
+
+          root.innerHTML = presets.map((preset) =>
+            '<article class="card">' +
+              '<div class="card-head">' +
+                '<div class="stack">' +
+                  '<span class="eyebrow">' + escapeHtml(preset.isSystem ? 'System' : 'Custom') + '</span>' +
+                  '<h3>' + escapeHtml(preset.name) + '</h3>' +
+                '</div>' +
+                renderBadge(preset.isActive ? 'approved_for_publishing' : 'needs_attention') +
+              '</div>' +
+              '<p>' + escapeHtml(preset.description) + '</p>' +
+              '<div class="kv">' +
+                '<div class="meta-item"><label>Source language</label><strong>' + escapeHtml(String(preset.sourceLanguage || '').toUpperCase()) + '</strong></div>' +
+                '<div class="meta-item"><label>Source type</label><strong>' + escapeHtml(toTitle(preset.sourceType)) + '</strong></div>' +
+                '<div class="meta-item"><label>Rows</label><strong>' + escapeHtml(String((preset.publications || []).length)) + '</strong></div>' +
+              '</div>' +
+              '<div class="actions"><button type="button" data-select-preset="' + escapeHtml(preset.id) + '">Edit preset</button></div>' +
+            '</article>'
+          ).join('');
+
+          document.querySelectorAll('[data-select-preset]').forEach((element) => {
+            element.addEventListener('click', () => selectPreset(element.dataset.selectPreset));
+          });
+        }
+
+        function syncEditorRowsFromTable() {
+          editorRows = Array.from(document.querySelectorAll('#presetEditorRows tr[data-row-key]'))
+            .map((row) => ({
+              rowKey: row.dataset.rowKey,
+              position: Number(row.dataset.position || '0'),
+              dayOffset: row.querySelector('[data-field="dayOffset"]').value,
+              localTime: row.querySelector('[data-field="localTime"]').value,
+              channel: row.querySelector('[data-field="channel"]').value,
+              language: row.querySelector('[data-field="language"]').value.toUpperCase(),
+              publicationType: normalizePublicationTypeValue(
+                row.querySelector('[data-field="channel"]').value,
+                row.querySelector('[data-field="publicationType"]').value,
+              ),
+              style: row.querySelector('[data-field="style"]').value,
+            }));
+        }
+
+        function removeEditorRow(rowKey) {
+          editorRows = editorRows
+            .filter((publication) => publication.rowKey !== rowKey)
+            .map((publication, index) => ({
+              ...publication,
+              position: index + 1,
+            }));
+          renderEditorRows();
+        }
+
+        function renderEditorRows() {
+          const root = document.getElementById('presetEditorRows');
+          root.innerHTML = editorRows
+            .map((publication) => (
+              '<tr data-row-key="' + escapeHtml(publication.rowKey) + '" data-position="' + escapeHtml(String(publication.position)) + '">' +
+                '<td>' + escapeHtml(String(publication.position)) + '</td>' +
+                '<td><input data-field="dayOffset" type="number" step="1" value="' + escapeHtml(String(publication.dayOffset)) + '" /></td>' +
+                '<td><input data-field="localTime" type="time" value="' + escapeHtml(publication.localTime) + '" /></td>' +
+                '<td><select data-field="channel">' + buildChannelSelectOptions(publication.channel) + '</select></td>' +
+                '<td><input data-field="language" type="text" maxlength="16" value="' + escapeHtml(publication.language) + '" /></td>' +
+                '<td><select data-field="publicationType">' + buildPublicationTypeSelectOptions(publication.channel, publication.publicationType) + '</select></td>' +
+                '<td><input data-field="style" type="text" maxlength="64" value="' + escapeHtml(publication.style) + '" /></td>' +
+                '<td><button type="button" class="btn danger" data-remove-preset-row="' + escapeHtml(publication.rowKey) + '">Remove</button></td>' +
+              '</tr>'
+            ))
+            .join('');
+
+          document.querySelectorAll('#presetEditorRows input, #presetEditorRows select').forEach((element) => {
+            const syncAndMaybeRerender = () => {
+              syncEditorRowsFromTable();
+              if (element.dataset.field === 'channel') {
+                renderEditorRows();
+              }
+            };
+            element.addEventListener('input', syncAndMaybeRerender);
+            element.addEventListener('change', syncAndMaybeRerender);
+          });
+
+          document.querySelectorAll('[data-remove-preset-row]').forEach((element) => {
+            element.addEventListener('click', () => removeEditorRow(element.dataset.removePresetRow));
+          });
+
+          syncEditorRowsFromTable();
+        }
+
+        function buildPayload() {
+          syncEditorRowsFromTable();
+          return {
+            name: document.getElementById('presetNameInput').value,
+            description: document.getElementById('presetDescriptionInput').value,
+            sourceLanguage: document.getElementById('presetSourceLanguageInput').value,
+            sourceType: document.getElementById('presetSourceTypeInput').value,
+            isActive: document.getElementById('presetStatusInput').value === 'active',
+            publications: editorRows.map((publication, index) => ({
+              dayOffset: Number(publication.dayOffset || '0'),
+              localTime: publication.localTime,
+              channel: publication.channel,
+              language: publication.language,
+              publicationType: publication.publicationType,
+              style: publication.style,
+              position: index + 1,
+            })),
+          };
+        }
+
+        function setSaveStatus(message, tone) {
+          const status = document.getElementById('presetSaveStatus');
+          status.textContent = message || '';
+          status.style.color = tone === 'error' ? 'var(--danger)' : 'var(--muted)';
+        }
+
+        async function refreshPresets(targetPresetId) {
+          presets = await request('/campaign-presets?all=true', undefined, { renderResponse: false });
+          document.getElementById('presetLibraryTitle').textContent =
+            project ? project.name + ' · campaign presets' : 'Campaign presets';
+          document.getElementById('presetLibrarySummary').textContent =
+            String(presets.length) + ' presets available for campaign creation.';
+          renderPresetCards();
+
+          if (targetPresetId) {
+            selectPreset(targetPresetId);
+            return;
+          }
+
+          if (selectedPresetId) {
+            selectPreset(selectedPresetId);
+            return;
+          }
+
+          createBlankPresetState();
+        }
+
+        async function boot() {
+          if (projectId) {
+            project = await request('/projects/' + encodeURIComponent(projectId), undefined, { renderResponse: false });
+          }
+
+          document.getElementById('newPresetBtn').addEventListener('click', createBlankPresetState);
+          document.getElementById('addPresetRowBtn').addEventListener('click', () => {
+            editorRows = [
+              ...editorRows,
+              createEmptyRow(),
+            ].map((publication, index) => ({
+              ...publication,
+              position: index + 1,
+            }));
+            renderEditorRows();
+          });
+
+          document.getElementById('presetForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setSaveStatus('Saving preset…');
+            try {
+              const payload = buildPayload();
+              const result = await request(
+                selectedPresetId
+                  ? '/campaign-presets/' + encodeURIComponent(selectedPresetId)
+                  : '/campaign-presets',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                },
+              );
+              selectedPresetId = result.id;
+              await refreshPresets(result.id);
+              setSaveStatus('Preset saved.');
+            } catch (error) {
+              setSaveStatus(error instanceof Error ? error.message : String(error), 'error');
+              setOutput(error instanceof Error ? error.message : String(error));
+            }
+          });
+
+          await refreshPresets(null);
           setOutput({ project, presets });
         }
 
@@ -1515,8 +2143,8 @@ export class CampaignTestUiController {
           <section class="panel stack">
             <div class="section-copy">
               <span class="eyebrow">Execution</span>
-              <h2>Stage controls</h2>
-              <p>Run each stage explicitly in order. The next step unlocks only after the previous one is complete.</p>
+              <h2>Stage status</h2>
+              <p>The flow advances automatically after source attach. Inbox items pause it until they are resolved.</p>
             </div>
             <div class="stepper">
               <div class="step-item">
@@ -1758,8 +2386,8 @@ export class CampaignTestUiController {
             ? 'Source already attached'
             : 'Attach source article';
           document.getElementById('sourcePanelMeta').textContent = campaign.sourceArticleId
-            ? 'Replacing source is not supported yet. Continue with source check or later stages.'
-            : 'Paste the canonical source and attach it to the campaign.';
+            ? 'Replacing source is not supported yet. The automation will continue from the current stage.'
+            : 'Paste the canonical source. Production starts automatically after attach.';
 
           const checks = [
             {
@@ -1814,10 +2442,10 @@ export class CampaignTestUiController {
           const stage1Completed = stage1VisualState.className.includes('is-success');
           const stage2Completed = stage2VisualState.className.includes('is-success');
 
-          startProductionBtn.disabled = !canStartSourceCheck || sourceCheckCompleted;
-          runStage1Btn.disabled = !canRunStage1 || stage1Completed;
-          runStage2Btn.disabled = !canRunStage2 || stage2Completed;
-          approveForPublishingBtn.disabled = !canApproveForPublishing;
+          startProductionBtn.disabled = true;
+          runStage1Btn.disabled = true;
+          runStage2Btn.disabled = true;
+          approveForPublishingBtn.disabled = true;
 
           startProductionBtn.className = sourceCheckVisualState.className;
           startProductionBtn.textContent = sourceCheckVisualState.label;
@@ -1829,44 +2457,36 @@ export class CampaignTestUiController {
             ? approveStepNumber + '. Publishing already approved'
             : approveStepNumber + '. Approve for publishing';
 
-          startProductionBtn.title = canStartSourceCheck
-            ? sourceCheckVisualState.title
-            : activeWorkflowRun && activeWorkflowRun.currentStep === 'source_check'
+          startProductionBtn.title = activeWorkflowRun && activeWorkflowRun.currentStep === 'source_check'
               ? sourceCheckVisualState.title
               : campaign.sourceArticleId
-                ? 'Wait until the current workflow run finishes.'
-                : 'Attach source before source check.';
-          runStage1Btn.title = canRunStage1
-            ? stage1VisualState.title
-            : activeWorkflowRun
+                ? 'Source check is automatic after source attach.'
+                : 'Attach source to start source check automatically.';
+          runStage1Btn.title = activeWorkflowRun
               ? stage1VisualState.title || 'Wait until the current workflow run finishes.'
               : hasSourceBlocked || campaign.status === 'source_needs_review'
                 ? 'Resolve the source issue before Stage 1.'
                 : stage1RunnableCount === 0
                   ? 'Stage 1 has no pending publications to process.'
-                  : 'Complete source check before Stage 1.';
-          runStage2Btn.title = canRunStage2
-            ? stage2VisualState.title
-            : activeWorkflowRun
+                  : 'Stage 1 runs automatically after source check.';
+          runStage2Btn.title = activeWorkflowRun
               ? stage2VisualState.title || 'Wait until the current workflow run finishes.'
               : !hasTranslationTargets
                 ? ''
                 : stage1RunnableCount > 0
-                ? 'Complete Stage 1 before Stage 2.'
+                ? 'Stage 2 runs automatically after Stage 1.'
                 : stage2RunnableCount === 0
                   ? 'Stage 2 has no translations waiting to run.'
                   : 'Stage 2 is still locked.';
-          approveForPublishingBtn.title = canApproveForPublishing
-            ? ''
-            : alreadyApproved
+          approveForPublishingBtn.title = alreadyApproved
               ? 'Publishing has already been approved for this campaign.'
               : activeWorkflowRun
                 ? 'Wait until the current workflow run finishes.'
                 : campaign.pendingApprovalCount > 0
                   ? 'Resolve pending inbox items before approving for publishing.'
-                  : !allReadyForApproval
-                    ? 'Some planned publications are still in production or blocked.'
-                    : 'Campaign is not yet in ready_for_final_approval status.';
+                : !allReadyForApproval
+                  ? 'Some planned publications are still in production or blocked.'
+                    : 'Final approval runs automatically when the campaign is ready.';
 
           if (hasTranslationTargets) {
             stage2Step.style.display = '';
@@ -1987,27 +2607,6 @@ export class CampaignTestUiController {
                 language: document.getElementById('sourceLanguage').value || 'en',
               },
             );
-          });
-
-          document.getElementById('startProductionBtn').addEventListener('click', async () => {
-            await executeAction('/campaigns/' + encodeURIComponent(campaignId) + '/start-production', 'POST');
-          });
-
-          document.getElementById('runStage1Btn').addEventListener('click', async () => {
-            await executeAction('/campaigns/' + encodeURIComponent(campaignId) + '/stage-1/run', 'POST');
-          });
-
-          document.getElementById('runStage2Btn').addEventListener('click', async () => {
-            await executeAction('/campaigns/' + encodeURIComponent(campaignId) + '/stage-2/run', 'POST');
-          });
-
-          document.getElementById('approveForPublishingBtn').addEventListener('click', async () => {
-            await request(
-              '/campaigns/' + encodeURIComponent(campaignId) + '/final-approval',
-              { method: 'POST' },
-            );
-            window.location.href =
-              '/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaignId);
           });
         });
 

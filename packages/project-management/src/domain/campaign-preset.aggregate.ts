@@ -31,6 +31,14 @@ export interface CampaignPresetProps {
   updatedAt: Date;
 }
 
+export interface UpdateCampaignPresetParams {
+  name: string;
+  description: string;
+  sourceLanguage: string;
+  sourceType: string;
+  isActive: boolean;
+}
+
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -112,6 +120,15 @@ export class CampaignPreset extends AggregateRoot {
     }
 
     this.isActive = false;
+    this.updatedAt = new Date();
+  }
+
+  update(params: UpdateCampaignPresetParams): void {
+    this.name = params.name.trim();
+    this.description = params.description.trim();
+    this.sourceLanguage = normalizeToken(params.sourceLanguage);
+    this.sourceType = normalizeToken(params.sourceType);
+    this.isActive = params.isActive;
     this.updatedAt = new Date();
   }
 

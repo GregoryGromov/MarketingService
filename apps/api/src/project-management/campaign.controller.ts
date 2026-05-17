@@ -70,9 +70,14 @@ export class CampaignController {
     @Body(new ValibotPipe(AttachCampaignSourceSchema)) dto: AttachCampaignSourceDto,
   ) {
     try {
-      return await this.commandBus.execute(
+      const source = await this.commandBus.execute(
         new AttachCampaignSourceCommand(id as CampaignId, dto.content, dto.language),
       );
+      const production = await this.commandBus.execute(
+        new StartCampaignProductionCommand(id as CampaignId),
+      );
+
+      return { ...source, production };
     } catch (error) {
       rethrowProjectManagementHttpError(error);
     }
@@ -135,7 +140,7 @@ export class CampaignController {
     @Body(new ValibotPipe(ReviewSourceIssueSchema)) dto: ReviewSourceIssueDto,
   ) {
     try {
-      return await this.commandBus.execute(
+      const review = await this.commandBus.execute(
         new ReviewSourceIssueCommand(
           id as CampaignId,
           dto.approvalItemId,
@@ -145,6 +150,16 @@ export class CampaignController {
           dto.note ?? null,
         ),
       );
+
+      if (review.campaignStatus === 'producing') {
+        const resumedProduction = await this.commandBus.execute(
+          new RunCampaignStage1Command(id as CampaignId),
+        );
+
+        return { ...review, resumedProduction };
+      }
+
+      return review;
     } catch (error) {
       rethrowProjectManagementHttpError(error);
     }

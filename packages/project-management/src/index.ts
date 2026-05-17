@@ -18,6 +18,7 @@ export {
   CampaignPreset,
   type CampaignPresetProps,
   type CreateCampaignPresetParams,
+  type UpdateCampaignPresetParams,
 } from './domain/campaign-preset.aggregate.js';
 export { CampaignPresetRepository } from './domain/campaign-preset.repository.js';
 export {
@@ -89,6 +90,16 @@ export {
 } from './domain/project-marker-placement.aggregate.js';
 export { ProjectMarkerPlacementRepository } from './domain/project-marker-placement.repository.js';
 export {
+  type PublicationType,
+  type PublicationTypeOption,
+  PUBLICATION_TYPE_OPTIONS_BY_CHANNEL,
+  describePublicationTypeForChannel,
+  getDefaultPublicationTypeForChannel,
+  getPublicationTypeOptionsForChannel,
+  normalizePublicationTypeForChannel,
+  resolvePublicationTypeForChannel,
+} from './publication-type.js';
+export {
   type AiGeneratedTextResult,
   type AiGatewayQualityOutcome,
   type AiGatewayReason,
@@ -126,6 +137,7 @@ export {
   CampaignFlowTransactionPort,
   type CampaignFlowTransactionContext,
 } from './ports/campaign-flow-transaction.port.js';
+export { ProjectDeletionPort } from './ports/project-deletion.port.js';
 export { ProjectManagementModule } from './project-management.module.js';
 export { ApproveCampaignForPublishingCommand } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.command.js';
 export type { ApproveCampaignForPublishingResult } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.handler.js';
@@ -136,9 +148,14 @@ export {
   type CreateCampaignPlannedPublicationOverride,
 } from './use-cases/create-campaign/create-campaign.command.js';
 export type { CreateCampaignResult } from './use-cases/create-campaign/create-campaign.handler.js';
+export {
+  CreateCampaignPresetCommand,
+  type CreateCampaignPresetPublicationInput,
+} from './use-cases/create-campaign-preset/create-campaign-preset.command.js';
 export { CreateProjectCommand } from './use-cases/create-project/create-project.command.js';
 export { CreateProjectMarkerCommand } from './use-cases/create-project-marker/create-project-marker.command.js';
 export { CreateProjectMarkerPlacementCommand } from './use-cases/create-project-marker-placement/create-project-marker-placement.command.js';
+export { DeleteProjectCommand } from './use-cases/delete-project/delete-project.command.js';
 export { DeleteProjectMarkerCommand } from './use-cases/delete-project-marker/delete-project-marker.command.js';
 export type {
   CampaignApprovalInboxItemResult,
@@ -194,5 +211,6 @@ export { StartCampaignProductionCommand } from './use-cases/start-campaign-produ
 export type { StartCampaignProductionResult } from './use-cases/start-campaign-production/start-campaign-production.handler.js';
 export { StartCampaignProductionExecutor } from './use-cases/start-campaign-production/start-campaign-production.executor.js';
 export type { StartCampaignProductionExecutionResult } from './use-cases/start-campaign-production/start-campaign-production.executor.js';
+export { UpdateCampaignPresetCommand } from './use-cases/update-campaign-preset/update-campaign-preset.command.js';
 export { UpdateProjectBrandMemoryCommand } from './use-cases/update-project-brand-memory/update-project-brand-memory.command.js';
 export type { UpdateProjectBrandMemoryResult } from './use-cases/update-project-brand-memory/update-project-brand-memory.handler.js';

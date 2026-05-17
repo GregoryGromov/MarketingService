@@ -123,6 +123,14 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       return;
     }
 
+    if (publication.channelId === 'channel_blog') {
+      publication.markPublished({
+        telegramChatId: 'blog',
+        telegramMessageId: `blog-${publication.adaptationId}-${publication.targetLanguage}`,
+      });
+      return;
+    }
+
     throw new Error(`Channel ${publication.channelId} is not supported for scheduled publishing`);
   }
 

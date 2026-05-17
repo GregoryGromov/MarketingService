@@ -1,5 +1,6 @@
 import { generateId, type TypedId } from '@marketing-service/shared';
 import type { CampaignPresetId } from './campaign-preset.aggregate.js';
+import { normalizePublicationTypeForChannel } from '../publication-type.js';
 
 export type CampaignPresetPublicationId = TypedId<'campaign_preset_publication'>;
 
@@ -46,14 +47,15 @@ export class CampaignPresetPublication {
   ) {}
 
   static create(params: CreateCampaignPresetPublicationParams): CampaignPresetPublication {
+    const channel = normalizeToken(params.channel);
     return new CampaignPresetPublication(
       generateId('campaign_preset_publication'),
       params.presetId,
       params.dayOffset,
       params.localTime.trim(),
-      normalizeToken(params.channel),
+      channel,
       normalizeToken(params.language),
-      normalizeToken(params.publicationType),
+      normalizePublicationTypeForChannel(channel, params.publicationType),
       normalizeToken(params.style),
       params.position,
       new Date(),
@@ -61,14 +63,15 @@ export class CampaignPresetPublication {
   }
 
   static rehydrate(props: CampaignPresetPublicationProps): CampaignPresetPublication {
+    const channel = normalizeToken(props.channel);
     return new CampaignPresetPublication(
       props.id,
       props.presetId,
       props.dayOffset,
       props.localTime,
-      props.channel,
+      channel,
       props.language,
-      props.publicationType,
+      normalizePublicationTypeForChannel(channel, props.publicationType),
       props.style,
       props.position,
       props.createdAt,

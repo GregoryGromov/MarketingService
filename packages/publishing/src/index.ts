@@ -31,6 +31,7 @@ export { GetArticlePublicationsQuery } from './use-cases/get-article-publication
 export type { GetProjectPublicationPlansResultItem } from './use-cases/get-project-publication-plans/get-project-publication-plans.handler.js';
 export { GetProjectPublicationPlansQuery } from './use-cases/get-project-publication-plans/get-project-publication-plans.query.js';
 export { ReschedulePublicationPlanCommand } from './use-cases/reschedule-publication-plan/reschedule-publication-plan.command.js';
+export { ScheduleBlogPublicationCommand } from './use-cases/schedule-blog-publication/schedule-blog-publication.command.js';
 export { ScheduleDiscordPublicationCommand } from './use-cases/schedule-discord-publication/schedule-discord-publication.command.js';
 export { ScheduleTelegramPublicationCommand } from './use-cases/schedule-telegram-publication/schedule-telegram-publication.command.js';
 export { ScheduleXPublicationCommand } from './use-cases/schedule-x-publication/schedule-x-publication.command.js';

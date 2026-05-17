@@ -9,6 +9,7 @@ import { GetArticlePublicationPlansHandler } from './use-cases/get-article-publi
 import { GetArticlePublicationsHandler } from './use-cases/get-article-publications/get-article-publications.handler.js';
 import { GetProjectPublicationPlansHandler } from './use-cases/get-project-publication-plans/get-project-publication-plans.handler.js';
 import { ReschedulePublicationPlanHandler } from './use-cases/reschedule-publication-plan/reschedule-publication-plan.handler.js';
+import { ScheduleBlogPublicationHandler } from './use-cases/schedule-blog-publication/schedule-blog-publication.handler.js';
 import { ScheduleDiscordPublicationHandler } from './use-cases/schedule-discord-publication/schedule-discord-publication.handler.js';
 import { ScheduleTelegramPublicationHandler } from './use-cases/schedule-telegram-publication/schedule-telegram-publication.handler.js';
 import { ScheduleXPublicationHandler } from './use-cases/schedule-x-publication/schedule-x-publication.handler.js';
@@ -23,6 +24,7 @@ import { ScheduleXPublicationHandler } from './use-cases/schedule-x-publication/
     GetArticlePublicationPlansHandler,
     GetArticlePublicationsHandler,
     GetProjectPublicationPlansHandler,
+    ScheduleBlogPublicationHandler,
     ScheduleDiscordPublicationHandler,
     ScheduleTelegramPublicationHandler,
     ScheduleXPublicationHandler,

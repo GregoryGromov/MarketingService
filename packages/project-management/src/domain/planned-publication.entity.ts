@@ -1,6 +1,7 @@
 import { generateId, type TypedId } from '@marketing-service/shared';
 import type { CampaignId } from './campaign.aggregate.js';
 import type { CampaignPresetPublicationId } from './campaign-preset-publication.entity.js';
+import { normalizePublicationTypeForChannel } from '../publication-type.js';
 
 export type PlannedPublicationId = TypedId<'planned_publication'>;
 export type PlannedPublicationStatus =
@@ -80,6 +81,7 @@ export class PlannedPublication {
 
   static create(params: CreatePlannedPublicationParams): PlannedPublication {
     const now = new Date();
+    const channel = normalizeToken(params.channel);
     return new PlannedPublication(
       generateId('planned_publication'),
       params.campaignId,
@@ -87,9 +89,9 @@ export class PlannedPublication {
       params.dayOffset,
       params.localTime.trim(),
       params.scheduledFor,
-      normalizeToken(params.channel),
+      channel,
       normalizeToken(params.language),
-      normalizeToken(params.publicationType),
+      normalizePublicationTypeForChannel(channel, params.publicationType),
       normalizeToken(params.style),
       params.publishMode ?? null,
       'pending',
@@ -100,6 +102,7 @@ export class PlannedPublication {
   }
 
   static rehydrate(props: PlannedPublicationProps): PlannedPublication {
+    const channel = normalizeToken(props.channel);
     return new PlannedPublication(
       props.id,
       props.campaignId,
@@ -107,9 +110,9 @@ export class PlannedPublication {
       props.dayOffset,
       props.localTime,
       props.scheduledFor,
-      props.channel,
+      channel,
       props.language,
-      props.publicationType,
+      normalizePublicationTypeForChannel(channel, props.publicationType),
       props.style,
       props.publishMode,
       props.status,
