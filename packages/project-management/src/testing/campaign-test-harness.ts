@@ -232,11 +232,25 @@ class InMemoryApprovalItemRepository
     );
   }
 
+  findByProjectId(projectId: string): Promise<any[]> {
+    return Promise.resolve(
+      this.store.all().filter((item) => item.projectId === projectId),
+    );
+  }
+
   findByCampaignIdAndStatus(campaignId: CampaignId, status: any): Promise<any[]> {
     return Promise.resolve(
       this.store
         .all()
         .filter((item) => item.campaignId === campaignId && item.status === status),
+    );
+  }
+
+  findByProjectIdAndStatus(projectId: string, status: any): Promise<any[]> {
+    return Promise.resolve(
+      this.store
+        .all()
+        .filter((item) => item.projectId === projectId && item.status === status),
     );
   }
 

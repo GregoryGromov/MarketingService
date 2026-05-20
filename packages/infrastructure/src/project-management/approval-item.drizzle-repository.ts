@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import {
   approvalItems,
   type ApprovalItemRow,
@@ -38,18 +38,37 @@ export class ApprovalItemDrizzleRepository extends ApprovalItemRepository {
     return rows.map((row) => ApprovalItem.rehydrate(this.toDomainProps(row)));
   }
 
+  async findByProjectId(projectId: ApprovalItemProps['projectId']): Promise<ApprovalItem[]> {
+    const rows = await this.db.query.approvalItems.findMany({
+      where: eq(approvalItems.projectId, projectId),
+      orderBy: [desc(approvalItems.updatedAt), asc(approvalItems.createdAt)],
+    });
+
+    return rows.map((row) => ApprovalItem.rehydrate(this.toDomainProps(row)));
+  }
+
   async findByCampaignIdAndStatus(
     campaignId: CampaignId,
     status: ApprovalItemStatus,
   ): Promise<ApprovalItem[]> {
     const rows = await this.db.query.approvalItems.findMany({
-      where: eq(approvalItems.campaignId, campaignId),
+      where: and(eq(approvalItems.campaignId, campaignId), eq(approvalItems.status, status)),
       orderBy: [desc(approvalItems.updatedAt), asc(approvalItems.createdAt)],
     });
 
-    return rows
-      .filter((row) => row.status === status)
-      .map((row) => ApprovalItem.rehydrate(this.toDomainProps(row)));
+    return rows.map((row) => ApprovalItem.rehydrate(this.toDomainProps(row)));
+  }
+
+  async findByProjectIdAndStatus(
+    projectId: ApprovalItemProps['projectId'],
+    status: ApprovalItemStatus,
+  ): Promise<ApprovalItem[]> {
+    const rows = await this.db.query.approvalItems.findMany({
+      where: and(eq(approvalItems.projectId, projectId), eq(approvalItems.status, status)),
+      orderBy: [desc(approvalItems.updatedAt), asc(approvalItems.createdAt)],
+    });
+
+    return rows.map((row) => ApprovalItem.rehydrate(this.toDomainProps(row)));
   }
 
   async save(item: ApprovalItem): Promise<void> {

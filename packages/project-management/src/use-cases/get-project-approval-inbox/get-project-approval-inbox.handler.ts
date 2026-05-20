@@ -6,11 +6,12 @@ import {
 } from '@marketing-service/editorial';
 import { ApprovalItemRepository } from '../../domain/approval-item.repository.js';
 import { CampaignRepository } from '../../domain/campaign.repository.js';
+import { ProjectRepository } from '../../domain/project.repository.js';
 import type {
   ApprovalItemSeverity,
   ApprovalItemType,
 } from '../../domain/approval-item.aggregate.js';
-import { GetCampaignApprovalInboxQuery } from './get-campaign-approval-inbox.query.js';
+import { GetProjectApprovalInboxQuery } from './get-project-approval-inbox.query.js';
 
 const SEVERITY_RANK: Record<ApprovalItemSeverity, number> = {
   low: 0,
@@ -38,8 +39,12 @@ function isInboxExceptionType(type: ApprovalItemType): boolean {
   return type !== 'final_campaign_approval';
 }
 
-export interface CampaignApprovalInboxItemResult {
+export interface ProjectApprovalInboxItemResult {
   id: string;
+  campaignId: string;
+  campaignName: string;
+  campaignStatus: string;
+  sourceArticleId: string | null;
   plannedPublicationId: string | null;
   artifactType: string | null;
   artifactId: string | null;
@@ -53,22 +58,23 @@ export interface CampaignApprovalInboxItemResult {
   updatedAt: Date;
 }
 
-export interface GetCampaignApprovalInboxResult {
-  campaignId: string;
-  campaignStatus: string;
+export interface GetProjectApprovalInboxResult {
+  projectId: string;
   pendingCount: number;
-  items: CampaignApprovalInboxItemResult[];
+  items: ProjectApprovalInboxItemResult[];
 }
 
-@QueryHandler(GetCampaignApprovalInboxQuery)
-export class GetCampaignApprovalInboxHandler
+@QueryHandler(GetProjectApprovalInboxQuery)
+export class GetProjectApprovalInboxHandler
   implements
     IQueryHandler<
-      GetCampaignApprovalInboxQuery,
-      GetCampaignApprovalInboxResult | null
+      GetProjectApprovalInboxQuery,
+      GetProjectApprovalInboxResult | null
     >
 {
   constructor(
+    @Inject(ProjectRepository)
+    private readonly projectRepository: ProjectRepository,
     @Inject(CampaignRepository)
     private readonly campaignRepository: CampaignRepository,
     @Inject(ApprovalItemRepository)
@@ -101,40 +107,49 @@ export class GetCampaignApprovalInboxHandler
   }
 
   async execute(
-    query: GetCampaignApprovalInboxQuery,
-  ): Promise<GetCampaignApprovalInboxResult | null> {
-    const campaign = await this.campaignRepository.findById(query.campaignId as never);
-    if (!campaign) {
+    query: GetProjectApprovalInboxQuery,
+  ): Promise<GetProjectApprovalInboxResult | null> {
+    const project = await this.projectRepository.findById(query.projectId);
+    if (!project) {
       return null;
     }
 
-    const pendingItems = await this.approvalItemRepository.findByCampaignIdAndStatus(
-      campaign.id,
-      'pending',
-    );
+    const [campaigns, pendingItems] = await Promise.all([
+      this.campaignRepository.findByProjectId(project.id),
+      this.approvalItemRepository.findByProjectIdAndStatus(project.id, 'pending'),
+    ]);
 
+    const campaignsById = new Map(campaigns.map((campaign) => [campaign.id, campaign] as const));
     const sortedItems = pendingItems
-      .filter((item) => isInboxExceptionType(item.type))
+      .filter((item) => isInboxExceptionType(item.type) && campaignsById.has(item.campaignId))
       .sort(compareInboxItems);
 
-    const items = await Promise.all(sortedItems.map(async (item) => ({
-        id: item.id,
-        plannedPublicationId: item.plannedPublicationId,
-        artifactType: item.artifactType,
-        artifactId: item.artifactId,
-        type: item.type,
-        severity: item.severity,
-        title: item.title,
-        details: item.details,
-        suggestedFix: item.suggestedFix,
-        currentContent: await this.getCurrentContent(item),
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      })));
+    const items = await Promise.all(
+      sortedItems.map(async (item) => {
+        const campaign = campaignsById.get(item.campaignId)!;
+        return {
+          id: item.id,
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          campaignStatus: campaign.status,
+          sourceArticleId: campaign.sourceArticleId,
+          plannedPublicationId: item.plannedPublicationId,
+          artifactType: item.artifactType,
+          artifactId: item.artifactId,
+          type: item.type,
+          severity: item.severity,
+          title: item.title,
+          details: item.details,
+          suggestedFix: item.suggestedFix,
+          currentContent: await this.getCurrentContent(item),
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        } satisfies ProjectApprovalInboxItemResult;
+      }),
+    );
 
     return {
-      campaignId: campaign.id,
-      campaignStatus: campaign.status,
+      projectId: project.id,
       pendingCount: items.length,
       items,
     };

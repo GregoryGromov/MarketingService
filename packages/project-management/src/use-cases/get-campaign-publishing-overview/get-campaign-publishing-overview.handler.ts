@@ -1,9 +1,16 @@
 import { Inject } from '@nestjs/common';
+import {
+  ChannelAdaptationRepository,
+  TranslationRepository,
+} from '@marketing-service/editorial';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { CampaignArtifactRepository } from '../../domain/campaign-artifact.repository.js';
 import { CampaignRepository } from '../../domain/campaign.repository.js';
 import { PlannedPublicationRepository } from '../../domain/planned-publication.repository.js';
 import { CampaignPublishingPort } from '../../ports/campaign-publishing.port.js';
 import { GetCampaignPublishingOverviewQuery } from './get-campaign-publishing-overview.query.js';
+
+const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
 
 export interface CampaignPublishingOverviewMetrics {
   total: number;
@@ -17,6 +24,10 @@ export interface CampaignPublishingOverviewMetrics {
 
 export interface CampaignPublishingOverviewItemResult {
   plannedPublicationId: string;
+  articleId: string | null;
+  adaptationId: string | null;
+  translationId: string | null;
+  artifactType: 'adaptation' | 'translation' | null;
   channel: string;
   language: string;
   publishMode: string | null;
@@ -100,6 +111,12 @@ export class GetCampaignPublishingOverviewHandler
     private readonly campaignRepository: CampaignRepository,
     @Inject(PlannedPublicationRepository)
     private readonly plannedPublicationRepository: PlannedPublicationRepository,
+    @Inject(CampaignArtifactRepository)
+    private readonly campaignArtifactRepository: CampaignArtifactRepository,
+    @Inject(ChannelAdaptationRepository)
+    private readonly channelAdaptationRepository: ChannelAdaptationRepository,
+    @Inject(TranslationRepository)
+    private readonly translationRepository: TranslationRepository,
     @Inject(CampaignPublishingPort)
     private readonly campaignPublishingPort: CampaignPublishingPort,
   ) {}
@@ -120,13 +137,34 @@ export class GetCampaignPublishingOverviewHandler
     const metrics = createEmptyMetrics();
 
     for (const plannedPublication of plannedPublications) {
-      const [scheduledPublication, exportPlan] = await Promise.all([
+      const [scheduledPublication, exportPlan, artifacts] = await Promise.all([
         this.campaignPublishingPort.findScheduledPublication(plannedPublication.id),
         this.campaignPublishingPort.findExportPlan(plannedPublication.id),
+        this.campaignArtifactRepository.findByPlannedPublicationId(plannedPublication.id),
       ]);
+
+      const adaptationArtifact = artifacts.find(
+        (artifact) =>
+          artifact.artifactType === 'adaptation' &&
+          artifact.role === STAGE_1_BASE_ADAPTATION_ROLE,
+      ) ?? null;
+      const translationArtifact = artifacts.find(
+        (artifact) => artifact.artifactType === 'translation',
+      ) ?? null;
+
+      const adaptation = adaptationArtifact
+        ? await this.channelAdaptationRepository.findById(adaptationArtifact.artifactId as never)
+        : null;
+      const translation = translationArtifact
+        ? await this.translationRepository.findById(translationArtifact.artifactId as never)
+        : null;
 
       const item: CampaignPublishingOverviewItemResult = {
         plannedPublicationId: plannedPublication.id,
+        articleId: adaptation?.articleId ?? null,
+        adaptationId: adaptation?.id ?? null,
+        translationId: translation?.id ?? null,
+        artifactType: translation ? 'translation' : adaptation ? 'adaptation' : null,
         channel: plannedPublication.channel,
         language: plannedPublication.language,
         publishMode: plannedPublication.publishMode,

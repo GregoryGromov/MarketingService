@@ -27,6 +27,7 @@ const BAD_REQUEST_PATTERNS = [
 ];
 
 const CONFLICT_PATTERNS = [
+  /\bis not draft and cannot be deleted\b/i,
   /\balready has\b/i,
   /\balready resolved\b/i,
   /\balready has an active workflow run\b/i,

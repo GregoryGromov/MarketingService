@@ -1,4 +1,5 @@
 import type { CampaignId } from './campaign.aggregate.js';
+import type { ProjectId } from './project.aggregate.js';
 import type {
   ApprovalItem,
   ApprovalItemId,
@@ -8,8 +9,13 @@ import type {
 export abstract class ApprovalItemRepository {
   abstract findById(id: ApprovalItemId): Promise<ApprovalItem | null>;
   abstract findByCampaignId(campaignId: CampaignId): Promise<ApprovalItem[]>;
+  abstract findByProjectId(projectId: ProjectId): Promise<ApprovalItem[]>;
   abstract findByCampaignIdAndStatus(
     campaignId: CampaignId,
+    status: ApprovalItemStatus,
+  ): Promise<ApprovalItem[]>;
+  abstract findByProjectIdAndStatus(
+    projectId: ProjectId,
     status: ApprovalItemStatus,
   ): Promise<ApprovalItem[]>;
   abstract save(item: ApprovalItem): Promise<void>;

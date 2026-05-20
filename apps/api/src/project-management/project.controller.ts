@@ -6,6 +6,7 @@ import {
   CreateProjectMarkerPlacementCommand,
   DeleteProjectCommand,
   DeleteProjectMarkerCommand,
+  GetProjectApprovalInboxQuery,
   GetProjectMarkerPlacementsQuery,
   GetProjectQuery,
   ListProjectCampaignsQuery,
@@ -62,6 +63,16 @@ const GlossarySchema = v.record(
   v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(300)),
 );
 
+const AdaptationPromptRulesSchema = v.object({
+  generalInstructions: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000))),
+  ),
+  telegram: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  blog: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+});
+
 const UpdateProjectBrandMemorySchema = v.object({
   brandName: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(120)))),
   productDescription: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
@@ -80,6 +91,7 @@ const UpdateProjectBrandMemorySchema = v.object({
     v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240)))),
   ),
   brandDocs: v.optional(v.nullish(v.array(BrandMemoryDocumentSchema))),
+  adaptationPromptRules: v.optional(v.nullish(AdaptationPromptRulesSchema)),
 });
 
 const CreateCampaignSchema = v.object({
@@ -212,6 +224,26 @@ function normalizeBrandMemoryUpdate(
           })),
         }
       : {}),
+    ...(dto.adaptationPromptRules !== undefined
+      ? {
+          adaptationPromptRules: dto.adaptationPromptRules
+            ? {
+                generalInstructions:
+                  dto.adaptationPromptRules.generalInstructions ?? null,
+                telegram: dto.adaptationPromptRules.telegram ?? null,
+                x: dto.adaptationPromptRules.x ?? null,
+                discord: dto.adaptationPromptRules.discord ?? null,
+                blog: dto.adaptationPromptRules.blog ?? null,
+              }
+            : {
+                generalInstructions: null,
+                telegram: null,
+                x: null,
+                discord: null,
+                blog: null,
+              },
+        }
+      : {}),
   };
 }
 
@@ -306,6 +338,19 @@ export class ProjectController {
     }
 
     return campaigns;
+  }
+
+  @Get(':id/inbox')
+  async getInbox(@Param('id') id: string) {
+    const inbox = await this.queryBus.execute(
+      new GetProjectApprovalInboxQuery(id as ProjectId),
+    );
+
+    if (!inbox) {
+      throw new NotFoundException(`Project ${id} not found`);
+    }
+
+    return inbox;
   }
 
   @Post(':id/campaigns')

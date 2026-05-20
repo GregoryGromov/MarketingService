@@ -7,6 +7,8 @@ import { PlannedPublicationRepository } from '../../domain/planned-publication.r
 import { ProjectRepository } from '../../domain/project.repository.js';
 import { ListProjectCampaignsQuery } from './list-project-campaigns.query.js';
 
+const EMPTY_CAMPAIGN_PRESET_ID = '__empty__';
+
 export interface ListProjectCampaignsResultItem {
   id: string;
   projectId: string;
@@ -19,9 +21,19 @@ export interface ListProjectCampaignsResultItem {
   status: string;
   finalApprovedAt: Date | null;
   plannedPublicationCount: number;
+  publicationStatusCounts: Record<string, number>;
   pendingApprovalCount: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+function countPublicationStatuses(
+  plannedPublications: { status: string }[],
+): Record<string, number> {
+  return plannedPublications.reduce<Record<string, number>>((acc, publication) => {
+    acc[publication.status] = (acc[publication.status] ?? 0) + 1;
+    return acc;
+  }, {});
 }
 
 @QueryHandler(ListProjectCampaignsQuery)
@@ -70,7 +82,9 @@ export class ListProjectCampaignsHandler
           id: campaign.id,
           projectId: campaign.projectId,
           presetId: campaign.presetId,
-          presetName: presetNames.get(campaign.presetId) ?? null,
+          presetName:
+            presetNames.get(campaign.presetId) ??
+            (String(campaign.presetId) === EMPTY_CAMPAIGN_PRESET_ID ? 'Empty preset' : null),
           name: campaign.name,
           sourceArticleId: campaign.sourceArticleId,
           startDate: campaign.startDate,
@@ -78,6 +92,7 @@ export class ListProjectCampaignsHandler
           status: campaign.status,
           finalApprovedAt: campaign.finalApprovedAt,
           plannedPublicationCount: plannedPublications.length,
+          publicationStatusCounts: countPublicationStatuses(plannedPublications),
           pendingApprovalCount: pendingApprovals.length,
           createdAt: campaign.createdAt,
           updatedAt: campaign.updatedAt,

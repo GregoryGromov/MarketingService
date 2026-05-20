@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { asc, desc, eq } from 'drizzle-orm';
 import { projects, type NewProjectRow, type ProjectRow } from '@marketing-service/database';
 import {
+  type AdaptationPromptRules,
   type BrandMemoryDocument,
   Project,
   ProjectRepository,
@@ -56,6 +57,14 @@ export class ProjectDrizzleRepository extends ProjectRepository {
         bannedPhrases: (row.bannedPhrases as string[] | null) ?? [],
         requiredPhrases: (row.requiredPhrases as string[] | null) ?? [],
         brandDocs: (row.brandDocs as BrandMemoryDocument[] | null) ?? [],
+        adaptationPromptRules:
+          (row.adaptationPromptRules as AdaptationPromptRules | null) ?? {
+            generalInstructions: null,
+            telegram: null,
+            x: null,
+            discord: null,
+            blog: null,
+          },
       },
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -75,6 +84,7 @@ export class ProjectDrizzleRepository extends ProjectRepository {
       bannedPhrases: project.brandMemory.bannedPhrases,
       requiredPhrases: project.brandMemory.requiredPhrases,
       brandDocs: project.brandMemory.brandDocs,
+      adaptationPromptRules: project.brandMemory.adaptationPromptRules,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };

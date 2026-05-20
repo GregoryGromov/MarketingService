@@ -7,6 +7,8 @@ import { PlannedPublicationRepository } from '../../domain/planned-publication.r
 import { WorkflowRunRepository } from '../../domain/workflow-run.repository.js';
 import { GetCampaignDetailQuery } from './get-campaign-detail.query.js';
 
+const EMPTY_CAMPAIGN_PRESET_ID = '__empty__';
+
 export interface CampaignDetailPlannedPublicationResultItem {
   id: string;
   presetPublicationId: string | null;
@@ -90,7 +92,9 @@ export class GetCampaignDetailHandler
       id: campaign.id,
       projectId: campaign.projectId,
       presetId: campaign.presetId,
-      presetName: preset?.name ?? null,
+      presetName:
+        preset?.name ??
+        (String(campaign.presetId) === EMPTY_CAMPAIGN_PRESET_ID ? 'Empty preset' : null),
       name: campaign.name,
       sourceArticleId: campaign.sourceArticleId,
       startDate: campaign.startDate,

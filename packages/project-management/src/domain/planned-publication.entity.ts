@@ -65,8 +65,8 @@ export class PlannedPublication {
     public readonly id: PlannedPublicationId,
     public readonly campaignId: CampaignId,
     public readonly presetPublicationId: CampaignPresetPublicationId | null,
-    public readonly dayOffset: number,
-    public readonly localTime: string,
+    public dayOffset: number,
+    public localTime: string,
     public scheduledFor: Date,
     public readonly channel: string,
     public readonly language: string,
@@ -179,6 +179,13 @@ export class PlannedPublication {
 
   markFailed(): void {
     this.status = 'failed';
+    this.updatedAt = new Date();
+  }
+
+  reschedule(params: { scheduledFor: Date; dayOffset: number; localTime: string }): void {
+    this.scheduledFor = params.scheduledFor;
+    this.dayOffset = params.dayOffset;
+    this.localTime = params.localTime.trim();
     this.updatedAt = new Date();
   }
 }

@@ -12,6 +12,7 @@ export const projects = pgTable('projects', {
   bannedPhrases: jsonb('banned_phrases'),
   requiredPhrases: jsonb('required_phrases'),
   brandDocs: jsonb('brand_docs'),
+  adaptationPromptRules: jsonb('adaptation_prompt_rules'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

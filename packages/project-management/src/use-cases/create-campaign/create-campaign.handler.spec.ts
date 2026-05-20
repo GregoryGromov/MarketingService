@@ -336,4 +336,35 @@ describe('CreateCampaignHandler', () => {
     });
     expect(preset.publications).toHaveLength(2);
   });
+
+  it('allows creating a campaign from an empty preset without planned publications', async () => {
+    const context = createCampaignTestContext();
+    const project = createProjectFixture();
+
+    await context.repositories.projects.save(project);
+
+    const handler = new CreateCampaignHandler(context.transaction, context.eventBus);
+    const result = await handler.execute(
+      new CreateCampaignCommand(
+        project.id,
+        '__empty__',
+        'Empty Campaign',
+        new Date('2026-05-15T00:00:00.000Z'),
+        'en',
+        null,
+        [],
+      ),
+    );
+
+    const campaign = await context.repositories.campaigns.findById(result.campaignId);
+    const plannedPublications = await context.repositories.plannedPublications.findByCampaignId(
+      result.campaignId as never,
+    );
+
+    expect(campaign).not.toBeNull();
+    expect(campaign?.name).toBe('Empty Campaign');
+    expect(campaign?.presetId).toBe('__empty__');
+    expect(plannedPublications).toHaveLength(0);
+    expect(result.plannedPublicationIds).toHaveLength(0);
+  });
 });

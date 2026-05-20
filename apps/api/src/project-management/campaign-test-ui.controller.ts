@@ -90,6 +90,90 @@ function renderCampaignUiStyles(): string {
         gap: 16px;
         flex-wrap: wrap;
       }
+      .campaign-creation-nav {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 16px;
+      }
+      .campaign-creation-nav .actions:last-child {
+        justify-self: end;
+      }
+      .nav-center-label {
+        color: var(--text);
+        font-size: clamp(17px, 1.8vw, 28px);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .campaign-flow-progress {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .flow-step {
+        min-height: 84px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.44);
+        display: grid;
+        gap: 8px;
+        align-content: center;
+      }
+      .flow-step.is-disabled {
+        border-color: rgba(18, 18, 18, 0.09);
+        background: rgba(245, 245, 245, 0.42);
+        color: rgba(18, 18, 18, 0.22);
+        cursor: not-allowed;
+      }
+      .flow-step.is-disabled span,
+      .flow-step.is-disabled strong,
+      .flow-step.is-disabled p {
+        color: rgba(18, 18, 18, 0.22);
+      }
+      .flow-step.can-open {
+        cursor: pointer;
+      }
+      .flow-step.can-open:hover {
+        border-color: var(--line-strong);
+        background: rgba(255, 255, 255, 0.62);
+      }
+      .flow-step.can-open.is-active:hover {
+        background: rgba(18, 18, 18, 0.92);
+      }
+      .flow-step.can-open.is-done:hover {
+        background: rgba(17, 122, 67, 0.14);
+      }
+      .flow-step span {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .flow-step strong {
+        font-size: 18px;
+        line-height: 1;
+        letter-spacing: -0.035em;
+        font-weight: 400;
+      }
+      .flow-step.is-active {
+        background: rgba(18, 18, 18, 0.92);
+        border-color: rgba(18, 18, 18, 0.92);
+        color: #fff;
+      }
+      .flow-step.is-active span {
+        color: rgba(255, 255, 255, 0.68);
+      }
+      .flow-step.is-done {
+        background: rgba(17, 122, 67, 0.1);
+        border-color: rgba(17, 122, 67, 0.22);
+        color: #117a43;
+      }
+      .campaign-wizard-step[hidden] {
+        display: none;
+      }
       .hero-copy,
       .section-copy,
       .stack {
@@ -153,6 +237,158 @@ function renderCampaignUiStyles(): string {
         grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
         gap: 18px;
         align-items: start;
+      }
+      .create-campaign-grid {
+        grid-template-columns: minmax(280px, 0.3fr) minmax(0, 0.7fr);
+        align-items: stretch;
+      }
+      .create-campaign-grid > .form-card,
+      .create-campaign-grid > .panel {
+        height: 100%;
+      }
+      .campaign-ai-progress {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .ai-flow-step {
+        min-height: 150px;
+        align-content: start;
+      }
+      .ai-flow-step p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .ai-flow-step.is-active p {
+        color: rgba(255, 255, 255, 0.72);
+      }
+      .ai-flow-step.is-done p {
+        color: rgba(17, 122, 67, 0.72);
+      }
+      .ai-flow-step.is-warning {
+        background: rgba(181, 71, 8, 0.1);
+        border-color: rgba(181, 71, 8, 0.22);
+        color: #a14c0a;
+      }
+      .ai-flow-step.is-warning span,
+      .ai-flow-step.is-warning p {
+        color: rgba(161, 76, 10, 0.72);
+      }
+      .ai-flow-step.is-danger {
+        background: rgba(180, 35, 24, 0.1);
+        border-color: rgba(180, 35, 24, 0.22);
+        color: #b42318;
+      }
+      .ai-flow-step.is-danger span,
+      .ai-flow-step.is-danger p {
+        color: rgba(180, 35, 24, 0.72);
+      }
+      .campaign-done-actions {
+        margin-top: 4px;
+      }
+      .done-publication-editor {
+        margin-top: 18px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.54);
+      }
+      .done-publication-editor[hidden] {
+        display: none;
+      }
+      .done-publication-grid {
+        grid-template-columns: minmax(0, 1fr) 180px 160px;
+        align-items: end;
+      }
+      .done-publication-row.is-active {
+        background: rgba(18, 18, 18, 0.035);
+      }
+      .done-publication-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .done-publication-editor textarea {
+        min-height: 280px;
+      }
+      .source-review-card {
+        display: grid;
+        gap: 18px;
+      }
+      .source-review-summary {
+        font-size: 18px;
+        line-height: 1.35;
+        color: var(--text);
+      }
+      .source-problem-list {
+        display: grid;
+        gap: 10px;
+      }
+      .source-problem {
+        padding: 16px 18px;
+        border: 1px solid rgba(236, 151, 31, 0.32);
+        border-radius: 22px;
+        background: rgba(255, 244, 214, 0.78);
+        display: grid;
+        gap: 8px;
+      }
+      .source-problem strong {
+        font-weight: 400;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+      .source-problem blockquote {
+        margin: 0;
+        padding-left: 12px;
+        border-left: 2px solid rgba(236, 151, 31, 0.48);
+        color: var(--muted);
+      }
+      .source-edit-panel[hidden] {
+        display: none;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 15, 28, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 80;
+      }
+      .modal-backdrop.open {
+        display: flex;
+      }
+      .modal {
+        width: min(560px, calc(100vw - 32px));
+        padding: 22px;
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 28px;
+        background: var(--surface);
+        display: grid;
+        gap: 16px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .source-edit-panel textarea {
+        min-height: 360px;
+      }
+      .form-grid.create-campaign-form-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: end;
+      }
+      .form-grid.create-campaign-form-grid .full {
+        grid-column: auto;
       }
       .metric,
       .card {
@@ -224,6 +460,31 @@ function renderCampaignUiStyles(): string {
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
       }
+      .btn-with-badge {
+        position: relative;
+      }
+      .notification-badge {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #d92d20;
+        color: #fff;
+        border: 2px solid var(--surface);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        line-height: 1;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(217, 45, 32, 0.24);
+      }
+      .notification-badge[hidden] {
+        display: none;
+      }
       .stage-button.is-running {
         background: rgba(18, 18, 18, 0.92);
         color: #fff;
@@ -280,6 +541,28 @@ function renderCampaignUiStyles(): string {
         background: rgba(18, 18, 18, 0.92);
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
+      }
+      .campaign-segment-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .campaign-segment-row button {
+        min-width: 180px;
+      }
+      .campaign-segment-row button.is-active {
+        background: rgba(18, 18, 18, 0.92);
+        color: #fff;
+        border-color: rgba(18, 18, 18, 0.92);
+      }
+      .campaign-list-head {
+        align-items: end;
+        margin-bottom: 18px;
+      }
+      .campaign-card-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       .meta-list,
       .kv,
@@ -480,12 +763,45 @@ function renderCampaignUiStyles(): string {
         overflow-wrap: break-word;
         font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
       }
+      .dev-toggle {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 70;
+        box-shadow: 0 14px 34px rgba(18, 18, 18, 0.16);
+      }
+      .dev-overlay {
+        position: fixed;
+        top: 18px;
+        left: 0;
+        right: 0;
+        z-index: 65;
+        padding: 0 38px;
+        pointer-events: none;
+      }
+      .dev-overlay[hidden] {
+        display: none;
+      }
+      .dev-panel {
+        max-width: 1480px;
+        max-height: calc(100vh - 92px);
+        margin: 0 auto;
+        overflow: auto;
+        box-shadow: 0 24px 80px rgba(18, 18, 18, 0.22);
+        pointer-events: auto;
+      }
       .empty-state {
         padding: 28px;
         color: var(--muted);
       }
       @media (max-width: 1120px) {
         .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .campaign-flow-progress {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .campaign-ai-progress {
           grid-template-columns: 1fr;
         }
         .metric-grid {
@@ -499,8 +815,13 @@ function renderCampaignUiStyles(): string {
         .wrap {
           padding: 18px 16px 28px;
         }
+        .dev-overlay {
+          padding: 0 16px;
+        }
         .form-grid,
         .kv,
+        .campaign-flow-progress,
+        .campaign-ai-progress,
         .metric-grid {
           grid-template-columns: 1fr;
         }
@@ -526,6 +847,22 @@ function renderSharedClientScript(): string {
         output.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       }
 
+      const MOSCOW_TIME_ZONE = 'Europe/Moscow';
+      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+      function toggleDevOverlay(forceOpen) {
+        const overlay = document.getElementById('devOverlay');
+        if (!overlay) return;
+        const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : overlay.hidden;
+        overlay.hidden = !shouldOpen;
+      }
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          toggleDevOverlay(false);
+        }
+      });
+
       async function request(url, options = {}, config = {}) {
         const res = await fetch(url, options);
         const text = await res.text();
@@ -547,11 +884,43 @@ function renderSharedClientScript(): string {
         return payload;
       }
 
+      function toMoscowShiftedDate(value) {
+        const date = value ? new Date(value) : new Date();
+        if (Number.isNaN(date.getTime())) {
+          return null;
+        }
+        return new Date(date.getTime() + MOSCOW_OFFSET_MS);
+      }
+
+      function getMoscowDateParts(value) {
+        const shifted = toMoscowShiftedDate(value);
+        if (!shifted) {
+          return null;
+        }
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth() + 1,
+          day: shifted.getUTCDate(),
+          hours: shifted.getUTCHours(),
+          minutes: shifted.getUTCMinutes(),
+        };
+      }
+
+      function buildMoscowIsoFromDateAndTime(dateValue, timeValue = '00:00') {
+        const [year, month, day] = String(dateValue || '').split('-').map((part) => Number(part));
+        const [hours, minutes] = String(timeValue || '').split(':').map((part) => Number(part));
+        if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
+          return null;
+        }
+        return new Date(Date.UTC(year, month - 1, day, hours - 3, minutes, 0, 0)).toISOString();
+      }
+
       function formatDateTime(value) {
         if (!value) return '—';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: MOSCOW_TIME_ZONE,
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -565,6 +934,7 @@ function renderSharedClientScript(): string {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: MOSCOW_TIME_ZONE,
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -572,21 +942,29 @@ function renderSharedClientScript(): string {
       }
 
       function formatDateInputValue(value) {
-        const date = value ? new Date(value) : new Date();
-        if (Number.isNaN(date.getTime())) {
+        const parts = getMoscowDateParts(value || new Date());
+        if (!parts) {
           return '';
         }
-        return date.toISOString().slice(0, 10);
+        return [
+          String(parts.year),
+          String(parts.month).padStart(2, '0'),
+          String(parts.day).padStart(2, '0'),
+        ].join('-');
       }
 
       function formatDateTimeInputValue(value) {
-        const date = value ? new Date(value) : new Date();
-        if (Number.isNaN(date.getTime())) {
+        const parts = getMoscowDateParts(value || new Date());
+        if (!parts) {
           return '';
         }
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
+        return [
+          String(parts.year),
+          String(parts.month).padStart(2, '0'),
+          String(parts.day).padStart(2, '0'),
+        ].join('-') + 'T' +
+          String(parts.hours).padStart(2, '0') + ':' +
+          String(parts.minutes).padStart(2, '0');
       }
 
       function badgeTone(status) {
@@ -670,7 +1048,19 @@ function renderCampaignUiPage(params: {
   summary: string;
   body: string;
   script: string;
+  showHero?: boolean;
 }): string {
+  const heroMarkup = params.showHero === false
+    ? ''
+    : `
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">${escapeHtml(params.eyebrow)}</span>
+          <h1>${escapeHtml(params.heading)}</h1>
+          <p>${escapeHtml(params.summary)}</p>
+        </div>
+      </section>`;
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -683,19 +1073,19 @@ ${renderCampaignUiStyles()}
   </head>
   <body>
     <div class="wrap">
-      <section class="hero">
-        <div class="hero-copy">
-          <span class="eyebrow">${escapeHtml(params.eyebrow)}</span>
-          <h1>${escapeHtml(params.heading)}</h1>
-          <p>${escapeHtml(params.summary)}</p>
-        </div>
-      </section>
+      ${heroMarkup}
       ${params.body}
-      <section class="panel stack">
+    </div>
+    <button type="button" class="dev-toggle" onclick="toggleDevOverlay()">Dev</button>
+    <div id="devOverlay" class="dev-overlay" hidden>
+      <section class="panel stack dev-panel">
         <div class="section-head">
           <div class="section-copy">
             <span class="eyebrow">Dev output</span>
             <h2>Request log</h2>
+          </div>
+          <div class="actions">
+            <button type="button" onclick="toggleDevOverlay(false)">Close</button>
           </div>
         </div>
         <pre id="output" class="output">Ready.</pre>
@@ -713,59 +1103,36 @@ ${params.script}
 export class CampaignTestUiController {
   @Get('campaigns')
   @Header('Content-Type', 'text/html; charset=utf-8')
-  renderCampaignListPage(@Query('projectId') projectId = ''): string {
+  renderCampaignListPage(
+    @Query('projectId') projectId = '',
+    @Query('markerId') markerId = '',
+  ): string {
     return renderCampaignUiPage({
       title: 'Marketing Service - Campaigns',
       eyebrow: 'Campaigns',
-      heading: 'Campaign list',
+      heading: 'Campaigns',
       summary:
-        'This is the project-level entry point for the new campaign flow: brand memory, preset-based creation and operational monitoring.',
+        'Project campaign workspace.',
+      showHero: false,
       body: `
         <section class="panel stack">
-          <div class="nav-row">
+          <div class="nav-row campaign-creation-nav">
             <div class="actions">
-              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">Back to project</a>
+              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">&lt; Dashboard</a>
             </div>
+            <div class="nav-center-label">Campaigns</div>
             <div class="actions">
-              <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
-              <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
-              <a class="btn primary" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
+              <a class="btn primary" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}${markerId ? `&markerId=${escapeHtml(markerId)}` : ''}">Create campaign</a>
             </div>
           </div>
         </section>
 
-        <section class="metric-grid">
-          <article class="metric">
-            <span class="eyebrow">Campaigns</span>
-            <strong id="campaignCount">0</strong>
-            <p>Total campaigns in this project.</p>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Needs attention</span>
-            <strong id="attentionCount">0</strong>
-            <p>Campaigns blocked by review items or failures.</p>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Publishing</span>
-            <strong id="publishingCount">0</strong>
-            <p>Campaigns already approved and linked to delivery.</p>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Pending approvals</span>
-            <strong id="pendingCount">0</strong>
-            <p>Total pending inbox items across campaigns.</p>
-          </article>
-        </section>
-
         <section class="panel stack">
-          <div class="section-head">
-            <div class="section-copy">
-              <span class="eyebrow">Project</span>
-              <h2 id="projectName">Loading project</h2>
-              <p id="projectMeta">Loading campaign inventory…</p>
-            </div>
-            <div class="actions">
-              <button onclick="loadPage()">Refresh</button>
+          <div class="section-head campaign-list-head">
+            <div class="campaign-segment-row" role="tablist" aria-label="Campaign groups">
+              <button id="activeCampaignsTab" class="is-active" type="button" data-campaign-group="active">Active<span id="activeCampaignsCount">&nbsp;(0)</span></button>
+              <button id="draftCampaignsTab" type="button" data-campaign-group="drafts">Drafts<span id="draftCampaignsCount">&nbsp;(0)</span></button>
+              <button id="completedCampaignsTab" type="button" data-campaign-group="completed">Completed<span id="completedCampaignsCount">&nbsp;(0)</span></button>
             </div>
           </div>
           <div id="campaignCards" class="card-grid"></div>
@@ -773,24 +1140,103 @@ export class CampaignTestUiController {
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
+        let currentCampaignGroup = 'active';
+        let groupedCampaigns = {
+          active: [],
+          drafts: [],
+          completed: [],
+        };
+
+        const draftCampaignStatuses = new Set([
+          'draft',
+          'source_checking',
+          'source_needs_review',
+          'producing',
+          'needs_attention',
+          'ready_for_final_approval',
+          'failed',
+          'cancelled',
+        ]);
+        const completedPublicationStatuses = new Set(['published', 'exported']);
+
+        function getStatusCount(campaign, status) {
+          return Number(campaign.publicationStatusCounts?.[status] || 0);
+        }
+
+        function completedPublicationCount(campaign) {
+          return [...completedPublicationStatuses].reduce((sum, status) => sum + getStatusCount(campaign, status), 0);
+        }
+
+        function isCompletedCampaign(campaign) {
+          return campaign.plannedPublicationCount > 0 &&
+            completedPublicationCount(campaign) >= Number(campaign.plannedPublicationCount || 0);
+        }
+
+        function isDraftCampaign(campaign) {
+          return campaign.pendingApprovalCount > 0 ||
+            draftCampaignStatuses.has(campaign.status) ||
+            Number(campaign.plannedPublicationCount || 0) === 0;
+        }
+
+        function groupCampaigns(campaigns) {
+          const groups = {
+            active: [],
+            drafts: [],
+            completed: [],
+          };
+
+          campaigns.forEach((campaign) => {
+            if (isCompletedCampaign(campaign) || campaign.status === 'completed') {
+              groups.completed.push(campaign);
+              return;
+            }
+
+            if (isDraftCampaign(campaign)) {
+              groups.drafts.push(campaign);
+              return;
+            }
+
+            groups.active.push(campaign);
+          });
+
+          return groups;
+        }
+
+        function campaignGroupLabel(group) {
+          if (group === 'drafts') {
+            return 'Drafts';
+          }
+          if (group === 'completed') {
+            return 'Completed';
+          }
+          return 'Active campaigns';
+        }
 
         function campaignActions(campaign) {
-          return [
-            '<a class="btn" href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Open</a>',
-            '<a class="btn" href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
-            '<a class="btn" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a class="btn" href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
-          ].join('');
+          const actions = [
+            '<a class="btn primary" href="/test-ui/campaigns/new?projectId=' + encodeURIComponent(projectId) + '&campaignId=' + encodeURIComponent(campaign.id) + '">Open</a>',
+          ];
+
+          if (Number(campaign.pendingApprovalCount || 0) > 0) {
+            actions.push('<a class="btn" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>');
+          }
+
+          if (isDraftCampaign(campaign)) {
+            actions.push('<button type="button" class="btn danger" data-delete-campaign="' + escapeHtml(campaign.id) + '">Delete</button>');
+          }
+          return actions.join('');
         }
 
         function renderCampaignCards(campaigns) {
           const root = document.getElementById('campaignCards');
           if (!Array.isArray(campaigns) || campaigns.length === 0) {
-            root.innerHTML = '<div class="empty-state">No campaigns yet. Start from Brand Memory, then create the first preset-based campaign.</div>';
+            root.innerHTML = '<div class="empty-state">No ' + escapeHtml(campaignGroupLabel(currentCampaignGroup).toLowerCase()) + ' yet.</div>';
             return;
           }
 
           root.innerHTML = campaigns.map((campaign) => {
+            const completed = completedPublicationCount(campaign);
+            const total = Number(campaign.plannedPublicationCount || 0);
             return '<article class="card">' +
               '<div class="card-head">' +
                 '<div class="stack">' +
@@ -799,21 +1245,62 @@ export class CampaignTestUiController {
                 '</div>' +
                 renderBadge(campaign.status) +
               '</div>' +
-              '<div class="kv">' +
-                '<div class="meta-item"><label>Start date</label><strong>' + escapeHtml(formatDateOnly(campaign.startDate)) + '</strong></div>' +
-                '<div class="meta-item"><label>Source language</label><strong>' + escapeHtml(String(campaign.sourceLanguage || '').toUpperCase()) + '</strong></div>' +
-                '<div class="meta-item"><label>Planned publications</label><strong>' + escapeHtml(String(campaign.plannedPublicationCount)) + '</strong></div>' +
-                '<div class="meta-item"><label>Pending approvals</label><strong>' + escapeHtml(String(campaign.pendingApprovalCount)) + '</strong></div>' +
+              '<div class="campaign-card-meta">' +
+                '<span class="pill">Start ' + escapeHtml(formatDateOnly(campaign.startDate)) + '</span>' +
+                '<span class="pill">' + escapeHtml(String(campaign.sourceLanguage || '').toUpperCase()) + '</span>' +
+                '<span class="pill">' + escapeHtml(String(completed)) + '/' + escapeHtml(String(total)) + ' published</span>' +
+                (Number(campaign.pendingApprovalCount || 0) > 0
+                  ? '<span class="pill">' + escapeHtml(String(campaign.pendingApprovalCount)) + ' inbox</span>'
+                  : '') +
               '</div>' +
               '<p class="soft">Updated ' + escapeHtml(formatDateTime(campaign.updatedAt)) + '</p>' +
               '<div class="actions">' + campaignActions(campaign) + '</div>' +
             '</article>';
           }).join('');
+
+          root.querySelectorAll('[data-delete-campaign]').forEach((button) => {
+            button.addEventListener('click', async () => {
+              const campaignId = button.dataset.deleteCampaign;
+              if (!campaignId) {
+                return;
+              }
+              const confirmed = window.confirm(
+                'Delete this draft campaign and all related data, including inbox items?',
+              );
+              if (!confirmed) {
+                return;
+              }
+              try {
+                await request('/campaigns/' + encodeURIComponent(campaignId), {
+                  method: 'DELETE',
+                });
+                await loadCampaigns();
+              } catch (error) {
+                setOutput(String(error));
+              }
+            });
+          });
+        }
+
+        function renderCampaignGroup(group) {
+          currentCampaignGroup = group;
+          document.querySelectorAll('[data-campaign-group]').forEach((button) => {
+            button.classList.toggle('is-active', button.dataset.campaignGroup === group);
+          });
+
+          const campaigns = groupedCampaigns[group] || [];
+          renderCampaignCards(campaigns);
+        }
+
+        function renderCampaignTabs() {
+          document.getElementById('activeCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.active.length) + ')';
+          document.getElementById('draftCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.drafts.length) + ')';
+          document.getElementById('completedCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.completed.length) + ')';
+          renderCampaignGroup(currentCampaignGroup);
         }
 
         async function loadPage() {
           if (!projectId) {
-            document.getElementById('projectName').textContent = 'Missing projectId';
             document.getElementById('campaignCards').innerHTML =
               '<div class="empty-state">Open this screen with ?projectId=...</div>';
             return;
@@ -824,23 +1311,14 @@ export class CampaignTestUiController {
             request('/projects/' + encodeURIComponent(projectId) + '/campaigns', undefined, { renderResponse: false }),
           ]);
 
-          document.getElementById('projectName').textContent = project.name;
-          document.getElementById('projectMeta').textContent =
-            'Brand memory is available directly from this project and reused by every campaign.';
-
-          const total = campaigns.length;
-          const attention = campaigns.filter((item) => ['needs_attention', 'source_needs_review', 'failed'].includes(item.status)).length;
-          const publishing = campaigns.filter((item) => ['approved_for_publishing', 'publishing', 'completed'].includes(item.status)).length;
-          const pending = campaigns.reduce((sum, item) => sum + Number(item.pendingApprovalCount || 0), 0);
-
-          document.getElementById('campaignCount').textContent = String(total);
-          document.getElementById('attentionCount').textContent = String(attention);
-          document.getElementById('publishingCount').textContent = String(publishing);
-          document.getElementById('pendingCount').textContent = String(pending);
-
-          renderCampaignCards(campaigns);
+          groupedCampaigns = groupCampaigns(campaigns);
+          renderCampaignTabs();
           setOutput({ project, campaigns });
         }
+
+        document.querySelectorAll('[data-campaign-group]').forEach((button) => {
+          button.addEventListener('click', () => renderCampaignGroup(button.dataset.campaignGroup));
+        });
 
         loadPage().catch((error) => setOutput(String(error)));
       `,
@@ -852,6 +1330,7 @@ export class CampaignTestUiController {
   renderCreateCampaignPage(
     @Query('projectId') projectId = '',
     @Query('markerId') markerId = '',
+    @Query('campaignId') campaignId = '',
   ): string {
     return renderCampaignUiPage({
       title: 'Marketing Service - Create Campaign',
@@ -859,61 +1338,80 @@ export class CampaignTestUiController {
       heading: 'Create campaign',
       summary:
         'Create a campaign from a preset. You can customize, remove, or add publications for this campaign without changing the preset.',
+      showHero: false,
       body: `
         <section class="panel stack">
-          <div class="nav-row">
+          <div class="nav-row campaign-creation-nav">
             <div class="actions">
-              <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
+              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">&lt; Dashboard</a>
             </div>
+            <div class="nav-center-label">Campaign creation</div>
             <div class="actions">
+              <a id="campaignCreationInboxLink" class="btn btn-with-badge" href="#" aria-disabled="true">
+                <span id="campaignCreationInboxBadge" class="notification-badge" hidden>0</span>
+                Inbox
+              </a>
               <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
             </div>
           </div>
         </section>
 
-        <div class="detail-grid">
-          <section class="form-card stack">
-            <div class="section-copy">
-              <span class="eyebrow">Create</span>
-              <h2 id="projectName">Loading project</h2>
-              <p id="projectSummary">Select a preset, set a start date, adjust the campaign plan if needed, and optionally add extra instructions.</p>
-            </div>
-            <form id="createCampaignForm" class="stack">
-              <div class="form-grid">
-                <label class="field">
-                  Campaign name
-                  <input id="campaignName" type="text" placeholder="Market insight burst" required />
-                </label>
-                <label class="field">
-                  Start date
-                  <input id="startDate" type="date" required />
-                </label>
-                <label id="presetField" class="field full">
-                  Preset
-                  <select id="presetId" required></select>
-                </label>
-                <label class="field full">
-                  Extra instructions
-                  <textarea id="extraInstructions" placeholder="Optional campaign-level instructions for source check and AI stages."></textarea>
-                </label>
+        <section class="panel campaign-flow-progress" aria-label="Campaign creation progress">
+          <div class="flow-step is-active" data-flow-step="general">
+            <span>Step 1</span>
+            <strong>General information</strong>
+          </div>
+          <div class="flow-step is-disabled" data-flow-step="longread">
+            <span>Step 2</span>
+            <strong>Longread</strong>
+          </div>
+          <div class="flow-step is-disabled" data-flow-step="ai">
+            <span>Step 3</span>
+            <strong>AI work</strong>
+          </div>
+          <div class="flow-step is-disabled" data-flow-step="done">
+            <span>Step 4</span>
+            <strong>Done</strong>
+          </div>
+        </section>
+
+        <section id="generalStep" class="form-card stack campaign-wizard-step">
+          <form id="createCampaignForm" class="stack">
+            <div class="section-head">
+              <div class="section-copy">
+                <h2>General information</h2>
               </div>
               <div class="actions">
-                <button class="primary" type="submit">Create campaign</button>
+                <button id="openSavePresetModalBtn" type="button">Save preset</button>
+                <button id="createCampaignNext" class="primary" type="submit">Next</button>
               </div>
-            </form>
-          </section>
+            </div>
+            <div style="display:none;">
+              <span id="projectName"></span>
+              <span id="projectSummary"></span>
+              <span id="presetName"></span>
+              <span id="presetDescription"></span>
+              <span id="presetSourceLanguage"></span>
+              <span id="presetSourceType"></span>
+            </div>
+            <div class="form-grid create-campaign-form-grid">
+              <label class="field">
+                Campaign name
+                <input id="campaignName" type="text" placeholder="Market insight burst" required />
+              </label>
+              <label class="field">
+                Start date
+                <input id="startDate" type="date" required />
+              </label>
+              <label id="presetField" class="field">
+                Preset
+                <select id="presetId" required></select>
+              </label>
+            </div>
 
-          <section class="panel stack">
             <div class="section-copy">
-              <span class="eyebrow">Campaign plan</span>
-              <h2 id="presetName">Pick a preset</h2>
-              <p id="presetDescription">Edit, remove, or add planned publications for this campaign. The underlying preset will stay unchanged.</p>
+              <span class="eyebrow">Publications</span>
             </div>
-            <div class="kv">
-              <div class="meta-item"><label>Source language</label><strong id="presetSourceLanguage">—</strong></div>
-              <div class="meta-item"><label>Source type</label><strong id="presetSourceType">—</strong></div>
-            </div>
-            <p class="inline-note">Changes below apply only to this campaign. They do not modify the preset.</p>
             <div class="table-wrap">
               <table class="table-editor">
                 <thead>
@@ -934,24 +1432,758 @@ export class CampaignTestUiController {
             <div class="actions">
               <button type="button" id="addCampaignPlanRow">Add publication</button>
             </div>
-          </section>
+          </form>
+        </section>
+
+        <section id="longreadStep" class="form-card stack campaign-wizard-step" hidden>
+          <form id="longreadForm" class="stack">
+            <div class="section-head">
+              <div class="section-copy">
+                <h2>Longread</h2>
+                <p>Paste the canonical source article for this campaign. AI production starts after this step.</p>
+              </div>
+              <div class="actions">
+                <button id="longreadNext" class="primary" type="submit">Next</button>
+              </div>
+            </div>
+            <label class="field">
+              Source longread
+              <textarea id="sourceContent" placeholder="Paste the longread here." required></textarea>
+            </label>
+          </form>
+        </section>
+
+        <section id="aiStep" class="panel stack campaign-wizard-step" hidden>
+          <div class="section-head">
+            <div class="section-copy">
+              <h2>AI work</h2>
+              <p id="aiStatusText">Waiting for production to start.</p>
+            </div>
+          </div>
+          <div class="campaign-ai-progress">
+            <article id="flowSourceCheck" class="flow-step ai-flow-step is-disabled">
+              <span>Step A</span>
+              <strong>Longread Check</strong>
+              <p>AI reviews the source longread, checks whether it is usable, and pauses the flow if it needs human clarification.</p>
+            </article>
+            <article id="flowStage1" class="flow-step ai-flow-step is-disabled">
+              <span>Step B</span>
+              <strong>Adaptations Generation</strong>
+              <p>AI turns the source into channel-specific publication drafts according to the campaign plan.</p>
+            </article>
+            <article id="flowStage2" class="flow-step ai-flow-step is-disabled">
+              <span>Step C</span>
+              <strong>Translation Generation</strong>
+              <p>AI prepares the required language versions and final text variants for planned publications.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="doneStep" class="panel stack campaign-wizard-step" hidden>
+          <div class="section-head">
+            <div class="section-copy">
+              <h2>Done</h2>
+              <p id="doneStepText">Campaign production is ready.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Channel</th>
+                  <th>Language</th>
+                  <th>Mode</th>
+                  <th>Status</th>
+                  <th>Publication</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="donePublicationRows"></tbody>
+            </table>
+          </div>
+          <form id="donePublicationEditor" class="done-publication-editor stack" hidden>
+            <div class="section-head">
+              <div class="section-copy">
+                <h3 id="donePublicationEditorTitle">Publication</h3>
+                <div id="donePublicationEditorMeta" class="done-publication-meta"></div>
+              </div>
+              <div class="actions">
+                <button type="button" id="closeDonePublicationEditor">Close</button>
+              </div>
+            </div>
+            <div class="form-grid done-publication-grid">
+              <label class="field full">
+                Content
+                <textarea id="donePublicationContent" required></textarea>
+              </label>
+              <label class="field">
+                Publish date
+                <input id="donePublicationDate" type="date" required />
+              </label>
+              <label class="field">
+                Publish time
+                <input id="donePublicationTime" type="time" required />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit" id="saveDonePublicationChanges" class="primary">Save changes</button>
+            </div>
+            <div id="donePublicationStatus" class="inline-note"></div>
+          </form>
+        </section>
+
+        <div id="savePresetModalBackdrop" class="modal-backdrop" onclick="closeSavePresetModal(event)">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-head">
+              <div class="section-copy">
+                <h3>Save preset</h3>
+                <p>Save the current publication plan as a reusable preset for future campaigns.</p>
+              </div>
+              <button type="button" onclick="closeSavePresetModal()">Close</button>
+            </div>
+            <label class="field">
+              Preset name
+              <input id="savePresetName" type="text" maxlength="160" placeholder="Community Roundup" />
+            </label>
+            <div id="savePresetError" class="error"></div>
+            <div class="modal-actions">
+              <button id="savePresetConfirmBtn" type="button" class="primary" onclick="saveCurrentPlanAsPreset()">Save preset</button>
+              <button type="button" onclick="closeSavePresetModal()">Cancel</button>
+            </div>
+          </div>
         </div>
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
         const markerId = ${JSON.stringify(markerId)};
+        const initialCampaignId = ${JSON.stringify(campaignId)};
         let presets = [];
         let campaignPlan = [];
         let customPublicationCounter = 0;
         let markerDrivenPreset = null;
+        let createdCampaignId = initialCampaignId || null;
+        let currentCampaign = null;
+        let currentCampaignOverview = null;
+        let currentArticle = null;
+        let activeDonePublicationId = null;
+        let flowRefreshTimer = null;
+        let activeFlowStep = 'general';
+        const completedFlowSteps = new Set();
+        const accessibleFlowSteps = new Set(['general']);
         const channelOptions = [
           ['channel_telegram', 'Telegram'],
           ['channel_x', 'X'],
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
+        const languageOptions = ['RU', 'EN', 'ES'];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
+        const emptyPresetId = '__empty__';
+        const flowStepOrder = ['general', 'longread', 'ai', 'done'];
+        const aiStepConfig = [
+          {
+            key: 'source_check',
+            elementId: 'flowSourceCheck',
+          },
+          {
+            key: 'stage_1_adaptation',
+            elementId: 'flowStage1',
+          },
+          {
+            key: 'stage_2_translation',
+            elementId: 'flowStage2',
+          },
+        ];
+
+        function goToFlowStep(step) {
+          activeFlowStep = step;
+          accessibleFlowSteps.add(step);
+          flowStepOrder.forEach((item) => {
+            const section = document.getElementById(item + 'Step');
+            const progressItem = document.querySelector('[data-flow-step="' + item + '"]');
+            if (section) {
+              section.hidden = item !== step;
+            }
+            if (progressItem) {
+              progressItem.classList.toggle('is-active', item === step);
+              progressItem.classList.toggle('is-done', completedFlowSteps.has(item));
+              progressItem.classList.toggle(
+                'is-disabled',
+                !accessibleFlowSteps.has(item) && !completedFlowSteps.has(item),
+              );
+            }
+          });
+          syncFlowStepAccess();
+        }
+
+        function setFlowStepReadOnly(step, isReadOnly) {
+          const section = document.getElementById(step + 'Step');
+          if (!section) {
+            return;
+          }
+
+          section.querySelectorAll('input, textarea, select, button').forEach((element) => {
+            if (isReadOnly) {
+              element.dataset.locked = 'true';
+              element.disabled = true;
+            } else {
+              delete element.dataset.locked;
+              element.disabled = false;
+            }
+          });
+        }
+
+        function syncFlowStepAccess() {
+          document.querySelectorAll('[data-flow-step]').forEach((item) => {
+            const step = item.dataset.flowStep;
+            const canOpen = accessibleFlowSteps.has(step) || completedFlowSteps.has(step);
+            item.classList.toggle('can-open', canOpen);
+            item.classList.toggle('is-disabled', !canOpen);
+            item.setAttribute('role', 'button');
+            item.setAttribute('aria-disabled', canOpen ? 'false' : 'true');
+            item.tabIndex = canOpen ? 0 : -1;
+          });
+        }
+
+        function openFlowStepFromProgress(step) {
+          if (accessibleFlowSteps.has(step) || completedFlowSteps.has(step)) {
+            goToFlowStep(step);
+            return;
+          }
+          setOutput('Step "' + toTitle(step) + '" is not available yet.');
+        }
+
+        function markFlowStepDone(step) {
+          completedFlowSteps.add(step);
+          accessibleFlowSteps.add(step);
+          if (step !== 'done') {
+            setFlowStepReadOnly(step, true);
+          } else {
+            setFlowStepReadOnly(step, false);
+          }
+          document.querySelectorAll('[data-flow-step]').forEach((item) => {
+            item.classList.toggle('is-done', completedFlowSteps.has(item.dataset.flowStep));
+            item.classList.toggle(
+              'is-disabled',
+              !accessibleFlowSteps.has(item.dataset.flowStep) &&
+                !completedFlowSteps.has(item.dataset.flowStep),
+            );
+          });
+          syncFlowStepAccess();
+        }
+
+        function getSelectedPreset() {
+          const presetId = document.getElementById('presetId')?.value;
+          return presets.find((item) => item.id === presetId) || null;
+        }
+
+        function getSelectedSourceLanguage() {
+          if (currentCampaign?.sourceLanguage) {
+            return String(currentCampaign.sourceLanguage).toLowerCase();
+          }
+          const preset = getSelectedPreset();
+          return String(preset?.sourceLanguage || 'en').toLowerCase();
+        }
+
+        function getSelectedSourceType() {
+          const preset = getSelectedPreset();
+          const sourceType = String(preset?.sourceType || '').trim().toLowerCase();
+          if (!sourceType || sourceType === 'empty') {
+            return 'custom';
+          }
+          return sourceType;
+        }
+
+        function setPrimaryButtonBusy(buttonId, isBusy, busyText, idleText) {
+          const button = document.getElementById(buttonId);
+          if (!button) {
+            return;
+          }
+          button.disabled = isBusy || button.dataset.locked === 'true';
+          button.textContent = isBusy ? busyText : idleText;
+        }
+
+        function updateCampaignCreationInboxLink(campaign) {
+          const link = document.getElementById('campaignCreationInboxLink');
+          const badge = document.getElementById('campaignCreationInboxBadge');
+          if (!link || !badge) {
+            return;
+          }
+
+          if (!campaign?.id) {
+            link.href = '#';
+            link.setAttribute('aria-disabled', 'true');
+            badge.hidden = true;
+            badge.textContent = '0';
+            return;
+          }
+
+          const pendingCount = Number(campaign.pendingApprovalCount || 0);
+          link.href = '/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id);
+          link.setAttribute('aria-disabled', 'false');
+          badge.textContent = String(pendingCount);
+          badge.hidden = pendingCount === 0;
+        }
+
+        function rebuildPresetSelect(selectedPresetId) {
+          const presetSelect = document.getElementById('presetId');
+          if (!presetSelect) {
+            return;
+          }
+          presetSelect.innerHTML = presets.map((preset) =>
+            '<option value="' + escapeHtml(preset.id) + '">' + escapeHtml(preset.name) + '</option>'
+          ).join('');
+          if (selectedPresetId) {
+            presetSelect.value = selectedPresetId;
+          }
+        }
+
+        function openSavePresetModal() {
+          syncCampaignPlanFromTable();
+          const selectedPreset = getSelectedPreset();
+          const suggestedName = selectedPreset?.id === emptyPresetId
+            ? document.getElementById('campaignName').value.trim()
+            : (selectedPreset?.name || document.getElementById('campaignName').value.trim());
+          document.getElementById('savePresetName').value = suggestedName || '';
+          document.getElementById('savePresetError').textContent = '';
+          document.getElementById('savePresetModalBackdrop').classList.add('open');
+          document.getElementById('savePresetName').focus();
+          document.getElementById('savePresetName').select();
+        }
+
+        function closeSavePresetModal(event) {
+          if (event && event.target !== event.currentTarget) {
+            return;
+          }
+          document.getElementById('savePresetModalBackdrop').classList.remove('open');
+          document.getElementById('savePresetError').textContent = '';
+        }
+
+        async function saveCurrentPlanAsPreset() {
+          const error = document.getElementById('savePresetError');
+          const saveButton = document.getElementById('savePresetConfirmBtn');
+          const presetName = document.getElementById('savePresetName').value.trim();
+
+          error.textContent = '';
+          if (!presetName) {
+            error.textContent = 'Enter preset name.';
+            return;
+          }
+
+          syncCampaignPlanFromTable();
+
+          const selectedPreset = getSelectedPreset();
+          const description = selectedPreset?.id === '__marker__'
+            ? (selectedPreset.description || 'Saved from selected plan.')
+            : (selectedPreset?.id === emptyPresetId
+              ? 'Saved from campaign creation.'
+              : (selectedPreset?.description || 'Saved from campaign creation.'));
+
+          saveButton.disabled = true;
+          saveButton.textContent = 'Saving...';
+
+          try {
+            const created = await request(
+              '/campaign-presets',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: presetName,
+                  description,
+                  sourceLanguage: getSelectedSourceLanguage(),
+                  sourceType: getSelectedSourceType(),
+                  isActive: true,
+                  publications: campaignPlan.map((publication, index) => ({
+                    dayOffset: Number(publication.dayOffset || '0'),
+                    localTime: publication.localTime,
+                    channel: publication.channel,
+                    language: publication.language,
+                    publicationType: publication.publicationType,
+                    style: publication.style,
+                    position: index + 1,
+                  })),
+                }),
+              },
+              { renderResponse: false },
+            );
+
+            const presetList = await request('/campaign-presets', undefined, { renderResponse: false });
+            presets = markerDrivenPreset
+              ? [markerDrivenPreset, ...presetList, buildEmptyPresetOption()]
+              : [...presetList, buildEmptyPresetOption()];
+            rebuildPresetSelect(created.id);
+            renderPresetPreview(created.id);
+            closeSavePresetModal();
+            setOutput({ savedPresetId: created.id, publications: campaignPlan.length });
+          } catch (saveError) {
+            error.textContent = saveError instanceof Error ? saveError.message : String(saveError);
+          } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save preset';
+          }
+        }
+
+        function getLatestWorkflowRunByStep(campaign, step) {
+          return [...(campaign.workflowRuns || [])]
+            .filter((run) => run.currentStep === step)
+            .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime())[0] || null;
+        }
+
+        function getAiStageVisualState(campaign, config, activeWorkflowRun) {
+          if (activeWorkflowRun?.currentStep === config.key) {
+            return {
+              className: 'flow-step ai-flow-step is-active',
+            };
+          }
+
+          const latestRun = getLatestWorkflowRunByStep(campaign, config.key);
+          if (!latestRun) {
+            return {
+              className: 'flow-step ai-flow-step is-disabled',
+            };
+          }
+
+          if (latestRun.status === 'completed') {
+            return {
+              className: 'flow-step ai-flow-step is-done',
+            };
+          }
+
+          const errorMessage = String(latestRun.errorMessage || '').toLowerCase();
+          const isReviewState =
+            errorMessage.includes('review') ||
+            errorMessage.includes('approval') ||
+            campaign.pendingApprovalCount > 0 ||
+            campaign.status === 'source_needs_review';
+
+          return {
+            className: isReviewState
+              ? 'flow-step ai-flow-step is-warning'
+              : 'flow-step ai-flow-step is-danger',
+          };
+        }
+
+        function isCampaignAiDone(campaign) {
+          const hasActiveWorkflowRun = (campaign.workflowRuns || []).some((run) => run.status === 'running');
+          const planned = campaign.plannedPublications || [];
+          const allPlannedReady = planned.length > 0 && planned.every((item) =>
+            ['ready', 'ready_for_final_approval', 'publication_scheduled', 'exported', 'published'].includes(item.status),
+          );
+          return !hasActiveWorkflowRun &&
+            campaign.pendingApprovalCount === 0 &&
+            (
+              allPlannedReady ||
+              ['ready_for_final_approval', 'approved_for_publishing', 'publishing', 'completed'].includes(campaign.status)
+            );
+        }
+
+        function renderDonePublications(overview) {
+          const rows = overview?.items || [];
+          const root = document.getElementById('donePublicationRows');
+          if (!root) {
+            return;
+          }
+
+          root.innerHTML = rows.length === 0
+            ? '<tr><td colspan="7" class="soft">No publications were created for this campaign yet.</td></tr>'
+            : rows.map((item) => '<tr class="done-publication-row' + (activeDonePublicationId === item.plannedPublicationId ? ' is-active' : '') + '">' +
+              '<td>' + escapeHtml(formatDateTime(item.scheduledFor)) + '</td>' +
+              '<td>' + escapeHtml(toTitle(String(item.channel || '').replace('channel_', ''))) + '</td>' +
+              '<td>' + escapeHtml(String(item.language || '').toUpperCase()) + '</td>' +
+              '<td>' + escapeHtml(toTitle(item.publishMode || 'auto_publish')) + '</td>' +
+              '<td>' + renderBadge(item.publicationStatus || item.plannedStatus) + '</td>' +
+              '<td>' +
+                '<div class="stack">' +
+                  (item.publicationId ? '<span class="mono">' + escapeHtml(item.publicationId) + '</span>' : '') +
+                  (item.exportPlanId ? '<span class="mono">' + escapeHtml(item.exportPlanId) + '</span>' : '') +
+                  (!item.publicationId && !item.exportPlanId ? '<span class="soft">Dashboard planned publication</span>' : '') +
+                  (item.externalPostId ? '<span class="soft">External post ' + escapeHtml(item.externalPostId) + '</span>' : '') +
+                  (item.errorMessage ? '<span class="soft">' + escapeHtml(item.errorMessage) + '</span>' : '') +
+                '</div>' +
+              '</td>' +
+              '<td><button type="button" data-open-done-publication="' + escapeHtml(item.plannedPublicationId) + '">Open</button></td>' +
+            '</tr>').join('');
+
+          root.querySelectorAll('[data-open-done-publication]').forEach((button) => {
+            button.addEventListener('click', () => openDonePublicationEditor(button.dataset.openDonePublication));
+          });
+        }
+
+        function getDoneOverviewItem(plannedPublicationId) {
+          return (currentCampaignOverview?.items || []).find(
+            (item) => item.plannedPublicationId === plannedPublicationId,
+          ) || null;
+        }
+
+        async function ensureArticleForDoneItem(item) {
+          if (!item?.articleId) {
+            return null;
+          }
+          if (currentArticle?.id === item.articleId) {
+            return currentArticle;
+          }
+          currentArticle = await request(
+            '/articles/' + encodeURIComponent(item.articleId),
+            undefined,
+            { renderResponse: false },
+          );
+          return currentArticle;
+        }
+
+        function resolveDonePublicationContent(article, item) {
+          if (!article || !item?.adaptationId) {
+            return '';
+          }
+          const adaptation = (article.adaptations || []).find(
+            (entry) => entry.id === item.adaptationId,
+          );
+          if (!adaptation) {
+            return '';
+          }
+          if (item.translationId) {
+            const translation = (adaptation.translations || []).find(
+              (entry) => entry.id === item.translationId,
+            );
+            return translation?.translatedContent || '';
+          }
+          return adaptation.adaptedContent || '';
+        }
+
+        function closeDonePublicationEditor() {
+          activeDonePublicationId = null;
+          const form = document.getElementById('donePublicationEditor');
+          if (form) {
+            form.hidden = true;
+          }
+          const status = document.getElementById('donePublicationStatus');
+          if (status) {
+            status.textContent = '';
+          }
+          renderDonePublications(currentCampaignOverview);
+        }
+
+        async function openDonePublicationEditor(plannedPublicationId) {
+          const item = getDoneOverviewItem(plannedPublicationId);
+          if (!item) {
+            setOutput('Publication not found in campaign overview.');
+            return;
+          }
+
+          const article = await ensureArticleForDoneItem(item);
+          const content = resolveDonePublicationContent(article, item);
+          activeDonePublicationId = plannedPublicationId;
+
+          document.getElementById('donePublicationEditorTitle').textContent =
+            toTitle(String(item.channel || '').replace('channel_', '')) + ' · ' +
+            String(item.language || '').toUpperCase();
+          document.getElementById('donePublicationEditorMeta').innerHTML =
+            '<span class="pill">' + escapeHtml(formatDateTime(item.scheduledFor)) + '</span>' +
+            '<span class="pill">' + escapeHtml(toTitle(item.publishMode || 'auto_publish')) + '</span>' +
+            '<span class="pill">' + escapeHtml(item.artifactType || 'publication') + '</span>';
+          document.getElementById('donePublicationContent').value = content;
+          document.getElementById('donePublicationDate').value = formatDateInputValue(item.scheduledFor);
+          const scheduledParts = getMoscowDateParts(item.scheduledFor);
+          document.getElementById('donePublicationTime').value = scheduledParts
+            ? String(scheduledParts.hours).padStart(2, '0') + ':' +
+              String(scheduledParts.minutes).padStart(2, '0')
+            : '09:00';
+          document.getElementById('donePublicationStatus').textContent = '';
+          document.getElementById('donePublicationEditor').hidden = false;
+          renderDonePublications(currentCampaignOverview);
+          document.getElementById('donePublicationContent').focus();
+        }
+
+        const buildUtcIsoFromDateAndTime = buildMoscowIsoFromDateAndTime;
+
+        async function saveDonePublicationChanges(event) {
+          event.preventDefault();
+          if (!createdCampaignId || !activeDonePublicationId) {
+            setOutput('Campaign publication editor is not ready.');
+            return;
+          }
+
+          const item = getDoneOverviewItem(activeDonePublicationId);
+          if (!item || !item.articleId || !item.adaptationId) {
+            setOutput('Publication editing data is missing.');
+            return;
+          }
+
+          const content = document.getElementById('donePublicationContent').value.trim();
+          const publishDate = document.getElementById('donePublicationDate').value;
+          const publishTime = document.getElementById('donePublicationTime').value;
+          const publishAt = buildUtcIsoFromDateAndTime(publishDate, publishTime);
+          if (!content || !publishAt) {
+            setOutput('Content, date and time are required.');
+            return;
+          }
+
+          setPrimaryButtonBusy(
+            'saveDonePublicationChanges',
+            true,
+            'Saving...',
+            'Save changes',
+          );
+          const status = document.getElementById('donePublicationStatus');
+          if (status) {
+            status.textContent = '';
+          }
+
+          try {
+            if (item.translationId) {
+              await request(
+                '/articles/' + encodeURIComponent(item.articleId) +
+                  '/adaptations/' + encodeURIComponent(item.adaptationId) +
+                  '/translations/' + encodeURIComponent(item.translationId) + '/edit',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ translatedContent: content }),
+                },
+                { renderResponse: false },
+              );
+              await request(
+                '/articles/' + encodeURIComponent(item.articleId) +
+                  '/adaptations/' + encodeURIComponent(item.adaptationId) +
+                  '/translations/' + encodeURIComponent(item.translationId) + '/approve',
+                { method: 'POST' },
+                { renderResponse: false },
+              );
+            } else {
+              await request(
+                '/articles/' + encodeURIComponent(item.articleId) +
+                  '/adaptations/' + encodeURIComponent(item.adaptationId) + '/edit',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ adaptedContent: content }),
+                },
+                { renderResponse: false },
+              );
+              await request(
+                '/articles/' + encodeURIComponent(item.articleId) +
+                  '/adaptations/' + encodeURIComponent(item.adaptationId) + '/approve',
+                { method: 'POST' },
+                { renderResponse: false },
+              );
+            }
+
+            const rescheduled = await request(
+              '/campaigns/' + encodeURIComponent(createdCampaignId) +
+                '/planned-publications/' + encodeURIComponent(item.plannedPublicationId) + '/reschedule',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ publishAt }),
+              },
+              { renderResponse: false },
+            );
+
+            currentArticle = null;
+            await loadCampaignFlow();
+            await openDonePublicationEditor(item.plannedPublicationId);
+            if (status) {
+              status.textContent = 'Saved. Content and schedule were updated.';
+            }
+            setOutput({ saved: true, rescheduled });
+          } catch (error) {
+            if (status) {
+              status.textContent = String(error);
+            }
+            setOutput(String(error));
+          } finally {
+            setPrimaryButtonBusy(
+              'saveDonePublicationChanges',
+              false,
+              'Saving...',
+              'Save changes',
+            );
+          }
+        }
+
+        function renderAiWork(campaign, overview) {
+          const activeWorkflowRun = (campaign.workflowRuns || []).find((run) => run.status === 'running') || null;
+          const hasInboxPause = campaign.pendingApprovalCount > 0 || campaign.status === 'source_needs_review';
+          const isDone = isCampaignAiDone(campaign);
+          updateCampaignCreationInboxLink(campaign);
+
+          aiStepConfig.forEach((config) => {
+            const element = document.getElementById(config.elementId);
+            const visualState = getAiStageVisualState(campaign, config, activeWorkflowRun);
+            element.className = visualState.className;
+          });
+
+          document.getElementById('aiStatusText').textContent = hasInboxPause
+            ? 'Flow is paused by inbox review. Resolve the item, then it will continue automatically.'
+            : activeWorkflowRun
+              ? 'Worker is running ' + toTitle(activeWorkflowRun.currentStep) + '.'
+              : isDone
+                ? 'AI production is complete. Publications are ready for publishing overview.'
+                : 'Waiting for the worker to pick up the next stage.';
+
+          if (isDone) {
+            renderDonePublications(overview);
+            if (flowRefreshTimer) {
+              clearInterval(flowRefreshTimer);
+              flowRefreshTimer = null;
+            }
+            markFlowStepDone('ai');
+            markFlowStepDone('done');
+            document.getElementById('doneStepText').textContent =
+              'Campaign "' + campaign.name + '" is ready.';
+            if (activeFlowStep === 'ai' || activeFlowStep === 'done') {
+              goToFlowStep('done');
+            }
+          }
+        }
+
+        async function loadCampaignFlow() {
+          if (!createdCampaignId) {
+            return;
+          }
+          const [campaign, overview] = await Promise.all([
+            request('/campaigns/' + encodeURIComponent(createdCampaignId), undefined, { renderResponse: false }),
+            request('/campaigns/' + encodeURIComponent(createdCampaignId) + '/publishing-overview', undefined, { renderResponse: false }),
+          ]);
+          currentCampaign = campaign;
+          currentCampaignOverview = overview;
+          if (campaign?.sourceArticleId && currentArticle?.id !== campaign.sourceArticleId) {
+            await syncSourceContentFromCampaign(campaign);
+          }
+          renderAiWork(campaign, overview);
+          setOutput({ campaign, overview });
+        }
+
+        async function syncSourceContentFromCampaign(campaign) {
+          if (!campaign?.sourceArticleId) {
+            currentArticle = null;
+            return null;
+          }
+
+          currentArticle = await request(
+            '/articles/' + encodeURIComponent(campaign.sourceArticleId),
+            undefined,
+            { renderResponse: false },
+          );
+
+          const sourceContentInput = document.getElementById('sourceContent');
+          if (sourceContentInput && typeof currentArticle?.original?.content === 'string') {
+            sourceContentInput.value = currentArticle.original.content;
+          }
+
+          return currentArticle;
+        }
+
+        function startFlowPolling() {
+          if (flowRefreshTimer) {
+            clearInterval(flowRefreshTimer);
+          }
+          flowRefreshTimer = setInterval(() => {
+            loadCampaignFlow().catch((error) => setOutput(String(error)));
+          }, 4000);
+        }
 
         function buildChannelSelectOptions(selectedValue) {
           return channelOptions
@@ -959,6 +2191,22 @@ export class CampaignTestUiController {
               '<option value="' + escapeHtml(value) + '"' +
               (value === selectedValue ? ' selected' : '') +
               '>' + escapeHtml(label) + '</option>'
+            )
+            .join('');
+        }
+
+        function normalizePublicationLanguage(value) {
+          const normalizedValue = String(value || 'EN').toUpperCase();
+          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+        }
+
+        function buildLanguageSelectOptions(selectedValue) {
+          const normalizedValue = normalizePublicationLanguage(selectedValue);
+          return languageOptions
+            .map((language) =>
+              '<option value="' + escapeHtml(language) + '"' +
+              (language === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language) + '</option>'
             )
             .join('');
         }
@@ -987,13 +2235,8 @@ export class CampaignTestUiController {
         }
 
         function parseDateInputValue(value) {
-          const [year, month, day] = String(value || '')
-            .split('-')
-            .map((part) => Number(part));
-          if (!year || !month || !day) {
-            return null;
-          }
-          return new Date(Date.UTC(year, month - 1, day));
+          const iso = buildMoscowIsoFromDateAndTime(value, '00:00');
+          return iso ? new Date(iso) : null;
         }
 
         function getSelectedStartDateValue() {
@@ -1031,7 +2274,7 @@ export class CampaignTestUiController {
               dayOffset: String(publication.dayOffset),
               localTime: publication.localTime,
               channel: publication.channel,
-              language: String(publication.language || '').toUpperCase(),
+              language: normalizePublicationLanguage(publication.language),
               publicationType: normalizePublicationTypeValue(
                 publication.channel,
                 publication.publicationType,
@@ -1048,25 +2291,26 @@ export class CampaignTestUiController {
             return null;
           }
 
-          const firstPlacementDate = new Date(orderedPlacements[0].publishAt);
-          firstPlacementDate.setHours(0, 0, 0, 0);
+          const firstPlacementDate = parseDateInputValue(
+            formatDateInputValue(orderedPlacements[0].publishAt),
+          );
 
           const publications = orderedPlacements.map((placement, index) => {
             const publishAt = new Date(placement.publishAt);
-            const publishDay = new Date(publishAt);
-            publishDay.setHours(0, 0, 0, 0);
+            const publishDay = parseDateInputValue(formatDateInputValue(publishAt));
             const dayOffset = Math.round(
               (publishDay.getTime() - firstPlacementDate.getTime()) / 86400000,
             );
-            const localTime = String(publishAt.getHours()).padStart(2, '0') + ':' +
-              String(publishAt.getMinutes()).padStart(2, '0');
+            const publishParts = getMoscowDateParts(publishAt);
+            const localTime = String(publishParts?.hours ?? 9).padStart(2, '0') + ':' +
+              String(publishParts?.minutes ?? 0).padStart(2, '0');
 
             return {
               id: 'marker-placement-' + placement.id,
               dayOffset,
               localTime,
               channel: placement.channelId,
-              language: String(placement.targetLanguage || '').toUpperCase(),
+              language: normalizePublicationLanguage(placement.targetLanguage),
               publicationType: normalizePublicationTypeValue(placement.channelId, null),
               style: 'default',
               position: index + 1,
@@ -1115,7 +2359,7 @@ export class CampaignTestUiController {
               dayOffset: buildDayOffsetValue(row.querySelector('[data-field="publishDate"]').value),
               localTime: row.querySelector('[data-field="localTime"]').value,
               channel: row.querySelector('[data-field="channel"]').value,
-              language: row.querySelector('[data-field="language"]').value.toUpperCase(),
+              language: normalizePublicationLanguage(row.querySelector('[data-field="language"]').value),
               publicationType: normalizePublicationTypeValue(
                 row.querySelector('[data-field="channel"]').value,
                 row.querySelector('[data-field="publicationType"]').value,
@@ -1142,7 +2386,7 @@ export class CampaignTestUiController {
                 '<td><input data-field="publishDate" type="date" value="' + escapeHtml(buildPublishDateValue(publication.dayOffset)) + '" /></td>' +
                 '<td><input data-field="localTime" type="time" value="' + escapeHtml(publication.localTime) + '" /></td>' +
                 '<td><select data-field="channel">' + buildChannelSelectOptions(publication.channel) + '</select></td>' +
-                '<td><input data-field="language" type="text" maxlength="16" value="' + escapeHtml(publication.language) + '" /></td>' +
+                '<td><select data-field="language">' + buildLanguageSelectOptions(publication.language) + '</select></td>' +
                 '<td><select data-field="publicationType">' + buildPublicationTypeSelectOptions(publication.channel, publication.publicationType) + '</select></td>' +
                 '<td><input data-field="style" type="text" maxlength="64" value="' + escapeHtml(publication.style) + '" /></td>' +
                 '<td><button type="button" class="btn danger" data-remove-row="' + escapeHtml(publication.rowKey) + '">Remove</button></td>' +
@@ -1190,7 +2434,22 @@ export class CampaignTestUiController {
           renderCampaignPlanRows(campaignPlan);
         }
 
+        function buildEmptyPresetOption() {
+          return {
+            id: emptyPresetId,
+            name: 'Empty preset',
+            description: 'Start with no planned publications and add rows manually if needed.',
+            sourceLanguage: 'en',
+            sourceType: 'empty',
+            publications: [],
+            isSystem: true,
+            isActive: true,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
         async function boot() {
+          updateCampaignCreationInboxLink(null);
           if (!projectId) {
             document.getElementById('projectName').textContent = 'Missing projectId';
             return;
@@ -1201,7 +2460,7 @@ export class CampaignTestUiController {
             request('/campaign-presets', undefined, { renderResponse: false }),
           ]);
 
-          presets = presetList;
+          presets = [...presetList, buildEmptyPresetOption()];
           document.getElementById('projectName').textContent = project.name;
           document.getElementById('startDate').value = formatDateInputValue(new Date());
 
@@ -1219,11 +2478,14 @@ export class CampaignTestUiController {
             const marker = (markers || []).find((item) => item.id === markerId) || null;
             const markerPlacements = (placements || []).filter((item) => item.markerId === markerId);
 
+            if (marker) {
+              document.getElementById('campaignName').value = marker.title;
+            }
+
             if (marker && markerPlacements.length > 0) {
               markerDrivenPreset = buildMarkerDrivenPreset(marker, markerPlacements);
               if (markerDrivenPreset) {
-                presets = [markerDrivenPreset, ...presets];
-                document.getElementById('campaignName').value = marker.title;
+                presets = [markerDrivenPreset, ...presetList, buildEmptyPresetOption()];
                 document.getElementById('startDate').value = formatDateInputValue(markerDrivenPreset.firstPlacementDate);
                 document.getElementById('projectSummary').textContent =
                   'This campaign is generated from the selected plan. Adaptation channels and schedule are taken from its placements.';
@@ -1232,10 +2494,7 @@ export class CampaignTestUiController {
             }
           }
 
-          presetSelect.innerHTML = presets.map((preset) =>
-            '<option value="' + escapeHtml(preset.id) + '">' + escapeHtml(preset.name) + '</option>'
-          ).join('');
-
+          rebuildPresetSelect();
           presetSelect.addEventListener('change', () => renderPresetPreview(presetSelect.value));
           document.getElementById('startDate').addEventListener('input', () => renderCampaignPlanRows(campaignPlan));
           document.getElementById('startDate').addEventListener('change', () => renderCampaignPlanRows(campaignPlan));
@@ -1249,87 +2508,200 @@ export class CampaignTestUiController {
             }));
             renderCampaignPlanRows(campaignPlan);
           });
+          document.querySelectorAll('[data-flow-step]').forEach((element) => {
+            element.addEventListener('click', () => openFlowStepFromProgress(element.dataset.flowStep));
+            element.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openFlowStepFromProgress(element.dataset.flowStep);
+              }
+            });
+          });
+          document.getElementById('openSavePresetModalBtn').addEventListener('click', openSavePresetModal);
+          document.getElementById('savePresetName').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              saveCurrentPlanAsPreset();
+            }
+          });
           renderPresetPreview(presetSelect.value);
 
           document.getElementById('createCampaignForm').addEventListener('submit', async (event) => {
             event.preventDefault();
-            syncCampaignPlanFromTable();
-            let presetId = presetSelect.value;
-            let shouldSendPlanOverrides = true;
+            setPrimaryButtonBusy('createCampaignNext', true, 'Creating...', 'Next');
+            try {
+              syncCampaignPlanFromTable();
+              let presetId = presetSelect.value;
+              let shouldSendPlanOverrides = true;
 
-            if (markerDrivenPreset && presetId === markerDrivenPreset.id) {
-              const createdPreset = await request(
-                '/campaign-presets',
+              if (markerDrivenPreset && presetId === markerDrivenPreset.id) {
+                const createdPreset = await request(
+                  '/campaign-presets',
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      name: markerDrivenPreset.name,
+                      description: markerDrivenPreset.description,
+                      sourceLanguage: 'en',
+                      sourceType: 'marker_plan',
+                      isActive: true,
+                      publications: campaignPlan.map((publication, index) => ({
+                        dayOffset: Number(publication.dayOffset || '0'),
+                        localTime: publication.localTime,
+                        channel: publication.channel,
+                        language: publication.language,
+                        publicationType: publication.publicationType,
+                        style: publication.style,
+                        position: index + 1,
+                      })),
+                    }),
+                  },
+                  { renderResponse: false },
+                );
+                presetId = createdPreset.id;
+                shouldSendPlanOverrides = false;
+              }
+
+              const payload = {
+                presetId,
+                name: document.getElementById('campaignName').value,
+                startDate: buildMoscowIsoFromDateAndTime(
+                  document.getElementById('startDate').value,
+                  '00:00',
+                ),
+                extraInstructions: null,
+              };
+              if (shouldSendPlanOverrides) {
+                payload.plannedPublicationOverrides = campaignPlan.map((publication) => ({
+                  presetPublicationId: publication.presetPublicationId,
+                  dayOffset: publication.dayOffset,
+                  localTime: publication.localTime,
+                  channel: publication.channel,
+                  language: publication.language,
+                  publicationType: publication.publicationType,
+                  style: publication.style,
+                }));
+              }
+
+              const created = await request(
+                '/projects/' + encodeURIComponent(projectId) + '/campaigns',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                },
+              );
+
+              createdCampaignId = created.campaignId;
+              currentCampaign = await request(
+                '/campaigns/' + encodeURIComponent(createdCampaignId),
+                undefined,
+                { renderResponse: false },
+              );
+              updateCampaignCreationInboxLink(currentCampaign);
+
+              if (markerId) {
+                try {
+                  await request(
+                    '/projects/' + encodeURIComponent(projectId) + '/markers/' + encodeURIComponent(markerId),
+                    { method: 'DELETE' },
+                    { renderResponse: false },
+                  );
+                } catch (cleanupError) {
+                  setOutput({
+                    warning: 'Campaign was created, but selected plan cleanup failed.',
+                    cleanupError: String(cleanupError),
+                  });
+                }
+              }
+
+              markFlowStepDone('general');
+              window.history.replaceState(
+                null,
+                '',
+                '/test-ui/campaigns/new?projectId=' + encodeURIComponent(projectId) +
+                  '&campaignId=' + encodeURIComponent(createdCampaignId),
+              );
+              goToFlowStep('longread');
+              document.getElementById('sourceContent').focus();
+              setOutput({ created, campaign: currentCampaign });
+            } catch (error) {
+              setOutput(String(error));
+            } finally {
+              setPrimaryButtonBusy('createCampaignNext', false, 'Creating...', 'Next');
+            }
+          });
+
+          document.getElementById('longreadForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!createdCampaignId) {
+              setOutput('Create campaign first.');
+              return;
+            }
+
+            const sourceContent = document.getElementById('sourceContent').value.trim();
+            if (!sourceContent) {
+              setOutput('Longread is empty.');
+              return;
+            }
+
+            setPrimaryButtonBusy('longreadNext', true, 'Starting AI...', 'Next');
+            try {
+              await request(
+                '/campaigns/' + encodeURIComponent(createdCampaignId) + '/source',
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    name: markerDrivenPreset.name,
-                    description: markerDrivenPreset.description,
-                    sourceLanguage: 'en',
-                    sourceType: 'marker_plan',
-                    isActive: true,
-                    publications: campaignPlan.map((publication, index) => ({
-                      dayOffset: Number(publication.dayOffset || '0'),
-                      localTime: publication.localTime,
-                      channel: publication.channel,
-                      language: publication.language,
-                      publicationType: publication.publicationType,
-                      style: publication.style,
-                      position: index + 1,
-                    })),
+                    content: sourceContent,
+                    language: getSelectedSourceLanguage(),
                   }),
                 },
                 { renderResponse: false },
               );
-              presetId = createdPreset.id;
-              shouldSendPlanOverrides = false;
+              currentCampaign = await request(
+                '/campaigns/' + encodeURIComponent(createdCampaignId),
+                undefined,
+                { renderResponse: false },
+              );
+              await syncSourceContentFromCampaign(currentCampaign);
+              markFlowStepDone('longread');
+              goToFlowStep('ai');
+              await loadCampaignFlow();
+              startFlowPolling();
+            } catch (error) {
+              setOutput(String(error));
+            } finally {
+              setPrimaryButtonBusy('longreadNext', false, 'Starting AI...', 'Next');
             }
-
-            const payload = {
-              presetId,
-              name: document.getElementById('campaignName').value,
-              startDate: new Date(document.getElementById('startDate').value + 'T09:00:00.000Z').toISOString(),
-              extraInstructions: document.getElementById('extraInstructions').value || null,
-            };
-            if (shouldSendPlanOverrides) {
-              payload.plannedPublicationOverrides = campaignPlan.map((publication) => ({
-                presetPublicationId: publication.presetPublicationId,
-                dayOffset: publication.dayOffset,
-                localTime: publication.localTime,
-                channel: publication.channel,
-                language: publication.language,
-                publicationType: publication.publicationType,
-                style: publication.style,
-              }));
-            }
-
-            const created = await request(
-              '/projects/' + encodeURIComponent(projectId) + '/campaigns',
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              },
-            );
-
-            if (markerId) {
-              try {
-                await request(
-                  '/projects/' + encodeURIComponent(projectId) + '/markers/' + encodeURIComponent(markerId),
-                  { method: 'DELETE' },
-                  { renderResponse: false },
-                );
-              } catch (cleanupError) {
-                setOutput({
-                  warning: 'Campaign was created, but selected plan cleanup failed.',
-                  cleanupError: String(cleanupError),
-                });
-              }
-            }
-
-            window.location.href = '/test-ui/campaign?campaignId=' + encodeURIComponent(created.campaignId);
           });
+
+          document.getElementById('closeDonePublicationEditor').addEventListener('click', () => {
+            closeDonePublicationEditor();
+          });
+          document.getElementById('donePublicationEditor').addEventListener('submit', saveDonePublicationChanges);
+
+          if (createdCampaignId) {
+            currentCampaign = await request(
+              '/campaigns/' + encodeURIComponent(createdCampaignId),
+              undefined,
+              { renderResponse: false },
+            );
+            updateCampaignCreationInboxLink(currentCampaign);
+            markFlowStepDone('general');
+            if (currentCampaign.sourceArticleId) {
+              await syncSourceContentFromCampaign(currentCampaign);
+              markFlowStepDone('longread');
+              goToFlowStep('ai');
+              await loadCampaignFlow();
+              startFlowPolling();
+            } else {
+              goToFlowStep('longread');
+            }
+          } else {
+            goToFlowStep('general');
+          }
 
           setOutput({ project, presets });
         }
@@ -1449,6 +2821,7 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
+        const languageOptions = ['RU', 'EN', 'ES'];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
 
@@ -1458,6 +2831,22 @@ export class CampaignTestUiController {
               '<option value="' + escapeHtml(value) + '"' +
               (value === selectedValue ? ' selected' : '') +
               '>' + escapeHtml(label) + '</option>'
+            )
+            .join('');
+        }
+
+        function normalizePublicationLanguage(value) {
+          const normalizedValue = String(value || 'EN').toUpperCase();
+          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+        }
+
+        function buildLanguageSelectOptions(selectedValue) {
+          const normalizedValue = normalizePublicationLanguage(selectedValue);
+          return languageOptions
+            .map((language) =>
+              '<option value="' + escapeHtml(language) + '"' +
+              (language === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language) + '</option>'
             )
             .join('');
         }
@@ -1532,7 +2921,7 @@ export class CampaignTestUiController {
               dayOffset: String(publication.dayOffset),
               localTime: publication.localTime,
               channel: publication.channel,
-              language: String(publication.language || '').toUpperCase(),
+              language: normalizePublicationLanguage(publication.language),
               publicationType: normalizePublicationTypeValue(
                 publication.channel,
                 publication.publicationType,
@@ -1590,7 +2979,7 @@ export class CampaignTestUiController {
               dayOffset: row.querySelector('[data-field="dayOffset"]').value,
               localTime: row.querySelector('[data-field="localTime"]').value,
               channel: row.querySelector('[data-field="channel"]').value,
-              language: row.querySelector('[data-field="language"]').value.toUpperCase(),
+              language: normalizePublicationLanguage(row.querySelector('[data-field="language"]').value),
               publicationType: normalizePublicationTypeValue(
                 row.querySelector('[data-field="channel"]').value,
                 row.querySelector('[data-field="publicationType"]').value,
@@ -1618,7 +3007,7 @@ export class CampaignTestUiController {
                 '<td><input data-field="dayOffset" type="number" step="1" value="' + escapeHtml(String(publication.dayOffset)) + '" /></td>' +
                 '<td><input data-field="localTime" type="time" value="' + escapeHtml(publication.localTime) + '" /></td>' +
                 '<td><select data-field="channel">' + buildChannelSelectOptions(publication.channel) + '</select></td>' +
-                '<td><input data-field="language" type="text" maxlength="16" value="' + escapeHtml(publication.language) + '" /></td>' +
+                '<td><select data-field="language">' + buildLanguageSelectOptions(publication.language) + '</select></td>' +
                 '<td><select data-field="publicationType">' + buildPublicationTypeSelectOptions(publication.channel, publication.publicationType) + '</select></td>' +
                 '<td><input data-field="style" type="text" maxlength="64" value="' + escapeHtml(publication.style) + '" /></td>' +
                 '<td><button type="button" class="btn danger" data-remove-preset-row="' + escapeHtml(publication.rowKey) + '">Remove</button></td>' +
@@ -1811,6 +3200,34 @@ export class CampaignTestUiController {
                   Brand docs
                   <textarea id="brandDocs" placeholder="One line per document: Title | URL | Notes"></textarea>
                 </label>
+                <div class="field full stack" style="gap:12px;">
+                  <div class="section-copy" style="gap:6px;">
+                    <label style="margin:0;">Adaptation prompt rules</label>
+                    <p style="margin:0;">These rules are appended to Stage 1 adaptation prompts and then flow into quality checks and Stage 2 translations.</p>
+                  </div>
+                  <label class="field full">
+                    General adaptation rules
+                    <textarea id="adaptationRulesGeneral" placeholder="Project-wide instructions for all channel adaptations."></textarea>
+                  </label>
+                  <div class="form-grid">
+                    <label class="field">
+                      Telegram rules
+                      <textarea id="adaptationRulesTelegram" placeholder="Telegram-specific adaptation rules."></textarea>
+                    </label>
+                    <label class="field">
+                      X rules
+                      <textarea id="adaptationRulesX" placeholder="X-specific adaptation rules."></textarea>
+                    </label>
+                    <label class="field">
+                      Discord rules
+                      <textarea id="adaptationRulesDiscord" placeholder="Discord-specific adaptation rules."></textarea>
+                    </label>
+                    <label class="field">
+                      Blog rules
+                      <textarea id="adaptationRulesBlog" placeholder="Blog-specific adaptation rules."></textarea>
+                    </label>
+                  </div>
+                </div>
               </div>
               <div class="actions">
                 <button class="primary" type="submit">Save Brand Memory</button>
@@ -1832,11 +3249,15 @@ export class CampaignTestUiController {
               </div>
               <div class="check-item ok">
                 <label>Stage 1 adaptation</label>
-                <strong>Shapes channel-specific copy with the right type, tone and prohibited wording rules.</strong>
+                <strong>Uses the project-level adaptation prompt rules here together with type, style and channel requirements.</strong>
               </div>
               <div class="check-item ok">
                 <label>Stage 2 translation</label>
-                <strong>Preserves brand glossary and avoids off-brand translations in non-source languages.</strong>
+                <strong>Preserves brand glossary and carries the same adaptation rules into translations and later reviews.</strong>
+              </div>
+              <div class="check-item ok">
+                <label>Single control point</label>
+                <strong>This page now centralizes factual guardrails, glossary, risky wording and adaptation prompt rules for the whole project.</strong>
               </div>
             </div>
           </section>
@@ -1871,6 +3292,17 @@ export class CampaignTestUiController {
           document.getElementById('bannedPhrases').value = linesToText(brandMemory.bannedPhrases);
           document.getElementById('glossary').value = glossaryToText(brandMemory.glossary);
           document.getElementById('brandDocs').value = docsToText(brandMemory.brandDocs);
+          const adaptationPromptRules = brandMemory.adaptationPromptRules || {};
+          document.getElementById('adaptationRulesGeneral').value =
+            adaptationPromptRules.generalInstructions || '';
+          document.getElementById('adaptationRulesTelegram').value =
+            adaptationPromptRules.telegram || '';
+          document.getElementById('adaptationRulesX').value =
+            adaptationPromptRules.x || '';
+          document.getElementById('adaptationRulesDiscord').value =
+            adaptationPromptRules.discord || '';
+          document.getElementById('adaptationRulesBlog').value =
+            adaptationPromptRules.blog || '';
         }
 
         async function loadPage() {
@@ -1902,6 +3334,18 @@ export class CampaignTestUiController {
             bannedPhrases: splitLines(document.getElementById('bannedPhrases').value),
             glossary: parseGlossary(document.getElementById('glossary').value),
             brandDocs: parseBrandDocs(document.getElementById('brandDocs').value),
+            adaptationPromptRules: {
+              generalInstructions:
+                document.getElementById('adaptationRulesGeneral').value || null,
+              telegram:
+                document.getElementById('adaptationRulesTelegram').value || null,
+              x:
+                document.getElementById('adaptationRulesX').value || null,
+              discord:
+                document.getElementById('adaptationRulesDiscord').value || null,
+              blog:
+                document.getElementById('adaptationRulesBlog').value || null,
+            },
           };
         }
 
@@ -2769,45 +4213,23 @@ export class CampaignTestUiController {
       heading: 'Approval inbox',
       summary:
         'Exception-only inbox for the campaign. Source issues can be resolved here; other item types are currently inspectable but not yet fully operable from UI.',
+      showHero: false,
       body: `
         <section class="panel stack">
-          <div class="nav-row">
-            <div class="tabs" id="campaignTabs"></div>
-            <div class="actions" id="campaignBacklinks"></div>
+          <div class="nav-row campaign-creation-nav">
+            <div class="actions">
+              <a id="backToCampaignCreation" class="btn" href="#">&lt; Campaign creation</a>
+            </div>
+            <div class="nav-center-label">Approval inbox</div>
+            <div></div>
           </div>
-        </section>
-
-        <section class="metric-grid">
-          <article class="metric">
-            <span class="eyebrow">Pending items</span>
-            <strong id="pendingCount">0</strong>
-            <p>Only exception items are shown here.</p>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Campaign</span>
-            <strong id="campaignStatus">—</strong>
-            <div id="campaignBadge"></div>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Source issues</span>
-            <strong id="sourceIssueCount">0</strong>
-            <p>These can be resolved directly from this screen.</p>
-          </article>
-          <article class="metric">
-            <span class="eyebrow">Other exceptions</span>
-            <strong id="otherIssueCount">0</strong>
-            <p>Adaptation/translation/publishing exceptions are shown read-only for now.</p>
-          </article>
         </section>
 
         <section class="panel stack">
           <div class="section-head">
             <div class="section-copy">
-              <span class="eyebrow">Pending approvals</span>
-              <h2>Inbox items</h2>
-            </div>
-            <div class="actions">
-              <button onclick="loadPage()">Refresh</button>
+              <h2 id="inboxTitle">Inbox</h2>
+              <p id="inboxSummary">Loading messages that need a decision.</p>
             </div>
           </div>
           <div id="inboxItems" class="inbox-list"></div>
@@ -2815,133 +4237,306 @@ export class CampaignTestUiController {
       `,
       script: `
         const campaignId = ${JSON.stringify(campaignId)};
-
-        function renderCampaignTabs(campaign) {
-          document.getElementById('campaignTabs').innerHTML = [
-            '<a href="/test-ui/campaign?campaignId=' + encodeURIComponent(campaign.id) + '">Detail</a>',
-            '<a href="/test-ui/campaign-production?campaignId=' + encodeURIComponent(campaign.id) + '">Production</a>',
-            '<a class="active" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>',
-            '<a href="/test-ui/campaign-execution-history?campaignId=' + encodeURIComponent(campaign.id) + '">Execution history</a>',
-            '<a href="/test-ui/campaign-publishing?campaignId=' + encodeURIComponent(campaign.id) + '">Publishing</a>',
-          ].join('');
-          document.getElementById('campaignBacklinks').innerHTML =
-            '<a class="btn" href="/test-ui/campaigns?projectId=' + encodeURIComponent(campaign.projectId) + '">Back to campaigns</a>';
-        }
+        let currentCampaign = null;
+        let currentArticle = null;
 
         function normalizeOptionalFieldValue(value) {
           const normalized = String(value ?? '').trim();
           return normalized ? normalized : null;
         }
 
-        function sourceIssueForm(campaign, item) {
-          return '<form class="stack source-resolution-form" data-campaign-id="' + escapeHtml(campaign.id) + '" data-approval-item-id="' + escapeHtml(item.id) + '">' +
-            '<div class="form-grid">' +
-              '<label class="field">' +
-                'Action' +
-                '<select name="resolutionAction">' +
-                  '<option value="accept_fix">accept_fix</option>' +
-                  '<option value="manual_edit">manual_edit</option>' +
-                  '<option value="ignore">ignore</option>' +
-                  '<option value="block">block</option>' +
-                '</select>' +
-              '</label>' +
-              '<label class="field">' +
-                'Language override' +
-                '<input name="language" type="text" maxlength="16" placeholder="optional" />' +
-              '</label>' +
-              '<label class="field full">' +
-                'Source content (required for accept_fix/manual_edit)' +
-                '<textarea name="content" placeholder="Paste corrected source if you accept or manually edit the source."></textarea>' +
-              '</label>' +
-              '<label class="field full">' +
-                'Note' +
-                '<textarea name="note" placeholder="Optional review note."></textarea>' +
-              '</label>' +
-            '</div>' +
-            '<div class="actions">' +
-              '<button class="primary" type="submit">Resolve source issue</button>' +
-            '</div>' +
-          '</form>';
+        function campaignCreationUrl(campaign) {
+          return '/test-ui/campaigns/new?projectId=' + encodeURIComponent(campaign.projectId) +
+            '&campaignId=' + encodeURIComponent(campaign.id);
         }
 
-        function renderInbox(campaign, inbox) {
+        function sourceIssueReasons(item) {
+          const reasons = Array.isArray(item.details?.reasons) ? item.details.reasons : [];
+          if (reasons.length === 0) {
+            return [{
+              message: item.details?.summary || item.title || 'AI found a source issue that needs a decision.',
+              excerpt: null,
+              suggestion: item.suggestedFix?.summary || null,
+            }];
+          }
+          return reasons;
+        }
+
+        function renderSourceProblems(item) {
+          return '<div class="source-problem-list">' +
+            sourceIssueReasons(item).map((reason) =>
+              '<article class="source-problem">' +
+                '<strong>' + escapeHtml(reason.message || 'Source issue') + '</strong>' +
+                (reason.excerpt ? '<blockquote>' + escapeHtml(reason.excerpt) + '</blockquote>' : '') +
+                (reason.suggestion ? '<p>' + escapeHtml(reason.suggestion) + '</p>' : '') +
+              '</article>'
+            ).join('') +
+          '</div>';
+        }
+
+        function isGeneratedArtifactIssue(item) {
+          return item.type === 'adaptation_quality_exception' ||
+            item.type === 'translation_fidelity_exception';
+        }
+
+        function getGeneratedArtifactLabels(item) {
+          if (item.type === 'translation_fidelity_exception') {
+            return {
+              eyebrow: 'Step C · Translation generation',
+              title: 'Translation needs review',
+              editLabel: 'Corrected translation',
+              emptyContent: 'No translation text is available for manual editing.',
+            };
+          }
+
+          return {
+            eyebrow: 'Step B · Adaptations generation',
+            title: 'Adaptation needs review',
+            editLabel: 'Corrected adaptation',
+            emptyContent: 'No adaptation text is available for manual editing.',
+          };
+        }
+
+        function sourceIssueCard(campaign, item, article) {
+          const currentSource = article?.original?.content || '';
+          const sourceLanguage = article?.original?.language || campaign.sourceLanguage || 'en';
+          const summary = item.details?.summary || item.title || 'AI found a problem in the longread.';
+          return '<article class="inbox-item source-review-card" data-source-issue-card="' + escapeHtml(item.id) + '">' +
+            '<div class="section-copy">' +
+              '<span class="eyebrow">Longread check</span>' +
+              '<h2>AI needs your decision</h2>' +
+              '<p class="source-review-summary">' + escapeHtml(summary) + '</p>' +
+            '</div>' +
+            renderSourceProblems(item) +
+            '<div class="actions">' +
+              '<button type="button" class="primary" data-open-source-edit="' + escapeHtml(item.id) + '">Change longread</button>' +
+              '<button type="button" data-ignore-source-issue="' + escapeHtml(item.id) + '">Ignore</button>' +
+            '</div>' +
+            '<form class="stack source-edit-panel source-resolution-form" hidden data-campaign-id="' + escapeHtml(campaign.id) + '" data-approval-item-id="' + escapeHtml(item.id) + '" data-source-language="' + escapeHtml(sourceLanguage) + '">' +
+              '<label class="field">' +
+                'Corrected longread' +
+                '<textarea name="content" required>' + escapeHtml(currentSource) + '</textarea>' +
+              '</label>' +
+              '<div class="actions">' +
+                '<button class="primary" type="submit">Save and re-check</button>' +
+                '<button type="button" data-close-source-edit="' + escapeHtml(item.id) + '">Cancel</button>' +
+              '</div>' +
+            '</form>' +
+          '</article>';
+        }
+
+        function generatedArtifactIssueCard(campaign, item) {
+          const labels = getGeneratedArtifactLabels(item);
+          const currentContent = item.currentContent || '';
+          const summary = item.details?.summary || item.title || 'AI found a problem that needs a decision.';
+          return '<article class="inbox-item source-review-card" data-artifact-issue-card="' + escapeHtml(item.id) + '">' +
+            '<div class="section-copy">' +
+              '<span class="eyebrow">' + escapeHtml(labels.eyebrow) + '</span>' +
+              '<h2>' + escapeHtml(labels.title) + '</h2>' +
+              '<p class="source-review-summary">' + escapeHtml(summary) + '</p>' +
+            '</div>' +
+            renderSourceProblems(item) +
+            '<div class="actions">' +
+              '<button type="button" class="primary" data-fix-artifact-issue="' + escapeHtml(item.id) + '">Fix with AI</button>' +
+              '<button type="button" data-open-artifact-edit="' + escapeHtml(item.id) + '">Edit manually</button>' +
+              '<button type="button" data-ignore-artifact-issue="' + escapeHtml(item.id) + '">Ignore</button>' +
+            '</div>' +
+            '<form class="stack source-edit-panel artifact-resolution-form" hidden data-campaign-id="' + escapeHtml(campaign.id) + '" data-approval-item-id="' + escapeHtml(item.id) + '">' +
+              '<label class="field">' +
+                escapeHtml(labels.editLabel) +
+                '<textarea name="content" required placeholder="' + escapeHtml(labels.emptyContent) + '">' + escapeHtml(currentContent) + '</textarea>' +
+              '</label>' +
+              '<div class="actions">' +
+                '<button class="primary" type="submit">Save and continue</button>' +
+                '<button type="button" data-close-artifact-edit="' + escapeHtml(item.id) + '">Cancel</button>' +
+              '</div>' +
+            '</form>' +
+          '</article>';
+        }
+
+        function genericInboxCard(item) {
+          return '<article class="inbox-item">' +
+            '<div class="card-head">' +
+              '<div class="stack">' +
+                '<span class="eyebrow">' + escapeHtml(item.type) + '</span>' +
+                '<h3>' + escapeHtml(item.title) + '</h3>' +
+              '</div>' +
+              renderBadge(item.severity) +
+            '</div>' +
+            '<p class="soft">This item is read-only for now. Technical payload is available in Dev output.</p>' +
+          '</article>';
+        }
+
+        function renderInbox(campaign, inbox, article) {
           const items = inbox.items || [];
           const sourceIssueCount = items.filter((item) => item.type === 'source_issue').length;
           const otherIssueCount = items.length - sourceIssueCount;
 
-          document.getElementById('pendingCount').textContent = String(items.length);
-          document.getElementById('campaignStatus').textContent = toTitle(campaign.status);
-          document.getElementById('campaignBadge').innerHTML = renderBadge(campaign.status);
-          document.getElementById('sourceIssueCount').textContent = String(sourceIssueCount);
-          document.getElementById('otherIssueCount').textContent = String(otherIssueCount);
+          document.getElementById('backToCampaignCreation').href =
+            campaignCreationUrl(campaign);
+          document.getElementById('inboxTitle').textContent = campaign.name;
+          document.getElementById('inboxSummary').textContent = items.length === 0
+            ? 'No messages require a decision right now.'
+            : items.length + ' message(s) require a decision. Source issues: ' +
+              sourceIssueCount + '. Other exceptions: ' + otherIssueCount + '.';
 
           const root = document.getElementById('inboxItems');
           if (items.length === 0) {
-            root.innerHTML = '<div class="empty-state">Inbox is empty. This campaign currently has no exception items.</div>';
+            root.innerHTML = '<div class="empty-state">Inbox is empty.</div>';
             return;
           }
 
-          root.innerHTML = items.map((item) => {
-            const details = JSON.stringify(item.details || {}, null, 2);
-            const suggestedFix = item.suggestedFix ? JSON.stringify(item.suggestedFix, null, 2) : '';
+          root.innerHTML = items.map((item) =>
+            item.type === 'source_issue'
+              ? sourceIssueCard(campaign, item, article)
+              : isGeneratedArtifactIssue(item)
+                ? generatedArtifactIssueCard(campaign, item)
+              : genericInboxCard(item)
+          ).join('');
 
-            return '<article class="inbox-item">' +
-              '<div class="card-head">' +
-                '<div class="stack">' +
-                  '<span class="eyebrow">' + escapeHtml(item.type) + '</span>' +
-                  '<h3>' + escapeHtml(item.title) + '</h3>' +
-                '</div>' +
-                renderBadge(item.severity) +
-              '</div>' +
-              '<div class="pill-row">' +
-                (item.plannedPublicationId ? '<span class="pill mono">planned ' + escapeHtml(item.plannedPublicationId) + '</span>' : '') +
-                (item.artifactId ? '<span class="pill mono">artifact ' + escapeHtml(item.artifactId) + '</span>' : '') +
-                '<span class="pill">Updated ' + escapeHtml(formatDateTime(item.updatedAt)) + '</span>' +
-              '</div>' +
-              '<div class="table-wrap"><table><tbody>' +
-                '<tr><th>Details</th><td><pre class="output">' + escapeHtml(details) + '</pre></td></tr>' +
-                (suggestedFix ? '<tr><th>Suggested fix</th><td><pre class="output">' + escapeHtml(suggestedFix) + '</pre></td></tr>' : '') +
-              '</tbody></table></div>' +
-              (item.type === 'source_issue'
-                ? sourceIssueForm(campaign, item)
-                : '<p class="soft">Manual UI resolution exists only for source issues in this MVP. Other exceptions are visible here for operator awareness.</p>') +
-            '</article>';
-          }).join('');
+          root.querySelectorAll('[data-open-source-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-source-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = false;
+                panel.querySelector('textarea')?.focus();
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-close-source-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-source-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = true;
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-ignore-source-issue]').forEach((button) => {
+            button.addEventListener('click', () => submitIgnoreSourceIssue(button.dataset.ignoreSourceIssue));
+          });
+
+          root.querySelectorAll('[data-open-artifact-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-artifact-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = false;
+                panel.querySelector('textarea')?.focus();
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-close-artifact-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-artifact-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = true;
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-fix-artifact-issue]').forEach((button) => {
+            button.addEventListener('click', () => submitGeneratedArtifactIssue(button.dataset.fixArtifactIssue, 'fix_ai'));
+          });
+
+          root.querySelectorAll('[data-ignore-artifact-issue]').forEach((button) => {
+            button.addEventListener('click', () => submitGeneratedArtifactIssue(button.dataset.ignoreArtifactIssue, 'ignore'));
+          });
 
           root.querySelectorAll('.source-resolution-form').forEach((form) => {
-            form.addEventListener('submit', submitSourceResolution);
+            form.addEventListener('submit', submitEditedSource);
+          });
+
+          root.querySelectorAll('.artifact-resolution-form').forEach((form) => {
+            form.addEventListener('submit', submitEditedGeneratedArtifact);
           });
         }
 
-        async function submitSourceResolution(event) {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const campaignIdValue = form.dataset.campaignId;
-          const approvalItemId = form.dataset.approvalItemId;
-          const formData = new FormData(form);
-          const payload = {
-            approvalItemId,
-            action: String(formData.get('resolutionAction') || ''),
-            content: normalizeOptionalFieldValue(formData.get('content')),
-            language: normalizeOptionalFieldValue(formData.get('language')),
-            note: normalizeOptionalFieldValue(formData.get('note')),
-          };
-
+        async function postSourceIssueDecision(payload) {
           await request(
-            '/campaigns/' + encodeURIComponent(campaignIdValue) + '/source-issues/review',
+            '/campaigns/' + encodeURIComponent(campaignId) + '/source-issues/review',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
             },
           );
-          await loadPage();
+          window.location.href = campaignCreationUrl(currentCampaign);
+        }
+
+        async function submitIgnoreSourceIssue(approvalItemId) {
+          if (!approvalItemId || !currentCampaign) {
+            return;
+          }
+          await postSourceIssueDecision({
+            approvalItemId,
+            action: 'ignore',
+            note: 'Ignored from Approval inbox.',
+          });
+        }
+
+        async function submitEditedSource(event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const approvalItemId = form.dataset.approvalItemId;
+          const formData = new FormData(form);
+          await postSourceIssueDecision({
+            approvalItemId,
+            action: 'manual_edit',
+            content: normalizeOptionalFieldValue(formData.get('content')),
+            language: form.dataset.sourceLanguage || currentCampaign?.sourceLanguage || 'en',
+            note: 'Longread changed from Approval inbox.',
+          });
+          return false;
+        }
+
+        async function postGeneratedArtifactIssueDecision(payload) {
+          await request(
+            '/campaigns/' + encodeURIComponent(campaignId) + '/generated-artifact-issues/review',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+          window.location.href = campaignCreationUrl(currentCampaign);
+        }
+
+        async function submitGeneratedArtifactIssue(approvalItemId, action) {
+          if (!approvalItemId || !currentCampaign) {
+            return;
+          }
+          await postGeneratedArtifactIssueDecision({
+            approvalItemId,
+            action,
+            note: action === 'fix_ai'
+              ? 'Requested AI fix from Approval inbox.'
+              : 'Ignored from Approval inbox.',
+          });
+        }
+
+        async function submitEditedGeneratedArtifact(event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const approvalItemId = form.dataset.approvalItemId;
+          const formData = new FormData(form);
+          await postGeneratedArtifactIssueDecision({
+            approvalItemId,
+            action: 'manual_edit',
+            content: normalizeOptionalFieldValue(formData.get('content')),
+            note: 'Manually edited from Approval inbox.',
+          });
           return false;
         }
 
         async function loadPage() {
           if (!campaignId) {
-            document.getElementById('campaignStatus').textContent = 'Missing campaignId';
+            document.getElementById('inboxTitle').textContent = 'Missing campaignId';
             return;
           }
 
@@ -2949,10 +4544,396 @@ export class CampaignTestUiController {
             request('/campaigns/' + encodeURIComponent(campaignId), undefined, { renderResponse: false }),
             request('/campaigns/' + encodeURIComponent(campaignId) + '/inbox', undefined, { renderResponse: false }),
           ]);
+          currentCampaign = campaign;
+          currentArticle = campaign.sourceArticleId
+            ? await request('/articles/' + encodeURIComponent(campaign.sourceArticleId), undefined, { renderResponse: false })
+            : null;
 
-          renderCampaignTabs(campaign);
-          renderInbox(campaign, inbox);
-          setOutput({ campaign, inbox });
+          renderInbox(campaign, inbox, currentArticle);
+          setOutput({ campaign, inbox, article: currentArticle });
+        }
+
+        loadPage().catch((error) => setOutput(String(error)));
+      `,
+    });
+  }
+
+  @Get('project-inbox')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  renderProjectInboxPage(@Query('projectId') projectId = ''): string {
+    return renderCampaignUiPage({
+      title: 'Marketing Service - Project Inbox',
+      eyebrow: 'Inbox',
+      heading: 'Project inbox',
+      summary:
+        'Shared inbox for all campaigns in this project. Items stay here until you make a decision, and resolved items disappear automatically.',
+      showHero: false,
+      body: `
+        <section class="panel stack">
+          <div class="nav-row campaign-creation-nav">
+            <div class="actions">
+              <a id="backToProjectDashboard" class="btn" href="#">&lt; Dashboard</a>
+            </div>
+            <div class="nav-center-label">Project inbox</div>
+            <div></div>
+          </div>
+        </section>
+
+        <section class="panel stack">
+          <div class="section-head">
+            <div class="section-copy">
+              <h2 id="inboxTitle">Inbox</h2>
+              <p id="inboxSummary">Loading messages that need a decision.</p>
+            </div>
+          </div>
+          <div id="inboxItems" class="inbox-list"></div>
+        </section>
+      `,
+      script: `
+        const projectId = ${JSON.stringify(projectId)};
+        let currentProject = null;
+        let currentInbox = null;
+        let currentArticlesById = new Map();
+
+        function normalizeOptionalFieldValue(value) {
+          const normalized = String(value ?? '').trim();
+          return normalized ? normalized : null;
+        }
+
+        function campaignCreationUrl(item) {
+          return '/test-ui/campaigns/new?projectId=' + encodeURIComponent(projectId) +
+            '&campaignId=' + encodeURIComponent(item.campaignId);
+        }
+
+        function sourceIssueReasons(item) {
+          const reasons = Array.isArray(item.details?.reasons) ? item.details.reasons : [];
+          if (reasons.length === 0) {
+            return [{
+              message: item.details?.summary || item.title || 'AI found a source issue that needs a decision.',
+              excerpt: null,
+              suggestion: item.suggestedFix?.summary || null,
+            }];
+          }
+          return reasons;
+        }
+
+        function renderSourceProblems(item) {
+          return '<div class="source-problem-list">' +
+            sourceIssueReasons(item).map((reason) =>
+              '<article class="source-problem">' +
+                '<strong>' + escapeHtml(reason.message || 'Source issue') + '</strong>' +
+                (reason.excerpt ? '<blockquote>' + escapeHtml(reason.excerpt) + '</blockquote>' : '') +
+                (reason.suggestion ? '<p>' + escapeHtml(reason.suggestion) + '</p>' : '') +
+              '</article>'
+            ).join('') +
+          '</div>';
+        }
+
+        function isGeneratedArtifactIssue(item) {
+          return item.type === 'adaptation_quality_exception' ||
+            item.type === 'translation_fidelity_exception';
+        }
+
+        function getGeneratedArtifactLabels(item) {
+          if (item.type === 'translation_fidelity_exception') {
+            return {
+              eyebrow: 'Step C · Translation generation',
+              title: 'Translation needs review',
+              editLabel: 'Corrected translation',
+              emptyContent: 'No translation text is available for manual editing.',
+            };
+          }
+
+          return {
+            eyebrow: 'Step B · Adaptations generation',
+            title: 'Adaptation needs review',
+            editLabel: 'Corrected adaptation',
+            emptyContent: 'No adaptation text is available for manual editing.',
+          };
+        }
+
+        function campaignMetaPill(item) {
+          return '<div class="actions">' +
+            '<span class="pill">' + escapeHtml(item.campaignName) + '</span>' +
+            renderBadge(item.campaignStatus) +
+            '<a class="btn" href="' + campaignCreationUrl(item) + '">Open campaign</a>' +
+          '</div>';
+        }
+
+        function sourceIssueCard(item) {
+          const article = item.sourceArticleId ? currentArticlesById.get(item.sourceArticleId) : null;
+          const currentSource = article?.original?.content || '';
+          const sourceLanguage = article?.original?.language || 'en';
+          const summary = item.details?.summary || item.title || 'AI found a problem in the longread.';
+          return '<article class="inbox-item source-review-card" data-source-issue-card="' + escapeHtml(item.id) + '">' +
+            '<div class="section-copy">' +
+              '<span class="eyebrow">Longread check</span>' +
+              '<h2>AI needs your decision</h2>' +
+              '<p class="source-review-summary">' + escapeHtml(summary) + '</p>' +
+            '</div>' +
+            campaignMetaPill(item) +
+            renderSourceProblems(item) +
+            '<div class="actions">' +
+              '<button type="button" class="primary" data-open-source-edit="' + escapeHtml(item.id) + '">Change longread</button>' +
+              '<button type="button" data-ignore-source-issue="' + escapeHtml(item.id) + '">Ignore</button>' +
+            '</div>' +
+            '<form class="stack source-edit-panel source-resolution-form" hidden data-campaign-id="' + escapeHtml(item.campaignId) + '" data-approval-item-id="' + escapeHtml(item.id) + '" data-source-language="' + escapeHtml(sourceLanguage) + '">' +
+              '<label class="field">' +
+                'Corrected longread' +
+                '<textarea name="content" required>' + escapeHtml(currentSource) + '</textarea>' +
+              '</label>' +
+              '<div class="actions">' +
+                '<button class="primary" type="submit">Save and re-check</button>' +
+                '<button type="button" data-close-source-edit="' + escapeHtml(item.id) + '">Cancel</button>' +
+              '</div>' +
+            '</form>' +
+          '</article>';
+        }
+
+        function generatedArtifactIssueCard(item) {
+          const labels = getGeneratedArtifactLabels(item);
+          const currentContent = item.currentContent || '';
+          const summary = item.details?.summary || item.title || 'AI found a problem that needs a decision.';
+          return '<article class="inbox-item source-review-card" data-artifact-issue-card="' + escapeHtml(item.id) + '">' +
+            '<div class="section-copy">' +
+              '<span class="eyebrow">' + escapeHtml(labels.eyebrow) + '</span>' +
+              '<h2>' + escapeHtml(labels.title) + '</h2>' +
+              '<p class="source-review-summary">' + escapeHtml(summary) + '</p>' +
+            '</div>' +
+            campaignMetaPill(item) +
+            renderSourceProblems(item) +
+            '<div class="actions">' +
+              '<button type="button" class="primary" data-fix-artifact-issue="' + escapeHtml(item.id) + '">Fix with AI</button>' +
+              '<button type="button" data-open-artifact-edit="' + escapeHtml(item.id) + '">Edit manually</button>' +
+              '<button type="button" data-ignore-artifact-issue="' + escapeHtml(item.id) + '">Ignore</button>' +
+            '</div>' +
+            '<form class="stack source-edit-panel artifact-resolution-form" hidden data-campaign-id="' + escapeHtml(item.campaignId) + '" data-approval-item-id="' + escapeHtml(item.id) + '">' +
+              '<label class="field">' +
+                escapeHtml(labels.editLabel) +
+                '<textarea name="content" required placeholder="' + escapeHtml(labels.emptyContent) + '">' + escapeHtml(currentContent) + '</textarea>' +
+              '</label>' +
+              '<div class="actions">' +
+                '<button class="primary" type="submit">Save and continue</button>' +
+                '<button type="button" data-close-artifact-edit="' + escapeHtml(item.id) + '">Cancel</button>' +
+              '</div>' +
+            '</form>' +
+          '</article>';
+        }
+
+        function genericInboxCard(item) {
+          return '<article class="inbox-item">' +
+            '<div class="card-head">' +
+              '<div class="stack">' +
+                '<span class="eyebrow">' + escapeHtml(item.type) + '</span>' +
+                '<h3>' + escapeHtml(item.title) + '</h3>' +
+              '</div>' +
+              renderBadge(item.severity) +
+            '</div>' +
+            campaignMetaPill(item) +
+            '<p class="soft">This item is read-only for now. Technical payload is available in Dev output.</p>' +
+          '</article>';
+        }
+
+        function renderInbox(project, inbox) {
+          const items = inbox.items || [];
+          const campaignCount = new Set(items.map((item) => item.campaignId)).size;
+          const sourceIssueCount = items.filter((item) => item.type === 'source_issue').length;
+          const otherIssueCount = items.length - sourceIssueCount;
+
+          document.getElementById('backToProjectDashboard').href =
+            '/test-ui/project?projectId=' + encodeURIComponent(project.id);
+          document.getElementById('inboxTitle').textContent = project.name;
+          document.getElementById('inboxSummary').textContent = items.length === 0
+            ? 'No messages require a decision right now.'
+            : items.length + ' message(s) require a decision across ' + campaignCount + ' campaign(s). Source issues: ' +
+              sourceIssueCount + '. Other exceptions: ' + otherIssueCount + '.';
+
+          const root = document.getElementById('inboxItems');
+          if (items.length === 0) {
+            root.innerHTML = '<div class="empty-state">Inbox is empty.</div>';
+            return;
+          }
+
+          root.innerHTML = items.map((item) =>
+            item.type === 'source_issue'
+              ? sourceIssueCard(item)
+              : isGeneratedArtifactIssue(item)
+                ? generatedArtifactIssueCard(item)
+                : genericInboxCard(item)
+          ).join('');
+
+          root.querySelectorAll('[data-open-source-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-source-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = false;
+                panel.querySelector('textarea')?.focus();
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-close-source-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-source-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = true;
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-ignore-source-issue]').forEach((button) => {
+            button.addEventListener('click', () => submitIgnoreSourceIssue(button.dataset.ignoreSourceIssue, button.closest('[data-source-issue-card]')?.querySelector('.source-resolution-form')?.dataset.campaignId));
+          });
+
+          root.querySelectorAll('[data-open-artifact-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-artifact-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = false;
+                panel.querySelector('textarea')?.focus();
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-close-artifact-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const card = button.closest('[data-artifact-issue-card]');
+              const panel = card?.querySelector('.source-edit-panel');
+              if (panel) {
+                panel.hidden = true;
+              }
+            });
+          });
+
+          root.querySelectorAll('[data-fix-artifact-issue]').forEach((button) => {
+            const form = button.closest('[data-artifact-issue-card]')?.querySelector('.artifact-resolution-form');
+            button.addEventListener('click', () => submitGeneratedArtifactIssue(button.dataset.fixArtifactIssue, form?.dataset.campaignId, 'fix_ai'));
+          });
+
+          root.querySelectorAll('[data-ignore-artifact-issue]').forEach((button) => {
+            const form = button.closest('[data-artifact-issue-card]')?.querySelector('.artifact-resolution-form');
+            button.addEventListener('click', () => submitGeneratedArtifactIssue(button.dataset.ignoreArtifactIssue, form?.dataset.campaignId, 'ignore'));
+          });
+
+          root.querySelectorAll('.source-resolution-form').forEach((form) => {
+            form.addEventListener('submit', submitEditedSource);
+          });
+
+          root.querySelectorAll('.artifact-resolution-form').forEach((form) => {
+            form.addEventListener('submit', submitEditedGeneratedArtifact);
+          });
+        }
+
+        async function postSourceIssueDecision(campaignId, payload) {
+          await request(
+            '/campaigns/' + encodeURIComponent(campaignId) + '/source-issues/review',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+          await loadPage();
+        }
+
+        async function submitIgnoreSourceIssue(approvalItemId, campaignId) {
+          if (!approvalItemId || !campaignId) {
+            return;
+          }
+          await postSourceIssueDecision(campaignId, {
+            approvalItemId,
+            action: 'ignore',
+            note: 'Ignored from Project inbox.',
+          });
+        }
+
+        async function submitEditedSource(event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const approvalItemId = form.dataset.approvalItemId;
+          const campaignId = form.dataset.campaignId;
+          const formData = new FormData(form);
+          await postSourceIssueDecision(campaignId, {
+            approvalItemId,
+            action: 'manual_edit',
+            content: normalizeOptionalFieldValue(formData.get('content')),
+            language: form.dataset.sourceLanguage || 'en',
+            note: 'Longread changed from Project inbox.',
+          });
+          return false;
+        }
+
+        async function postGeneratedArtifactIssueDecision(campaignId, payload) {
+          await request(
+            '/campaigns/' + encodeURIComponent(campaignId) + '/generated-artifact-issues/review',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+          await loadPage();
+        }
+
+        async function submitGeneratedArtifactIssue(approvalItemId, campaignId, action) {
+          if (!approvalItemId || !campaignId) {
+            return;
+          }
+          await postGeneratedArtifactIssueDecision(campaignId, {
+            approvalItemId,
+            action,
+            note: action === 'fix_ai'
+              ? 'Requested AI fix from Project inbox.'
+              : 'Ignored from Project inbox.',
+          });
+        }
+
+        async function submitEditedGeneratedArtifact(event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const approvalItemId = form.dataset.approvalItemId;
+          const campaignId = form.dataset.campaignId;
+          const formData = new FormData(form);
+          await postGeneratedArtifactIssueDecision(campaignId, {
+            approvalItemId,
+            action: 'manual_edit',
+            content: normalizeOptionalFieldValue(formData.get('content')),
+            note: 'Manually edited from Project inbox.',
+          });
+          return false;
+        }
+
+        async function loadPage() {
+          if (!projectId) {
+            document.getElementById('inboxTitle').textContent = 'Missing projectId';
+            return;
+          }
+
+          const [project, inbox] = await Promise.all([
+            request('/projects/' + encodeURIComponent(projectId), undefined, { renderResponse: false }),
+            request('/projects/' + encodeURIComponent(projectId) + '/inbox', undefined, { renderResponse: false }),
+          ]);
+
+          const articleIds = [...new Set(
+            (inbox.items || [])
+              .map((item) => item.sourceArticleId)
+              .filter(Boolean),
+          )];
+          const articles = await Promise.all(
+            articleIds.map(async (articleId) => [
+              articleId,
+              await request('/articles/' + encodeURIComponent(articleId), undefined, { renderResponse: false }).catch(() => null),
+            ]),
+          );
+
+          currentProject = project;
+          currentInbox = inbox;
+          currentArticlesById = new Map(articles);
+          renderInbox(project, inbox);
+          setOutput({ project, inbox, articles: Object.fromEntries(currentArticlesById) });
         }
 
         loadPage().catch((error) => setOutput(String(error)));

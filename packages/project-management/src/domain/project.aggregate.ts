@@ -13,6 +13,14 @@ export interface BrandMemoryDocument {
   notes: string | null;
 }
 
+export interface AdaptationPromptRules {
+  generalInstructions: string | null;
+  telegram: string | null;
+  x: string | null;
+  discord: string | null;
+  blog: string | null;
+}
+
 export interface BrandMemory {
   brandName: string | null;
   productDescription: string | null;
@@ -23,6 +31,7 @@ export interface BrandMemory {
   bannedPhrases: string[];
   requiredPhrases: string[];
   brandDocs: BrandMemoryDocument[];
+  adaptationPromptRules: AdaptationPromptRules;
 }
 
 export interface CreateProjectParams {
@@ -79,6 +88,18 @@ function normalizeBrandDocs(docs?: BrandMemoryDocument[] | null): BrandMemoryDoc
     .filter((doc) => doc.title.length > 0);
 }
 
+function normalizeAdaptationPromptRules(
+  rules?: Partial<AdaptationPromptRules> | null,
+): AdaptationPromptRules {
+  return {
+    generalInstructions: normalizeText(rules?.generalInstructions),
+    telegram: normalizeText(rules?.telegram),
+    x: normalizeText(rules?.x),
+    discord: normalizeText(rules?.discord),
+    blog: normalizeText(rules?.blog),
+  };
+}
+
 function normalizeBrandMemory(brandMemory?: Partial<BrandMemory> | null): BrandMemory {
   return {
     brandName: normalizeText(brandMemory?.brandName),
@@ -90,6 +111,9 @@ function normalizeBrandMemory(brandMemory?: Partial<BrandMemory> | null): BrandM
     bannedPhrases: normalizeStringList(brandMemory?.bannedPhrases),
     requiredPhrases: normalizeStringList(brandMemory?.requiredPhrases),
     brandDocs: normalizeBrandDocs(brandMemory?.brandDocs),
+    adaptationPromptRules: normalizeAdaptationPromptRules(
+      brandMemory?.adaptationPromptRules,
+    ),
   };
 }
 
@@ -155,6 +179,13 @@ export class Project extends AggregateRoot {
     this.brandMemory = normalizeBrandMemory({
       ...this.brandMemory,
       ...brandMemory,
+      adaptationPromptRules:
+        brandMemory.adaptationPromptRules !== undefined
+          ? {
+              ...this.brandMemory.adaptationPromptRules,
+              ...brandMemory.adaptationPromptRules,
+            }
+          : this.brandMemory.adaptationPromptRules,
     });
     this.updatedAt = new Date();
 

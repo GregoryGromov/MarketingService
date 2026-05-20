@@ -588,6 +588,7 @@ ${renderDevConsoleStyles()}
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -752,7 +753,12 @@ ${renderDevConsoleScript()}
         --line-strong: rgba(18, 18, 18, 0.28);
         --surface: rgba(255, 255, 255, 0.88);
         --surface-soft: rgba(255, 255, 255, 0.54);
+        --success: #117a43;
+        --success-soft: #ebfff4;
+        --warning: #b54708;
+        --warning-soft: #fff3e8;
         --danger: #b42318;
+        --danger-soft: #fff0ed;
         --week-cell-height: 138px;
       }
       * { box-sizing: border-box; }
@@ -829,6 +835,11 @@ ${renderDevConsoleScript()}
       button:hover, a.btn:hover {
         background: rgba(255, 255, 255, 0.56);
       }
+      button.primary, a.btn.primary {
+        background: rgba(18, 18, 18, 0.92);
+        color: #fff;
+        border-color: rgba(18, 18, 18, 0.92);
+      }
       a.btn.marker-linked {
         border-color: var(--marker-border);
         background: var(--marker-bg);
@@ -837,6 +848,30 @@ ${renderDevConsoleScript()}
       a.btn.marker-linked:hover {
         background: var(--marker-bg);
         transform: translateY(-1px);
+      }
+      .btn-with-badge {
+        position: relative;
+        padding-right: 44px;
+      }
+      .notification-badge {
+        position: absolute;
+        top: -8px;
+        right: -6px;
+        min-width: 24px;
+        height: 24px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #b42318;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 24px;
+        text-align: center;
+        box-shadow: 0 0 0 4px rgba(236, 236, 237, 0.96);
+      }
+      .notification-badge.is-zero {
+        background: rgba(18, 18, 18, 0.24);
+        color: rgba(255, 255, 255, 0.92);
       }
       .hero-copy,
       .section-copy {
@@ -857,6 +892,97 @@ ${renderDevConsoleScript()}
         gap: 10px;
         flex-wrap: wrap;
       }
+      .project-view-switch,
+      .campaign-segment-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .project-view-switch button,
+      .campaign-segment-row button {
+        min-width: 180px;
+      }
+      .project-view-switch button.is-active,
+      .campaign-segment-row button.is-active {
+        background: rgba(18, 18, 18, 0.92);
+        color: #fff;
+        border-color: rgba(18, 18, 18, 0.92);
+      }
+      .project-view-panel[hidden] {
+        display: none;
+      }
+      .campaign-list-head {
+        align-items: end;
+        margin-bottom: 18px;
+      }
+      .campaign-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .campaign-card {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.5);
+        display: grid;
+        gap: 12px;
+      }
+      .campaign-card-head,
+      .campaigns-toolbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .campaign-card-meta,
+      .pill-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .pill,
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .pill {
+        min-height: 30px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.48);
+        color: var(--muted);
+      }
+      .badge {
+        min-height: 34px;
+        padding: 8px 12px;
+      }
+      .badge.success {
+        background: var(--success-soft);
+        color: var(--success);
+      }
+      .badge.warning {
+        background: var(--warning-soft);
+        color: var(--warning);
+      }
+      .badge.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+      .badge.neutral {
+        background: var(--surface-soft);
+        color: var(--text);
+      }
+      .soft {
+        color: var(--muted);
+      }
       .calendar-controls {
         display: flex;
         align-items: flex-start;
@@ -870,7 +996,10 @@ ${renderDevConsoleScript()}
       }
       .calendar-switch-row {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
       }
       .calendar-switch button.is-active {
         background: rgba(18, 18, 18, 0.92);
@@ -879,7 +1008,7 @@ ${renderDevConsoleScript()}
       }
       .calendar-headline {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 14px;
         flex-wrap: wrap;
       }
@@ -892,6 +1021,7 @@ ${renderDevConsoleScript()}
         background: rgba(255, 255, 255, 0.6);
         color: var(--muted);
         font-size: 12px;
+        line-height: 1;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         white-space: nowrap;
@@ -899,13 +1029,24 @@ ${renderDevConsoleScript()}
       .marker-toolbar {
         display: flex;
         align-items: flex-start;
-        justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
       }
-      .marker-toolbar-copy {
+      .marker-toolbar-label {
+        padding-top: 12px;
+        white-space: nowrap;
+      }
+      .marker-toolbar-main {
         display: grid;
-        gap: 8px;
+        gap: 10px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .marker-toolbar-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-left: auto;
       }
       .marker-list {
         display: flex;
@@ -1016,6 +1157,9 @@ ${renderDevConsoleScript()}
       }
       .week-nav button {
         min-width: 112px;
+      }
+      .calendar-switch-row .week-nav {
+        margin-left: auto;
       }
       .week-board {
         display: grid;
@@ -1151,6 +1295,10 @@ ${renderDevConsoleScript()}
         display: grid;
         gap: 6px;
       }
+      .week-marker.is-active {
+        border-style: solid;
+        box-shadow: inset 0 0 0 1px rgba(18, 18, 18, 0.08);
+      }
       .week-marker-title {
         font-size: 12px;
         line-height: 1.2;
@@ -1184,6 +1332,9 @@ ${renderDevConsoleScript()}
         border-radius: 16px;
         background: var(--pub-bg);
         border: 1px solid var(--pub-border);
+      }
+      .week-publication[data-clickable="true"] {
+        cursor: pointer;
       }
       .week-publication.is-published {
         opacity: 0.52;
@@ -1344,6 +1495,9 @@ ${renderDevConsoleScript()}
         .stats {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+        .campaign-card-grid {
+          grid-template-columns: 1fr;
+        }
         .cards {
           grid-template-columns: 1fr;
         }
@@ -1361,8 +1515,20 @@ ${renderDevConsoleScript()}
           flex-direction: column;
           align-items: flex-start;
         }
+        .marker-toolbar-label {
+          padding-top: 0;
+        }
+        .marker-toolbar-actions {
+          margin-left: 0;
+        }
         .calendar-headline {
           align-items: flex-start;
+        }
+        .calendar-switch-row {
+          align-items: flex-start;
+        }
+        .calendar-switch-row .week-nav {
+          margin-left: 0;
         }
         .week-header {
           flex-direction: column;
@@ -1385,39 +1551,44 @@ ${renderDevConsoleStyles()}
           </div>
           <div class="hero-actions">
             <a class="btn" href="/test-ui">All projects</a>
-            <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand memory</a>
-            <a class="btn" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Manage presets</a>
-            <a class="btn" id="createCampaignBtn" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
+            <a id="projectInboxLink" class="btn btn-with-badge" href="/test-ui/project-inbox?projectId=${escapeHtml(projectId)}">
+              <span id="projectInboxBadge" class="notification-badge is-zero" hidden>0</span>
+              Inbox
+            </a>
+            <div class="project-view-switch" role="tablist" aria-label="Project sections">
+              <button id="dashboardViewBtn" class="is-active" type="button" onclick="setProjectView('dashboard')">Dashboard</button>
+              <button id="campaignsViewBtn" type="button" onclick="setProjectView('campaigns')">Campaigns</button>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="project-card section-stack">
+      <section id="dashboardView" class="project-card section-stack project-view-panel">
         <div class="section-head">
           <div class="section-copy">
             <div class="calendar-headline">
               <h2 class="calendar-title">Publication calendar</h2>
               <span id="weekRange" class="calendar-range"></span>
-            </div>
-          </div>
-          <div class="calendar-controls">
-            <div class="week-nav">
-              <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
-              <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
+              <a
+                class="btn primary"
+                id="dashboardCreateCampaignBtn"
+                href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}"
+                hidden
+              >Create campaign</a>
             </div>
           </div>
         </div>
         <div class="marker-toolbar">
-          <div class="marker-toolbar-copy">
-            <span class="eyebrow">Draft markers</span>
-            <p id="markerToolbarMeta">Create idea markers, select one, then place it on the calendar.</p>
+          <span class="eyebrow marker-toolbar-label">Draft markers</span>
+          <div class="marker-toolbar-main">
+            <div id="markerList" class="marker-list"></div>
+            <p id="markerToolbarMeta"></p>
           </div>
-          <div class="hero-actions">
+          <div class="marker-toolbar-actions">
             <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
             <button onclick="openMarkerModal()">New marker</button>
           </div>
         </div>
-        <div id="markerList" class="marker-list"></div>
         <div id="error" class="error"></div>
         <div class="week-header"></div>
         <div class="calendar-switch-row">
@@ -1425,20 +1596,28 @@ ${renderDevConsoleStyles()}
             <button id="postsModeBtn" class="is-active" onclick="setCalendarMode('posts')">Publications</button>
             <button id="markersModeBtn" onclick="setCalendarMode('markers')">Plans</button>
           </div>
+          <div class="week-nav">
+            <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
+            <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
+          </div>
         </div>
         <div class="schedule-shell">
           <div id="weekGrid" class="week-board"></div>
         </div>
       </section>
 
-      <section class="project-card section-stack articles-section">
-        <div class="section-head">
-          <div class="section-copy">
-            <h2>Articles</h2>
-            <p id="articleSectionMeta">Project articles and next workflow entry points.</p>
+      <section id="campaignsView" class="project-card section-stack project-view-panel" hidden>
+        <div class="campaigns-toolbar">
+          <div class="campaign-segment-row" role="tablist" aria-label="Campaign groups">
+            <button id="activeCampaignsTab" class="is-active" type="button" data-campaign-group="active">Active<span id="activeCampaignsCount">&nbsp;(0)</span></button>
+            <button id="draftCampaignsTab" type="button" data-campaign-group="drafts">Drafts<span id="draftCampaignsCount">&nbsp;(0)</span></button>
+            <button id="completedCampaignsTab" type="button" data-campaign-group="completed">Completed<span id="completedCampaignsCount">&nbsp;(0)</span></button>
+          </div>
+          <div class="hero-actions">
+            <a class="btn primary" id="createCampaignFromProjectBtn" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create campaign</a>
           </div>
         </div>
-        <div id="articles" class="cards"></div>
+        <div id="projectCampaignCards" class="campaign-card-grid"></div>
       </section>
 
     </div>
@@ -1511,17 +1690,38 @@ ${renderDevConsoleStyles()}
         { bg: '#e8fbff', border: '#bdebf5', text: '#0c6b7a', time: '#2d6670' },
         { bg: '#fff0f5', border: '#ffc9dc', text: '#b42363', time: '#8f3f62' },
       ];
+      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
       let currentProject = null;
       let currentWeekStart = startOfWeek(new Date());
       let currentProjectArticles = [];
       let currentProjectMarkers = [];
       let currentProjectMarkerPlacements = [];
       let currentProjectPlans = [];
+      let currentProjectCampaigns = [];
       let currentPublicationsByArticle = new Map();
+      let currentProjectInboxPendingCount = 0;
       let activeMarkerId = null;
       let markerEditMode = false;
       let pendingMarkerPlacement = null;
       let calendarMode = 'posts';
+      let projectView = 'dashboard';
+      let currentCampaignGroup = 'active';
+      let groupedCampaigns = {
+        active: [],
+        drafts: [],
+        completed: [],
+      };
+      const draftCampaignStatuses = new Set([
+        'draft',
+        'source_checking',
+        'source_needs_review',
+        'producing',
+        'needs_attention',
+        'ready_for_final_approval',
+        'failed',
+        'cancelled',
+      ]);
+      const completedPublicationStatuses = new Set(['published', 'exported']);
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -1571,13 +1771,71 @@ ${renderDevConsoleStyles()}
         }).format(date);
       }
 
+      function formatDateOnly(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }).format(date);
+      }
+
+      function toMoscowShiftedDate(value) {
+        const date = value instanceof Date ? new Date(value) : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return new Date(date.getTime() + MOSCOW_OFFSET_MS);
+      }
+
+      function getMoscowDateParts(value) {
+        const shifted = toMoscowShiftedDate(value);
+        if (!shifted) return null;
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth(),
+          day: shifted.getUTCDate(),
+          hours: shifted.getUTCHours(),
+          minutes: shifted.getUTCMinutes(),
+        };
+      }
+
+      function buildMoscowIsoFromDayKeyAndTime(dayKey, timeValue) {
+        const [year, month, day] = String(dayKey || '').split('-').map((part) => Number(part));
+        const [hours, minutes] = String(timeValue || '').split(':').map((part) => Number(part));
+        if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
+          return null;
+        }
+        return new Date(Date.UTC(year, month - 1, day, hours - 3, minutes, 0, 0)).toISOString();
+      }
+
       function formatTime(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
+      }
+
+      function toTitle(value) {
+        return String(value || '')
+          .replace(/_/g, ' ')
+          .replace(/\\b\\w/g, (letter) => letter.toUpperCase());
+      }
+
+      function renderBadge(status) {
+        const normalized = String(status || 'unknown').toLowerCase();
+        const className = normalized.includes('failed') || normalized.includes('error')
+          ? 'danger'
+          : normalized.includes('pending') || normalized.includes('review') || normalized.includes('attention') || normalized.includes('draft') || normalized.includes('checking') || normalized.includes('producing')
+            ? 'warning'
+            : normalized.includes('published') || normalized.includes('completed') || normalized.includes('approved') || normalized.includes('exported')
+              ? 'success'
+              : 'neutral';
+
+        return '<span class="badge ' + className + '">' + escapeHtml(toTitle(normalized)) + '</span>';
       }
 
       function languageLabel(language) {
@@ -1612,18 +1870,26 @@ ${renderDevConsoleStyles()}
 
       function renderProjectHero() {
         const projectName = currentProject?.name || currentProjectId;
-        const createCampaignBtn = document.getElementById('createCampaignBtn');
+        const createCampaignBtn = document.getElementById('createCampaignFromProjectBtn');
+        const dashboardCreateCampaignBtn = document.getElementById('dashboardCreateCampaignBtn');
+        const projectInboxLink = document.getElementById('projectInboxLink');
         const activeMarker = markerById(activeMarkerId);
         const hasMarkerPlacements = activeMarker
           ? currentProjectMarkerPlacements.some((placement) => placement.markerId === activeMarker.id)
           : false;
         const createCampaignUrl = '/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) +
-          (activeMarker && hasMarkerPlacements
+          (activeMarker
             ? '&markerId=' + encodeURIComponent(activeMarker.id)
             : '');
 
         document.title = 'Marketing Service - ' + projectName;
         document.getElementById('projectName').textContent = projectName;
+        if (projectInboxLink) {
+          projectInboxLink.setAttribute(
+            'href',
+            '/test-ui/project-inbox?projectId=' + encodeURIComponent(currentProjectId),
+          );
+        }
         if (createCampaignBtn) {
           createCampaignBtn.setAttribute('href', createCampaignUrl);
           createCampaignBtn.classList.toggle('marker-linked', Boolean(activeMarker));
@@ -1637,53 +1903,276 @@ ${renderDevConsoleStyles()}
             createCampaignBtn.style.removeProperty('--marker-text');
           }
         }
+        if (dashboardCreateCampaignBtn) {
+          dashboardCreateCampaignBtn.hidden = !activeMarker;
+          dashboardCreateCampaignBtn.setAttribute('href', createCampaignUrl);
+          dashboardCreateCampaignBtn.classList.toggle('marker-linked', Boolean(activeMarker));
+          if (activeMarker) {
+            dashboardCreateCampaignBtn.style.setProperty('--marker-bg', activeMarker.colorBg);
+            dashboardCreateCampaignBtn.style.setProperty('--marker-border', activeMarker.colorBorder);
+            dashboardCreateCampaignBtn.style.setProperty('--marker-text', activeMarker.colorText);
+          } else {
+            dashboardCreateCampaignBtn.style.removeProperty('--marker-bg');
+            dashboardCreateCampaignBtn.style.removeProperty('--marker-border');
+            dashboardCreateCampaignBtn.style.removeProperty('--marker-text');
+          }
+        }
+      }
+
+      function updateProjectInboxLink(pendingCount) {
+        currentProjectInboxPendingCount = Number(pendingCount || 0);
+        const badge = document.getElementById('projectInboxBadge');
+        if (!badge) {
+          return;
+        }
+        badge.textContent = String(currentProjectInboxPendingCount);
+        badge.hidden = currentProjectInboxPendingCount === 0;
+        badge.classList.toggle('is-zero', currentProjectInboxPendingCount === 0);
+      }
+
+      function setProjectView(view) {
+        projectView = view === 'campaigns' ? 'campaigns' : 'dashboard';
+        document.getElementById('dashboardView').hidden = projectView !== 'dashboard';
+        document.getElementById('campaignsView').hidden = projectView !== 'campaigns';
+        document.getElementById('dashboardViewBtn').classList.toggle('is-active', projectView === 'dashboard');
+        document.getElementById('campaignsViewBtn').classList.toggle('is-active', projectView === 'campaigns');
+
+        if (projectView === 'campaigns') {
+          loadCampaigns().catch((error) => {
+            document.getElementById('projectCampaignCards').innerHTML =
+              '<div class="empty">' + escapeHtml(error instanceof Error ? error.message : String(error)) + '</div>';
+          });
+        }
+      }
+
+      function getCampaignStatusCount(campaign, status) {
+        return Number(campaign.publicationStatusCounts?.[status] || 0);
+      }
+
+      function completedCampaignPublicationCount(campaign) {
+        return [...completedPublicationStatuses].reduce(
+          (sum, status) => sum + getCampaignStatusCount(campaign, status),
+          0,
+        );
+      }
+
+      function isCompletedCampaign(campaign) {
+        return Number(campaign.plannedPublicationCount || 0) > 0 &&
+          completedCampaignPublicationCount(campaign) >= Number(campaign.plannedPublicationCount || 0);
+      }
+
+      function isDraftCampaign(campaign) {
+        return Number(campaign.pendingApprovalCount || 0) > 0 ||
+          draftCampaignStatuses.has(campaign.status) ||
+          Number(campaign.plannedPublicationCount || 0) === 0;
+      }
+
+      function groupCampaigns(campaigns) {
+        const groups = {
+          active: [],
+          drafts: [],
+          completed: [],
+        };
+
+        campaigns.forEach((campaign) => {
+          if (isCompletedCampaign(campaign) || campaign.status === 'completed') {
+            groups.completed.push(campaign);
+            return;
+          }
+
+          if (isDraftCampaign(campaign)) {
+            groups.drafts.push(campaign);
+            return;
+          }
+
+          groups.active.push(campaign);
+        });
+
+        return groups;
+      }
+
+      function campaignGroupLabel(group) {
+        if (group === 'drafts') return 'draft campaigns';
+        if (group === 'completed') return 'completed campaigns';
+        return 'active campaigns';
+      }
+
+      function campaignForArticle(articleId) {
+        return currentProjectCampaigns.find((campaign) => campaign.sourceArticleId === articleId) || null;
+      }
+
+      function openCampaignFromPublication(event, campaignId) {
+        if (event) {
+          event.stopPropagation();
+        }
+
+        if (!campaignId) {
+          return;
+        }
+
+        window.location.href =
+          '/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) +
+          '&campaignId=' + encodeURIComponent(campaignId);
+      }
+
+      function campaignActions(campaign) {
+        const actions = [
+          '<a class="btn primary" href="/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) + '&campaignId=' + encodeURIComponent(campaign.id) + '">Open</a>',
+        ];
+
+        if (Number(campaign.pendingApprovalCount || 0) > 0) {
+          actions.push('<a class="btn" href="/test-ui/campaign-inbox?campaignId=' + encodeURIComponent(campaign.id) + '">Inbox</a>');
+        }
+        if (isDraftCampaign(campaign)) {
+          actions.push('<button type="button" class="btn danger" data-delete-campaign="' + escapeHtml(campaign.id) + '">Delete</button>');
+        }
+        return actions.join('');
+      }
+
+      function renderCampaignCards(campaigns) {
+        const root = document.getElementById('projectCampaignCards');
+        if (!Array.isArray(campaigns) || campaigns.length === 0) {
+          root.innerHTML = '<div class="empty">No ' + escapeHtml(campaignGroupLabel(currentCampaignGroup)) + ' yet.</div>';
+          return;
+        }
+
+        root.innerHTML = campaigns.map((campaign) => {
+          const completed = completedCampaignPublicationCount(campaign);
+          const total = Number(campaign.plannedPublicationCount || 0);
+          return '<article class="campaign-card">' +
+            '<div class="campaign-card-head">' +
+              '<div class="section-copy">' +
+                '<span class="eyebrow">' + escapeHtml(campaign.presetName || 'Preset missing') + '</span>' +
+                '<h3>' + escapeHtml(campaign.name) + '</h3>' +
+              '</div>' +
+              renderBadge(campaign.status) +
+            '</div>' +
+            '<div class="campaign-card-meta">' +
+              '<span class="pill">Start ' + escapeHtml(formatDateOnly(campaign.startDate)) + '</span>' +
+              '<span class="pill">' + escapeHtml(String(campaign.sourceLanguage || '').toUpperCase()) + '</span>' +
+              '<span class="pill">' + escapeHtml(String(completed)) + '/' + escapeHtml(String(total)) + ' published</span>' +
+              (Number(campaign.pendingApprovalCount || 0) > 0
+                ? '<span class="pill">' + escapeHtml(String(campaign.pendingApprovalCount)) + ' inbox</span>'
+                : '') +
+            '</div>' +
+            '<p class="soft">Updated ' + escapeHtml(formatDate(campaign.updatedAt)) + '</p>' +
+            '<div class="card-actions">' + campaignActions(campaign) + '</div>' +
+          '</article>';
+        }).join('');
+
+        root.querySelectorAll('[data-delete-campaign]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const campaignId = button.dataset.deleteCampaign;
+            if (!campaignId) {
+              return;
+            }
+            const confirmed = window.confirm(
+              'Delete this draft campaign and all related data, including inbox items?',
+            );
+            if (!confirmed) {
+              return;
+            }
+            try {
+              await request('/campaigns/' + encodeURIComponent(campaignId), {
+                method: 'DELETE',
+              });
+              await loadCampaigns();
+            } catch (error) {
+              setOutput(String(error));
+            }
+          });
+        });
+      }
+
+      function renderCampaignGroup(group) {
+        currentCampaignGroup = group;
+        document.querySelectorAll('[data-campaign-group]').forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.campaignGroup === group);
+        });
+        renderCampaignCards(groupedCampaigns[group] || []);
+      }
+
+      function renderCampaignTabs() {
+        document.getElementById('activeCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.active.length) + ')';
+        document.getElementById('draftCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.drafts.length) + ')';
+        document.getElementById('completedCampaignsCount').textContent = '\\u00a0(' + String(groupedCampaigns.completed.length) + ')';
+        renderCampaignGroup(currentCampaignGroup);
+      }
+
+      async function loadCampaigns() {
+        const campaigns = await request(
+          '/projects/' + encodeURIComponent(currentProjectId) + '/campaigns',
+          undefined,
+          { renderResponse: false },
+        );
+        currentProjectCampaigns = Array.isArray(campaigns) ? campaigns : [];
+        groupedCampaigns = groupCampaigns(currentProjectCampaigns);
+        renderCampaignTabs();
+        renderOutput({ project: currentProject, campaigns: currentProjectCampaigns });
+      }
+
+      async function refreshProjectInboxSummary() {
+        const campaigns = await request(
+          '/projects/' + encodeURIComponent(currentProjectId) + '/campaigns',
+          undefined,
+          { renderResponse: false },
+        ).catch(() => []);
+        const pendingCount = Array.isArray(campaigns)
+          ? campaigns.reduce(
+              (sum, campaign) => sum + Number(campaign?.pendingApprovalCount || 0),
+              0,
+            )
+          : 0;
+        updateProjectInboxLink(pendingCount);
       }
 
       function startOfWeek(date) {
-        const value = new Date(date);
-        value.setHours(0, 0, 0, 0);
-        const day = value.getDay();
+        const parts = getMoscowDateParts(date);
+        const value = new Date(Date.UTC(parts.year, parts.month, parts.day));
+        const day = value.getUTCDay();
         const diff = day === 0 ? -6 : 1 - day;
-        value.setDate(value.getDate() + diff);
+        value.setUTCDate(value.getUTCDate() + diff);
         return value;
       }
 
       function addDays(date, days) {
         const value = new Date(date);
-        value.setDate(value.getDate() + days);
+        value.setUTCDate(value.getUTCDate() + days);
         return value;
       }
 
       function dateKey(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
         return year + '-' + month + '-' + day;
       }
 
       function isSameDay(a, b) {
-        return a.getFullYear() === b.getFullYear() &&
-          a.getMonth() === b.getMonth() &&
-          a.getDate() === b.getDate();
+        const left = getMoscowDateParts(a);
+        const right = getMoscowDateParts(b);
+        return left && right &&
+          left.year === right.year &&
+          left.month === right.month &&
+          left.day === right.day;
       }
 
       function formatWeekRange(start) {
         const end = addDays(start, 6);
-        const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+        const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
 
         if (sameMonth) {
-          return start.getDate() + '–' + end.getDate() + ' ' + monthLabels[start.getMonth()];
+          return start.getUTCDate() + '–' + end.getUTCDate() + ' ' + monthLabels[start.getUTCMonth()];
         }
 
-        return start.getDate() + ' ' + monthLabels[start.getMonth()] + ' – ' +
-          end.getDate() + ' ' + monthLabels[end.getMonth()];
+        return start.getUTCDate() + ' ' + monthLabels[start.getUTCMonth()] + ' – ' +
+          end.getUTCDate() + ' ' + monthLabels[end.getUTCMonth()];
       }
 
       function isPastPlanningDay(date) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayParts = getMoscowDateParts(new Date());
+        const today = new Date(Date.UTC(todayParts.year, todayParts.month, todayParts.day));
         const value = new Date(date);
-        value.setHours(0, 0, 0, 0);
         return value.getTime() < today.getTime();
       }
 
@@ -1691,6 +2180,7 @@ ${renderDevConsoleStyles()}
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: 'numeric',
           month: 'long',
         }).format(date);
@@ -1749,6 +2239,21 @@ ${renderDevConsoleStyles()}
         renderWeekDashboard();
       }
 
+      function selectMarkerFromPlacement(event, markerId) {
+        if (event) {
+          event.stopPropagation();
+        }
+
+        if (markerEditMode || !markerId) {
+          return;
+        }
+
+        activeMarkerId = markerId;
+        renderProjectHero();
+        renderMarkers();
+        renderWeekDashboard();
+      }
+
       function toggleMarkerEditMode() {
         markerEditMode = !markerEditMode;
         const button = document.getElementById('editMarkersBtn');
@@ -1771,7 +2276,7 @@ ${renderDevConsoleStyles()}
         const meta = document.getElementById('markerToolbarMeta');
 
         if (!Array.isArray(currentProjectMarkers) || currentProjectMarkers.length === 0) {
-          meta.textContent = 'Create the first draft marker, then place it on the week.';
+          meta.textContent = '';
           const button = document.getElementById('editMarkersBtn');
           if (button) {
             button.textContent = 'Edit markers';
@@ -1785,9 +2290,7 @@ ${renderDevConsoleStyles()}
         const activeMarker = markerById(activeMarkerId);
         meta.textContent = markerEditMode
           ? 'Delete draft marker templates. Their placements on the calendar will be removed too.'
-          : activeMarker
-            ? 'Selected: ' + activeMarker.title + '. Click a future cell to place it.'
-            : 'Select one marker from the list, then place it on the calendar.';
+          : '';
 
         root.innerHTML = currentProjectMarkers.map((marker) =>
           '<div class="marker-pill-wrap">' +
@@ -1910,7 +2413,7 @@ ${renderDevConsoleStyles()}
         }
 
         const marker = markerById(activeMarkerId);
-        const selectedDay = new Date(dayKey + 'T00:00:00');
+        const selectedDay = new Date(dayKey + 'T00:00:00.000Z');
         if (!marker || isPastPlanningDay(selectedDay)) {
           return;
         }
@@ -1928,9 +2431,9 @@ ${renderDevConsoleStyles()}
 
         const timeInput = document.getElementById('markerPlacementTime');
         if (isSameDay(selectedDay, new Date())) {
-          const now = new Date();
-          now.setMinutes(now.getMinutes() + 5);
-          timeInput.value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+          const nowParts = getMoscowDateParts(new Date(Date.now() + 5 * 60 * 1000));
+          timeInput.value = String(nowParts.hours).padStart(2, '0') + ':' +
+            String(nowParts.minutes).padStart(2, '0');
         } else {
           timeInput.value = '12:00';
         }
@@ -1968,7 +2471,11 @@ ${renderDevConsoleStyles()}
           return;
         }
 
-        const publishAt = new Date(pendingMarkerPlacement.dayKey + 'T' + timeValue + ':00');
+        const publishAtIso = buildMoscowIsoFromDayKeyAndTime(
+          pendingMarkerPlacement.dayKey,
+          timeValue,
+        );
+        const publishAt = publishAtIso ? new Date(publishAtIso) : new Date('invalid');
         if (Number.isNaN(publishAt.getTime())) {
           error.textContent = 'Invalid placement time.';
           return;
@@ -1994,8 +2501,8 @@ ${renderDevConsoleStyles()}
 
       function renderWeekDashboard() {
         const root = document.getElementById('weekGrid');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayParts = getMoscowDateParts(new Date());
+        const today = new Date(Date.UTC(todayParts.year, todayParts.month, todayParts.day));
 
         document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
         const headers = Array.from({ length: 7 }, (_, index) => {
@@ -2004,8 +2511,8 @@ ${renderDevConsoleStyles()}
           return \`
             <article class="week-column-head \${isToday ? 'is-today' : ''}">
               <small>\${weekDayLabels[index]}</small>
-              <strong>\${dayDate.getDate()}</strong>
-              <span>\${monthLabels[dayDate.getMonth()]}</span>
+              <strong>\${dayDate.getUTCDate()}</strong>
+              <span>\${monthLabels[dayDate.getUTCMonth()]}</span>
             </article>
           \`;
         }).join('');
@@ -2023,7 +2530,11 @@ ${renderDevConsoleStyles()}
             const hiddenCount = publications.length > 3 ? publications.length - 2 : 0;
             const markerContent = calendarMode === 'markers' && markerPlacements.length
               ? visibleMarkers.map((item) =>
-                  '<div class="week-marker" style="' +
+                  '<div class="week-marker ' + (item.markerId === activeMarkerId ? 'is-active' : '') + '"' +
+                    ' onclick="selectMarkerFromPlacement(event, \\''
+                      + escapeHtml(item.markerId)
+                      + '\\')"'
+                    + ' style="' +
                     '--marker-bg:' + item.colorBg + ';' +
                     '--marker-border:' + item.colorBorder + ';' +
                     '--marker-text:' + item.colorText + ';' +
@@ -2041,7 +2552,14 @@ ${renderDevConsoleStyles()}
               : '';
             const publicationContent = calendarMode === 'posts' && publications.length
               ? visiblePublications.map((item) =>
-                  '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '" style="' +
+                  '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '"' +
+                    ' data-clickable="' + (item.campaignId ? 'true' : 'false') + '"' +
+                    (item.campaignId
+                      ? ' onclick="openCampaignFromPublication(event, \\''
+                        + escapeHtml(item.campaignId)
+                        + '\\')"'
+                      : '') +
+                    ' style="' +
                     '--pub-bg:' + item.theme.bg + ';' +
                     '--pub-border:' + item.theme.border + ';' +
                     '--pub-text:' + item.theme.text + ';' +
@@ -2092,6 +2610,7 @@ ${renderDevConsoleStyles()}
           )
           .map((plan) => ({
             articleId: plan.articleId,
+            campaignId: campaignForArticle(plan.articleId)?.id || null,
             channelId: plan.channelId,
             targetLanguage: plan.targetLanguage,
             publishAt: new Date(plan.publishAt),
@@ -2135,42 +2654,7 @@ ${renderDevConsoleStyles()}
         return '/test-ui/review?articleId=' + encodeURIComponent(article.id);
       }
 
-      function renderArticles(items) {
-        const root = document.getElementById('articles');
-
-        if (!Array.isArray(items) || items.length === 0) {
-          root.innerHTML = '<div class="empty">No articles in this project yet. Use campaign creation to start a new workflow.</div>';
-          document.getElementById('articleSectionMeta').textContent = 'No articles in this project yet.';
-          renderProjectHero();
-          return;
-        }
-
-        document.getElementById('articleSectionMeta').textContent =
-          items.length + ' article' + (items.length === 1 ? '' : 's') + ' in this project.';
-
-        root.innerHTML = items.map((article) => \`
-          <article class="article-card">
-            <div style="
-              border-radius: 28px;
-              border: 1px solid \${escapeHtml(articleTheme(article.id).border)};
-              background: \${escapeHtml(articleTheme(article.id).bg)};
-              color: \${escapeHtml(articleTheme(article.id).text)};
-              padding: 18px;
-              height: 100%;
-              display: grid;
-              grid-template-rows: 1fr auto;
-              gap: 10px;
-              overflow: hidden;
-            ">
-            <div class="article-top">
-              <div class="article-headline">
-                <h3>\${escapeHtml(article.originalTitle)}</h3>
-              </div>
-            </div>
-            <a class="btn" style="justify-self:start;" href="\${escapeHtml(nextStepUrl(article))}">Open workflow</a>
-            </div>
-          </article>
-        \`).join('');
+      function renderArticles() {
         renderProjectHero();
       }
 
@@ -2182,19 +2666,27 @@ ${renderDevConsoleStyles()}
         }
 
         try {
-          const [project, articles, markers] = await Promise.all([
+          const [project, articles, markers, campaigns] = await Promise.all([
             request('/projects/' + encodeURIComponent(currentProjectId)).catch(() => null),
             request('/articles?projectId=' + encodeURIComponent(currentProjectId)),
             request('/projects/' + encodeURIComponent(currentProjectId) + '/markers').catch(() => []),
+            request('/projects/' + encodeURIComponent(currentProjectId) + '/campaigns', undefined, { renderResponse: false }).catch(() => []),
           ]);
           currentProject = project;
           currentProjectArticles = Array.isArray(articles) ? articles : [];
           currentProjectMarkers = Array.isArray(markers) ? markers : [];
+          currentProjectCampaigns = Array.isArray(campaigns) ? campaigns : [];
+          updateProjectInboxLink(
+            currentProjectCampaigns.reduce(
+              (sum, campaign) => sum + Number(campaign?.pendingApprovalCount || 0),
+              0,
+            ),
+          );
           syncActiveMarker();
           const weekStart = new Date(currentWeekStart);
-          weekStart.setHours(0, 0, 0, 0);
+          weekStart.setUTCHours(0, 0, 0, 0);
           const weekEnd = addDays(currentWeekStart, 6);
-          weekEnd.setHours(23, 59, 59, 999);
+          weekEnd.setUTCHours(23, 59, 59, 999);
           const [projectPlans, markerPlacements, publicationLists] = await Promise.all([
             request(
               '/publishing/projects/' + encodeURIComponent(currentProjectId) +
@@ -2224,15 +2716,27 @@ ${renderDevConsoleStyles()}
           renderMarkers();
           renderWeekDashboard();
           renderProjectHero();
+          groupedCampaigns = groupCampaigns(currentProjectCampaigns);
+          if (projectView === 'campaigns') {
+            renderCampaignTabs();
+          }
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
         }
       }
 
+      document.querySelectorAll('[data-campaign-group]').forEach((button) => {
+        button.addEventListener('click', () => renderCampaignGroup(button.dataset.campaignGroup));
+      });
+
       refreshProject().catch((error) => {
         document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
       });
+      setInterval(() => {
+        refreshProjectInboxSummary().catch(() => {});
+      }, 5000);
       renderProjectHero();
+      updateProjectInboxLink(0);
       renderMarkers();
       renderWeekDashboard();
     </script>
@@ -2494,28 +2998,42 @@ ${renderDevConsoleStyles()}
         return articleColorThemes[hashString(articleId) % articleColorThemes.length];
       }
 
+      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+      function getMoscowDateParts(value) {
+        const date = value instanceof Date ? new Date(value) : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        const shifted = new Date(date.getTime() + MOSCOW_OFFSET_MS);
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth(),
+          day: shifted.getUTCDate(),
+        };
+      }
+
       function parseDateKey(value) {
         if (!value) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return today;
+          const today = getMoscowDateParts(new Date());
+          return new Date(Date.UTC(today.year, today.month, today.day));
         }
         const [year, month, day] = String(value).split('-').map(Number);
-        const parsed = new Date(year, (month || 1) - 1, day || 1);
-        parsed.setHours(0, 0, 0, 0);
-        return parsed;
+        return new Date(Date.UTC(year, (month || 1) - 1, day || 1));
       }
 
       function isSameDay(a, b) {
-        return a.getFullYear() === b.getFullYear() &&
-          a.getMonth() === b.getMonth() &&
-          a.getDate() === b.getDate();
+        const left = getMoscowDateParts(a);
+        const right = getMoscowDateParts(b);
+        return left && right &&
+          left.year === right.year &&
+          left.month === right.month &&
+          left.day === right.day;
       }
 
       function formatDate(value) {
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -2526,6 +3044,7 @@ ${renderDevConsoleStyles()}
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -2538,6 +3057,7 @@ ${renderDevConsoleStyles()}
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
@@ -4000,6 +4520,7 @@ ${renderDevConsoleStyles()}
         { channelId: 'channel_blog', displayName: 'Blog', promptInstructions: '' },
       ];
       const CUSTOM_TYPES_KEY = 'ms:test-ui-adaptation-overrides';
+      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
       let currentWeekStart = startOfWeek(new Date());
       let currentArticle = null;
       let currentPlans = [];
@@ -4154,32 +4675,49 @@ ${renderDevConsoleStyles()}
         return normalized.toUpperCase();
       }
 
+      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+      function getMoscowDateParts(value) {
+        const date = value instanceof Date ? new Date(value) : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        const shifted = new Date(date.getTime() + MOSCOW_OFFSET_MS);
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth(),
+          day: shifted.getUTCDate(),
+          hours: shifted.getUTCHours(),
+          minutes: shifted.getUTCMinutes(),
+        };
+      }
+
       function startOfWeek(date) {
-        const value = new Date(date);
-        value.setHours(0, 0, 0, 0);
-        const day = value.getDay();
+        const parts = getMoscowDateParts(date);
+        const value = new Date(Date.UTC(parts.year, parts.month, parts.day));
+        const day = value.getUTCDay();
         const diff = day === 0 ? -6 : 1 - day;
-        value.setDate(value.getDate() + diff);
+        value.setUTCDate(value.getUTCDate() + diff);
         return value;
       }
 
       function addDays(date, days) {
         const value = new Date(date);
-        value.setDate(value.getDate() + days);
+        value.setUTCDate(value.getUTCDate() + days);
         return value;
       }
 
       function isSameDay(a, b) {
-        return a.getFullYear() === b.getFullYear() &&
-          a.getMonth() === b.getMonth() &&
-          a.getDate() === b.getDate();
+        const left = getMoscowDateParts(a);
+        const right = getMoscowDateParts(b);
+        return left && right &&
+          left.year === right.year &&
+          left.month === right.month &&
+          left.day === right.day;
       }
 
       function isPastPlanningDay(date) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayParts = getMoscowDateParts(new Date());
+        const today = new Date(Date.UTC(todayParts.year, todayParts.month, todayParts.day));
         const value = new Date(date);
-        value.setHours(0, 0, 0, 0);
         return value.getTime() < today.getTime();
       }
 
@@ -4199,15 +4737,16 @@ ${renderDevConsoleStyles()}
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           hour: '2-digit',
           minute: '2-digit',
         }).format(date);
       }
 
       function dateKey(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
         return year + '-' + month + '-' + day;
       }
 
@@ -4215,6 +4754,7 @@ ${renderDevConsoleStyles()}
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -5399,6 +5939,7 @@ ${renderDevConsoleStyles()}
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -6118,6 +6659,7 @@ ${renderDevConsoleStyles()}
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',

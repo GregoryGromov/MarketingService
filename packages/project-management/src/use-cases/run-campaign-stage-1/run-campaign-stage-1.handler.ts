@@ -115,17 +115,98 @@ function buildDisplayName(plannedPublication: PlannedPublication): string {
   ].join(' - ');
 }
 
-function buildPromptInstructions(plannedPublication: PlannedPublication): string | null {
-  const instructions = [
-    `Publication type: ${plannedPublication.publicationType}.`,
-    `Style: ${plannedPublication.style}.`,
-  ];
+function buildDefaultChannelRules(channel: string): string[] {
+  switch (channel) {
+    case 'channel_telegram':
+      return [
+        'Keep the tone concise, clear, and strong.',
+        'Prefer short paragraphs.',
+        'Do not use hashtags.',
+        'Do not use emojis unless absolutely necessary.',
+      ];
+    case 'channel_x':
+      return [
+        'Keep the text sharp, compact, and highly readable.',
+        'Do not use hashtags.',
+        'Do not use emojis.',
+      ];
+    case 'channel_discord':
+      return [
+        'Keep the text simple and immediately understandable.',
+        'Prefer plain words and short phrasing.',
+        'Do not use hashtags.',
+        'Do not use emojis.',
+      ];
+    case 'channel_blog':
+      return [
+        'Keep the tone informative and readable.',
+        'Prefer 2 to 4 short paragraphs.',
+        'Do not use hashtags.',
+        'Do not use emojis.',
+      ];
+    default:
+      return [];
+  }
+}
 
-  if (plannedPublication.notes) {
-    instructions.push(`Notes: ${plannedPublication.notes}`);
+function getProjectChannelRule(
+  brandMemory: BrandMemory,
+  channel: string,
+): string | null {
+  switch (channel) {
+    case 'channel_telegram':
+      return brandMemory.adaptationPromptRules.telegram;
+    case 'channel_x':
+      return brandMemory.adaptationPromptRules.x;
+    case 'channel_discord':
+      return brandMemory.adaptationPromptRules.discord;
+    case 'channel_blog':
+      return brandMemory.adaptationPromptRules.blog;
+    default:
+      return null;
+  }
+}
+
+function buildPromptInstructions(
+  plannedPublication: PlannedPublication,
+  brandMemory: BrandMemory,
+): string | null {
+  const defaultRules = buildDefaultChannelRules(plannedPublication.channel);
+  const projectGeneralRules =
+    brandMemory.adaptationPromptRules.generalInstructions?.trim() || null;
+  const projectChannelRules =
+    getProjectChannelRule(brandMemory, plannedPublication.channel)?.trim() || null;
+  const instructions: string[] = [];
+
+  if (defaultRules.length > 0) {
+    instructions.push(
+      ['Default channel rules:', ...defaultRules.map((rule) => `- ${rule}`)].join('\n'),
+    );
   }
 
-  return instructions.join(' ');
+  instructions.push(
+    [
+      'Publication requirements:',
+      `- Publication type: ${plannedPublication.publicationType}.`,
+      `- Style: ${plannedPublication.style}.`,
+    ].join('\n'),
+  );
+
+  if (plannedPublication.notes) {
+    instructions.push(`Publication notes:\n- ${plannedPublication.notes}`);
+  }
+
+  if (projectGeneralRules) {
+    instructions.push(`Project-wide adaptation rules:\n${projectGeneralRules}`);
+  }
+
+  if (projectChannelRules) {
+    instructions.push(
+      `Project rules for ${getChannelLabel(plannedPublication.channel)}:\n${projectChannelRules}`,
+    );
+  }
+
+  return instructions.length > 0 ? instructions.join('\n\n') : null;
 }
 
 function getHighestSeverity(reasons: AiGatewayReason[]): 'low' | 'medium' | 'high' | 'critical' {
@@ -455,7 +536,10 @@ export class RunCampaignStage1Executor {
             articleId: snapshot.articleId as never,
             channelId: plannedPublication.channel as ChannelId,
             displayName: buildDisplayName(plannedPublication),
-            promptInstructions: buildPromptInstructions(plannedPublication),
+            promptInstructions: buildPromptInstructions(
+              plannedPublication,
+              snapshot.brandMemory,
+            ),
             sourceLanguage: snapshot.sourceLanguage,
           });
 

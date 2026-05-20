@@ -3,6 +3,7 @@ import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { Campaign } from '../../domain/campaign.aggregate.js';
 import { PlannedPublication } from '../../domain/planned-publication.entity.js';
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
+import { materializeMoscowDateTime } from '../../time/moscow-time.js';
 import {
   CreateCampaignCommand,
   type CreateCampaignPlannedPublicationOverride,
@@ -13,21 +14,7 @@ export interface CreateCampaignResult {
   plannedPublicationIds: string[];
 }
 
-function materializeScheduledFor(startDate: Date, dayOffset: number, localTime: string): Date {
-  const [hoursToken, minutesToken] = localTime.split(':');
-  const hours = Number.parseInt(hoursToken ?? '0', 10);
-  const minutes = Number.parseInt(minutesToken ?? '0', 10);
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    throw new Error(`Invalid local time "${localTime}" in campaign preset`);
-  }
-
-  const scheduledFor = new Date(startDate);
-  scheduledFor.setUTCDate(scheduledFor.getUTCDate() + dayOffset);
-  scheduledFor.setUTCHours(hours, minutes, 0, 0);
-
-  return scheduledFor;
-}
+const EMPTY_CAMPAIGN_PRESET_ID = '__empty__';
 
 function assertDistinctPresetPublicationOverrides(
   overrides: CreateCampaignPlannedPublicationOverride[],
@@ -75,25 +62,24 @@ export class CreateCampaignHandler
           throw new Error(`Project ${command.projectId} not found`);
         }
 
-        const preset = await campaignPresetRepository.findById(command.presetId as never);
-        if (!preset) {
+        const preset =
+          command.presetId === EMPTY_CAMPAIGN_PRESET_ID
+            ? null
+            : await campaignPresetRepository.findById(command.presetId as never);
+        if (command.presetId !== EMPTY_CAMPAIGN_PRESET_ID && !preset) {
           throw new Error(`Campaign preset ${command.presetId} not found`);
         }
 
-        if (!preset.isActive) {
+        if (preset && !preset.isActive) {
           throw new Error(`Campaign preset ${command.presetId} is inactive`);
         }
 
         const submittedPlan = command.plannedPublicationOverrides;
         const presetPublicationIds = new Set(
-          preset.publications.map((publication) => publication.id),
+          (preset?.publications ?? []).map((publication) => publication.id),
         );
 
         if (submittedPlan) {
-          if (submittedPlan.length === 0) {
-            throw new Error('Campaign plan cannot be empty');
-          }
-
           assertDistinctPresetPublicationOverrides(submittedPlan);
 
           for (const row of submittedPlan) {
@@ -103,7 +89,7 @@ export class CreateCampaignHandler
 
             if (!presetPublicationIds.has(row.presetPublicationId as never)) {
               throw new Error(
-                `Planned publication override ${row.presetPublicationId} does not belong to preset ${preset.id}`,
+                `Planned publication override ${row.presetPublicationId} does not belong to preset ${command.presetId}`,
               );
             }
           }
@@ -111,10 +97,10 @@ export class CreateCampaignHandler
 
         const createdCampaign = Campaign.create({
           projectId: project.id,
-          presetId: preset.id,
+          presetId: (preset?.id ?? EMPTY_CAMPAIGN_PRESET_ID) as never,
           name: command.name,
           startDate: command.startDate,
-          sourceLanguage: command.sourceLanguage ?? preset.sourceLanguage,
+          sourceLanguage: command.sourceLanguage ?? preset?.sourceLanguage ?? 'en',
           extraInstructions: command.extraInstructions ?? null,
         });
         campaign = createdCampaign;
@@ -122,7 +108,7 @@ export class CreateCampaignHandler
         const campaignPlan =
           submittedPlan && submittedPlan.length > 0
             ? submittedPlan
-            : [...preset.publications]
+            : [...(preset?.publications ?? [])]
                 .sort((left, right) => left.position - right.position)
                 .map((publication) => ({
                   presetPublicationId: publication.id,
@@ -140,7 +126,7 @@ export class CreateCampaignHandler
             presetPublicationId: (publication.presetPublicationId ?? null) as never,
             dayOffset: publication.dayOffset,
             localTime: publication.localTime,
-            scheduledFor: materializeScheduledFor(
+            scheduledFor: materializeMoscowDateTime(
               createdCampaign.startDate,
               publication.dayOffset,
               publication.localTime,

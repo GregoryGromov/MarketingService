@@ -16,6 +16,7 @@ import {
   AiGatewayPort,
   CampaignFlowTransactionPort,
   CampaignProductionJobPort,
+  CampaignDeletionPort,
   ProjectDeletionPort,
   CampaignPublishingPort,
   CampaignArtifactRepository,
@@ -47,6 +48,7 @@ import { ApprovalItemDrizzleRepository } from './project-management/approval-ite
 import { CampaignProductionJobBullMqPort } from './project-management/campaign-production-job.bullmq-port.js';
 import { CampaignFlowDrizzleTransaction } from './project-management/campaign-flow-drizzle-transaction.js';
 import { CampaignArtifactDrizzleRepository } from './project-management/campaign-artifact.drizzle-repository.js';
+import { CampaignDeletionDrizzlePort } from './project-management/campaign-deletion.drizzle-port.js';
 import { CampaignDrizzleRepository } from './project-management/campaign.drizzle-repository.js';
 import { CampaignPresetDrizzleRepository } from './project-management/campaign-preset.drizzle-repository.js';
 import { PlannedPublicationDrizzleRepository } from './project-management/planned-publication.drizzle-repository.js';
@@ -93,6 +95,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     CampaignProductionJobBullMqPort,
     CampaignFlowDrizzleTransaction,
     CampaignPublishingDrizzlePort,
+    CampaignDeletionDrizzlePort,
     PublicationDrizzleRepository,
     PublicationPlanDrizzleRepository,
     PublicationOutcomeDrizzlePort,
@@ -116,6 +119,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     { provide: AiGatewayPort, useExisting: DeepSeekAiGateway },
     { provide: CampaignFlowTransactionPort, useExisting: CampaignFlowDrizzleTransaction },
     { provide: CampaignProductionJobPort, useExisting: CampaignProductionJobBullMqPort },
+    { provide: CampaignDeletionPort, useExisting: CampaignDeletionDrizzlePort },
     { provide: ProjectDeletionPort, useExisting: ProjectDeletionDrizzlePort },
     { provide: CampaignPublishingPort, useExisting: CampaignPublishingDrizzlePort },
     { provide: AdaptationGeneratorPort, useClass: DeepSeekAdaptationGenerator },
@@ -154,6 +158,7 @@ import { CampaignPublishingDrizzlePort } from './project-management/campaign-pub
     CampaignPublishingPort,
     CampaignFlowTransactionPort,
     CampaignProductionJobPort,
+    CampaignDeletionPort,
     ProjectDeletionPort,
     ArticleRepository,
     ArticleSourceVersionRepository,

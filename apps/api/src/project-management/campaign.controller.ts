@@ -1,15 +1,18 @@
 import {
   ApproveCampaignForPublishingCommand,
   AttachCampaignSourceCommand,
+  DeleteCampaignCommand,
   GetCampaignApprovalInboxQuery,
   GetCampaignDetailQuery,
   GetCampaignExecutionHistoryQuery,
   GetCampaignPublishingOverviewQuery,
+  RescheduleCampaignPlannedPublicationCommand,
   type CampaignId,
   type GetCampaignApprovalInboxResult,
   type GetCampaignDetailResult,
   type GetCampaignExecutionHistoryResult,
   type GetCampaignPublishingOverviewResult,
+  ReviewGeneratedArtifactIssueCommand,
   ReviewSourceIssueCommand,
   RunCampaignStage1Command,
   RunCampaignStage2Command,
@@ -18,6 +21,7 @@ import {
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   NotFoundException,
@@ -42,8 +46,23 @@ const ReviewSourceIssueSchema = v.object({
   note: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(2000)))),
 });
 
+const ReviewGeneratedArtifactIssueSchema = v.object({
+  approvalItemId: v.pipe(v.string(), v.trim(), v.minLength(1)),
+  action: v.picklist(['fix_ai', 'manual_edit', 'ignore']),
+  content: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
+  note: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(2000)))),
+});
+
+const RescheduleCampaignPlannedPublicationSchema = v.object({
+  publishAt: v.pipe(v.string(), v.trim(), v.isoTimestamp()),
+});
+
 type AttachCampaignSourceDto = v.InferOutput<typeof AttachCampaignSourceSchema>;
 type ReviewSourceIssueDto = v.InferOutput<typeof ReviewSourceIssueSchema>;
+type ReviewGeneratedArtifactIssueDto = v.InferOutput<typeof ReviewGeneratedArtifactIssueSchema>;
+type RescheduleCampaignPlannedPublicationDto = v.InferOutput<
+  typeof RescheduleCampaignPlannedPublicationSchema
+>;
 
 @Controller('campaigns')
 export class CampaignController {
@@ -62,6 +81,16 @@ export class CampaignController {
     }
 
     return campaign;
+  }
+
+  @Delete(':id')
+  async deleteCampaign(@Param('id') id: string): Promise<{ ok: true }> {
+    try {
+      await this.commandBus.execute(new DeleteCampaignCommand(id as CampaignId));
+      return { ok: true };
+    } catch (error) {
+      rethrowProjectManagementHttpError(error);
+    }
   }
 
   @Post(':id/source')
@@ -134,6 +163,26 @@ export class CampaignController {
     return executionHistory;
   }
 
+  @Post(':id/planned-publications/:plannedPublicationId/reschedule')
+  async reschedulePlannedPublication(
+    @Param('id') id: string,
+    @Param('plannedPublicationId') plannedPublicationId: string,
+    @Body(new ValibotPipe(RescheduleCampaignPlannedPublicationSchema))
+    dto: RescheduleCampaignPlannedPublicationDto,
+  ) {
+    try {
+      return await this.commandBus.execute(
+        new RescheduleCampaignPlannedPublicationCommand(
+          id as CampaignId,
+          plannedPublicationId as never,
+          new Date(dto.publishAt),
+        ),
+      );
+    } catch (error) {
+      rethrowProjectManagementHttpError(error);
+    }
+  }
+
   @Post(':id/source-issues/review')
   async reviewSourceIssue(
     @Param('id') id: string,
@@ -152,10 +201,54 @@ export class CampaignController {
       );
 
       if (review.campaignStatus === 'producing') {
+        if (dto.action === 'accept_fix' || dto.action === 'manual_edit') {
+          const resumedProduction = await this.commandBus.execute(
+            new StartCampaignProductionCommand(id as CampaignId),
+          );
+
+          return { ...review, resumedProduction };
+        }
+
         const resumedProduction = await this.commandBus.execute(
           new RunCampaignStage1Command(id as CampaignId),
         );
 
+        return { ...review, resumedProduction };
+      }
+
+      return review;
+    } catch (error) {
+      rethrowProjectManagementHttpError(error);
+    }
+  }
+
+  @Post(':id/generated-artifact-issues/review')
+  async reviewGeneratedArtifactIssue(
+    @Param('id') id: string,
+    @Body(new ValibotPipe(ReviewGeneratedArtifactIssueSchema)) dto: ReviewGeneratedArtifactIssueDto,
+  ) {
+    try {
+      const review = await this.commandBus.execute(
+        new ReviewGeneratedArtifactIssueCommand(
+          id as CampaignId,
+          dto.approvalItemId,
+          dto.action,
+          dto.content ?? undefined,
+          dto.note ?? null,
+        ),
+      );
+
+      if (review.resumeStage === 'stage_1') {
+        const resumedProduction = await this.commandBus.execute(
+          new RunCampaignStage1Command(id as CampaignId),
+        );
+        return { ...review, resumedProduction };
+      }
+
+      if (review.resumeStage === 'stage_2') {
+        const resumedProduction = await this.commandBus.execute(
+          new RunCampaignStage2Command(id as CampaignId),
+        );
         return { ...review, resumedProduction };
       }
 
