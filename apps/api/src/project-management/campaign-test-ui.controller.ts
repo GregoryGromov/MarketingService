@@ -2715,19 +2715,22 @@ export class CampaignTestUiController {
   @Header('Content-Type', 'text/html; charset=utf-8')
   renderCampaignPresetManagementPage(@Query('projectId') projectId = ''): string {
     return renderCampaignUiPage({
-      title: 'Marketing Service - Manage Campaign Presets',
-      eyebrow: 'Campaign Presets',
-      heading: 'Preset library',
+      title: 'Marketing Service - Preset Library',
+      eyebrow: 'Preset Library',
+      heading: 'Preset Library',
       summary:
         'Create new presets, edit existing ones, and manage the publication plan template used during campaign creation.',
+      showHero: false,
       body: `
         <section class="panel stack">
           <div class="nav-row">
             <div class="actions">
-              <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
+              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">Back to dashboard</a>
             </div>
-            <div class="actions">
-              <button type="button" class="primary" id="newPresetBtn">New preset</button>
+            <div class="tabs">
+              <a href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
+              <a href="/test-ui/prompt-management?projectId=${escapeHtml(projectId)}">Prompt Management</a>
+              <a class="active" href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Preset Library</a>
             </div>
           </div>
         </section>
@@ -2748,6 +2751,9 @@ export class CampaignTestUiController {
               <h2 id="editorTitle">New preset</h2>
               <p id="editorSummary">Define the source profile and the publication plan template.</p>
             </div>
+            <div class="actions">
+              <button type="button" class="primary" id="newPresetBtn">New preset</button>
+            </div>
             <form id="presetForm" class="stack">
               <div class="form-grid">
                 <label class="field">
@@ -2756,17 +2762,10 @@ export class CampaignTestUiController {
                 </label>
                 <label class="field">
                   Source language
-                  <input id="presetSourceLanguageInput" type="text" maxlength="16" placeholder="en" required />
-                </label>
-                <label class="field">
-                  Source type
-                  <input id="presetSourceTypeInput" type="text" maxlength="64" placeholder="market_insight" required />
-                </label>
-                <label class="field">
-                  Status
-                  <select id="presetStatusInput">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                  <select id="presetSourceLanguageInput" required>
+                    <option value="RU">RU</option>
+                    <option value="EN" selected>EN</option>
+                    <option value="ES">ES</option>
                   </select>
                 </label>
                 <label class="field full">
@@ -2896,9 +2895,7 @@ export class CampaignTestUiController {
           document.getElementById('editorSummary').textContent =
             'Define the source profile and the publication plan template.';
           document.getElementById('presetNameInput').value = '';
-          document.getElementById('presetSourceLanguageInput').value = 'en';
-          document.getElementById('presetSourceTypeInput').value = '';
-          document.getElementById('presetStatusInput').value = 'active';
+          document.getElementById('presetSourceLanguageInput').value = 'EN';
           document.getElementById('presetDescriptionInput').value = '';
           renderEditorRows();
         }
@@ -2934,8 +2931,6 @@ export class CampaignTestUiController {
             (preset.isSystem ? 'System preset' : 'Custom preset') + ' · updated ' + formatDateTime(preset.updatedAt);
           document.getElementById('presetNameInput').value = preset.name;
           document.getElementById('presetSourceLanguageInput').value = String(preset.sourceLanguage || '').toUpperCase();
-          document.getElementById('presetSourceTypeInput').value = preset.sourceType;
-          document.getElementById('presetStatusInput').value = preset.isActive ? 'active' : 'inactive';
           document.getElementById('presetDescriptionInput').value = preset.description;
           renderEditorRows();
         }
@@ -2959,7 +2954,6 @@ export class CampaignTestUiController {
               '<p>' + escapeHtml(preset.description) + '</p>' +
               '<div class="kv">' +
                 '<div class="meta-item"><label>Source language</label><strong>' + escapeHtml(String(preset.sourceLanguage || '').toUpperCase()) + '</strong></div>' +
-                '<div class="meta-item"><label>Source type</label><strong>' + escapeHtml(toTitle(preset.sourceType)) + '</strong></div>' +
                 '<div class="meta-item"><label>Rows</label><strong>' + escapeHtml(String((preset.publications || []).length)) + '</strong></div>' +
               '</div>' +
               '<div class="actions"><button type="button" data-select-preset="' + escapeHtml(preset.id) + '">Edit preset</button></div>' +
@@ -3038,9 +3032,11 @@ export class CampaignTestUiController {
           return {
             name: document.getElementById('presetNameInput').value,
             description: document.getElementById('presetDescriptionInput').value,
-            sourceLanguage: document.getElementById('presetSourceLanguageInput').value,
-            sourceType: document.getElementById('presetSourceTypeInput').value,
-            isActive: document.getElementById('presetStatusInput').value === 'active',
+            sourceLanguage: normalizePublicationLanguage(
+              document.getElementById('presetSourceLanguageInput').value,
+            ),
+            sourceType: 'custom_preset',
+            isActive: true,
             publications: editorRows.map((publication, index) => ({
               dayOffset: Number(publication.dayOffset || '0'),
               localTime: publication.localTime,
@@ -3139,129 +3135,71 @@ export class CampaignTestUiController {
       heading: 'Brand Memory',
       summary:
         'This screen edits the project-level memory that later feeds source validation, Stage 1 adaptations and Stage 2 translations.',
+      showHero: false,
       body: `
         <section class="panel stack">
           <div class="nav-row">
-            <div class="tabs">
-              <a href="/test-ui/project?projectId=${escapeHtml(projectId)}">Project dashboard</a>
-              <a href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Campaigns</a>
-              <a class="active" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
-              <a href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Create Campaign</a>
-            </div>
             <div class="actions">
-              <a class="btn" href="/test-ui/campaigns?projectId=${escapeHtml(projectId)}">Back to campaigns</a>
-              <button onclick="loadPage()">Refresh</button>
+              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">Back to dashboard</a>
+            </div>
+            <div class="tabs">
+              <a class="active" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
+              <a href="/test-ui/prompt-management?projectId=${escapeHtml(projectId)}">Prompt Management</a>
+              <a href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Preset Library</a>
             </div>
           </div>
         </section>
 
-        <div class="detail-grid">
-          <section class="form-card stack">
-            <div class="section-copy">
-              <span class="eyebrow">Project</span>
-              <h2 id="projectName">Loading project</h2>
-              <p id="updatedAt">Last update —</p>
+        <section class="form-card stack">
+          <div class="section-copy">
+            <span class="eyebrow">Project</span>
+            <h2 id="projectName">Loading project</h2>
+            <p id="updatedAt">Last update —</p>
+          </div>
+          <form id="brandMemoryForm" class="stack">
+            <div class="form-grid">
+              <label class="field">
+                Brand name
+                <input id="brandName" type="text" maxlength="120" />
+              </label>
+              <label class="field">
+                Target audience
+                <input id="targetAudience" type="text" maxlength="2000" />
+              </label>
+              <label class="field full">
+                Product description
+                <textarea id="productDescription"></textarea>
+              </label>
+              <label class="field">
+                Approved facts
+                <textarea id="approvedFacts" placeholder="One fact per line"></textarea>
+              </label>
+              <label class="field">
+                Forbidden claims
+                <textarea id="forbiddenClaims" placeholder="One claim per line"></textarea>
+              </label>
+              <label class="field">
+                Required phrases
+                <textarea id="requiredPhrases" placeholder="One phrase per line"></textarea>
+              </label>
+              <label class="field">
+                Banned phrases
+                <textarea id="bannedPhrases" placeholder="One phrase per line"></textarea>
+              </label>
+              <label class="field full">
+                Glossary
+                <textarea id="glossary" placeholder="One line per term: token = explanation"></textarea>
+              </label>
+              <label class="field full">
+                Brand docs
+                <textarea id="brandDocs" placeholder="One line per document: Title | URL | Notes"></textarea>
+              </label>
             </div>
-            <form id="brandMemoryForm" class="stack">
-              <div class="form-grid">
-                <label class="field">
-                  Brand name
-                  <input id="brandName" type="text" maxlength="120" />
-                </label>
-                <label class="field">
-                  Target audience
-                  <input id="targetAudience" type="text" maxlength="2000" />
-                </label>
-                <label class="field full">
-                  Product description
-                  <textarea id="productDescription"></textarea>
-                </label>
-                <label class="field">
-                  Approved facts
-                  <textarea id="approvedFacts" placeholder="One fact per line"></textarea>
-                </label>
-                <label class="field">
-                  Forbidden claims
-                  <textarea id="forbiddenClaims" placeholder="One claim per line"></textarea>
-                </label>
-                <label class="field">
-                  Required phrases
-                  <textarea id="requiredPhrases" placeholder="One phrase per line"></textarea>
-                </label>
-                <label class="field">
-                  Banned phrases
-                  <textarea id="bannedPhrases" placeholder="One phrase per line"></textarea>
-                </label>
-                <label class="field full">
-                  Glossary
-                  <textarea id="glossary" placeholder="One line per term: token = explanation"></textarea>
-                </label>
-                <label class="field full">
-                  Brand docs
-                  <textarea id="brandDocs" placeholder="One line per document: Title | URL | Notes"></textarea>
-                </label>
-                <div class="field full stack" style="gap:12px;">
-                  <div class="section-copy" style="gap:6px;">
-                    <label style="margin:0;">Adaptation prompt rules</label>
-                    <p style="margin:0;">These rules are appended to Stage 1 adaptation prompts and then flow into quality checks and Stage 2 translations.</p>
-                  </div>
-                  <label class="field full">
-                    General adaptation rules
-                    <textarea id="adaptationRulesGeneral" placeholder="Project-wide instructions for all channel adaptations."></textarea>
-                  </label>
-                  <div class="form-grid">
-                    <label class="field">
-                      Telegram rules
-                      <textarea id="adaptationRulesTelegram" placeholder="Telegram-specific adaptation rules."></textarea>
-                    </label>
-                    <label class="field">
-                      X rules
-                      <textarea id="adaptationRulesX" placeholder="X-specific adaptation rules."></textarea>
-                    </label>
-                    <label class="field">
-                      Discord rules
-                      <textarea id="adaptationRulesDiscord" placeholder="Discord-specific adaptation rules."></textarea>
-                    </label>
-                    <label class="field">
-                      Blog rules
-                      <textarea id="adaptationRulesBlog" placeholder="Blog-specific adaptation rules."></textarea>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="actions">
-                <button class="primary" type="submit">Save Brand Memory</button>
-                <a class="btn" href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}">Continue to campaign creation</a>
-              </div>
-            </form>
-          </section>
-
-          <section class="panel stack">
-            <div class="section-copy">
-              <span class="eyebrow">How it is used</span>
-              <h2>Campaign AI context</h2>
-              <p>Everything here is shared across the campaign pipeline. Keep it practical and explicit.</p>
+            <div class="actions">
+              <button class="primary" type="submit">Save Brand Memory</button>
             </div>
-            <div class="checklist">
-              <div class="check-item ok">
-                <label>Source check</label>
-                <strong>Validates facts, claims and risky wording before campaign production starts.</strong>
-              </div>
-              <div class="check-item ok">
-                <label>Stage 1 adaptation</label>
-                <strong>Uses the project-level adaptation prompt rules here together with type, style and channel requirements.</strong>
-              </div>
-              <div class="check-item ok">
-                <label>Stage 2 translation</label>
-                <strong>Preserves brand glossary and carries the same adaptation rules into translations and later reviews.</strong>
-              </div>
-              <div class="check-item ok">
-                <label>Single control point</label>
-                <strong>This page now centralizes factual guardrails, glossary, risky wording and adaptation prompt rules for the whole project.</strong>
-              </div>
-            </div>
-          </section>
-        </div>
+          </form>
+        </section>
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
@@ -3292,17 +3230,6 @@ export class CampaignTestUiController {
           document.getElementById('bannedPhrases').value = linesToText(brandMemory.bannedPhrases);
           document.getElementById('glossary').value = glossaryToText(brandMemory.glossary);
           document.getElementById('brandDocs').value = docsToText(brandMemory.brandDocs);
-          const adaptationPromptRules = brandMemory.adaptationPromptRules || {};
-          document.getElementById('adaptationRulesGeneral').value =
-            adaptationPromptRules.generalInstructions || '';
-          document.getElementById('adaptationRulesTelegram').value =
-            adaptationPromptRules.telegram || '';
-          document.getElementById('adaptationRulesX').value =
-            adaptationPromptRules.x || '';
-          document.getElementById('adaptationRulesDiscord').value =
-            adaptationPromptRules.discord || '';
-          document.getElementById('adaptationRulesBlog').value =
-            adaptationPromptRules.blog || '';
         }
 
         async function loadPage() {
@@ -3334,6 +3261,133 @@ export class CampaignTestUiController {
             bannedPhrases: splitLines(document.getElementById('bannedPhrases').value),
             glossary: parseGlossary(document.getElementById('glossary').value),
             brandDocs: parseBrandDocs(document.getElementById('brandDocs').value),
+          };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('brandMemoryForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = buildPayload();
+            const updated = await request(
+              '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              },
+            );
+            document.getElementById('updatedAt').textContent =
+              'Last update ' + formatDateTime(updated.updatedAt);
+          });
+        });
+
+        loadPage().catch((error) => setOutput(String(error)));
+      `,
+    });
+  }
+
+  @Get('prompt-management')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  renderPromptManagementPage(@Query('projectId') projectId = ''): string {
+    return renderCampaignUiPage({
+      title: 'Marketing Service - Prompt Management',
+      eyebrow: 'Prompt Management',
+      heading: 'Prompt Management',
+      summary:
+        'Control the project-level adaptation prompt rules that are applied during Stage 1 and carried into later reviews and translations.',
+      showHero: false,
+      body: `
+        <section class="panel stack">
+          <div class="nav-row">
+            <div class="actions">
+              <a class="btn" href="/test-ui/project?projectId=${escapeHtml(projectId)}">Back to dashboard</a>
+            </div>
+            <div class="tabs">
+              <a href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand Memory</a>
+              <a class="active" href="/test-ui/prompt-management?projectId=${escapeHtml(projectId)}">Prompt Management</a>
+              <a href="/test-ui/campaign-presets?projectId=${escapeHtml(projectId)}">Preset Library</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-card stack">
+          <div class="section-copy">
+            <span class="eyebrow">Project</span>
+            <h2 id="projectName">Loading project</h2>
+            <p id="updatedAt">Last update —</p>
+          </div>
+          <form id="promptManagementForm" class="stack">
+            <div class="field full stack" style="gap:12px;">
+              <div class="section-copy" style="gap:6px;">
+                <label style="margin:0;">Adaptation prompt rules</label>
+                <p style="margin:0;">These rules are appended to Stage 1 adaptation prompts and then flow into quality checks and Stage 2 translations.</p>
+              </div>
+              <label class="field full">
+                General adaptation rules
+                <textarea id="adaptationRulesGeneral" placeholder="Project-wide instructions for all channel adaptations."></textarea>
+              </label>
+              <div class="form-grid">
+                <label class="field">
+                  Telegram rules
+                  <textarea id="adaptationRulesTelegram" placeholder="Telegram-specific adaptation rules."></textarea>
+                </label>
+                <label class="field">
+                  X rules
+                  <textarea id="adaptationRulesX" placeholder="X-specific adaptation rules."></textarea>
+                </label>
+                <label class="field">
+                  Discord rules
+                  <textarea id="adaptationRulesDiscord" placeholder="Discord-specific adaptation rules."></textarea>
+                </label>
+                <label class="field">
+                  Blog rules
+                  <textarea id="adaptationRulesBlog" placeholder="Blog-specific adaptation rules."></textarea>
+                </label>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit">Save Prompt Rules</button>
+            </div>
+          </form>
+        </section>
+      `,
+      script: `
+        const projectId = ${JSON.stringify(projectId)};
+
+        function fillPromptRules(brandMemory) {
+          const adaptationPromptRules = brandMemory.adaptationPromptRules || {};
+          document.getElementById('adaptationRulesGeneral').value =
+            adaptationPromptRules.generalInstructions || '';
+          document.getElementById('adaptationRulesTelegram').value =
+            adaptationPromptRules.telegram || '';
+          document.getElementById('adaptationRulesX').value =
+            adaptationPromptRules.x || '';
+          document.getElementById('adaptationRulesDiscord').value =
+            adaptationPromptRules.discord || '';
+          document.getElementById('adaptationRulesBlog').value =
+            adaptationPromptRules.blog || '';
+        }
+
+        async function loadPage() {
+          if (!projectId) {
+            document.getElementById('projectName').textContent = 'Missing projectId';
+            return;
+          }
+
+          const [project, memoryPayload] = await Promise.all([
+            request('/projects/' + encodeURIComponent(projectId), undefined, { renderResponse: false }),
+            request('/projects/' + encodeURIComponent(projectId) + '/brand-memory', undefined, { renderResponse: false }),
+          ]);
+
+          document.getElementById('projectName').textContent = project.name;
+          document.getElementById('updatedAt').textContent =
+            'Last update ' + formatDateTime(memoryPayload.updatedAt);
+          fillPromptRules(memoryPayload.brandMemory);
+          setOutput({ project, promptRules: memoryPayload.brandMemory?.adaptationPromptRules || {} });
+        }
+
+        function buildPayload() {
+          return {
             adaptationPromptRules: {
               generalInstructions:
                 document.getElementById('adaptationRulesGeneral').value || null,
@@ -3350,7 +3404,7 @@ export class CampaignTestUiController {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('brandMemoryForm').addEventListener('submit', async (event) => {
+          document.getElementById('promptManagementForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             const payload = buildPayload();
             const updated = await request(

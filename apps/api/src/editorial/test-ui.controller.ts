@@ -1555,6 +1555,7 @@ ${renderDevConsoleStyles()}
               <span id="projectInboxBadge" class="notification-badge is-zero" hidden>0</span>
               Inbox
             </a>
+            <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand memory</a>
             <div class="project-view-switch" role="tablist" aria-label="Project sections">
               <button id="dashboardViewBtn" class="is-active" type="button" onclick="setProjectView('dashboard')">Dashboard</button>
               <button id="campaignsViewBtn" type="button" onclick="setProjectView('campaigns')">Campaigns</button>
