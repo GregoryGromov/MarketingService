@@ -21,6 +21,32 @@ const FALLBACK_PUBLICATION_TYPE_OPTIONS_BY_CHANNEL = {
   channel_blog: [{ value: 'default', label: 'Default' }],
 };
 
+const DEFAULT_ADAPTATION_RULES_BY_CHANNEL = {
+  channel_telegram: [
+    'Keep the tone concise, clear, and strong.',
+    'Prefer short paragraphs.',
+    'Do not use hashtags.',
+    'Do not use emojis unless absolutely necessary.',
+  ].join('\n'),
+  channel_x: [
+    'Keep the text sharp, compact, and highly readable.',
+    'Do not use hashtags.',
+    'Do not use emojis.',
+  ].join('\n'),
+  channel_discord: [
+    'Keep the text simple and immediately understandable.',
+    'Prefer plain words and short phrasing.',
+    'Do not use hashtags.',
+    'Do not use emojis.',
+  ].join('\n'),
+  channel_blog: [
+    'Keep the tone informative and readable.',
+    'Prefer 2 to 4 short paragraphs.',
+    'Do not use hashtags.',
+    'Do not use emojis.',
+  ].join('\n'),
+};
+
 function renderPublicationTypeOptionsByChannel(): string {
   return JSON.stringify(
     PUBLICATION_TYPE_OPTIONS_BY_CHANNEL ?? FALLBACK_PUBLICATION_TYPE_OPTIONS_BY_CHANNEL,
@@ -827,6 +853,10 @@ function renderCampaignUiStyles(): string {
         }
       }
 `;
+}
+
+function renderDefaultAdaptationRulesByChannel(): string {
+  return JSON.stringify(DEFAULT_ADAPTATION_RULES_BY_CHANNEL);
 }
 
 function renderSharedClientScript(): string {
@@ -3353,19 +3383,20 @@ export class CampaignTestUiController {
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
+        const defaultAdaptationRulesByChannel = ${renderDefaultAdaptationRulesByChannel()} || {};
 
         function fillPromptRules(brandMemory) {
           const adaptationPromptRules = brandMemory.adaptationPromptRules || {};
           document.getElementById('adaptationRulesGeneral').value =
             adaptationPromptRules.generalInstructions || '';
           document.getElementById('adaptationRulesTelegram').value =
-            adaptationPromptRules.telegram || '';
+            adaptationPromptRules.telegram || defaultAdaptationRulesByChannel.channel_telegram || '';
           document.getElementById('adaptationRulesX').value =
-            adaptationPromptRules.x || '';
+            adaptationPromptRules.x || defaultAdaptationRulesByChannel.channel_x || '';
           document.getElementById('adaptationRulesDiscord').value =
-            adaptationPromptRules.discord || '';
+            adaptationPromptRules.discord || defaultAdaptationRulesByChannel.channel_discord || '';
           document.getElementById('adaptationRulesBlog').value =
-            adaptationPromptRules.blog || '';
+            adaptationPromptRules.blog || defaultAdaptationRulesByChannel.channel_blog || '';
         }
 
         async function loadPage() {
