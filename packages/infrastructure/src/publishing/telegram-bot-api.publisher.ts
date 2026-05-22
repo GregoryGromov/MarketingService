@@ -85,10 +85,12 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
 
   private resolveLanguageCandidates(language: string): string[] {
     switch (language) {
-      case 'ES':
-        return ['ES', 'EN'];
+      case 'RU':
+        return ['RU'];
+      case 'EN':
+        return ['EN'];
       default:
-        return [language];
+        return [language, 'EN'];
     }
   }
 }

@@ -1844,6 +1844,10 @@ ${renderDevConsoleStyles()}
         if (normalized === 'ru') return 'Russian';
         if (normalized === 'en') return 'English';
         if (normalized === 'es') return 'Spanish';
+        if (normalized === 'id') return 'Indonesian';
+        if (normalized === 'fil') return 'Filipino';
+        if (normalized === 'vi') return 'Vietnamese';
+        if (normalized === 'pt') return 'Portuguese';
         return normalized.toUpperCase();
       }
 
@@ -2219,6 +2223,10 @@ ${renderDevConsoleStyles()}
           { language: 'en', label: 'English' },
           { language: 'es', label: 'Spanish' },
           { language: 'ru', label: 'Russian' },
+          { language: 'id', label: 'Indonesian' },
+          { language: 'fil', label: 'Filipino' },
+          { language: 'vi', label: 'Vietnamese' },
+          { language: 'pt', label: 'Portuguese' },
         ];
       }
 
@@ -2524,13 +2532,9 @@ ${renderDevConsoleStyles()}
             const isToday = isSameDay(dayDate, today);
             const isPast = isPastPlanningDay(dayDate);
             const markerPlacements = markerPlacementsForCell(channel.id, dayDate);
-            const visibleMarkers = markerPlacements.length > 2 ? markerPlacements.slice(0, 2) : markerPlacements;
-            const hiddenMarkers = markerPlacements.length > 2 ? markerPlacements.length - 2 : 0;
             const publications = plannedPublicationsForCell(channel.id, dayDate);
-            const visiblePublications = publications.length > 3 ? publications.slice(0, 2) : publications;
-            const hiddenCount = publications.length > 3 ? publications.length - 2 : 0;
             const markerContent = calendarMode === 'markers' && markerPlacements.length
-              ? visibleMarkers.map((item) =>
+              ? markerPlacements.map((item) =>
                   '<div class="week-marker ' + (item.markerId === activeMarkerId ? 'is-active' : '') + '"' +
                     ' onclick="selectMarkerFromPlacement(event, \\''
                       + escapeHtml(item.markerId)
@@ -2546,13 +2550,10 @@ ${renderDevConsoleStyles()}
                       '<span>' + escapeHtml(formatTime(item.publishAt)) + '</span>' +
                     '</div>' +
                   '</div>'
-                ).join('') +
-                (hiddenMarkers > 0
-                  ? '<div class="week-publication-more">' + escapeHtml(String(hiddenMarkers)) + ' more</div>'
-                  : '')
+                ).join('')
               : '';
             const publicationContent = calendarMode === 'posts' && publications.length
-              ? visiblePublications.map((item) =>
+              ? publications.map((item) =>
                   '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '"' +
                     ' data-clickable="' + (item.campaignId ? 'true' : 'false') + '"' +
                     (item.campaignId
@@ -2569,10 +2570,7 @@ ${renderDevConsoleStyles()}
                       '<span class="week-publication-language">' + escapeHtml(languageCode(item.targetLanguage)) + '</span>' +
                       '<span class="week-publication-time">' + escapeHtml(formatTime(item.publishAt)) + '</span>' +
                   '</div>'
-                ).join('') +
-                (hiddenCount > 0
-                  ? '<div class="week-publication-more">' + escapeHtml(String(hiddenCount)) + ' more</div>'
-                  : '')
+                ).join('')
               : '';
             const content = markerContent + publicationContent ||
               '<span class="week-cell-placeholder">' +
@@ -3069,6 +3067,10 @@ ${renderDevConsoleStyles()}
         if (normalized === 'ru') return 'Russian';
         if (normalized === 'en') return 'English';
         if (normalized === 'es') return 'Spanish';
+        if (normalized === 'id') return 'Indonesian';
+        if (normalized === 'fil') return 'Filipino';
+        if (normalized === 'vi') return 'Vietnamese';
+        if (normalized === 'pt') return 'Portuguese';
         return normalized.toUpperCase();
       }
 
@@ -3720,6 +3722,10 @@ ${renderDevConsoleStyles()}
         if (language === 'ru') return 'Russian';
         if (language === 'en') return 'English';
         if (language === 'es') return 'Spanish';
+        if (language === 'id') return 'Indonesian';
+        if (language === 'fil') return 'Filipino';
+        if (language === 'vi') return 'Vietnamese';
+        if (language === 'pt') return 'Portuguese';
         return language.toUpperCase();
       }
 
@@ -4661,6 +4667,11 @@ ${renderDevConsoleStyles()}
           { language: originalLanguage, label: languageLabel(originalLanguage) },
           { language: 'en', label: 'English' },
           { language: 'es', label: 'Spanish' },
+          { language: 'ru', label: 'Russian' },
+          { language: 'id', label: 'Indonesian' },
+          { language: 'fil', label: 'Filipino' },
+          { language: 'vi', label: 'Vietnamese' },
+          { language: 'pt', label: 'Portuguese' },
         ];
 
         return options.filter(
@@ -4673,6 +4684,10 @@ ${renderDevConsoleStyles()}
         if (normalized === 'ru') return 'Russian';
         if (normalized === 'en') return 'English';
         if (normalized === 'es') return 'Spanish';
+        if (normalized === 'id') return 'Indonesian';
+        if (normalized === 'fil') return 'Filipino';
+        if (normalized === 'vi') return 'Vietnamese';
+        if (normalized === 'pt') return 'Portuguese';
         return normalized.toUpperCase();
       }
 
@@ -4802,16 +4817,13 @@ ${renderDevConsoleStyles()}
             const isToday = isSameDay(dayDate, today);
             const isPast = isPastPlanningDay(dayDate);
             const plans = plansForCell(channel.id, dayDate);
-            const visible = plans.length > 3 ? plans.slice(0, 2) : plans;
-            const hiddenCount = plans.length > 3 ? plans.length - 2 : 0;
             const content = plans.length
-              ? visible.map((plan) =>
+              ? plans.map((plan) =>
                   '<div class="week-publication">' +
                     '<span class="week-publication-language">' + escapeHtml(String(plan.targetLanguage || '').toUpperCase()) + '</span>' +
                     '<span class="week-publication-time">' + escapeHtml(formatTime(plan.publishAt)) + '</span>' +
                   '</div>'
-                ).join('') +
-                (hiddenCount > 0 ? '<div class="week-publication-more">' + escapeHtml(String(hiddenCount)) + ' more</div>' : '')
+                ).join('')
               : '<span class="week-cell-placeholder ' + (isPast ? 'disabled' : '') + '">' + (isPast ? '—' : '+') + '</span>';
 
             return \`
@@ -5932,6 +5944,10 @@ ${renderDevConsoleStyles()}
         if (language === 'ru') return 'Russian';
         if (language === 'en') return 'English';
         if (language === 'es') return 'Spanish';
+        if (language === 'id') return 'Indonesian';
+        if (language === 'fil') return 'Filipino';
+        if (language === 'vi') return 'Vietnamese';
+        if (language === 'pt') return 'Portuguese';
         return String(language || '').toUpperCase();
       }
 
@@ -6652,6 +6668,10 @@ ${renderDevConsoleStyles()}
         if (language === 'ru') return 'Russian';
         if (language === 'en') return 'English';
         if (language === 'es') return 'Spanish';
+        if (language === 'id') return 'Indonesian';
+        if (language === 'fil') return 'Filipino';
+        if (language === 'vi') return 'Vietnamese';
+        if (language === 'pt') return 'Portuguese';
         return String(language || '').toUpperCase();
       }
 

@@ -15,6 +15,18 @@ interface XStatusUpdateResponse {
   errors?: Array<{ message?: string }>;
 }
 
+interface XApiErrorPayload {
+  errors?: Array<{
+    message?: string;
+    code?: number;
+    type?: string;
+    parameters?: Record<string, unknown>;
+  }>;
+  title?: string;
+  detail?: string;
+  type?: string;
+}
+
 @Injectable()
 export class XApiPublisher extends XPublisherPort {
   constructor(
@@ -45,14 +57,17 @@ export class XApiPublisher extends XPublisherPort {
       }),
     });
 
-    const payload = (await response.json()) as XStatusUpdateResponse;
+    const rawBody = await response.text();
+    const payload = this.parseResponseBody<XStatusUpdateResponse | XApiErrorPayload>(rawBody);
 
     if (!response.ok) {
-      const errorMessage = payload.errors?.[0]?.message;
-      throw new Error(errorMessage ?? `X publish failed with ${response.status}`);
+      const errorDetails = this.describeErrorPayload(payload, rawBody);
+      throw new Error(
+        `X publish failed with ${response.status} ${response.statusText}. ${errorDetails}`,
+      );
     }
 
-    const tweetId = payload.data?.id ?? null;
+    const tweetId = (payload as XStatusUpdateResponse | null)?.data?.id ?? null;
     if (!tweetId) {
       throw new Error('X publish succeeded but returned no tweet id');
     }
@@ -154,5 +169,54 @@ export class XApiPublisher extends XPublisherPort {
       /[!'()*]/g,
       (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
     );
+  }
+
+  private parseResponseBody<T>(rawBody: string): T | null {
+    if (!rawBody.trim()) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawBody) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  private describeErrorPayload(
+    payload: XStatusUpdateResponse | XApiErrorPayload | null,
+    rawBody: string,
+  ): string {
+    if (!payload) {
+      return rawBody.trim() ? `Raw response: ${rawBody}` : 'Response body is empty.';
+    }
+
+    const parts: string[] = [];
+    const primaryError = payload.errors?.[0];
+    const primaryErrorCode =
+      primaryError && 'code' in primaryError ? primaryError.code : undefined;
+
+    if (primaryError?.message) {
+      parts.push(`Message: ${primaryError.message}`);
+    }
+
+    if ('title' in payload && payload.title) {
+      parts.push(`Title: ${payload.title}`);
+    }
+
+    if ('detail' in payload && payload.detail) {
+      parts.push(`Detail: ${payload.detail}`);
+    }
+
+    if (primaryErrorCode != null) {
+      parts.push(`Code: ${String(primaryErrorCode)}`);
+    }
+
+    if ('type' in payload && payload.type) {
+      parts.push(`Type: ${payload.type}`);
+    }
+
+    parts.push(`Raw response: ${rawBody}`);
+    return parts.join(' ');
   }
 }

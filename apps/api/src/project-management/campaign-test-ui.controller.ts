@@ -1607,7 +1607,7 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES'];
+        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
         const emptyPresetId = '__empty__';
@@ -1910,6 +1910,26 @@ export class CampaignTestUiController {
             );
         }
 
+        function isCampaignDoneViewAvailable(campaign) {
+          const hasActiveWorkflowRun = (campaign.workflowRuns || []).some((run) => run.status === 'running');
+          const planned = campaign.plannedPublications || [];
+          const hasMaterializedPublications = planned.some((item) =>
+            [
+              'publication_scheduled',
+              'publishing',
+              'published',
+              'exported',
+              'failed',
+            ].includes(item.status),
+          );
+
+          return !hasActiveWorkflowRun && (
+            Boolean(campaign.finalApprovedAt) ||
+            hasMaterializedPublications ||
+            ['approved_for_publishing', 'publishing', 'completed'].includes(campaign.status)
+          );
+        }
+
         function renderDonePublications(overview) {
           const rows = overview?.items || [];
           const root = document.getElementById('donePublicationRows');
@@ -2135,8 +2155,11 @@ export class CampaignTestUiController {
 
         function renderAiWork(campaign, overview) {
           const activeWorkflowRun = (campaign.workflowRuns || []).find((run) => run.status === 'running') || null;
-          const hasInboxPause = campaign.pendingApprovalCount > 0 || campaign.status === 'source_needs_review';
           const isDone = isCampaignAiDone(campaign);
+          const doneViewAvailable = isCampaignDoneViewAvailable(campaign);
+          const hasInboxPause =
+            (campaign.pendingApprovalCount > 0 || campaign.status === 'source_needs_review') &&
+            !doneViewAvailable;
           updateCampaignCreationInboxLink(campaign);
 
           aiStepConfig.forEach((config) => {
@@ -2149,11 +2172,13 @@ export class CampaignTestUiController {
             ? 'Flow is paused by inbox review. Resolve the item, then it will continue automatically.'
             : activeWorkflowRun
               ? 'Worker is running ' + toTitle(activeWorkflowRun.currentStep) + '.'
-              : isDone
+              : doneViewAvailable
+                ? 'AI production is complete. Any later publishing issues are shown in Inbox and in Done.'
+                : isDone
                 ? 'AI production is complete. Publications are ready for publishing overview.'
                 : 'Waiting for the worker to pick up the next stage.';
 
-          if (isDone) {
+          if (doneViewAvailable) {
             renderDonePublications(overview);
             if (flowRefreshTimer) {
               clearInterval(flowRefreshTimer);
@@ -2162,7 +2187,9 @@ export class CampaignTestUiController {
             markFlowStepDone('ai');
             markFlowStepDone('done');
             document.getElementById('doneStepText').textContent =
-              'Campaign "' + campaign.name + '" is ready.';
+              campaign.pendingApprovalCount > 0
+                ? 'Campaign "' + campaign.name + '" is ready. Some publishing items need review in Inbox.'
+                : 'Campaign "' + campaign.name + '" is ready.';
             if (activeFlowStep === 'ai' || activeFlowStep === 'done') {
               goToFlowStep('done');
             }
@@ -2796,6 +2823,10 @@ export class CampaignTestUiController {
                     <option value="RU">RU</option>
                     <option value="EN" selected>EN</option>
                     <option value="ES">ES</option>
+                    <option value="ID">ID</option>
+                    <option value="FIL">FIL</option>
+                    <option value="VI">VI</option>
+                    <option value="PT">PT</option>
                   </select>
                 </label>
                 <label class="field full">
@@ -2850,7 +2881,7 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES'];
+        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
 
