@@ -27,7 +27,8 @@
       "@nestjs/core",
       "@swc/core",
       "esbuild",
-      "msgpackr-extract"
+      "msgpackr-extract",
+      "sharp"
     ]
   }
 }

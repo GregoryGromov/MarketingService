@@ -1,5 +1,7 @@
 import {
   type AdaptationId,
+  type ArticleId,
+  ArticleRepository,
   ChannelAdaptationRepository,
   DiscordPublisherPort,
   TelegramPublisherPort,
@@ -7,6 +9,8 @@ import {
   XPublisherPort,
 } from '@marketing-service/editorial';
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { PublicationRepository } from '../domain/publication.repository.js';
 import type { Publication } from '../domain/publication.aggregate.js';
 import { PublicationOutcomePort } from '../ports/publication-outcome.port.js';
@@ -21,6 +25,8 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     private readonly publicationRepository: PublicationRepository,
     @Inject(ChannelAdaptationRepository)
     private readonly channelAdaptationRepository: ChannelAdaptationRepository,
+    @Inject(ArticleRepository)
+    private readonly articleRepository: ArticleRepository,
     @Inject(TranslationRepository)
     private readonly translationRepository: TranslationRepository,
     @Inject(DiscordPublisherPort)
@@ -79,6 +85,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
   }
 
   private async publish(publication: {
+    articleId: ArticleId;
     adaptationId: AdaptationId;
     channelId: string;
     targetLanguage: string;
@@ -89,11 +96,13 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       publication.targetLanguage,
       publication.channelId,
     );
+    const imagePath = await this.resolvePublishableImagePath(publication.articleId, publication.channelId);
 
     if (publication.channelId === 'channel_telegram') {
       const published = await this.telegramPublisher.publishMessage({
         language: publication.targetLanguage,
         text,
+        imagePath,
       });
 
       publication.markPublished({
@@ -104,7 +113,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     if (publication.channelId === 'channel_discord') {
-      const published = await this.discordPublisher.publishMessage({ text });
+      const published = await this.discordPublisher.publishMessage({ text, imagePath });
       const discordAccountRef =
         published.guildId && published.channelId
           ? `${published.guildId}/${published.channelId}`
@@ -118,7 +127,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     if (publication.channelId === 'channel_x') {
-      const published = await this.xPublisher.publishMessage({ text });
+      const published = await this.xPublisher.publishMessage({ text, imagePath });
 
       publication.markPublished({
         telegramChatId: published.screenName ?? 'x-user',
@@ -136,6 +145,24 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     throw new Error(`Channel ${publication.channelId} is not supported for scheduled publishing`);
+  }
+
+  private async resolvePublishableImagePath(
+    articleId: ArticleId,
+    channelId: string,
+  ): Promise<string | null> {
+    const article = await this.articleRepository.findById(articleId);
+    const originalPath = article?.defaultCoverUrl?.trim();
+    if (!originalPath) {
+      return null;
+    }
+
+    const variantPath = join(dirname(originalPath), `${channelId}.jpg`);
+    if (existsSync(variantPath)) {
+      return variantPath;
+    }
+
+    return existsSync(originalPath) ? originalPath : null;
   }
 
   private async resolvePublishableText(

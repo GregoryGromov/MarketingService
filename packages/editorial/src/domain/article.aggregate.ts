@@ -19,6 +19,7 @@ export interface CreateArticleParams {
   projectId: ProjectId;
   content: string;
   language: string;
+  defaultCoverUrl?: string | null;
   releasePlanSnapshot?: Record<string, unknown> | null;
 }
 
@@ -27,6 +28,7 @@ export interface ArticleProps {
   projectId: ProjectId;
   status: ArticleStatus;
   paused: boolean;
+  defaultCoverUrl: string | null;
   releasePlanSnapshot: Record<string, unknown> | null;
   original: Original;
   createdAt: Date;
@@ -39,6 +41,7 @@ export class Article extends AggregateRoot {
     public readonly projectId: ProjectId,
     public status: ArticleStatus,
     public paused: boolean,
+    public defaultCoverUrl: string | null,
     public releasePlanSnapshot: Record<string, unknown> | null,
     public readonly original: Original,
     public readonly createdAt: Date,
@@ -55,6 +58,7 @@ export class Article extends AggregateRoot {
       params.projectId,
       'draft',
       false,
+      params.defaultCoverUrl?.trim() || null,
       params.releasePlanSnapshot ?? null,
       {
         content: params.content,
@@ -81,6 +85,7 @@ export class Article extends AggregateRoot {
       props.projectId,
       props.status,
       props.paused,
+      props.defaultCoverUrl,
       props.releasePlanSnapshot,
       props.original,
       props.createdAt,
@@ -141,6 +146,11 @@ export class Article extends AggregateRoot {
     this.original.content = content;
     this.original.language = language;
     this.original.uploadedAt = uploadedAt;
+    this.updatedAt = new Date();
+  }
+
+  setDefaultCoverUrl(defaultCoverUrl: string | null): void {
+    this.defaultCoverUrl = defaultCoverUrl?.trim() || null;
     this.updatedAt = new Date();
   }
 }

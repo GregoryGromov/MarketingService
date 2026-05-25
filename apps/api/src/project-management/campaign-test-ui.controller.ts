@@ -721,6 +721,17 @@ function renderCampaignUiStyles(): string {
         min-height: 140px;
         resize: vertical;
       }
+      .source-image-field input[type="file"] {
+        padding: 18px;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+      .source-image-note {
+        color: var(--muted);
+        font-size: 14px;
+        text-transform: none;
+        letter-spacing: normal;
+      }
       .form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -962,6 +973,15 @@ function renderSharedClientScript(): string {
         }
 
         return payload;
+      }
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('File read failed'));
+          reader.readAsDataURL(file);
+        });
       }
 
       function toMoscowShiftedDate(value) {
@@ -1529,6 +1549,11 @@ export class CampaignTestUiController {
             <label class="field">
               Source longread
               <textarea id="sourceContent" placeholder="Paste the longread here." required></textarea>
+            </label>
+            <label class="field source-image-field">
+              Source image
+              <input id="sourceImage" type="file" accept="image/png,image/jpeg,image/webp" />
+              <span id="sourceImageNote" class="source-image-note">Optional. The image will be cropped automatically for Telegram, X, Discord, and Blog.</span>
             </label>
           </form>
         </section>
@@ -2359,6 +2384,10 @@ export class CampaignTestUiController {
           if (sourceContentInput && typeof currentArticle?.original?.content === 'string') {
             sourceContentInput.value = currentArticle.original.content;
           }
+          const sourceImageNote = document.getElementById('sourceImageNote');
+          if (sourceImageNote && currentArticle?.defaultCoverUrl) {
+            sourceImageNote.textContent = 'Image attached. Cropped variants will be used for social publishing.';
+          }
 
           return currentArticle;
         }
@@ -2832,9 +2861,14 @@ export class CampaignTestUiController {
               setOutput('Longread is empty.');
               return;
             }
+            const sourceImageInput = document.getElementById('sourceImage');
+            const sourceImageFile = sourceImageInput?.files?.[0] || null;
 
             setPrimaryButtonBusy('longreadNext', true, 'Starting AI...', 'Next');
             try {
+              const sourceImageDataUrl = sourceImageFile
+                ? await readFileAsDataUrl(sourceImageFile)
+                : null;
               await request(
                 '/campaigns/' + encodeURIComponent(createdCampaignId) + '/source',
                 {
@@ -2843,6 +2877,7 @@ export class CampaignTestUiController {
                   body: JSON.stringify({
                     content: sourceContent,
                     language: getSelectedSourceLanguage(),
+                    sourceImageDataUrl,
                   }),
                 },
                 { renderResponse: false },
@@ -3554,6 +3589,28 @@ export class CampaignTestUiController {
                   <textarea id="adaptationRulesBlog" placeholder="Blog-specific adaptation rules."></textarea>
                 </label>
               </div>
+              <div class="section-copy" style="gap:6px;">
+                <label style="margin:0;">Image crop ratios</label>
+                <p style="margin:0;">These ratios are used when a source image is attached to a campaign. Format examples: 1:1, 16:9, 1200:630.</p>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  Telegram image ratio
+                  <input id="mediaRatioTelegram" type="text" placeholder="1:1" />
+                </label>
+                <label class="field">
+                  X image ratio
+                  <input id="mediaRatioX" type="text" placeholder="16:9" />
+                </label>
+                <label class="field">
+                  Discord image ratio
+                  <input id="mediaRatioDiscord" type="text" placeholder="16:9" />
+                </label>
+                <label class="field">
+                  Blog image ratio
+                  <input id="mediaRatioBlog" type="text" placeholder="1200:630" />
+                </label>
+              </div>
             </div>
             <div class="actions">
               <button class="primary" type="submit">Save Prompt Rules</button>
@@ -3577,6 +3634,11 @@ export class CampaignTestUiController {
             adaptationPromptRules.discord || defaultAdaptationRulesByChannel.channel_discord || '';
           document.getElementById('adaptationRulesBlog').value =
             adaptationPromptRules.blog || defaultAdaptationRulesByChannel.channel_blog || '';
+          const ratios = adaptationPromptRules.mediaAspectRatios || {};
+          document.getElementById('mediaRatioTelegram').value = ratios.telegram || '1:1';
+          document.getElementById('mediaRatioX').value = ratios.x || '16:9';
+          document.getElementById('mediaRatioDiscord').value = ratios.discord || '16:9';
+          document.getElementById('mediaRatioBlog').value = ratios.blog || '1200:630';
         }
 
         async function loadPage() {
@@ -3610,6 +3672,12 @@ export class CampaignTestUiController {
                 document.getElementById('adaptationRulesDiscord').value || null,
               blog:
                 document.getElementById('adaptationRulesBlog').value || null,
+              mediaAspectRatios: {
+                telegram: document.getElementById('mediaRatioTelegram').value || '1:1',
+                x: document.getElementById('mediaRatioX').value || '16:9',
+                discord: document.getElementById('mediaRatioDiscord').value || '16:9',
+                blog: document.getElementById('mediaRatioBlog').value || '1200:630',
+              },
             },
           };
         }

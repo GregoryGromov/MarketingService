@@ -1,5 +1,6 @@
 export interface PublishDiscordMessageParams {
   text: string;
+  imagePath?: string | null;
 }
 
 export interface PublishDiscordMessageResult {

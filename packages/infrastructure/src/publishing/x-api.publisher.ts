@@ -16,6 +16,21 @@ interface XStatusUpdateResponse {
   errors?: Array<{ message?: string }>;
 }
 
+interface XMediaUploadResponse {
+  data?: {
+    id?: string;
+    media_key?: string;
+    expires_after_secs?: number;
+    processing_info?: {
+      state?: string;
+      progress_percent?: number;
+      check_after_secs?: number;
+    };
+    size?: number;
+  };
+  errors?: XApiErrorPayload['errors'];
+}
+
 interface XApiErrorPayload {
   errors?: Array<{
     message?: string;
@@ -56,6 +71,7 @@ interface XOAuth2TokenStore {
 }
 
 const X_STANDARD_POST_CHARACTER_LIMIT = 280;
+const X_IMAGE_UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024;
 const DEFAULT_TOKEN_STORE_PATH = '.x-oauth2-token.json';
 
 @Injectable()
@@ -80,11 +96,25 @@ export class XApiPublisher extends XPublisherPort {
     }
 
     let tokenConfig = this.resolveOAuth2TokenConfig();
-    let response = await this.postTweet(url, params.text, tokenConfig.accessToken);
+    const mediaId = params.imagePath
+      ? await this.uploadTweetImageWithRefresh(params.imagePath, tokenConfig)
+      : null;
+    tokenConfig = mediaId?.tokenConfig ?? tokenConfig;
+    let response = await this.postTweet(
+      url,
+      params.text,
+      tokenConfig.accessToken,
+      mediaId?.mediaId ?? null,
+    );
 
     if (response.status === 401 && tokenConfig.refreshToken) {
       tokenConfig = await this.refreshOAuth2Token(tokenConfig);
-      response = await this.postTweet(url, params.text, tokenConfig.accessToken);
+      response = await this.postTweet(
+        url,
+        params.text,
+        tokenConfig.accessToken,
+        mediaId?.mediaId ?? null,
+      );
     }
 
     const rawBody = await response.text();
@@ -112,15 +142,70 @@ export class XApiPublisher extends XPublisherPort {
     url: string,
     text: string,
     accessToken: string,
+    mediaId: string | null,
   ): Promise<Response> {
+    const body: { text: string; media?: { media_ids: string[] } } = { text };
+    if (mediaId) {
+      body.media = { media_ids: [mediaId] };
+    }
+
     return await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(body),
+    });
+  }
+
+  private async uploadTweetImageWithRefresh(
+    imagePath: string,
+    tokenConfig: XOAuth2TokenConfig,
+  ): Promise<{ mediaId: string; tokenConfig: XOAuth2TokenConfig }> {
+    let response = await this.uploadTweetImage(imagePath, tokenConfig.accessToken);
+
+    if (response.status === 401 && tokenConfig.refreshToken) {
+      tokenConfig = await this.refreshOAuth2Token(tokenConfig);
+      response = await this.uploadTweetImage(imagePath, tokenConfig.accessToken);
+    }
+
+    const rawBody = await response.text();
+    const payload = this.parseResponseBody<XMediaUploadResponse | XApiErrorPayload>(rawBody);
+
+    if (!response.ok) {
+      throw new Error(
+        `X media upload failed with ${response.status} ${response.statusText}. Auth: OAuth2 Bearer (${tokenConfig.source}). ${this.describeErrorPayload(payload, rawBody)}`,
+      );
+    }
+
+    const mediaId = (payload as XMediaUploadResponse | null)?.data?.id ?? null;
+    if (!mediaId) {
+      throw new Error(`X media upload succeeded but returned no media id. Raw response: ${rawBody}`);
+    }
+
+    return { mediaId, tokenConfig };
+  }
+
+  private async uploadTweetImage(imagePath: string, accessToken: string): Promise<Response> {
+    const bytes = readFileSync(imagePath);
+
+    if (bytes.byteLength > X_IMAGE_UPLOAD_LIMIT_BYTES) {
+      throw new Error(
+        `X media upload blocked before request: image is ${bytes.byteLength} bytes, but the X image upload limit is ${X_IMAGE_UPLOAD_LIMIT_BYTES} bytes.`,
+      );
+    }
+
+    return await fetch('https://api.x.com/2/media/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
-        text,
+        media: bytes.toString('base64'),
+        media_category: 'tweet_image',
+        media_type: 'image/jpeg',
       }),
     });
   }
@@ -280,7 +365,12 @@ export class XApiPublisher extends XPublisherPort {
   }
 
   private describeErrorPayload(
-    payload: XStatusUpdateResponse | XApiErrorPayload | XOAuth2TokenResponse | null,
+    payload:
+      | XStatusUpdateResponse
+      | XMediaUploadResponse
+      | XApiErrorPayload
+      | XOAuth2TokenResponse
+      | null,
     rawBody: string,
   ): string {
     if (!payload) {

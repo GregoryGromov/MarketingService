@@ -64,6 +64,12 @@ export class ProjectDrizzleRepository extends ProjectRepository {
             x: null,
             discord: null,
             blog: null,
+            mediaAspectRatios: {
+              telegram: '1:1',
+              x: '16:9',
+              discord: '16:9',
+              blog: '1200:630',
+            },
           },
       },
       createdAt: row.createdAt,

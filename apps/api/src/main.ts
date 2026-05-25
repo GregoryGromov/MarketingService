@@ -5,9 +5,13 @@ import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './infrastructure/common/domain-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 25 * 1024 * 1024 }),
+    {
+      bufferLogs: true,
+    },
+  );
 
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();

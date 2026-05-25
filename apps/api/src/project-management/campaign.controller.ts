@@ -6,12 +6,14 @@ import {
   GetCampaignDetailQuery,
   GetCampaignExecutionHistoryQuery,
   GetCampaignPublishingOverviewQuery,
+  GetProjectQuery,
   RescheduleCampaignPlannedPublicationCommand,
   type CampaignId,
   type GetCampaignApprovalInboxResult,
   type GetCampaignDetailResult,
   type GetCampaignExecutionHistoryResult,
   type GetCampaignPublishingOverviewResult,
+  type ProjectId,
   ReviewGeneratedArtifactIssueCommand,
   ReviewSourceIssueCommand,
   RunCampaignStage1Command,
@@ -31,11 +33,13 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import * as v from 'valibot';
 import { rethrowProjectManagementHttpError } from './project-management-http-error';
+import { CampaignSourceMediaService } from './campaign-source-media.service';
 import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
 
 const AttachCampaignSourceSchema = v.object({
   content: v.pipe(v.string(), v.trim(), v.minLength(1)),
   language: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)),
+  sourceImageDataUrl: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
 });
 
 const ReviewSourceIssueSchema = v.object({
@@ -71,6 +75,7 @@ export class CampaignController {
     private readonly commandBus: CommandBus,
     @Inject(QueryBus)
     private readonly queryBus: QueryBus,
+    private readonly sourceMediaService: CampaignSourceMediaService,
   ) {}
 
   @Get(':id')
@@ -99,8 +104,35 @@ export class CampaignController {
     @Body(new ValibotPipe(AttachCampaignSourceSchema)) dto: AttachCampaignSourceDto,
   ) {
     try {
+      let defaultCoverUrl: string | null = null;
+
+      if (dto.sourceImageDataUrl) {
+        const campaign = await this.queryBus.execute(
+          new GetCampaignDetailQuery(id as CampaignId),
+        );
+        if (!campaign) {
+          throw new NotFoundException(`Campaign ${id} not found`);
+        }
+
+        const project = await this.queryBus.execute(
+          new GetProjectQuery(campaign.projectId as ProjectId),
+        );
+
+        defaultCoverUrl = await this.sourceMediaService.saveSourceImage({
+          campaignId: id,
+          dataUrl: dto.sourceImageDataUrl,
+          aspectRatios:
+            project?.brandMemory?.adaptationPromptRules?.mediaAspectRatios ?? null,
+        });
+      }
+
       const source = await this.commandBus.execute(
-        new AttachCampaignSourceCommand(id as CampaignId, dto.content, dto.language),
+        new AttachCampaignSourceCommand(
+          id as CampaignId,
+          dto.content,
+          dto.language,
+          defaultCoverUrl,
+        ),
       );
       const production = await this.commandBus.execute(
         new StartCampaignProductionCommand(id as CampaignId),

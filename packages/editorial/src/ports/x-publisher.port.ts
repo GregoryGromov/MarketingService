@@ -1,5 +1,6 @@
 export interface PublishXMessageParams {
   text: string;
+  imagePath?: string | null;
 }
 
 export interface PublishXMessageResult {

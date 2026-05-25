@@ -71,6 +71,16 @@ const AdaptationPromptRulesSchema = v.object({
   x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
   discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
   blog: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  mediaAspectRatios: v.optional(
+    v.nullish(
+      v.object({
+        telegram: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(32)))),
+        x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(32)))),
+        discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(32)))),
+        blog: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(32)))),
+      }),
+    ),
+  ),
 });
 
 const UpdateProjectBrandMemorySchema = v.object({
@@ -234,6 +244,15 @@ function normalizeBrandMemoryUpdate(
                 x: dto.adaptationPromptRules.x ?? null,
                 discord: dto.adaptationPromptRules.discord ?? null,
                 blog: dto.adaptationPromptRules.blog ?? null,
+                mediaAspectRatios: {
+                  telegram:
+                    dto.adaptationPromptRules.mediaAspectRatios?.telegram ?? '1:1',
+                  x: dto.adaptationPromptRules.mediaAspectRatios?.x ?? '16:9',
+                  discord:
+                    dto.adaptationPromptRules.mediaAspectRatios?.discord ?? '16:9',
+                  blog:
+                    dto.adaptationPromptRules.mediaAspectRatios?.blog ?? '1200:630',
+                },
               }
             : {
                 generalInstructions: null,
@@ -241,6 +260,12 @@ function normalizeBrandMemoryUpdate(
                 x: null,
                 discord: null,
                 blog: null,
+                mediaAspectRatios: {
+                  telegram: '1:1',
+                  x: '16:9',
+                  discord: '16:9',
+                  blog: '1200:630',
+                },
               },
         }
       : {}),

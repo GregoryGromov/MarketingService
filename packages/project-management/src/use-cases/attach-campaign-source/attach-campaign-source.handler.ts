@@ -59,6 +59,7 @@ export class AttachCampaignSourceHandler
           projectId: campaign.projectId,
           content: command.content,
           language: command.language,
+          defaultCoverUrl: command.defaultCoverUrl,
         });
 
         sourceVersion = ArticleSourceVersion.create({

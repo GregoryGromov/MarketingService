@@ -19,6 +19,14 @@ export interface AdaptationPromptRules {
   x: string | null;
   discord: string | null;
   blog: string | null;
+  mediaAspectRatios: MediaAspectRatios;
+}
+
+export interface MediaAspectRatios {
+  telegram: string | null;
+  x: string | null;
+  discord: string | null;
+  blog: string | null;
 }
 
 export interface BrandMemory {
@@ -97,6 +105,18 @@ function normalizeAdaptationPromptRules(
     x: normalizeText(rules?.x),
     discord: normalizeText(rules?.discord),
     blog: normalizeText(rules?.blog),
+    mediaAspectRatios: normalizeMediaAspectRatios(rules?.mediaAspectRatios),
+  };
+}
+
+function normalizeMediaAspectRatios(
+  ratios?: Partial<MediaAspectRatios> | null,
+): MediaAspectRatios {
+  return {
+    telegram: normalizeText(ratios?.telegram) ?? '1:1',
+    x: normalizeText(ratios?.x) ?? '16:9',
+    discord: normalizeText(ratios?.discord) ?? '16:9',
+    blog: normalizeText(ratios?.blog) ?? '1200:630',
   };
 }
 
@@ -184,6 +204,13 @@ export class Project extends AggregateRoot {
           ? {
               ...this.brandMemory.adaptationPromptRules,
               ...brandMemory.adaptationPromptRules,
+              mediaAspectRatios:
+                brandMemory.adaptationPromptRules.mediaAspectRatios !== undefined
+                  ? {
+                      ...this.brandMemory.adaptationPromptRules.mediaAspectRatios,
+                      ...brandMemory.adaptationPromptRules.mediaAspectRatios,
+                    }
+                  : this.brandMemory.adaptationPromptRules.mediaAspectRatios,
             }
           : this.brandMemory.adaptationPromptRules,
     });

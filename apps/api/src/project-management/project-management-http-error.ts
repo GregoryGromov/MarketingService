@@ -24,6 +24,7 @@ const BAD_REQUEST_PATTERNS = [
   /\bmust use hh:mm format\b/i,
   /\bmust use a valid 24-hour time\b/i,
   /\bdayoffset must be an integer\b/i,
+  /\bsource image\b/i,
 ];
 
 const CONFLICT_PATTERNS = [

@@ -48,6 +48,7 @@ export class ArticleDrizzleRepository extends ArticleRepository {
       projectId: row.projectId as ArticleProps['projectId'],
       status: row.status as ArticleProps['status'],
       paused: row.paused,
+      defaultCoverUrl: row.defaultCoverUrl,
       releasePlanSnapshot: row.releasePlanSnapshot as ArticleProps['releasePlanSnapshot'],
       original: {
         content: row.originalContent,
@@ -65,6 +66,7 @@ export class ArticleDrizzleRepository extends ArticleRepository {
       projectId: article.projectId,
       status: article.status,
       paused: article.paused,
+      defaultCoverUrl: article.defaultCoverUrl,
       releasePlanSnapshot: article.releasePlanSnapshot,
       originalContent: article.original.content,
       originalLanguage: article.original.language,

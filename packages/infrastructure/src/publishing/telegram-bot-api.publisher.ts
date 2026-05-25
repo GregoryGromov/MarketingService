@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
+import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import {
   TelegramPublisherPort,
   type PublishTelegramMessageParams,
@@ -29,20 +31,13 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
   ): Promise<PublishTelegramMessageResult> {
     const channelConfig = this.resolveChannelConfig(params.language);
     const text = this.formatTelegramHtml(params.text);
+    const endpoint = params.imagePath ? 'sendPhoto' : 'sendMessage';
 
     const response = await fetch(
-      `https://api.telegram.org/bot${channelConfig.botToken}/sendMessage`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: channelConfig.chatId,
-          text,
-          parse_mode: 'HTML',
-        }),
-      },
+      `https://api.telegram.org/bot${channelConfig.botToken}/${endpoint}`,
+      params.imagePath
+        ? this.buildSendPhotoRequest(channelConfig.chatId, text, params.imagePath)
+        : this.buildSendMessageRequest(channelConfig.chatId, text),
     );
 
     const payload = (await response.json()) as TelegramSendMessageResponse;
@@ -50,7 +45,7 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
     if (!response.ok || !payload.ok) {
       throw new Error(
         payload.description ??
-          `Telegram sendMessage failed for language ${params.language} with ${response.status}`,
+          `Telegram ${endpoint} failed for language ${params.language} with ${response.status}`,
       );
     }
 
@@ -63,6 +58,45 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
       chatId: this.resolveLinkableChatRef(payload, channelConfig.chatId),
       messageId,
     };
+  }
+
+  private buildSendMessageRequest(chatId: string, text: string): RequestInit {
+    return {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+      }),
+    };
+  }
+
+  private buildSendPhotoRequest(chatId: string, caption: string, imagePath: string): RequestInit {
+    if (Array.from(caption).length > 1024) {
+      throw new Error(
+        'Telegram publish with image requires caption text to be 1024 characters or shorter.',
+      );
+    }
+
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    form.append('photo', this.readImageBlob(imagePath), basename(imagePath));
+
+    return {
+      method: 'POST',
+      body: form,
+    };
+  }
+
+  private readImageBlob(imagePath: string): Blob {
+    const bytes = readFileSync(imagePath);
+    const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    return new Blob([body], { type: 'image/jpeg' });
   }
 
   private resolveLinkableChatRef(

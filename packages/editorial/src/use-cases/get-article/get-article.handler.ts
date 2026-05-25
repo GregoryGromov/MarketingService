@@ -10,6 +10,7 @@ export interface GetArticleResult {
   projectId: string;
   status: string;
   paused: boolean;
+  defaultCoverUrl: string | null;
   releasePlanSnapshot: Record<string, unknown> | null;
   original: {
     content: string;
@@ -117,6 +118,7 @@ export class GetArticleHandler implements IQueryHandler<GetArticleQuery> {
       projectId: article.projectId,
       status: article.status,
       paused: article.paused,
+      defaultCoverUrl: article.defaultCoverUrl,
       releasePlanSnapshot: article.releasePlanSnapshot,
       original: article.original,
       adaptations: adaptationRows,

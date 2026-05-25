@@ -3,5 +3,6 @@ export class AttachCampaignSourceCommand {
     public readonly campaignId: string,
     public readonly content: string,
     public readonly language: string,
+    public readonly defaultCoverUrl: string | null = null,
   ) {}
 }

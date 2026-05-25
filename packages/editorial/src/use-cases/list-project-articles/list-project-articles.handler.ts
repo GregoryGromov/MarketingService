@@ -10,6 +10,7 @@ export interface ListProjectArticlesResultItem {
   id: string;
   projectId: string;
   status: string;
+  defaultCoverUrl: string | null;
   originalLanguage: string;
   originalTitle: string;
   originalExcerpt: string;
@@ -60,6 +61,7 @@ export class ListProjectArticlesHandler
           id: article.id,
           projectId: article.projectId,
           status: article.status,
+          defaultCoverUrl: article.defaultCoverUrl,
           originalLanguage: article.original.language,
           originalTitle: title,
           originalExcerpt: excerpt,

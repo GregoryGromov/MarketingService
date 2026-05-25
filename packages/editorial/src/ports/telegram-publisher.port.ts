@@ -1,6 +1,7 @@
 export interface PublishTelegramMessageParams {
   language: string;
   text: string;
+  imagePath?: string | null;
 }
 
 export interface PublishTelegramMessageResult {
