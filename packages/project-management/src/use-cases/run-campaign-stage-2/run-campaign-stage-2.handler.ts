@@ -22,6 +22,7 @@ import {
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
 
 const MAX_STAGE_2_ATTEMPTS = 5;
+const X_PUBLISHING_CHARACTER_TARGET = 260;
 const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
 const STAGE_2_TRANSLATION_ROLE = 'stage_2_translation';
 const TERMINAL_CAMPAIGN_STATUSES = new Set([
@@ -117,6 +118,40 @@ function getHighestSeverity(reasons: AiGatewayReason[]): 'low' | 'medium' | 'hig
 
 function isSuccessfulQualityOutcome(outcome: AiGatewayQualityOutcome): boolean {
   return outcome === 'passed' || outcome === 'warning';
+}
+
+function buildXLengthQualityResult(channel: string, content: string): AiQualityCheckResult | null {
+  if (channel !== 'channel_x') {
+    return null;
+  }
+
+  const length = Array.from(content).length;
+
+  if (length <= X_PUBLISHING_CHARACTER_TARGET) {
+    return null;
+  }
+
+  return {
+    outcome: 'failed',
+    summary: `X translation is too long for publishing (${length} characters).`,
+    reasons: [
+      {
+        code: 'x_post_too_long',
+        severity: 'high',
+        message: `X post must be under ${X_PUBLISHING_CHARACTER_TARGET} characters, but the generated translation is ${length} characters.`,
+        excerpt: content,
+        suggestion: `Rewrite as one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      },
+    ],
+    suggestedFix: {
+      summary: `Shorten the X translation to under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      instructions: [
+        `Return one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters, including spaces.`,
+        'Preserve only the central idea and remove secondary details.',
+        'Do not create a thread or multiple variants.',
+      ],
+    },
+  };
 }
 
 function translationNotRequired(targetLanguage: string, sourceLanguage: string): boolean {
@@ -499,7 +534,7 @@ export class RunCampaignStage2Executor {
     for (let attempt = 1; attempt <= MAX_STAGE_2_ATTEMPTS; attempt += 1) {
       if (attempt === 1) {
         if (!currentContent) {
-          const aiResult = await this.aiGateway.generateTranslation({
+          const aiResult: { content: string } = await this.aiGateway.generateTranslation({
             sourceContent: publicationContext.adaptationContent,
             sourceLanguage: publicationContext.adaptationSourceLanguage,
             targetLanguage: publicationContext.targetLanguage,
@@ -525,7 +560,7 @@ export class RunCampaignStage2Executor {
           currentVersionId = version.id;
         }
       } else {
-        const aiResult = await this.aiGateway.reviseTranslation({
+        const aiResult: { content: string } = await this.aiGateway.reviseTranslation({
           currentContent: currentContent ?? '',
           sourceContent: publicationContext.adaptationContent,
           sourceLanguage: publicationContext.adaptationSourceLanguage,
@@ -551,18 +586,24 @@ export class RunCampaignStage2Executor {
         currentVersionId = version.id;
       }
 
-      const qualityResult = await this.aiGateway.checkTranslationFidelity({
-        sourceContent: publicationContext.adaptationContent,
-        translatedContent: currentContent ?? '',
-        sourceLanguage: publicationContext.adaptationSourceLanguage,
-        targetLanguage: publicationContext.targetLanguage,
-        channel: publicationContext.channel,
-        displayName: publicationContext.displayName,
-        publicationType: publicationContext.publicationType,
-        style: publicationContext.style,
-        promptInstructions: publicationContext.promptInstructions,
-        brandMemory: snapshot.brandMemory,
-      });
+      const lengthQualityResult = buildXLengthQualityResult(
+        publicationContext.channel,
+        currentContent ?? '',
+      );
+      const qualityResult: AiQualityCheckResult =
+        lengthQualityResult ??
+        (await this.aiGateway.checkTranslationFidelity({
+          sourceContent: publicationContext.adaptationContent,
+          translatedContent: currentContent ?? '',
+          sourceLanguage: publicationContext.adaptationSourceLanguage,
+          targetLanguage: publicationContext.targetLanguage,
+          channel: publicationContext.channel,
+          displayName: publicationContext.displayName,
+          publicationType: publicationContext.publicationType,
+          style: publicationContext.style,
+          promptInstructions: publicationContext.promptInstructions,
+          brandMemory: snapshot.brandMemory,
+        }));
 
       lastQualityResult = qualityResult;
 

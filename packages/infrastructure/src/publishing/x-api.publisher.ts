@@ -1,4 +1,3 @@
-import { createHmac, randomBytes } from 'node:crypto';
 import {
   type PublishXMessageParams,
   type PublishXMessageResult,
@@ -6,6 +5,8 @@ import {
 } from '@marketing-service/editorial';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 interface XStatusUpdateResponse {
   data?: {
@@ -27,8 +28,40 @@ interface XApiErrorPayload {
   type?: string;
 }
 
+interface XOAuth2TokenConfig {
+  accessToken: string;
+  refreshToken: string | null;
+  clientId: string | null;
+  clientSecret: string | null;
+  source: string;
+}
+
+interface XOAuth2TokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
+  scope?: string;
+  error?: string;
+  error_description?: string;
+}
+
+interface XOAuth2TokenStore {
+  accessToken?: string;
+  refreshToken?: string;
+  tokenType?: string;
+  scope?: string;
+  expiresIn?: number;
+  refreshedAt?: string;
+}
+
+const X_STANDARD_POST_CHARACTER_LIMIT = 280;
+const DEFAULT_TOKEN_STORE_PATH = '.x-oauth2-token.json';
+
 @Injectable()
 export class XApiPublisher extends XPublisherPort {
+  private tokenStore: XOAuth2TokenStore | null = null;
+
   constructor(
     @Inject(ConfigService)
     private readonly config: ConfigService,
@@ -37,25 +70,22 @@ export class XApiPublisher extends XPublisherPort {
   }
 
   async publishMessage(params: PublishXMessageParams): Promise<PublishXMessageResult> {
-    const credentials = this.resolveCredentials();
     const url = 'https://api.x.com/2/tweets';
-    const oauth = this.createOAuthParams(credentials);
-    const signature = this.createSignature('POST', url, oauth, credentials);
-    const authorization = this.buildAuthorizationHeader({
-      ...oauth,
-      oauth_signature: signature,
-    });
+    const textLength = Array.from(params.text).length;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: authorization,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: params.text,
-      }),
-    });
+    if (textLength > X_STANDARD_POST_CHARACTER_LIMIT) {
+      throw new Error(
+        `X publish blocked before request: text is ${textLength} characters, but the standard X API post limit is ${X_STANDARD_POST_CHARACTER_LIMIT}. Regenerate or edit the publication to fit the X limit. ${this.formatPostTextDiagnostics(params.text, textLength)}`,
+      );
+    }
+
+    let tokenConfig = this.resolveOAuth2TokenConfig();
+    let response = await this.postTweet(url, params.text, tokenConfig.accessToken);
+
+    if (response.status === 401 && tokenConfig.refreshToken) {
+      tokenConfig = await this.refreshOAuth2Token(tokenConfig);
+      response = await this.postTweet(url, params.text, tokenConfig.accessToken);
+    }
 
     const rawBody = await response.text();
     const payload = this.parseResponseBody<XStatusUpdateResponse | XApiErrorPayload>(rawBody);
@@ -63,7 +93,7 @@ export class XApiPublisher extends XPublisherPort {
     if (!response.ok) {
       const errorDetails = this.describeErrorPayload(payload, rawBody);
       throw new Error(
-        `X publish failed with ${response.status} ${response.statusText}. ${errorDetails}`,
+        `X publish failed with ${response.status} ${response.statusText}. Auth: OAuth2 Bearer (${tokenConfig.source}). ${this.formatPostTextDiagnostics(params.text, textLength)} ${errorDetails}`,
       );
     }
 
@@ -78,96 +108,162 @@ export class XApiPublisher extends XPublisherPort {
     };
   }
 
-  private resolveCredentials(): {
-    apiKey: string;
-    apiKeySecret: string;
-    accessToken: string;
-    accessTokenSecret: string;
-  } {
-    const apiKey = this.config.get<string>('X_PUBLISH_API_KEY');
-    const apiKeySecret = this.config.get<string>('X_PUBLISH_API_KEY_SECRET');
-    const accessToken = this.config.get<string>('X_PUBLISH_ACCESS_TOKEN');
-    const accessTokenSecret = this.config.get<string>('X_PUBLISH_ACCESS_TOKEN_SECRET');
+  private async postTweet(
+    url: string,
+    text: string,
+    accessToken: string,
+  ): Promise<Response> {
+    return await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+      }),
+    });
+  }
 
-    if (!apiKey) {
-      throw new Error('X_PUBLISH_API_KEY is not configured');
-    }
-
-    if (!apiKeySecret) {
-      throw new Error('X_PUBLISH_API_KEY_SECRET is not configured');
-    }
+  private resolveOAuth2TokenConfig(): XOAuth2TokenConfig {
+    const storedTokens = this.readTokenStore();
+    const storedAccessToken = storedTokens.accessToken?.trim() || null;
+    const storedRefreshToken = storedTokens.refreshToken?.trim() || null;
+    const envAccessToken =
+      this.config.get<string>('X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN')?.trim() ||
+      this.config.get<string>('X_PUBLISH_USER_ACCESS_TOKEN')?.trim() ||
+      null;
+    const envRefreshToken =
+      this.config.get<string>('X_PUBLISH_OAUTH2_REFRESH_TOKEN')?.trim() ||
+      this.config.get<string>('X_PUBLISH_REFRESH_TOKEN')?.trim() ||
+      null;
+    const clientId =
+      this.config.get<string>('X_PUBLISH_OAUTH2_CLIENT_ID')?.trim() ||
+      this.config.get<string>('X_PUBLISH_CLIENT_ID')?.trim() ||
+      null;
+    const clientSecret =
+      this.config.get<string>('X_PUBLISH_OAUTH2_CLIENT_SECRET')?.trim() ||
+      this.config.get<string>('X_PUBLISH_CLIENT_SECRET')?.trim() ||
+      null;
+    const accessToken = storedAccessToken ?? envAccessToken;
+    const refreshToken = storedRefreshToken ?? envRefreshToken;
 
     if (!accessToken) {
-      throw new Error('X_PUBLISH_ACCESS_TOKEN is not configured');
-    }
-
-    if (!accessTokenSecret) {
-      throw new Error('X_PUBLISH_ACCESS_TOKEN_SECRET is not configured');
+      throw new Error(
+        'X publish requires OAuth2 user access token. Set X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN.',
+      );
     }
 
     return {
-      apiKey,
-      apiKeySecret,
       accessToken,
-      accessTokenSecret,
+      refreshToken,
+      clientId,
+      clientSecret,
+      source: storedAccessToken
+        ? `${this.getTokenStorePath()}`
+        : 'X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN',
     };
   }
 
-  private createOAuthParams(credentials: {
-    apiKey: string;
-    accessToken: string;
-  }): Record<string, string> {
+  private async refreshOAuth2Token(
+    tokenConfig: XOAuth2TokenConfig,
+  ): Promise<XOAuth2TokenConfig> {
+    if (!tokenConfig.refreshToken) {
+      throw new Error('X OAuth2 access token expired and no refresh token is configured.');
+    }
+
+    if (!tokenConfig.clientId) {
+      throw new Error(
+        'X OAuth2 access token expired. Set X_PUBLISH_OAUTH2_CLIENT_ID so the service can refresh it automatically.',
+      );
+    }
+
+    const body = new URLSearchParams({
+      refresh_token: tokenConfig.refreshToken,
+      grant_type: 'refresh_token',
+    });
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    if (tokenConfig.clientSecret) {
+      headers.Authorization = `Basic ${Buffer.from(
+        `${tokenConfig.clientId}:${tokenConfig.clientSecret}`,
+      ).toString('base64')}`;
+    } else {
+      body.set('client_id', tokenConfig.clientId);
+    }
+
+    const response = await fetch('https://api.x.com/2/oauth2/token', {
+      method: 'POST',
+      headers,
+      body: body.toString(),
+    });
+    const rawBody = await response.text();
+    const payload = this.parseResponseBody<XOAuth2TokenResponse | XApiErrorPayload>(rawBody);
+
+    if (!response.ok || !payload || !('access_token' in payload) || !payload.access_token) {
+      throw new Error(
+        `X OAuth2 token refresh failed with ${response.status} ${response.statusText}. ${this.describeErrorPayload(payload, rawBody)}`,
+      );
+    }
+
+    const refreshedStore: XOAuth2TokenStore = {
+      accessToken: payload.access_token,
+      refreshToken:
+        'refresh_token' in payload && payload.refresh_token
+          ? payload.refresh_token
+          : tokenConfig.refreshToken,
+      tokenType: payload.token_type,
+      scope: payload.scope,
+      expiresIn: payload.expires_in,
+      refreshedAt: new Date().toISOString(),
+    };
+
+    this.writeTokenStore(refreshedStore);
+
     return {
-      oauth_consumer_key: credentials.apiKey,
-      oauth_nonce: randomBytes(16).toString('hex'),
-      oauth_signature_method: 'HMAC-SHA1',
-      oauth_timestamp: String(Math.floor(Date.now() / 1000)),
-      oauth_token: credentials.accessToken,
-      oauth_version: '1.0',
+      accessToken: refreshedStore.accessToken!,
+      refreshToken: refreshedStore.refreshToken ?? null,
+      clientId: tokenConfig.clientId,
+      clientSecret: tokenConfig.clientSecret,
+      source: `${this.getTokenStorePath()} refreshed from X_PUBLISH_OAUTH2_REFRESH_TOKEN`,
     };
   }
 
-  private createSignature(
-    method: string,
-    url: string,
-    oauthParams: Record<string, string>,
-    credentials: {
-      apiKeySecret: string;
-      accessTokenSecret: string;
-    },
-  ): string {
-    const parameterString = Object.keys(oauthParams)
-      .sort()
-      .map((key) => `${this.percentEncode(key)}=${this.percentEncode(oauthParams[key])}`)
-      .join('&');
+  private readTokenStore(): XOAuth2TokenStore {
+    if (this.tokenStore) {
+      return this.tokenStore;
+    }
 
-    const signatureBaseString = [
-      method.toUpperCase(),
-      this.percentEncode(url),
-      this.percentEncode(parameterString),
-    ].join('&');
+    const path = this.getTokenStorePath();
+    if (!existsSync(path)) {
+      this.tokenStore = {};
+      return this.tokenStore;
+    }
 
-    const signingKey = [
-      this.percentEncode(credentials.apiKeySecret),
-      this.percentEncode(credentials.accessTokenSecret),
-    ].join('&');
-
-    return createHmac('sha1', signingKey).update(signatureBaseString).digest('base64');
+    try {
+      this.tokenStore = JSON.parse(readFileSync(path, 'utf8')) as XOAuth2TokenStore;
+      return this.tokenStore;
+    } catch {
+      this.tokenStore = {};
+      return this.tokenStore;
+    }
   }
 
-  private buildAuthorizationHeader(params: Record<string, string>): string {
-    const header = Object.keys(params)
-      .sort()
-      .map((key) => `${this.percentEncode(key)}="${this.percentEncode(params[key])}"`)
-      .join(', ');
-
-    return `OAuth ${header}`;
+  private writeTokenStore(tokenStore: XOAuth2TokenStore): void {
+    const path = this.getTokenStorePath();
+    writeFileSync(path, `${JSON.stringify(tokenStore, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
+    this.tokenStore = tokenStore;
   }
 
-  private percentEncode(value: string): string {
-    return encodeURIComponent(value).replace(
-      /[!'()*]/g,
-      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  private getTokenStorePath(): string {
+    return resolve(
+      this.config.get<string>('X_PUBLISH_OAUTH2_TOKEN_STORE_PATH')?.trim() ||
+        DEFAULT_TOKEN_STORE_PATH,
     );
   }
 
@@ -184,7 +280,7 @@ export class XApiPublisher extends XPublisherPort {
   }
 
   private describeErrorPayload(
-    payload: XStatusUpdateResponse | XApiErrorPayload | null,
+    payload: XStatusUpdateResponse | XApiErrorPayload | XOAuth2TokenResponse | null,
     rawBody: string,
   ): string {
     if (!payload) {
@@ -192,9 +288,17 @@ export class XApiPublisher extends XPublisherPort {
     }
 
     const parts: string[] = [];
-    const primaryError = payload.errors?.[0];
+    const primaryError = 'errors' in payload ? payload.errors?.[0] : undefined;
     const primaryErrorCode =
       primaryError && 'code' in primaryError ? primaryError.code : undefined;
+
+    if ('error' in payload && payload.error) {
+      parts.push(`Error: ${payload.error}`);
+    }
+
+    if ('error_description' in payload && payload.error_description) {
+      parts.push(`Error description: ${payload.error_description}`);
+    }
 
     if (primaryError?.message) {
       parts.push(`Message: ${primaryError.message}`);
@@ -218,5 +322,9 @@ export class XApiPublisher extends XPublisherPort {
 
     parts.push(`Raw response: ${rawBody}`);
     return parts.join(' ');
+  }
+
+  private formatPostTextDiagnostics(text: string, textLength: number): string {
+    return `Attempted post text (${textLength} characters): ${JSON.stringify(text)}`;
   }
 }

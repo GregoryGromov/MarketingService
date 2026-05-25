@@ -3,6 +3,7 @@ export interface PublishDiscordMessageParams {
 }
 
 export interface PublishDiscordMessageResult {
+  guildId?: string | null;
   channelId: string | null;
   messageId: string | null;
 }

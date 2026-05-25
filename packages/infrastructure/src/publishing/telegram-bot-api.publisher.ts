@@ -28,6 +28,7 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
     params: PublishTelegramMessageParams,
   ): Promise<PublishTelegramMessageResult> {
     const channelConfig = this.resolveChannelConfig(params.language);
+    const text = this.formatTelegramHtml(params.text);
 
     const response = await fetch(
       `https://api.telegram.org/bot${channelConfig.botToken}/sendMessage`,
@@ -38,7 +39,8 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
         },
         body: JSON.stringify({
           chat_id: channelConfig.chatId,
-          text: params.text,
+          text,
+          parse_mode: 'HTML',
         }),
       },
     );
@@ -58,9 +60,25 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
     }
 
     return {
-      chatId: String(payload.result?.chat?.id ?? channelConfig.chatId),
+      chatId: this.resolveLinkableChatRef(payload, channelConfig.chatId),
       messageId,
     };
+  }
+
+  private resolveLinkableChatRef(
+    payload: TelegramSendMessageResponse,
+    configuredChatId: string,
+  ): string {
+    const username = payload.result?.chat?.username?.trim();
+    if (username) {
+      return username.startsWith('@') ? username : `@${username}`;
+    }
+
+    if (configuredChatId.trim().startsWith('@')) {
+      return configuredChatId.trim();
+    }
+
+    return String(payload.result?.chat?.id ?? configuredChatId);
   }
 
   private resolveChannelConfig(language: string): { botToken: string; chatId: string } {
@@ -92,5 +110,16 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
       default:
         return [language, 'EN'];
     }
+  }
+
+  private formatTelegramHtml(text: string): string {
+    const withHtmlBold = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    const escaped = withHtmlBold
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return escaped
+      .replace(/&lt;(\/?)(b|strong|i|em|u|s|strike|del|code|pre)&gt;/gi, '<$1$2>');
   }
 }

@@ -105,9 +105,13 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
 
     if (publication.channelId === 'channel_discord') {
       const published = await this.discordPublisher.publishMessage({ text });
+      const discordAccountRef =
+        published.guildId && published.channelId
+          ? `${published.guildId}/${published.channelId}`
+          : published.channelId ?? 'discord-webhook';
 
       publication.markPublished({
-        telegramChatId: published.channelId ?? 'discord-webhook',
+        telegramChatId: discordAccountRef,
         telegramMessageId: published.messageId ?? 'discord-message',
       });
       return;

@@ -23,6 +23,7 @@ import {
 import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transaction.port.js';
 
 const MAX_STAGE_1_ATTEMPTS = 5;
+const X_PUBLISHING_CHARACTER_TARGET = 260;
 const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
 const TERMINAL_CAMPAIGN_STATUSES = new Set([
   'draft',
@@ -121,12 +122,16 @@ function buildDefaultChannelRules(channel: string): string[] {
       return [
         'Keep the tone concise, clear, and strong.',
         'Prefer short paragraphs.',
+        'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
+        'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
         'Do not use hashtags.',
         'Do not use emojis unless absolutely necessary.',
       ];
     case 'channel_x':
       return [
         'Keep the text sharp, compact, and highly readable.',
+        'Keep the final text under 260 characters so it can be published through the standard X API.',
+        'Produce one standalone post only; do not create multiple posts unless thread publishing is explicitly implemented.',
         'Do not use hashtags.',
         'Do not use emojis.',
       ];
@@ -246,6 +251,40 @@ function buildSuggestedFixPayload(
 
 function isSuccessfulQualityOutcome(outcome: AiGatewayQualityOutcome): boolean {
   return outcome === 'passed' || outcome === 'warning';
+}
+
+function buildXLengthQualityResult(channel: string, content: string): AiQualityCheckResult | null {
+  if (channel !== 'channel_x') {
+    return null;
+  }
+
+  const length = Array.from(content).length;
+
+  if (length <= X_PUBLISHING_CHARACTER_TARGET) {
+    return null;
+  }
+
+  return {
+    outcome: 'failed',
+    summary: `X adaptation is too long for publishing (${length} characters).`,
+    reasons: [
+      {
+        code: 'x_post_too_long',
+        severity: 'high',
+        message: `X post must be under ${X_PUBLISHING_CHARACTER_TARGET} characters, but the generated adaptation is ${length} characters.`,
+        excerpt: content,
+        suggestion: `Rewrite as one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      },
+    ],
+    suggestedFix: {
+      summary: `Shorten the X post to under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      instructions: [
+        `Return one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters, including spaces.`,
+        'Preserve only the central idea and remove secondary details.',
+        'Do not create a thread or multiple variants.',
+      ],
+    },
+  };
 }
 
 function buildRevisionInstruction(
@@ -589,7 +628,7 @@ export class RunCampaignStage1Executor {
     let lastQualityResult: AiQualityCheckResult | null = null;
 
     for (let attempt = 1; attempt <= MAX_STAGE_1_ATTEMPTS; attempt += 1) {
-      const aiResult =
+      const aiResult: { content: string } =
         attempt === 1
           ? await this.aiGateway.generateAdaptation({
               sourceContent: snapshot.sourceContent,
@@ -628,17 +667,23 @@ export class RunCampaignStage1Executor {
       currentContent = aiResult.content;
       currentSelectedVersionId = persistedVersion.id as AdaptationVersionId;
 
-      const qualityResult = await this.aiGateway.checkAdaptationQuality({
-        sourceContent: snapshot.sourceContent,
-        adaptationContent: aiResult.content,
-        sourceLanguage: snapshot.sourceLanguage,
-        channel: publicationContext.channel,
-        displayName: publicationContext.displayName,
-        publicationType: publicationContext.publicationType,
-        style: publicationContext.style,
-        promptInstructions: publicationContext.promptInstructions,
-        brandMemory: snapshot.brandMemory,
-      });
+      const lengthQualityResult = buildXLengthQualityResult(
+        publicationContext.channel,
+        aiResult.content,
+      );
+      const qualityResult: AiQualityCheckResult =
+        lengthQualityResult ??
+        (await this.aiGateway.checkAdaptationQuality({
+          sourceContent: snapshot.sourceContent,
+          adaptationContent: aiResult.content,
+          sourceLanguage: snapshot.sourceLanguage,
+          channel: publicationContext.channel,
+          displayName: publicationContext.displayName,
+          publicationType: publicationContext.publicationType,
+          style: publicationContext.style,
+          promptInstructions: publicationContext.promptInstructions,
+          brandMemory: snapshot.brandMemory,
+        }));
 
       lastQualityResult = qualityResult;
 

@@ -25,11 +25,15 @@ const DEFAULT_ADAPTATION_RULES_BY_CHANNEL = {
   channel_telegram: [
     'Keep the tone concise, clear, and strong.',
     'Prefer short paragraphs.',
+    'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
+    'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
     'Do not use hashtags.',
     'Do not use emojis unless absolutely necessary.',
   ].join('\n'),
   channel_x: [
     'Keep the text sharp, compact, and highly readable.',
+    'Keep the final text under 260 characters so it can be published through the standard X API.',
+    'Produce one standalone post only; do not create multiple posts unless thread publishing is explicitly implemented.',
     'Do not use hashtags.',
     'Do not use emojis.',
   ].join('\n'),
@@ -285,6 +289,9 @@ function renderCampaignUiStyles(): string {
         color: var(--muted);
         font-size: 14px;
       }
+      .ai-flow-step.is-active {
+        animation: ai-stage-breathe 1.8s ease-in-out infinite;
+      }
       .ai-flow-step.is-active p {
         color: rgba(255, 255, 255, 0.72);
       }
@@ -308,6 +315,43 @@ function renderCampaignUiStyles(): string {
       .ai-flow-step.is-danger span,
       .ai-flow-step.is-danger p {
         color: rgba(180, 35, 24, 0.72);
+      }
+      .ai-flow-step .ai-stage-timer {
+        margin-top: auto;
+        font-size: 13px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+      .ai-flow-step.is-active .ai-stage-timer {
+        color: rgba(255, 255, 255, 0.82);
+        animation: ai-stage-timer-breathe 1.8s ease-in-out infinite;
+      }
+      .ai-flow-step.is-done .ai-stage-timer {
+        color: rgba(17, 122, 67, 0.86);
+      }
+      .ai-flow-step.is-warning .ai-stage-timer {
+        color: rgba(161, 76, 10, 0.82);
+      }
+      .ai-flow-step.is-danger .ai-stage-timer {
+        color: rgba(180, 35, 24, 0.82);
+      }
+      @keyframes ai-stage-breathe {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.72;
+        }
+      }
+      @keyframes ai-stage-timer-breathe {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.58;
+        }
       }
       .campaign-done-actions {
         margin-top: 4px;
@@ -485,6 +529,12 @@ function renderCampaignUiStyles(): string {
         background: rgba(18, 18, 18, 0.92);
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
+      }
+      button.primary.is-pristine[disabled] {
+        opacity: 1;
+        background: rgba(18, 18, 18, 0.14);
+        color: rgba(18, 18, 18, 0.52);
+        border-color: rgba(18, 18, 18, 0.14);
       }
       .btn-with-badge {
         position: relative;
@@ -1495,16 +1545,19 @@ export class CampaignTestUiController {
               <span>Step A</span>
               <strong>Longread Check</strong>
               <p>AI reviews the source longread, checks whether it is usable, and pauses the flow if it needs human clarification.</p>
+              <p id="flowSourceCheckTimer" class="ai-stage-timer"></p>
             </article>
             <article id="flowStage1" class="flow-step ai-flow-step is-disabled">
               <span>Step B</span>
               <strong>Adaptations Generation</strong>
               <p>AI turns the source into channel-specific publication drafts according to the campaign plan.</p>
+              <p id="flowStage1Timer" class="ai-stage-timer"></p>
             </article>
             <article id="flowStage2" class="flow-step ai-flow-step is-disabled">
               <span>Step C</span>
               <strong>Translation Generation</strong>
               <p>AI prepares the required language versions and final text variants for planned publications.</p>
+              <p id="flowStage2Timer" class="ai-stage-timer"></p>
             </article>
           </div>
         </section>
@@ -1598,6 +1651,7 @@ export class CampaignTestUiController {
         let currentArticle = null;
         let activeDonePublicationId = null;
         let flowRefreshTimer = null;
+        let aiStageTimer = null;
         let activeFlowStep = 'general';
         const completedFlowSteps = new Set();
         const accessibleFlowSteps = new Set(['general']);
@@ -1616,14 +1670,17 @@ export class CampaignTestUiController {
           {
             key: 'source_check',
             elementId: 'flowSourceCheck',
+            timerElementId: 'flowSourceCheckTimer',
           },
           {
             key: 'stage_1_adaptation',
             elementId: 'flowStage1',
+            timerElementId: 'flowStage1Timer',
           },
           {
             key: 'stage_2_translation',
             elementId: 'flowStage2',
+            timerElementId: 'flowStage2Timer',
           },
         ];
 
@@ -1862,6 +1919,72 @@ export class CampaignTestUiController {
             .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime())[0] || null;
         }
 
+        function formatElapsedDuration(milliseconds) {
+          const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+
+          if (hours > 0) {
+            return hours + 'h ' + String(minutes).padStart(2, '0') + 'm ' + String(seconds).padStart(2, '0') + 's';
+          }
+          if (minutes > 0) {
+            return minutes + 'm ' + String(seconds).padStart(2, '0') + 's';
+          }
+          return totalSeconds + 's';
+        }
+
+        function getWorkflowRunElapsedLabel(run, isActive) {
+          if (!run?.startedAt) {
+            return '';
+          }
+
+          const startedAt = new Date(run.startedAt).getTime();
+          const finishedAt = isActive
+            ? Date.now()
+            : new Date(run.completedAt || run.updatedAt || run.startedAt).getTime();
+          const duration = formatElapsedDuration(finishedAt - startedAt);
+          return isActive ? 'AI working for ' + duration : 'AI worked for ' + duration;
+        }
+
+        function renderAiStageTimers(campaign, activeWorkflowRun) {
+          aiStepConfig.forEach((config) => {
+            const timer = document.getElementById(config.timerElementId);
+            if (!timer) {
+              return;
+            }
+
+            const latestRun = getLatestWorkflowRunByStep(campaign, config.key);
+            const isActive = activeWorkflowRun?.currentStep === config.key;
+            const label = isActive
+              ? getWorkflowRunElapsedLabel(activeWorkflowRun, true)
+              : getWorkflowRunElapsedLabel(latestRun, false);
+
+            timer.textContent = label;
+            timer.hidden = !label;
+          });
+        }
+
+        function startAiStageTimer() {
+          if (aiStageTimer) {
+            clearInterval(aiStageTimer);
+          }
+          aiStageTimer = setInterval(() => {
+            if (!currentCampaign) {
+              return;
+            }
+            const activeWorkflowRun = (currentCampaign.workflowRuns || []).find((run) => run.status === 'running') || null;
+            renderAiStageTimers(currentCampaign, activeWorkflowRun);
+          }, 1000);
+        }
+
+        function stopAiStageTimer() {
+          if (aiStageTimer) {
+            clearInterval(aiStageTimer);
+            aiStageTimer = null;
+          }
+        }
+
         function getAiStageVisualState(campaign, config, activeWorkflowRun) {
           if (activeWorkflowRun?.currentStep === config.key) {
             return {
@@ -1951,6 +2074,7 @@ export class CampaignTestUiController {
                   (item.exportPlanId ? '<span class="mono">' + escapeHtml(item.exportPlanId) + '</span>' : '') +
                   (!item.publicationId && !item.exportPlanId ? '<span class="soft">Dashboard planned publication</span>' : '') +
                   (item.externalPostId ? '<span class="soft">External post ' + escapeHtml(item.externalPostId) + '</span>' : '') +
+                  (item.externalUrl ? '<a class="btn" href="' + escapeHtml(item.externalUrl) + '" target="_blank" rel="noopener noreferrer">Open published post</a>' : '') +
                   (item.errorMessage ? '<span class="soft">' + escapeHtml(item.errorMessage) + '</span>' : '') +
                 '</div>' +
               '</td>' +
@@ -2167,6 +2291,7 @@ export class CampaignTestUiController {
             const visualState = getAiStageVisualState(campaign, config, activeWorkflowRun);
             element.className = visualState.className;
           });
+          renderAiStageTimers(campaign, activeWorkflowRun);
 
           document.getElementById('aiStatusText').textContent = hasInboxPause
             ? 'Flow is paused by inbox review. Resolve the item, then it will continue automatically.'
@@ -2184,6 +2309,7 @@ export class CampaignTestUiController {
               clearInterval(flowRefreshTimer);
               flowRefreshTimer = null;
             }
+            stopAiStageTimer();
             markFlowStepDone('ai');
             markFlowStepDone('done');
             document.getElementById('doneStepText').textContent =
@@ -2193,6 +2319,10 @@ export class CampaignTestUiController {
             if (activeFlowStep === 'ai' || activeFlowStep === 'done') {
               goToFlowStep('done');
             }
+          } else if (activeWorkflowRun) {
+            startAiStageTimer();
+          } else {
+            stopAiStageTimer();
           }
         }
 
@@ -3257,13 +3387,14 @@ export class CampaignTestUiController {
               </label>
             </div>
             <div class="actions">
-              <button class="primary" type="submit">Save Brand Memory</button>
+              <button id="saveBrandMemoryBtn" class="primary is-pristine" type="submit" disabled>Save Brand Memory</button>
             </div>
           </form>
         </section>
       `,
       script: `
         const projectId = ${JSON.stringify(projectId)};
+        let initialBrandMemoryPayload = '';
 
         function linesToText(values) {
           return Array.isArray(values) ? values.join('\\n') : '';
@@ -3293,6 +3424,17 @@ export class CampaignTestUiController {
           document.getElementById('brandDocs').value = docsToText(brandMemory.brandDocs);
         }
 
+        function serializePayload(payload) {
+          return JSON.stringify(payload);
+        }
+
+        function syncSaveButtonState() {
+          const saveButton = document.getElementById('saveBrandMemoryBtn');
+          const isDirty = serializePayload(buildPayload()) !== initialBrandMemoryPayload;
+          saveButton.disabled = !isDirty;
+          saveButton.classList.toggle('is-pristine', !isDirty);
+        }
+
         async function loadPage() {
           if (!projectId) {
             document.getElementById('projectName').textContent = 'Missing projectId';
@@ -3308,6 +3450,8 @@ export class CampaignTestUiController {
           document.getElementById('updatedAt').textContent =
             'Last update ' + formatDateTime(memoryPayload.updatedAt);
           fillForm(memoryPayload.brandMemory);
+          initialBrandMemoryPayload = serializePayload(buildPayload());
+          syncSaveButtonState();
           setOutput({ project, brandMemory: memoryPayload.brandMemory });
         }
 
@@ -3326,7 +3470,10 @@ export class CampaignTestUiController {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('brandMemoryForm').addEventListener('submit', async (event) => {
+          const form = document.getElementById('brandMemoryForm');
+          form.addEventListener('input', syncSaveButtonState);
+          form.addEventListener('change', syncSaveButtonState);
+          form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const payload = buildPayload();
             const updated = await request(
@@ -3339,6 +3486,8 @@ export class CampaignTestUiController {
             );
             document.getElementById('updatedAt').textContent =
               'Last update ' + formatDateTime(updated.updatedAt);
+            initialBrandMemoryPayload = serializePayload(payload);
+            syncSaveButtonState();
           });
         });
 
@@ -5302,6 +5451,7 @@ export class CampaignTestUiController {
                   (item.externalAccountRef ? '<span class="mono">' + escapeHtml(item.externalAccountRef) + '</span>' : '<span class="soft">No account ref</span>') +
                   (item.externalPostId ? '<span class="mono">' + escapeHtml(item.externalPostId) + '</span>' : '<span class="soft">No external post id</span>') +
                   (item.publishedAt ? '<span class="soft">Published ' + escapeHtml(formatDateTime(item.publishedAt)) + '</span>' : '') +
+                  (item.externalUrl ? '<a class="btn" href="' + escapeHtml(item.externalUrl) + '" target="_blank" rel="noopener noreferrer">Open published post</a>' : '') +
                 '</div>' +
               '</td>' +
               '<td>' + (item.errorMessage ? '<span class="soft">' + escapeHtml(item.errorMessage) + '</span>' : '—') + '</td>' +

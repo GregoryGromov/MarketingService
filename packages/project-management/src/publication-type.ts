@@ -102,12 +102,12 @@ export function describePublicationTypeForChannel(
 
   if (normalizedChannel === 'channel_x') {
     if (normalizedType === 'long') {
-      return 'Write one substantial X post, close to the platform length limit, with strong context, a clear angle, and a complete thought. Do not turn it into a thread.';
+      return 'Write one substantial X post that fits the standard 280-character API limit. Aim for 220 to 260 characters, with strong context, a clear angle, and a complete thought. Do not turn it into a thread.';
     }
     if (normalizedType === 'thread') {
-      return 'Write a real X thread: 3 to 5 connected posts with a clear sequence, each post concise on its own, and the overall flow easy to follow from first post to last.';
+      return 'Write a thread-ready X post plan, but keep the actual output as one publishable first post under 260 characters until thread publishing is enabled.';
     }
-    return 'Write one medium-length X post: shorter than a long post, compact and fast to read, but still complete as a single standalone post. Do not turn it into a thread.';
+    return 'Write one medium-length X post under 220 characters: compact, fast to read, and complete as a single standalone post. Do not turn it into a thread.';
   }
 
   if (normalizedChannel === 'channel_blog') {

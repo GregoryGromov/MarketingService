@@ -4,6 +4,7 @@ dist/
 coverage/
 .env
 .env.*
+.x-oauth2-token.json
 *.tsbuildinfo
 
 

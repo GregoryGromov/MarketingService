@@ -8,6 +8,7 @@ import {
 
 interface DiscordWebhookResponse {
   id?: string;
+  guild_id?: string;
   channel_id?: string;
   message?: string;
 }
@@ -48,6 +49,7 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
     }
 
     return {
+      guildId: payload.guild_id ?? null,
       channelId: payload.channel_id ?? null,
       messageId: payload.id ?? null,
     };

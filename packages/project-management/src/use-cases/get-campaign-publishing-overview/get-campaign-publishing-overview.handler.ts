@@ -3,6 +3,7 @@ import {
   ChannelAdaptationRepository,
   TranslationRepository,
 } from '@marketing-service/editorial';
+import { resolvePublicationExternalUrl } from '@marketing-service/shared';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { CampaignArtifactRepository } from '../../domain/campaign-artifact.repository.js';
 import { CampaignRepository } from '../../domain/campaign.repository.js';
@@ -38,6 +39,7 @@ export interface CampaignPublishingOverviewItemResult {
   exportPlanId: string | null;
   externalAccountRef: string | null;
   externalPostId: string | null;
+  externalUrl: string | null;
   publishedAt: Date | null;
   errorMessage: string | null;
 }
@@ -178,6 +180,11 @@ export class GetCampaignPublishingOverviewHandler
         exportPlanId: exportPlan?.id ?? null,
         externalAccountRef: scheduledPublication?.externalAccountRef ?? null,
         externalPostId: scheduledPublication?.externalPostId ?? null,
+        externalUrl: resolvePublicationExternalUrl({
+          channelId: plannedPublication.channel,
+          externalAccountRef: scheduledPublication?.externalAccountRef ?? null,
+          externalPostId: scheduledPublication?.externalPostId ?? null,
+        }),
         publishedAt: scheduledPublication?.publishedAt ?? null,
         errorMessage: scheduledPublication?.errorMessage ?? null,
       };

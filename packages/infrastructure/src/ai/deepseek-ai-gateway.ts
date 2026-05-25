@@ -538,6 +538,8 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Each sentence should carry one key idea only.',
         'Use a strong opening hook.',
         'Keep the tone expert and clear.',
+        'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
+        'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
         'Do not use hashtags.',
         'Do not use emojis unless they are absolutely necessary.',
         'Do not produce bullet points or lists.',
@@ -591,6 +593,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
 
     return [
       basePrompt,
+      this.buildChannelRules(params.channel, params.promptInstructions),
       this.buildPublicationContext(params.channel, params.publicationType, params.style),
       this.formatBrandMemorySection(params.brandMemory),
       params.extraInstructions?.trim()
@@ -635,6 +638,8 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Do not collapse the whole text into one long line or one dense paragraph if the current text is already split naturally.',
         'Return the complete revised Telegram adaptation text, not just the fragment.',
         'The final output must still read like a concise Telegram post.',
+        'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
+        'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
         'Do not add commentary, quotes, explanations, or markdown.',
         'Return only the final revised full text.',
       ].join(' ');
@@ -684,6 +689,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
 
     return [
       basePrompt,
+      this.buildChannelRules(params.channel, params.promptInstructions),
       this.buildPublicationContext(params.channel, params.publicationType, params.style),
       this.formatBrandMemorySection(params.brandMemory),
     ].join('\n\n');
@@ -718,7 +724,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
       'Preserve the meaning, factual accuracy, and channel-specific tone.',
       'Keep the output natural and publication-ready.',
       promptInstructions
-        ? `Preserve compliance with these channel-specific rules: ${promptInstructions}`
+        ? 'Preserve compliance with the channel-specific rules below.'
         : 'Preserve the original adaptation format unless a natural translation requires tiny adjustments.',
       'Return only the final translated text with no commentary.',
     ].join(' ');
@@ -726,6 +732,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     return [
       basePrompt,
       this.buildPublicationContext(params.channel, params.publicationType, params.style),
+      this.buildChannelRules(params.channel, params.promptInstructions),
       this.formatBrandMemorySection(params.brandMemory),
     ].join('\n\n');
   }
@@ -841,7 +848,21 @@ export class DeepSeekAiGateway extends AiGatewayPort {
 
   private buildChannelRules(channel: string, promptInstructions?: string | null): string {
     if (promptInstructions?.trim()) {
-      return `Channel-specific rules:\n${promptInstructions.trim()}`;
+      const rules = [`Channel-specific rules:\n${promptInstructions.trim()}`];
+
+      if (channel === 'channel_x') {
+        rules.push(
+          [
+            'Non-negotiable X publishing constraints:',
+            '- Keep the final text under 260 characters, including spaces.',
+            '- Return one standalone post only.',
+            '- Do not create a thread, numbered list, or multiple post variants.',
+            '- If translation would become longer, compress the wording while preserving the core meaning.',
+          ].join('\n'),
+        );
+      }
+
+      return rules.join('\n\n');
     }
 
     if (channel === 'channel_telegram') {
@@ -849,6 +870,8 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Channel-specific rules:',
         '- Keep the tone concise, clear, and strong.',
         '- Prefer short paragraphs.',
+        '- Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
+        '- Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
         '- Do not use hashtags.',
         '- Do not use emojis unless absolutely necessary.',
       ].join('\n');
@@ -858,6 +881,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
       return [
         'Channel-specific rules:',
         '- Keep the result sharp and compact.',
+        '- Keep the final text under 260 characters so it can be published through the standard X API.',
         '- Prefer a single-sentence social post unless the task explicitly implies a thread.',
         '- Do not use hashtags.',
         '- Do not use emojis.',

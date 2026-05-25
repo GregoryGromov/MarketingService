@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { resolvePublicationExternalUrl } from '@marketing-service/shared';
 import { PublicationRepository } from '../../domain/publication.repository.js';
 import { GetArticlePublicationsQuery } from './get-article-publications.query.js';
 
@@ -14,6 +15,7 @@ export interface GetArticlePublicationsResultItem {
   status: string;
   telegramChatId: string | null;
   telegramMessageId: string | null;
+  externalUrl: string | null;
   publishedAt: Date | null;
   errorMessage: string | null;
   createdAt: Date;
@@ -43,6 +45,11 @@ export class GetArticlePublicationsHandler
       status: publication.status,
       telegramChatId: publication.telegramChatId,
       telegramMessageId: publication.telegramMessageId,
+      externalUrl: resolvePublicationExternalUrl({
+        channelId: publication.channelId,
+        externalAccountRef: publication.telegramChatId,
+        externalPostId: publication.telegramMessageId,
+      }),
       publishedAt: publication.publishedAt,
       errorMessage: publication.errorMessage,
       createdAt: publication.createdAt,

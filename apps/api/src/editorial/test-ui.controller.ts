@@ -1260,28 +1260,29 @@ ${renderDevConsoleScript()}
         display: grid;
         align-content: start;
         gap: 6px;
-        overflow: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding-right: 4px;
         min-height: 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(18, 18, 18, 0.28) transparent;
+      }
+      .week-cell-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .week-cell-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .week-cell-scroll::-webkit-scrollbar-thumb {
+        background: rgba(18, 18, 18, 0.24);
+        border-radius: 999px;
       }
       .week-cell-placeholder {
         color: var(--muted);
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-      }
-      .week-publication-more {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 7px 9px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.74);
-        border: 1px dashed var(--line);
-        color: var(--muted);
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
       }
       .week-marker {
         --marker-bg: rgba(255, 255, 255, 0.72);
@@ -1434,6 +1435,9 @@ ${renderDevConsoleScript()}
         display: grid;
         gap: 14px;
       }
+      .modal.is-wide {
+        width: min(760px, 100%);
+      }
       .modal-head {
         display: flex;
         align-items: flex-start;
@@ -1479,6 +1483,32 @@ ${renderDevConsoleScript()}
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
+      }
+      .publication-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .publication-detail-item {
+        display: grid;
+        gap: 6px;
+        min-height: 82px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.52);
+      }
+      .publication-detail-item label {
+        display: block;
+      }
+      .publication-detail-item strong {
+        font-size: 16px;
+        line-height: 1.2;
+        font-weight: 400;
+        overflow-wrap: anywhere;
+      }
+      .publication-detail-link[hidden] {
+        display: none;
       }
       pre {
         margin: 0;
@@ -1673,6 +1703,24 @@ ${renderDevConsoleStyles()}
       </div>
     </div>
 
+    <div id="publicationDetailsModalBackdrop" class="modal-backdrop" onclick="closePublicationDetailsModal(event)">
+      <div class="modal is-wide" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3 id="publicationDetailsTitle">Publication</h3>
+            <p id="publicationDetailsSubtitle">Published publication details.</p>
+          </div>
+          <button type="button" onclick="closePublicationDetailsModal()">Close</button>
+        </div>
+        <div id="publicationDetailsGrid" class="publication-detail-grid"></div>
+        <div class="modal-actions">
+          <a id="publicationExternalLink" class="btn primary publication-detail-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open published post</a>
+          <a id="publicationCampaignLink" class="btn" href="#">Open campaign</a>
+        </div>
+        <div id="publicationDetailsError" class="error"></div>
+      </div>
+    </div>
+
     <script>
       const currentProjectId = ${JSON.stringify(projectId)};
       const weekDayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
@@ -1700,6 +1748,7 @@ ${renderDevConsoleStyles()}
       let currentProjectPlans = [];
       let currentProjectCampaigns = [];
       let currentPublicationsByArticle = new Map();
+      let dashboardPublicationDetails = new Map();
       let currentProjectInboxPendingCount = 0;
       let activeMarkerId = null;
       let markerEditMode = false;
@@ -1855,6 +1904,10 @@ ${renderDevConsoleStyles()}
         return String(language || '').toUpperCase();
       }
 
+      function channelLabel(channelId) {
+        return adaptationChannels.find((channel) => channel.id === channelId)?.label || toTitle(String(channelId || '').replace('channel_', ''));
+      }
+
       function markerById(markerId) {
         return currentProjectMarkers.find((marker) => marker.id === markerId) || null;
       }
@@ -2006,6 +2059,10 @@ ${renderDevConsoleStyles()}
         return currentProjectCampaigns.find((campaign) => campaign.sourceArticleId === articleId) || null;
       }
 
+      function articleForId(articleId) {
+        return currentProjectArticles.find((article) => article.id === articleId) || null;
+      }
+
       function openCampaignFromPublication(event, campaignId) {
         if (event) {
           event.stopPropagation();
@@ -2018,6 +2075,125 @@ ${renderDevConsoleStyles()}
         window.location.href =
           '/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) +
           '&campaignId=' + encodeURIComponent(campaignId);
+      }
+
+      function resolvePublicationUrl(publication) {
+        if (!publication) {
+          return null;
+        }
+
+        if (publication.externalUrl) {
+          return publication.externalUrl;
+        }
+
+        const postId = String(publication.telegramMessageId || '').trim();
+        const accountRef = String(publication.telegramChatId || '').trim();
+
+        if (!postId) {
+          return null;
+        }
+
+        if (publication.channelId === 'channel_x') {
+          return 'https://x.com/i/web/status/' + encodeURIComponent(postId);
+        }
+
+        if (publication.channelId === 'channel_telegram') {
+          if (accountRef.startsWith('@')) {
+            return 'https://t.me/' + encodeURIComponent(accountRef.slice(1)) + '/' + encodeURIComponent(postId);
+          }
+
+          if (/^-100\\d+$/.test(accountRef)) {
+            return 'https://t.me/c/' + encodeURIComponent(accountRef.slice(4)) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        if (publication.channelId === 'channel_discord' && accountRef.includes('/')) {
+          const parts = accountRef.split('/');
+          if (parts[0] && parts[1]) {
+            return 'https://discord.com/channels/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        return null;
+      }
+
+      function renderPublicationDetailItem(label, value) {
+        return '<div class="publication-detail-item">' +
+          '<label>' + escapeHtml(label) + '</label>' +
+          '<strong>' + escapeHtml(value || '—') + '</strong>' +
+        '</div>';
+      }
+
+      function openDashboardPublicationDetails(event, detailKey) {
+        if (event) {
+          event.stopPropagation();
+        }
+
+        const detail = dashboardPublicationDetails.get(detailKey);
+        if (!detail) {
+          return;
+        }
+
+        const publication = detail.publication || null;
+        const campaign = detail.campaign || null;
+
+        if (publication?.status !== 'published' && campaign?.id) {
+          openCampaignFromPublication(event, campaign.id);
+          return;
+        }
+
+        const url = resolvePublicationUrl(publication);
+        const modal = document.getElementById('publicationDetailsModalBackdrop');
+        const externalLink = document.getElementById('publicationExternalLink');
+        const campaignLink = document.getElementById('publicationCampaignLink');
+
+        document.getElementById('publicationDetailsTitle').textContent =
+          campaign?.name || detail.articleTitle || 'Publication';
+        document.getElementById('publicationDetailsSubtitle').textContent =
+          publication?.status === 'published'
+            ? 'Published publication details and external link.'
+            : 'Publication details.';
+        document.getElementById('publicationDetailsGrid').innerHTML = [
+          renderPublicationDetailItem('Channel', channelLabel(detail.channelId)),
+          renderPublicationDetailItem('Language', languageCode(detail.targetLanguage)),
+          renderPublicationDetailItem('Status', toTitle(publication?.status || 'planned')),
+          renderPublicationDetailItem('Scheduled for', formatDate(detail.publishAt)),
+          renderPublicationDetailItem('Published at', publication?.publishedAt ? formatDate(publication.publishedAt) : null),
+          renderPublicationDetailItem('Publication id', publication?.id || detail.id),
+          renderPublicationDetailItem('External account', publication?.telegramChatId || null),
+          renderPublicationDetailItem('External post', publication?.telegramMessageId || null),
+        ].join('');
+
+        if (url) {
+          externalLink.hidden = false;
+          externalLink.href = url;
+        } else {
+          externalLink.hidden = true;
+          externalLink.removeAttribute('href');
+        }
+
+        if (campaign?.id) {
+          campaignLink.hidden = false;
+          campaignLink.href =
+            '/test-ui/campaigns/new?projectId=' + encodeURIComponent(currentProjectId) +
+            '&campaignId=' + encodeURIComponent(campaign.id);
+        } else {
+          campaignLink.hidden = true;
+          campaignLink.removeAttribute('href');
+        }
+
+        document.getElementById('publicationDetailsError').textContent =
+          publication?.status === 'published' && !url
+            ? 'Published post id is saved, but this channel did not provide enough data to build a public URL.'
+            : '';
+        modal.classList.add('open');
+      }
+
+      function closePublicationDetailsModal(event) {
+        if (event && event.target !== event.currentTarget) {
+          return;
+        }
+        document.getElementById('publicationDetailsModalBackdrop').classList.remove('open');
       }
 
       function campaignActions(campaign) {
@@ -2512,6 +2688,7 @@ ${renderDevConsoleStyles()}
         const root = document.getElementById('weekGrid');
         const todayParts = getMoscowDateParts(new Date());
         const today = new Date(Date.UTC(todayParts.year, todayParts.month, todayParts.day));
+        dashboardPublicationDetails = new Map();
 
         document.getElementById('weekRange').textContent = formatWeekRange(currentWeekStart);
         const headers = Array.from({ length: 7 }, (_, index) => {
@@ -2555,12 +2732,10 @@ ${renderDevConsoleStyles()}
             const publicationContent = calendarMode === 'posts' && publications.length
               ? publications.map((item) =>
                   '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '"' +
-                    ' data-clickable="' + (item.campaignId ? 'true' : 'false') + '"' +
-                    (item.campaignId
-                      ? ' onclick="openCampaignFromPublication(event, \\''
-                        + escapeHtml(item.campaignId)
-                        + '\\')"'
-                      : '') +
+                    ' data-clickable="true"' +
+                    ' onclick="openDashboardPublicationDetails(event, \\''
+                      + escapeHtml(item.detailKey)
+                      + '\\')"' +
                     ' style="' +
                     '--pub-bg:' + item.theme.bg + ';' +
                     '--pub-border:' + item.theme.border + ';' +
@@ -2608,25 +2783,52 @@ ${renderDevConsoleStyles()}
             isSameDay(new Date(plan.publishAt), dayDate),
           )
           .map((plan) => ({
-            articleId: plan.articleId,
-            campaignId: campaignForArticle(plan.articleId)?.id || null,
-            channelId: plan.channelId,
-            targetLanguage: plan.targetLanguage,
-            publishAt: new Date(plan.publishAt),
-            theme: articleTheme(plan.articleId),
-            isPublished: publicationStateFor(plan.articleId, plan.channelId, plan.targetLanguage, plan.publishAt) === 'published',
+            plan,
+            publication: publicationForPlan(plan.articleId, plan.channelId, plan.targetLanguage, plan.publishAt),
+            campaign: campaignForArticle(plan.articleId),
+            article: articleForId(plan.articleId),
           }))
+          .map(({ plan, publication, campaign, article }) => {
+            const detailKey = [
+              plan.id,
+              publication?.id || 'planned',
+              plan.channelId,
+              plan.targetLanguage,
+            ].join('|');
+            const detail = {
+              id: plan.id,
+              articleId: plan.articleId,
+              articleTitle: article?.title || article?.id || plan.articleId,
+              campaign,
+              channelId: plan.channelId,
+              targetLanguage: plan.targetLanguage,
+              publishAt: new Date(plan.publishAt),
+              publication,
+            };
+            dashboardPublicationDetails.set(detailKey, detail);
+
+            return {
+              ...detail,
+              detailKey,
+              theme: articleTheme(plan.articleId),
+              isPublished: publication?.status === 'published',
+            };
+          })
           .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
       }
 
-      function publicationStateFor(articleId, channelId, targetLanguage, publishAt) {
+      function publicationForPlan(articleId, channelId, targetLanguage, publishAt) {
         const publications = currentPublicationsByArticle.get(articleId) || [];
-        const match = publications.find((item) =>
+        return publications.find((item) =>
           item &&
           item.channelId === channelId &&
           String(item.targetLanguage || '').toLowerCase() === String(targetLanguage || '').toLowerCase() &&
           (!publishAt || new Date(item.publishAt).getTime() === new Date(publishAt).getTime()),
-        );
+        ) || null;
+      }
+
+      function publicationStateFor(articleId, channelId, targetLanguage, publishAt) {
+        const match = publicationForPlan(articleId, channelId, targetLanguage, publishAt);
 
         return match?.status || null;
       }
@@ -4239,8 +4441,23 @@ ${renderDevConsoleScript()}
         display: grid;
         gap: 4px;
         align-content: start;
-        overflow: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding-right: 4px;
         min-height: 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(18, 18, 18, 0.28) transparent;
+      }
+      .week-cell-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .week-cell-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .week-cell-scroll::-webkit-scrollbar-thumb {
+        background: rgba(18, 18, 18, 0.24);
+        border-radius: 999px;
       }
       .week-cell-placeholder {
         color: var(--muted);
@@ -4279,20 +4496,6 @@ ${renderDevConsoleScript()}
         font-size: 11px;
         font-weight: 700;
         white-space: nowrap;
-      }
-      .week-publication-more {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 7px 9px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.74);
-        border: 1px dashed var(--line);
-        color: var(--muted);
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
       }
       .meta {
         display: grid;
