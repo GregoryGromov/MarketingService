@@ -8,6 +8,7 @@ import { ApprovalItemRepository } from '../../domain/approval-item.repository.js
 import { CampaignRepository } from '../../domain/campaign.repository.js';
 import { ProjectRepository } from '../../domain/project.repository.js';
 import type {
+  ApprovalItem,
   ApprovalItemSeverity,
   ApprovalItemType,
 } from '../../domain/approval-item.aggregate.js';
@@ -49,6 +50,7 @@ export interface ProjectApprovalInboxItemResult {
   artifactType: string | null;
   artifactId: string | null;
   type: ApprovalItemType;
+  status: string;
   severity: ApprovalItemSeverity;
   title: string;
   details: Record<string, unknown>;
@@ -56,12 +58,14 @@ export interface ProjectApprovalInboxItemResult {
   currentContent: string | null;
   createdAt: Date;
   updatedAt: Date;
+  resolvedAt: Date | null;
 }
 
 export interface GetProjectApprovalInboxResult {
   projectId: string;
   pendingCount: number;
   items: ProjectApprovalInboxItemResult[];
+  historyItems: ProjectApprovalInboxItemResult[];
 }
 
 @QueryHandler(GetProjectApprovalInboxQuery)
@@ -114,44 +118,61 @@ export class GetProjectApprovalInboxHandler
       return null;
     }
 
-    const [campaigns, pendingItems] = await Promise.all([
+    const [campaigns, allProjectItems] = await Promise.all([
       this.campaignRepository.findByProjectId(project.id),
-      this.approvalItemRepository.findByProjectIdAndStatus(project.id, 'pending'),
+      this.approvalItemRepository.findByProjectId(project.id),
     ]);
 
     const campaignsById = new Map(campaigns.map((campaign) => [campaign.id, campaign] as const));
-    const sortedItems = pendingItems
-      .filter((item) => isInboxExceptionType(item.type) && campaignsById.has(item.campaignId))
+    const inboxItems = allProjectItems.filter(
+      (item) => isInboxExceptionType(item.type) && campaignsById.has(item.campaignId),
+    );
+    const sortedItems = inboxItems
+      .filter((item) => item.status === 'pending')
       .sort(compareInboxItems);
 
-    const items = await Promise.all(
-      sortedItems.map(async (item) => {
-        const campaign = campaignsById.get(item.campaignId)!;
-        return {
-          id: item.id,
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          campaignStatus: campaign.status,
-          sourceArticleId: campaign.sourceArticleId,
-          plannedPublicationId: item.plannedPublicationId,
-          artifactType: item.artifactType,
-          artifactId: item.artifactId,
-          type: item.type,
-          severity: item.severity,
-          title: item.title,
-          details: item.details,
-          suggestedFix: item.suggestedFix,
-          currentContent: await this.getCurrentContent(item),
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        } satisfies ProjectApprovalInboxItemResult;
-      }),
+    const historyItems = [...inboxItems].sort(
+      (left, right) =>
+        right.updatedAt.getTime() - left.updatedAt.getTime() ||
+        right.createdAt.getTime() - left.createdAt.getTime(),
     );
+
+    const mapItem = async (
+      item: ApprovalItem,
+    ): Promise<ProjectApprovalInboxItemResult> => {
+      const campaign = campaignsById.get(item.campaignId)!;
+      return {
+        id: item.id,
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        campaignStatus: campaign.status,
+        sourceArticleId: campaign.sourceArticleId,
+        plannedPublicationId: item.plannedPublicationId,
+        artifactType: item.artifactType,
+        artifactId: item.artifactId,
+        type: item.type,
+        status: item.status,
+        severity: item.severity,
+        title: item.title,
+        details: item.details,
+        suggestedFix: item.suggestedFix,
+        currentContent: await this.getCurrentContent(item),
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        resolvedAt: item.resolvedAt,
+      } satisfies ProjectApprovalInboxItemResult;
+    };
+
+    const [items, mappedHistoryItems] = await Promise.all([
+      Promise.all(sortedItems.map(mapItem)),
+      Promise.all(historyItems.map(mapItem)),
+    ]);
 
     return {
       projectId: project.id,
       pendingCount: items.length,
       items,
+      historyItems: mappedHistoryItems,
     };
   }
 }

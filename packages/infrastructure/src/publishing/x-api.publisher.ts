@@ -57,6 +57,7 @@ interface XOAuth2TokenConfig {
   clientSecret: string | null;
   source: string;
   scope: string | null;
+  publishingTarget: 'test' | 'production';
 }
 
 interface XOAuth1TokenConfig {
@@ -93,7 +94,7 @@ const REQUIRED_X_MEDIA_SCOPE = 'media.write';
 
 @Injectable()
 export class XApiPublisher extends XPublisherPort {
-  private tokenStore: XOAuth2TokenStore | null = null;
+  private tokenStores = new Map<string, XOAuth2TokenStore>();
 
   constructor(
     @Inject(ConfigService)
@@ -112,7 +113,8 @@ export class XApiPublisher extends XPublisherPort {
       );
     }
 
-    let tokenConfig = this.resolveOAuth2TokenConfig();
+    const publishingTarget = params.publishingTarget ?? 'test';
+    let tokenConfig = this.resolveOAuth2TokenConfig(publishingTarget);
     const mediaId = params.imagePath
       ? await this.uploadTweetImageWithRefresh(params.imagePath, tokenConfig)
       : null;
@@ -181,7 +183,7 @@ export class XApiPublisher extends XPublisherPort {
     tokenConfig: XOAuth2TokenConfig,
   ): Promise<{ mediaId: string; tokenConfig: XOAuth2TokenConfig }> {
     if (!this.hasMediaWriteScope(tokenConfig)) {
-      const oauth1Config = this.resolveOAuth1TokenConfig();
+      const oauth1Config = this.resolveOAuth1TokenConfig(tokenConfig.publishingTarget);
       if (oauth1Config) {
         return {
           mediaId: await this.uploadTweetImageWithOAuth1(
@@ -208,7 +210,7 @@ export class XApiPublisher extends XPublisherPort {
     const payload = this.parseResponseBody<XMediaUploadResponse | XApiErrorPayload>(rawBody);
 
     if (!response.ok) {
-      const oauth1Config = this.resolveOAuth1TokenConfig();
+      const oauth1Config = this.resolveOAuth1TokenConfig(tokenConfig.publishingTarget);
       if (oauth1Config && (response.status === 403 || response.status === 404)) {
         return {
           mediaId: await this.uploadTweetImageWithOAuth1(
@@ -303,33 +305,36 @@ export class XApiPublisher extends XPublisherPort {
     return mediaId;
   }
 
-  private resolveOAuth2TokenConfig(): XOAuth2TokenConfig {
-    const storedTokens = this.readTokenStore();
+  private resolveOAuth2TokenConfig(
+    publishingTarget: 'test' | 'production' = 'test',
+  ): XOAuth2TokenConfig {
+    const storedTokens = this.readTokenStore(publishingTarget);
     const storedAccessToken = storedTokens.accessToken?.trim() || null;
     const storedRefreshToken = storedTokens.refreshToken?.trim() || null;
     const storedScope = storedTokens.scope?.trim() || null;
+    const envPrefix = this.resolveXEnvPrefix(publishingTarget);
     const envAccessToken =
-      this.config.get<string>('X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN')?.trim() ||
-      this.config.get<string>('X_PUBLISH_USER_ACCESS_TOKEN')?.trim() ||
+      this.config.get<string>(`${envPrefix}_OAUTH2_USER_ACCESS_TOKEN`)?.trim() ||
+      this.config.get<string>(`${envPrefix}_USER_ACCESS_TOKEN`)?.trim() ||
       null;
     const envRefreshToken =
-      this.config.get<string>('X_PUBLISH_OAUTH2_REFRESH_TOKEN')?.trim() ||
-      this.config.get<string>('X_PUBLISH_REFRESH_TOKEN')?.trim() ||
+      this.config.get<string>(`${envPrefix}_OAUTH2_REFRESH_TOKEN`)?.trim() ||
+      this.config.get<string>(`${envPrefix}_REFRESH_TOKEN`)?.trim() ||
       null;
     const clientId =
-      this.config.get<string>('X_PUBLISH_OAUTH2_CLIENT_ID')?.trim() ||
-      this.config.get<string>('X_PUBLISH_CLIENT_ID')?.trim() ||
+      this.config.get<string>(`${envPrefix}_OAUTH2_CLIENT_ID`)?.trim() ||
+      this.config.get<string>(`${envPrefix}_CLIENT_ID`)?.trim() ||
       null;
     const clientSecret =
-      this.config.get<string>('X_PUBLISH_OAUTH2_CLIENT_SECRET')?.trim() ||
-      this.config.get<string>('X_PUBLISH_CLIENT_SECRET')?.trim() ||
+      this.config.get<string>(`${envPrefix}_OAUTH2_CLIENT_SECRET`)?.trim() ||
+      this.config.get<string>(`${envPrefix}_CLIENT_SECRET`)?.trim() ||
       null;
     const accessToken = storedAccessToken ?? envAccessToken;
     const refreshToken = storedRefreshToken ?? envRefreshToken;
 
     if (!accessToken) {
       throw new Error(
-        'X publish requires OAuth2 user access token. Set X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN.',
+        `X ${publishingTarget} publish requires OAuth2 user access token. Set ${envPrefix}_OAUTH2_USER_ACCESS_TOKEN.`,
       );
     }
 
@@ -339,21 +344,25 @@ export class XApiPublisher extends XPublisherPort {
       clientId,
       clientSecret,
       scope: storedScope,
+      publishingTarget,
       source: storedAccessToken
-        ? `${this.getTokenStorePath()}`
-        : 'X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN',
+        ? `${this.getTokenStorePath(publishingTarget)}`
+        : `${envPrefix}_OAUTH2_USER_ACCESS_TOKEN`,
     };
   }
 
-  private resolveOAuth1TokenConfig(): XOAuth1TokenConfig | null {
-    const apiKey = this.config.get<string>('X_PUBLISH_API_KEY')?.trim() || null;
+  private resolveOAuth1TokenConfig(
+    publishingTarget: 'test' | 'production' = 'test',
+  ): XOAuth1TokenConfig | null {
+    const envPrefix = this.resolveXEnvPrefix(publishingTarget);
+    const apiKey = this.config.get<string>(`${envPrefix}_API_KEY`)?.trim() || null;
     const apiKeySecret =
-      this.config.get<string>('X_PUBLISH_API_KEY_SECRET')?.trim() ||
-      this.config.get<string>('X_PUBLISH_API_SECRET')?.trim() ||
+      this.config.get<string>(`${envPrefix}_API_KEY_SECRET`)?.trim() ||
+      this.config.get<string>(`${envPrefix}_API_SECRET`)?.trim() ||
       null;
-    const accessToken = this.config.get<string>('X_PUBLISH_ACCESS_TOKEN')?.trim() || null;
+    const accessToken = this.config.get<string>(`${envPrefix}_ACCESS_TOKEN`)?.trim() || null;
     const accessTokenSecret =
-      this.config.get<string>('X_PUBLISH_ACCESS_TOKEN_SECRET')?.trim() || null;
+      this.config.get<string>(`${envPrefix}_ACCESS_TOKEN_SECRET`)?.trim() || null;
 
     if (!apiKey || !apiKeySecret || !accessToken || !accessTokenSecret) {
       return null;
@@ -364,7 +373,7 @@ export class XApiPublisher extends XPublisherPort {
       apiKeySecret,
       accessToken,
       accessTokenSecret,
-      source: 'X_PUBLISH_API_KEY + X_PUBLISH_ACCESS_TOKEN',
+      source: `${envPrefix}_API_KEY + ${envPrefix}_ACCESS_TOKEN`,
     };
   }
 
@@ -421,7 +430,7 @@ export class XApiPublisher extends XPublisherPort {
       refreshedAt: new Date().toISOString(),
     };
 
-    this.writeTokenStore(refreshedStore);
+    this.writeTokenStore(refreshedStore, tokenConfig.publishingTarget);
 
     return {
       accessToken: payload.access_token,
@@ -429,7 +438,8 @@ export class XApiPublisher extends XPublisherPort {
       clientId: tokenConfig.clientId,
       clientSecret: tokenConfig.clientSecret,
       scope: refreshedStore.scope ?? tokenConfig.scope,
-      source: `${this.getTokenStorePath()} refreshed from X_PUBLISH_OAUTH2_REFRESH_TOKEN`,
+      publishingTarget: tokenConfig.publishingTarget,
+      source: `${this.getTokenStorePath(tokenConfig.publishingTarget)} refreshed from ${this.resolveXEnvPrefix(tokenConfig.publishingTarget)}_OAUTH2_REFRESH_TOKEN`,
     };
   }
 
@@ -500,40 +510,60 @@ export class XApiPublisher extends XPublisherPort {
     );
   }
 
-  private readTokenStore(): XOAuth2TokenStore {
-    if (this.tokenStore) {
-      return this.tokenStore;
+  private readTokenStore(publishingTarget: 'test' | 'production'): XOAuth2TokenStore {
+    const cacheKey = publishingTarget;
+    const cached = this.tokenStores.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    const path = this.getTokenStorePath();
+    const path = this.getTokenStorePath(publishingTarget);
     if (!existsSync(path)) {
-      this.tokenStore = {};
-      return this.tokenStore;
+      const emptyStore = {};
+      this.tokenStores.set(cacheKey, emptyStore);
+      return emptyStore;
     }
 
     try {
-      this.tokenStore = JSON.parse(readFileSync(path, 'utf8')) as XOAuth2TokenStore;
-      return this.tokenStore;
+      const tokenStore = JSON.parse(readFileSync(path, 'utf8')) as XOAuth2TokenStore;
+      this.tokenStores.set(cacheKey, tokenStore);
+      return tokenStore;
     } catch {
-      this.tokenStore = {};
-      return this.tokenStore;
+      const emptyStore = {};
+      this.tokenStores.set(cacheKey, emptyStore);
+      return emptyStore;
     }
   }
 
-  private writeTokenStore(tokenStore: XOAuth2TokenStore): void {
-    const path = this.getTokenStorePath();
+  private writeTokenStore(
+    tokenStore: XOAuth2TokenStore,
+    publishingTarget: 'test' | 'production',
+  ): void {
+    const path = this.getTokenStorePath(publishingTarget);
     writeFileSync(path, `${JSON.stringify(tokenStore, null, 2)}\n`, {
       encoding: 'utf8',
       mode: 0o600,
     });
-    this.tokenStore = tokenStore;
+    this.tokenStores.set(publishingTarget, tokenStore);
   }
 
-  private getTokenStorePath(): string {
+  private getTokenStorePath(publishingTarget: 'test' | 'production'): string {
+    const envKey =
+      publishingTarget === 'production'
+        ? 'X_PUBLISH_PROD_OAUTH2_TOKEN_STORE_PATH'
+        : 'X_PUBLISH_OAUTH2_TOKEN_STORE_PATH';
+    const defaultPath =
+      publishingTarget === 'production'
+        ? '.x-oauth2-token.production.json'
+        : DEFAULT_TOKEN_STORE_PATH;
+
     return resolve(
-      this.config.get<string>('X_PUBLISH_OAUTH2_TOKEN_STORE_PATH')?.trim() ||
-        DEFAULT_TOKEN_STORE_PATH,
+      this.config.get<string>(envKey)?.trim() || defaultPath,
     );
+  }
+
+  private resolveXEnvPrefix(publishingTarget: 'test' | 'production'): string {
+    return publishingTarget === 'production' ? 'X_PUBLISH_PROD' : 'X_PUBLISH';
   }
 
   private parseResponseBody<T>(rawBody: string): T | null {

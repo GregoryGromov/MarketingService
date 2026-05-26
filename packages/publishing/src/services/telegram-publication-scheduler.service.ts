@@ -90,6 +90,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     channelId: string;
     targetLanguage: string;
     markPublished: (params: { telegramChatId: string; telegramMessageId: string }) => void;
+    publishingTarget: 'test' | 'production';
   }): Promise<void> {
     const text = await this.resolvePublishableText(
       publication.adaptationId,
@@ -103,6 +104,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
         language: publication.targetLanguage,
         text,
         imagePath,
+        publishingTarget: publication.publishingTarget,
       });
 
       publication.markPublished({
@@ -113,7 +115,11 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     if (publication.channelId === 'channel_discord') {
-      const published = await this.discordPublisher.publishMessage({ text, imagePath });
+      const published = await this.discordPublisher.publishMessage({
+        text,
+        imagePath,
+        publishingTarget: publication.publishingTarget,
+      });
       const discordAccountRef =
         published.guildId && published.channelId
           ? `${published.guildId}/${published.channelId}`
@@ -127,7 +133,11 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     }
 
     if (publication.channelId === 'channel_x') {
-      const published = await this.xPublisher.publishMessage({ text, imagePath });
+      const published = await this.xPublisher.publishMessage({
+        text,
+        imagePath,
+        publishingTarget: publication.publishingTarget,
+      });
 
       publication.markPublished({
         telegramChatId: published.screenName ?? 'x-user',

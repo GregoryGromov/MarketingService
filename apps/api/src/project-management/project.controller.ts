@@ -1,4 +1,5 @@
 import {
+  AcknowledgeApprovalItemCommand,
   CreateCampaignCommand,
   type CreateCampaignPlannedPublicationOverride,
   CreateProjectCommand,
@@ -14,6 +15,7 @@ import {
   ListProjectsQuery,
   UpdateProjectBrandMemoryCommand,
   type BrandMemory,
+  type ApprovalItemId,
   type ProjectId,
   type ProjectMarkerId,
 } from '@marketing-service/project-management';
@@ -109,6 +111,7 @@ const CreateCampaignSchema = v.object({
   name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(160)),
   startDate: v.pipe(v.string(), v.trim(), v.minLength(1)),
   sourceLanguage: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)))),
+  publishingTarget: v.optional(v.picklist(['test', 'production'])),
   extraInstructions: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(5000)))),
   plannedPublicationOverrides: v.optional(
     v.nullish(
@@ -378,6 +381,23 @@ export class ProjectController {
     return inbox;
   }
 
+  @Post(':id/inbox/:approvalItemId/acknowledge')
+  async acknowledgeInboxItem(
+    @Param('id') id: string,
+    @Param('approvalItemId') approvalItemId: string,
+  ) {
+    try {
+      return await this.commandBus.execute(
+        new AcknowledgeApprovalItemCommand(
+          id as ProjectId,
+          approvalItemId as ApprovalItemId,
+        ),
+      );
+    } catch (error) {
+      rethrowProjectManagementHttpError(error);
+    }
+  }
+
   @Post(':id/campaigns')
   async createCampaign(
     @Param('id') id: string,
@@ -393,6 +413,7 @@ export class ProjectController {
           dto.sourceLanguage ?? undefined,
           dto.extraInstructions ?? null,
           normalizePlannedPublicationOverrides(dto.plannedPublicationOverrides),
+          dto.publishingTarget ?? 'test',
         ),
       );
     } catch (error) {

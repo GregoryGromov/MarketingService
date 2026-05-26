@@ -102,6 +102,7 @@ export class CreateCampaignHandler
           startDate: command.startDate,
           sourceLanguage: command.sourceLanguage ?? preset?.sourceLanguage ?? 'en',
           extraInstructions: command.extraInstructions ?? null,
+          publishingTarget: command.publishingTarget ?? 'test',
         });
         campaign = createdCampaign;
 

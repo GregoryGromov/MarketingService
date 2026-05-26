@@ -5,6 +5,7 @@ import type {
   ProjectId,
 } from '@marketing-service/editorial';
 import type { PlannedPublicationId } from '../domain/planned-publication.entity.js';
+import type { PublishingTarget } from '../domain/campaign.aggregate.js';
 
 export interface CampaignScheduledPublicationRecord {
   id: string;
@@ -31,6 +32,7 @@ export interface UpsertCampaignScheduledPublicationParams {
   displayName: string;
   targetLanguage: string;
   publishAt: Date;
+  publishingTarget: PublishingTarget;
 }
 
 export interface UpsertCampaignExportPlanParams {

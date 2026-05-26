@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import sharp from 'sharp';
 
@@ -64,6 +64,32 @@ export class CampaignSourceMediaService {
     );
 
     return originalPath;
+  }
+
+  async saveChannelImageVariant(params: {
+    campaignId: string;
+    channelId: string;
+    dataUrl: string;
+  }): Promise<string> {
+    const parsed = this.parseImageDataUrl(params.dataUrl);
+    const dir = this.resolveCampaignMediaDir(params.campaignId);
+    await mkdir(dir, { recursive: true });
+
+    const outputPath = join(dir, `${params.channelId}.jpg`);
+    await sharp(parsed.buffer)
+      .rotate()
+      .jpeg({ quality: 88, mozjpeg: true })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  async deleteChannelImageVariant(params: {
+    campaignId: string;
+    channelId: string;
+  }): Promise<void> {
+    const filePath = join(this.resolveCampaignMediaDir(params.campaignId), `${params.channelId}.jpg`);
+    await rm(filePath, { force: true });
   }
 
   private parseImageDataUrl(dataUrl: string): ParsedDataUrl {

@@ -1,6 +1,7 @@
 export interface PublishXMessageParams {
   text: string;
   imagePath?: string | null;
+  publishingTarget?: 'test' | 'production';
 }
 
 export interface PublishXMessageResult {

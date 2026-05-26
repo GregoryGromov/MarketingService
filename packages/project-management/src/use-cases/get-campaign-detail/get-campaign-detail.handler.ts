@@ -46,6 +46,7 @@ export interface GetCampaignDetailResult {
   sourceArticleId: string | null;
   startDate: Date;
   sourceLanguage: string;
+  publishingTarget: string;
   status: string;
   extraInstructions: string | null;
   finalApprovedAt: Date | null;
@@ -99,6 +100,7 @@ export class GetCampaignDetailHandler
       sourceArticleId: campaign.sourceArticleId,
       startDate: campaign.startDate,
       sourceLanguage: campaign.sourceLanguage,
+      publishingTarget: campaign.publishingTarget,
       status: campaign.status,
       extraInstructions: campaign.extraInstructions,
       finalApprovedAt: campaign.finalApprovedAt,

@@ -4,6 +4,7 @@ export {
   Publication,
   type PublicationId,
   type PublicationProps,
+  type PublicationPublishingTarget,
   type PublicationStatus,
 } from './domain/publication.aggregate.js';
 export { PublicationRepository } from './domain/publication.repository.js';

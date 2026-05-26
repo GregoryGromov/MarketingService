@@ -472,7 +472,7 @@ function renderCampaignUiStyles(): string {
         min-height: 360px;
       }
       .form-grid.create-campaign-form-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         align-items: end;
       }
       .form-grid.create-campaign-form-grid .full {
@@ -1530,6 +1530,13 @@ export class CampaignTestUiController {
               <label id="presetField" class="field">
                 Preset
                 <select id="presetId" required></select>
+              </label>
+              <label class="field">
+                Publishing destination
+                <select id="publishingTarget" required>
+                  <option value="test">Test accounts</option>
+                  <option value="production">Production accounts</option>
+                </select>
               </label>
             </div>
 
@@ -2819,6 +2826,7 @@ export class CampaignTestUiController {
                   document.getElementById('startDate').value,
                   '00:00',
                 ),
+                publishingTarget: document.getElementById('publishingTarget')?.value || 'test',
                 extraInstructions: null,
               };
               if (shouldSendPlanOverrides) {
@@ -5009,6 +5017,7 @@ export class CampaignTestUiController {
               <p id="inboxSummary">Loading messages that need a decision.</p>
             </div>
           </div>
+          <div class="campaign-segment-row" id="inboxTabs" role="tablist" aria-label="Inbox sections"></div>
           <div id="inboxItems" class="inbox-list"></div>
         </section>
       `,
@@ -5017,6 +5026,7 @@ export class CampaignTestUiController {
         let currentProject = null;
         let currentInbox = null;
         let currentArticlesById = new Map();
+        let activeInboxTab = 'new';
 
         function normalizeOptionalFieldValue(value) {
           const normalized = String(value ?? '').trim();
@@ -5144,6 +5154,7 @@ export class CampaignTestUiController {
         }
 
         function genericInboxCard(item) {
+          const canAcknowledge = item.type === 'publishing_exception' && item.status === 'pending';
           return '<article class="inbox-item">' +
             '<div class="card-head">' +
               '<div class="stack">' +
@@ -5154,14 +5165,42 @@ export class CampaignTestUiController {
             '</div>' +
             campaignMetaPill(item) +
             '<p class="soft">This item is read-only for now. Technical payload is available in Dev output.</p>' +
+            (canAcknowledge
+              ? '<div class="actions"><button type="button" class="primary" data-acknowledge-approval-item="' + escapeHtml(item.id) + '">Okay</button></div>'
+              : '') +
+          '</article>';
+        }
+
+        function historyInboxCard(item) {
+          const resolvedLabel = item.resolvedAt
+            ? 'Resolved ' + formatDateTime(item.resolvedAt)
+            : 'Created ' + formatDateTime(item.createdAt);
+          return '<article class="inbox-item">' +
+            '<div class="card-head">' +
+              '<div class="stack">' +
+                '<span class="eyebrow">' + escapeHtml(item.type) + '</span>' +
+                '<h3>' + escapeHtml(item.title) + '</h3>' +
+              '</div>' +
+              renderBadge(item.status) +
+            '</div>' +
+            '<div class="actions">' +
+              '<span class="pill">' + escapeHtml(item.campaignName) + '</span>' +
+              '<span class="pill">' + escapeHtml(resolvedLabel) + '</span>' +
+              '<a class="btn" href="' + campaignCreationUrl(item) + '">Open campaign</a>' +
+            '</div>' +
+            (item.details?.errorMessage
+              ? '<p class="soft">' + escapeHtml(item.details.errorMessage) + '</p>'
+              : '<p class="soft">Notification is stored in history.</p>') +
           '</article>';
         }
 
         function renderInbox(project, inbox) {
           const items = inbox.items || [];
+          const historyItems = inbox.historyItems || [];
           const campaignCount = new Set(items.map((item) => item.campaignId)).size;
           const sourceIssueCount = items.filter((item) => item.type === 'source_issue').length;
           const otherIssueCount = items.length - sourceIssueCount;
+          const visibleItems = activeInboxTab === 'history' ? historyItems : items;
 
           document.getElementById('backToProjectDashboard').href =
             '/test-ui/project?projectId=' + encodeURIComponent(project.id);
@@ -5171,19 +5210,41 @@ export class CampaignTestUiController {
             : items.length + ' message(s) require a decision across ' + campaignCount + ' campaign(s). Source issues: ' +
               sourceIssueCount + '. Other exceptions: ' + otherIssueCount + '.';
 
+          const tabs = document.getElementById('inboxTabs');
+          tabs.innerHTML = [
+            { id: 'new', label: 'New (' + items.length + ')' },
+            { id: 'history', label: 'History (' + historyItems.length + ')' },
+          ].map((tab) =>
+            '<button type="button" class="' + (activeInboxTab === tab.id ? 'is-active' : '') + '" data-inbox-tab="' + tab.id + '">' +
+              escapeHtml(tab.label) +
+            '</button>'
+          ).join('');
+          tabs.querySelectorAll('[data-inbox-tab]').forEach((button) => {
+            button.addEventListener('click', () => {
+              activeInboxTab = button.dataset.inboxTab || 'new';
+              renderInbox(project, inbox);
+            });
+          });
+
           const root = document.getElementById('inboxItems');
-          if (items.length === 0) {
-            root.innerHTML = '<div class="empty-state">Inbox is empty.</div>';
+          if (visibleItems.length === 0) {
+            root.innerHTML = '<div class="empty-state">' + (activeInboxTab === 'history' ? 'No inbox history yet.' : 'Inbox is empty.') + '</div>';
             return;
           }
 
-          root.innerHTML = items.map((item) =>
-            item.type === 'source_issue'
-              ? sourceIssueCard(item)
-              : isGeneratedArtifactIssue(item)
-                ? generatedArtifactIssueCard(item)
-                : genericInboxCard(item)
+          root.innerHTML = visibleItems.map((item) =>
+            activeInboxTab === 'history'
+              ? historyInboxCard(item)
+              : item.type === 'source_issue'
+                ? sourceIssueCard(item)
+                : isGeneratedArtifactIssue(item)
+                  ? generatedArtifactIssueCard(item)
+                  : genericInboxCard(item)
           ).join('');
+
+          root.querySelectorAll('[data-acknowledge-approval-item]').forEach((button) => {
+            button.addEventListener('click', () => acknowledgeApprovalItem(button.dataset.acknowledgeApprovalItem));
+          });
 
           root.querySelectorAll('[data-open-source-edit]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -5248,6 +5309,17 @@ export class CampaignTestUiController {
           root.querySelectorAll('.artifact-resolution-form').forEach((form) => {
             form.addEventListener('submit', submitEditedGeneratedArtifact);
           });
+        }
+
+        async function acknowledgeApprovalItem(approvalItemId) {
+          if (!approvalItemId || !projectId) {
+            return;
+          }
+          await request(
+            '/projects/' + encodeURIComponent(projectId) + '/inbox/' + encodeURIComponent(approvalItemId) + '/acknowledge',
+            { method: 'POST' },
+          );
+          await loadPage();
         }
 
         async function postSourceIssueDecision(campaignId, payload) {
@@ -5341,7 +5413,7 @@ export class CampaignTestUiController {
           ]);
 
           const articleIds = [...new Set(
-            (inbox.items || [])
+            [...(inbox.items || []), ...(inbox.historyItems || [])]
               .map((item) => item.sourceArticleId)
               .filter(Boolean),
           )];

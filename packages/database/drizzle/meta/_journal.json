@@ -85,6 +85,13 @@
       "when": 1779307200000,
       "tag": "0011_calm_alignment",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779782400000,
+      "tag": "0012_practical_publishing_targets",
+      "breakpoints": true
     }
   ]
 }

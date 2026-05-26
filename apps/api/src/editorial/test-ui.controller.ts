@@ -1358,6 +1358,7 @@ ${renderDevConsoleScript()}
       .publication-detail-image {
         display: block;
         width: min(520px, 100%);
+        max-height: min(360px, 38vh);
         border: 1px solid var(--line);
         border-radius: 24px;
         background: rgba(255, 255, 255, 0.72);
@@ -1436,6 +1437,8 @@ ${renderDevConsoleScript()}
       }
       .modal {
         width: min(560px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
         background: rgba(255, 255, 255, 0.96);
         border: 1px solid rgba(18, 18, 18, 0.12);
         border-radius: 30px;
@@ -3072,7 +3075,7 @@ ${renderDevConsoleScript()}
       .post-card {
         min-height: 220px;
         display: grid;
-        grid-template-rows: auto 1fr auto;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
         gap: 14px;
         padding: 18px;
         border-radius: 28px;
@@ -3080,6 +3083,31 @@ ${renderDevConsoleScript()}
         background: var(--post-bg);
         color: var(--post-text);
         overflow: hidden;
+      }
+      .post-main {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 14px;
+      }
+      .post-image {
+        width: 100%;
+        height: 100%;
+        min-height: 180px;
+        max-height: 240px;
+        border-radius: 22px;
+        border: 1px solid var(--post-border);
+        background: rgba(255, 255, 255, 0.42);
+        object-fit: cover;
+        align-self: stretch;
+      }
+      .post-image-placeholder {
+        display: grid;
+        place-items: center;
+        color: rgba(18, 18, 18, 0.42);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .post-meta {
         display: flex;
@@ -3123,6 +3151,126 @@ ${renderDevConsoleScript()}
         gap: 10px;
         flex-wrap: wrap;
       }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(18, 18, 18, 0.24);
+        display: none;
+        place-items: center;
+        padding: 24px;
+      }
+      .modal-backdrop.open {
+        display: grid;
+      }
+      .modal {
+        width: min(880px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 30px;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .modal-head h3 {
+        margin: 0 0 6px;
+        font-size: 30px;
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
+      .modal-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+        gap: 16px;
+      }
+      .detail-side {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+      }
+      .detail-image {
+        width: 100%;
+        max-height: min(300px, 36vh);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      .detail-image[hidden] {
+        display: none;
+      }
+      .detail-facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .detail-fact {
+        display: grid;
+        gap: 5px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.52);
+      }
+      .detail-fact span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .detail-fact strong {
+        font-size: 15px;
+        font-weight: 400;
+        overflow-wrap: anywhere;
+      }
+      label {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      textarea {
+        min-height: 260px;
+        resize: vertical;
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--text);
+        font: inherit;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+      textarea[readonly] {
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.44);
+      }
+      input[type="file"] {
+        width: 100%;
+      }
+      .modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
       .empty {
         padding: 28px;
         border: 1px dashed var(--border);
@@ -3151,6 +3299,10 @@ ${renderDevConsoleScript()}
         overflow-wrap: break-word;
       }
       @media (max-width: 960px) {
+        .post-card,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
       }
       @media (max-width: 640px) {
         .topbar {
@@ -3185,6 +3337,41 @@ ${renderDevConsoleStyles()}
       </section>
     </div>
 
+    <div id="publicationModalBackdrop" class="modal-backdrop" onclick="closePublicationModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3 id="publicationModalTitle">Publication</h3>
+            <p id="publicationModalSubtitle">Publication details.</p>
+          </div>
+          <button type="button" onclick="closePublicationModal()">Close</button>
+        </div>
+        <div class="detail-grid">
+          <div>
+            <label>
+              Publication text
+              <textarea id="publicationContent"></textarea>
+            </label>
+          </div>
+          <aside class="detail-side">
+            <img id="publicationImage" class="detail-image" alt="Publication image preview" hidden />
+            <div id="publicationFacts" class="detail-facts"></div>
+            <label id="publicationImageUploadLabel">
+              Replace image
+              <input id="publicationImageUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+            </label>
+          </aside>
+        </div>
+        <div class="modal-actions">
+          <button id="savePublicationContentBtn" type="button" onclick="savePublicationContent()">Save text</button>
+          <button id="removePublicationImageBtn" type="button" class="secondary" onclick="removePublicationImage()">Remove image</button>
+          <button id="uploadPublicationImageBtn" type="button" class="secondary" onclick="uploadPublicationImage()">Upload image</button>
+          <a id="publishedPostLink" class="btn" href="#" target="_blank" rel="noopener noreferrer" hidden>Open published post</a>
+        </div>
+        <div id="publicationModalError" class="error"></div>
+      </div>
+    </div>
+
     <script>
       const projectId = ${JSON.stringify(projectId)};
       const channelId = ${JSON.stringify(channelId)};
@@ -3204,6 +3391,7 @@ ${renderDevConsoleStyles()}
         { bg: '#fff0f5', border: '#ffc9dc', text: '#b42363', time: '#8f3f62' },
       ];
       let currentPosts = [];
+      let activePublicationDetail = null;
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -3379,7 +3567,82 @@ ${renderDevConsoleStyles()}
         return payload;
       }
 
-      function collectPosts(plans, articleMap, publicationMap, selectedDate) {
+      function toTitle(value) {
+        return String(value || '')
+          .replace(/_/g, ' ')
+          .replace(/\\b\\w/g, (char) => char.toUpperCase()) || '—';
+      }
+
+      function findArticleContent(articleDetail, overviewItem) {
+        if (!articleDetail || !overviewItem) {
+          return '';
+        }
+
+        const adaptation = (articleDetail.adaptations || []).find((item) => item.id === overviewItem.adaptationId);
+        if (!adaptation) {
+          return articleDetail.original?.content || '';
+        }
+
+        if (overviewItem.translationId) {
+          const translation = (adaptation.translations || []).find((item) => item.id === overviewItem.translationId);
+          return translation?.translatedContent || '';
+        }
+
+        return adaptation.adaptedContent || '';
+      }
+
+      function resolvePublicationUrl(publication, overviewItem) {
+        if (overviewItem?.externalUrl) {
+          return overviewItem.externalUrl;
+        }
+        if (!publication) {
+          return null;
+        }
+
+        if (publication.externalUrl) {
+          return publication.externalUrl;
+        }
+
+        const postId = String(publication.telegramMessageId || '').trim();
+        const accountRef = String(publication.telegramChatId || '').trim();
+
+        if (!postId) {
+          return null;
+        }
+
+        if (publication.channelId === 'channel_x') {
+          return 'https://x.com/i/web/status/' + encodeURIComponent(postId);
+        }
+
+        if (publication.channelId === 'channel_telegram') {
+          if (accountRef.startsWith('@')) {
+            return 'https://t.me/' + encodeURIComponent(accountRef.slice(1)) + '/' + encodeURIComponent(postId);
+          }
+          if (/^-100\\d+$/.test(accountRef)) {
+            return 'https://t.me/c/' + encodeURIComponent(accountRef.slice(4)) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        if (publication.channelId === 'channel_discord' && accountRef.includes('/')) {
+          const parts = accountRef.split('/');
+          if (parts[0] && parts[1]) {
+            return 'https://discord.com/channels/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        return null;
+      }
+
+      function overviewMatchKey(articleId, channel, language, publishAt) {
+        return [
+          articleId || '',
+          channel || '',
+          String(language || '').toLowerCase(),
+          new Date(publishAt).getTime(),
+        ].join('|');
+      }
+
+      function collectPosts(plans, articleMap, publicationMap, selectedDate, campaignMap, overviewMap, articleDetailMap) {
         return plans
           .filter((plan) =>
             plan &&
@@ -3395,20 +3658,217 @@ ${renderDevConsoleStyles()}
               String(item.targetLanguage || '').toLowerCase() === String(plan.targetLanguage || '').toLowerCase() &&
               new Date(item.publishAt).getTime() === new Date(plan.publishAt).getTime(),
             ) || null;
+            const overviewItem = overviewMap.get(
+              overviewMatchKey(plan.articleId, channelId, plan.targetLanguage, plan.publishAt),
+            ) || null;
+            const campaign = overviewItem?.campaignId
+              ? { id: overviewItem.campaignId, name: overviewItem.campaignName }
+              : (campaignMap.get(plan.articleId) || null);
+            const articleDetail = articleDetailMap.get(plan.articleId) || null;
+            const publicationStatus = overviewItem?.publicationStatus || publication?.status || null;
+            const plannedStatus = overviewItem?.plannedStatus || null;
 
             return {
               planId: plan.id,
+              plannedPublicationId: overviewItem?.plannedPublicationId || null,
               articleId: plan.articleId,
               articleTitle: article?.originalTitle || 'Untitled',
               articleExcerpt: article?.originalExcerpt || '',
               targetLanguage: plan.targetLanguage,
               publishAt: new Date(plan.publishAt),
               publication,
-              status: previewStatus(publication, plan.publishAt),
+              publicationId: overviewItem?.publicationId || publication?.id || null,
+              publicationStatus,
+              plannedStatus,
+              artifactType: overviewItem?.artifactType || null,
+              adaptationId: overviewItem?.adaptationId || null,
+              translationId: overviewItem?.translationId || null,
+              content: findArticleContent(articleDetail, overviewItem),
+              campaignId: campaign?.id || null,
+              campaignName: campaign?.name || null,
+              imageUrl: overviewItem?.imageUrl || null,
+              externalUrl: resolvePublicationUrl(publication, overviewItem),
+              errorMessage: overviewItem?.errorMessage || publication?.errorMessage || null,
+              status: previewStatus(
+                publicationStatus ? { ...publication, status: publicationStatus, publishedAt: overviewItem?.publishedAt || publication?.publishedAt } : publication,
+                overviewItem?.scheduledFor || plan.publishAt,
+              ),
               theme: articleTheme(plan.articleId),
             };
           })
           .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
+      }
+
+      function isPublishedPost(item) {
+        return item?.publicationStatus === 'published' || item?.plannedStatus === 'published';
+      }
+
+      function canEditPost(item) {
+        return Boolean(item && !isPublishedPost(item) && item.articleId && item.adaptationId);
+      }
+
+      function renderDetailFact(label, value) {
+        return '<div class="detail-fact"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value || '—') + '</strong></div>';
+      }
+
+      function openPublicationModal(index) {
+        const item = currentPosts[Number(index)];
+        if (!item) {
+          return;
+        }
+
+        activePublicationDetail = item;
+        const editable = canEditPost(item);
+        const published = isPublishedPost(item);
+        const modal = document.getElementById('publicationModalBackdrop');
+        const image = document.getElementById('publicationImage');
+        const link = document.getElementById('publishedPostLink');
+        const textarea = document.getElementById('publicationContent');
+        const saveButton = document.getElementById('savePublicationContentBtn');
+        const uploadButton = document.getElementById('uploadPublicationImageBtn');
+        const removeButton = document.getElementById('removePublicationImageBtn');
+        const uploadLabel = document.getElementById('publicationImageUploadLabel');
+
+        document.getElementById('publicationModalTitle').textContent =
+          item.campaignName || item.articleTitle || 'Publication';
+        document.getElementById('publicationModalSubtitle').textContent =
+          published ? 'Published publication. Content is read-only.' : 'Draft or scheduled publication. You can adjust content before publishing.';
+        textarea.value = item.content || '';
+        textarea.readOnly = !editable;
+        saveButton.hidden = !editable;
+        uploadButton.hidden = !editable || !item.campaignId;
+        removeButton.hidden = !editable || !item.campaignId || !item.imageUrl;
+        uploadLabel.hidden = !editable || !item.campaignId;
+        document.getElementById('publicationImageUpload').value = '';
+        document.getElementById('publicationModalError').textContent = '';
+
+        if (item.imageUrl) {
+          image.hidden = false;
+          image.src = item.imageUrl;
+        } else {
+          image.hidden = true;
+          image.removeAttribute('src');
+        }
+
+        document.getElementById('publicationFacts').innerHTML = [
+          renderDetailFact('Channel', channelLabel(item.publication?.channelId || channelId)),
+          renderDetailFact('Language', languageLabel(item.targetLanguage)),
+          renderDetailFact('Status', toTitle(item.publicationStatus || item.plannedStatus || 'planned')),
+          renderDetailFact('Scheduled for', formatDateTime(item.publishAt)),
+          renderDetailFact('Publication id', item.publicationId),
+          renderDetailFact('Campaign', item.campaignName),
+        ].join('');
+
+        if (published && item.externalUrl) {
+          link.hidden = false;
+          link.href = item.externalUrl;
+        } else {
+          link.hidden = true;
+          link.removeAttribute('href');
+        }
+
+        modal.classList.add('open');
+      }
+
+      function closePublicationModal(event) {
+        if (event && event.target !== event.currentTarget) {
+          return;
+        }
+        document.getElementById('publicationModalBackdrop').classList.remove('open');
+        activePublicationDetail = null;
+      }
+
+      async function savePublicationContent() {
+        const item = activePublicationDetail;
+        if (!canEditPost(item)) {
+          return;
+        }
+
+        const content = document.getElementById('publicationContent').value.trim();
+        if (!content) {
+          document.getElementById('publicationModalError').textContent = 'Publication text cannot be empty.';
+          return;
+        }
+
+        const url = item.translationId
+          ? '/articles/' + encodeURIComponent(item.articleId) +
+            '/adaptations/' + encodeURIComponent(item.adaptationId) +
+            '/translations/' + encodeURIComponent(item.translationId) +
+            '/edit'
+          : '/articles/' + encodeURIComponent(item.articleId) +
+            '/adaptations/' + encodeURIComponent(item.adaptationId) +
+            '/edit';
+        const body = item.translationId ? { translatedContent: content } : { adaptedContent: content };
+
+        try {
+          await post(url, body);
+          item.content = content;
+          document.getElementById('publicationModalError').textContent = '';
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function uploadPublicationImage() {
+        const item = activePublicationDetail;
+        const file = document.getElementById('publicationImageUpload').files?.[0];
+        if (!canEditPost(item) || !item.campaignId || !file) {
+          document.getElementById('publicationModalError').textContent = 'Choose an image first.';
+          return;
+        }
+
+        try {
+          const sourceImageDataUrl = await readFileAsDataUrl(file);
+          const result = await post(
+            '/campaign-media/' + encodeURIComponent(item.campaignId) + '/' + encodeURIComponent(channelId),
+            { sourceImageDataUrl },
+          );
+          item.imageUrl = result.imageUrl + '?v=' + Date.now();
+          const image = document.getElementById('publicationImage');
+          image.hidden = false;
+          image.src = item.imageUrl;
+          document.getElementById('removePublicationImageBtn').hidden = false;
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      async function removePublicationImage() {
+        const item = activePublicationDetail;
+        if (!canEditPost(item) || !item.campaignId) {
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            '/campaign-media/' + encodeURIComponent(item.campaignId) + '/' + encodeURIComponent(channelId),
+            { method: 'DELETE' },
+          );
+          const payload = await response.json();
+          renderOutput(payload);
+          if (!response.ok) {
+            throw new Error(payload?.message || 'Request failed');
+          }
+          item.imageUrl = null;
+          const image = document.getElementById('publicationImage');
+          image.hidden = true;
+          image.removeAttribute('src');
+          document.getElementById('removePublicationImageBtn').hidden = true;
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
       }
 
       function renderPosts(items, selectedDate) {
@@ -3423,9 +3883,11 @@ ${renderDevConsoleStyles()}
         }
 
         root.innerHTML = items.map((item) => {
-          const canCancel = item.publication
-            ? item.publication.status !== 'published' && item.publication.status !== 'publishing'
-            : true;
+          const index = currentPosts.indexOf(item);
+          const canCancel =
+            !isPublishedPost(item) &&
+            item.publicationStatus !== 'publishing' &&
+            item.plannedStatus !== 'publishing';
           return \`
             <article
               class="post-card"
@@ -3435,18 +3897,23 @@ ${renderDevConsoleStyles()}
                 --post-text: \${escapeHtml(item.theme.text)};
               "
             >
-              <div class="post-meta">
-                <span class="badge lang">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
-                <span class="badge lang">\${escapeHtml(formatTime(item.publishAt))}</span>
-                <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
+              <div class="post-main">
+                <div class="post-meta">
+                  <span class="badge lang">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
+                  <span class="badge lang">\${escapeHtml(formatTime(item.publishAt))}</span>
+                  <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
+                </div>
+                <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
+                <div class="post-actions">
+                  <button class="btn" type="button" onclick="openPublicationModal(\${index})">Open publication</button>
+                  \${canCancel
+                    ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
+                    : ''}
+                </div>
               </div>
-              <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
-              <div class="post-actions">
-                <a class="btn" style="justify-self:start;" href="/test-ui/review?articleId=\${escapeHtml(item.articleId)}">Open workflow</a>
-                \${canCancel
-                  ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
-                  : ''}
-              </div>
+              \${item.imageUrl
+                ? '<img class="post-image" src="' + escapeHtml(item.imageUrl) + '" alt="Publication image preview" loading="lazy" />'
+                : '<div class="post-image post-image-placeholder">No image</div>'}
             </article>
           \`;
         }).join('');
@@ -3492,7 +3959,55 @@ ${renderDevConsoleStyles()}
               Array.isArray(publicationLists[index]) ? publicationLists[index] : [],
             ]),
           );
-          currentPosts = collectPosts(Array.isArray(plans) ? plans : [], articleMap, publicationMap, selectedDate);
+          const articleIds = Array.from(
+            new Set((Array.isArray(plans) ? plans : []).map((plan) => plan.articleId).filter(Boolean)),
+          );
+          const [campaigns, articleDetails] = await Promise.all([
+            request('/projects/' + encodeURIComponent(projectId) + '/campaigns').catch(() => []),
+            Promise.all(articleIds.map((articleId) =>
+              request('/articles/' + encodeURIComponent(articleId)).catch(() => null),
+            )),
+          ]);
+          const campaignRows = Array.isArray(campaigns) ? campaigns : [];
+          const campaignById = new Map(campaignRows.map((campaign) => [campaign.id, campaign]));
+          const campaignMap = new Map(
+            campaignRows
+              .filter((campaign) => campaign?.sourceArticleId)
+              .map((campaign) => [campaign.sourceArticleId, campaign]),
+          );
+          const campaignOverviews = await Promise.all(
+            campaignRows.map((campaign) =>
+              request('/campaigns/' + encodeURIComponent(campaign.id) + '/publishing-overview').catch(() => null),
+            ),
+          );
+          const overviewMap = new Map();
+          campaignOverviews
+            .filter(Boolean)
+            .forEach((overview) => {
+              const campaign = campaignById.get(overview.campaignId);
+              (Array.isArray(overview.items) ? overview.items : []).forEach((item) => {
+                overviewMap.set(
+                  overviewMatchKey(item.articleId, item.channel, item.language, item.scheduledFor),
+                  {
+                    ...item,
+                    campaignId: overview.campaignId,
+                    campaignName: campaign?.name || null,
+                  },
+                );
+              });
+            });
+          const articleDetailMap = new Map(
+            articleDetails.filter(Boolean).map((article) => [article.id, article]),
+          );
+          currentPosts = collectPosts(
+            Array.isArray(plans) ? plans : [],
+            articleMap,
+            publicationMap,
+            selectedDate,
+            campaignMap,
+            overviewMap,
+            articleDetailMap,
+          );
           renderPosts(currentPosts, selectedDate);
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);

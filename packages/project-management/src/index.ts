@@ -24,6 +24,7 @@ export {
 export { CampaignPresetRepository } from './domain/campaign-preset.repository.js';
 export {
   type CampaignId,
+  type PublishingTarget,
   type CampaignStatus,
   Campaign,
   type CampaignProps,
@@ -141,6 +142,8 @@ export {
 export { CampaignDeletionPort } from './ports/campaign-deletion.port.js';
 export { ProjectDeletionPort } from './ports/project-deletion.port.js';
 export { ProjectManagementModule } from './project-management.module.js';
+export { AcknowledgeApprovalItemCommand } from './use-cases/acknowledge-approval-item/acknowledge-approval-item.command.js';
+export type { AcknowledgeApprovalItemResult } from './use-cases/acknowledge-approval-item/acknowledge-approval-item.handler.js';
 export { ApproveCampaignForPublishingCommand } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.command.js';
 export type { ApproveCampaignForPublishingResult } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.handler.js';
 export { AttachCampaignSourceCommand } from './use-cases/attach-campaign-source/attach-campaign-source.command.js';

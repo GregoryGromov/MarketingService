@@ -1,10 +1,12 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Controller, Get, NotFoundException, Param, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { FastifyReply } from 'fastify';
+import { CampaignSourceMediaService } from './campaign-source-media.service';
 
 const MEDIA_FILE_PATTERN = /^(source\.(jpe?g|png|webp)|channel_(telegram|x|discord|blog)\.jpg)$/i;
+const CHANNEL_ID_PATTERN = /^channel_(telegram|x|discord|blog)$/i;
 
 function contentTypeFor(fileName: string): string {
   const normalized = fileName.toLowerCase();
@@ -19,7 +21,49 @@ function contentTypeFor(fileName: string): string {
 
 @Controller('campaign-media')
 export class CampaignMediaController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly sourceMediaService: CampaignSourceMediaService,
+  ) {}
+
+  @Post(':campaignId/:channelId')
+  async replaceCampaignChannelMedia(
+    @Param('campaignId') campaignId: string,
+    @Param('channelId') channelId: string,
+    @Body() body: { sourceImageDataUrl?: string | null },
+  ): Promise<{ imageUrl: string }> {
+    if (!/^campaign_[a-z0-9]+$/i.test(campaignId) || !CHANNEL_ID_PATTERN.test(channelId)) {
+      throw new NotFoundException('Campaign media not found');
+    }
+
+    const sourceImageDataUrl = body.sourceImageDataUrl?.trim();
+    if (!sourceImageDataUrl) {
+      throw new NotFoundException('Campaign media not found');
+    }
+
+    await this.sourceMediaService.saveChannelImageVariant({
+      campaignId,
+      channelId,
+      dataUrl: sourceImageDataUrl,
+    });
+
+    return {
+      imageUrl: `/campaign-media/${encodeURIComponent(campaignId)}/${encodeURIComponent(`${channelId}.jpg`)}`,
+    };
+  }
+
+  @Delete(':campaignId/:channelId')
+  async deleteCampaignChannelMedia(
+    @Param('campaignId') campaignId: string,
+    @Param('channelId') channelId: string,
+  ): Promise<{ ok: true }> {
+    if (!/^campaign_[a-z0-9]+$/i.test(campaignId) || !CHANNEL_ID_PATTERN.test(channelId)) {
+      throw new NotFoundException('Campaign media not found');
+    }
+
+    await this.sourceMediaService.deleteChannelImageVariant({ campaignId, channelId });
+    return { ok: true };
+  }
 
   @Get(':campaignId/:fileName')
   getCampaignMedia(

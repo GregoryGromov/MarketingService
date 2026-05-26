@@ -95,6 +95,7 @@ export class CampaignPublishingDrizzlePort extends CampaignPublishingPort {
       displayName: params.displayName,
       targetLanguage: params.targetLanguage,
       publishAt: params.publishAt,
+      publishingTarget: params.publishingTarget,
     });
 
     await this.publicationRepository.save(publication);

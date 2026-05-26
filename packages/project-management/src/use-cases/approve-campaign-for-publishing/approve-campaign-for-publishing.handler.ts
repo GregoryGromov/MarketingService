@@ -255,6 +255,7 @@ export class ApproveCampaignForPublishingHandler
               displayName: adaptation.displayName,
               targetLanguage: plannedPublication.language,
               publishAt: plannedPublication.scheduledFor,
+              publishingTarget: campaign.publishingTarget,
             });
 
           plannedPublication.markPublicationScheduled();

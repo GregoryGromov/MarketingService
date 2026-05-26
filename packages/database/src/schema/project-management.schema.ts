@@ -59,6 +59,7 @@ export const campaigns = pgTable('campaigns', {
   sourceArticleId: text('source_article_id'),
   startDate: timestamp('start_date', { withTimezone: true }).notNull(),
   sourceLanguage: text('source_language').notNull().default('en'),
+  publishingTarget: text('publishing_target').notNull().default('test'),
   status: text('status').notNull().default('draft'),
   extraInstructions: text('extra_instructions'),
   finalApprovedAt: timestamp('final_approved_at', { withTimezone: true }),

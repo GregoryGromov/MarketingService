@@ -10,6 +10,7 @@ export const publications = pgTable('publications', {
   displayName: text('display_name').notNull(),
   targetLanguage: text('target_language').notNull(),
   publishAt: timestamp('publish_at', { withTimezone: true }).notNull(),
+  publishingTarget: text('publishing_target').notNull().default('test'),
   status: text('status').notNull().default('scheduled'),
   telegramChatId: text('telegram_chat_id'),
   telegramMessageId: text('telegram_message_id'),

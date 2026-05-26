@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { AcknowledgeApprovalItemHandler } from './use-cases/acknowledge-approval-item/acknowledge-approval-item.handler.js';
 import { ApproveCampaignForPublishingHandler } from './use-cases/approve-campaign-for-publishing/approve-campaign-for-publishing.handler.js';
 import { AttachCampaignSourceHandler } from './use-cases/attach-campaign-source/attach-campaign-source.handler.js';
 import { CreateCampaignHandler } from './use-cases/create-campaign/create-campaign.handler.js';
@@ -36,6 +37,7 @@ import { UpdateProjectBrandMemoryHandler } from './use-cases/update-project-bran
 @Module({
   imports: [CqrsModule],
   providers: [
+    AcknowledgeApprovalItemHandler,
     ApproveCampaignForPublishingHandler,
     AttachCampaignSourceHandler,
     CreateCampaignHandler,
