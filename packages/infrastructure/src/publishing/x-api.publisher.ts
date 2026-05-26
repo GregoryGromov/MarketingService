@@ -7,6 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHmac, randomBytes } from 'node:crypto';
 
 interface XStatusUpdateResponse {
   data?: {
@@ -31,6 +32,12 @@ interface XMediaUploadResponse {
   errors?: XApiErrorPayload['errors'];
 }
 
+interface XV1MediaUploadResponse {
+  media_id?: number;
+  media_id_string?: string;
+  errors?: XApiErrorPayload['errors'];
+}
+
 interface XApiErrorPayload {
   errors?: Array<{
     message?: string;
@@ -48,6 +55,15 @@ interface XOAuth2TokenConfig {
   refreshToken: string | null;
   clientId: string | null;
   clientSecret: string | null;
+  source: string;
+  scope: string | null;
+}
+
+interface XOAuth1TokenConfig {
+  apiKey: string;
+  apiKeySecret: string;
+  accessToken: string;
+  accessTokenSecret: string;
   source: string;
 }
 
@@ -73,6 +89,7 @@ interface XOAuth2TokenStore {
 const X_STANDARD_POST_CHARACTER_LIMIT = 280;
 const X_IMAGE_UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024;
 const DEFAULT_TOKEN_STORE_PATH = '.x-oauth2-token.json';
+const REQUIRED_X_MEDIA_SCOPE = 'media.write';
 
 @Injectable()
 export class XApiPublisher extends XPublisherPort {
@@ -163,10 +180,27 @@ export class XApiPublisher extends XPublisherPort {
     imagePath: string,
     tokenConfig: XOAuth2TokenConfig,
   ): Promise<{ mediaId: string; tokenConfig: XOAuth2TokenConfig }> {
+    if (!this.hasMediaWriteScope(tokenConfig)) {
+      const oauth1Config = this.resolveOAuth1TokenConfig();
+      if (oauth1Config) {
+        return {
+          mediaId: await this.uploadTweetImageWithOAuth1(
+            imagePath,
+            oauth1Config,
+            `OAuth2 token does not include required scope "${REQUIRED_X_MEDIA_SCOPE}". ${this.formatScopeDiagnostics(tokenConfig)}`,
+          ),
+          tokenConfig,
+        };
+      }
+
+      this.assertMediaWriteScope(tokenConfig);
+    }
+
     let response = await this.uploadTweetImage(imagePath, tokenConfig.accessToken);
 
     if (response.status === 401 && tokenConfig.refreshToken) {
       tokenConfig = await this.refreshOAuth2Token(tokenConfig);
+      this.assertMediaWriteScope(tokenConfig);
       response = await this.uploadTweetImage(imagePath, tokenConfig.accessToken);
     }
 
@@ -174,14 +208,28 @@ export class XApiPublisher extends XPublisherPort {
     const payload = this.parseResponseBody<XMediaUploadResponse | XApiErrorPayload>(rawBody);
 
     if (!response.ok) {
+      const oauth1Config = this.resolveOAuth1TokenConfig();
+      if (oauth1Config && (response.status === 403 || response.status === 404)) {
+        return {
+          mediaId: await this.uploadTweetImageWithOAuth1(
+            imagePath,
+            oauth1Config,
+            `OAuth2 media upload failed with ${response.status} ${response.statusText}. ${this.describeErrorPayload(payload, rawBody)}`,
+          ),
+          tokenConfig,
+        };
+      }
+
       throw new Error(
-        `X media upload failed with ${response.status} ${response.statusText}. Auth: OAuth2 Bearer (${tokenConfig.source}). ${this.describeErrorPayload(payload, rawBody)}`,
+        `X media upload failed with ${response.status} ${response.statusText}. Auth: OAuth2 Bearer (${tokenConfig.source}). ${this.formatScopeDiagnostics(tokenConfig)} If this is 403, the most likely cause is missing OAuth2 scope "${REQUIRED_X_MEDIA_SCOPE}" or app/account access that does not allow media upload. ${this.describeErrorPayload(payload, rawBody)}`,
       );
     }
 
     const mediaId = (payload as XMediaUploadResponse | null)?.data?.id ?? null;
     if (!mediaId) {
-      throw new Error(`X media upload succeeded but returned no media id. Raw response: ${rawBody}`);
+      throw new Error(
+        `X media upload succeeded but returned no media id. Raw response: ${rawBody}`,
+      );
     }
 
     return { mediaId, tokenConfig };
@@ -210,10 +258,56 @@ export class XApiPublisher extends XPublisherPort {
     });
   }
 
+  private async uploadTweetImageWithOAuth1(
+    imagePath: string,
+    tokenConfig: XOAuth1TokenConfig,
+    oauth2FailureContext: string,
+  ): Promise<string> {
+    const url = 'https://upload.twitter.com/1.1/media/upload.json';
+    const bytes = readFileSync(imagePath);
+
+    if (bytes.byteLength > X_IMAGE_UPLOAD_LIMIT_BYTES) {
+      throw new Error(
+        `X media upload blocked before request: image is ${bytes.byteLength} bytes, but the X image upload limit is ${X_IMAGE_UPLOAD_LIMIT_BYTES} bytes.`,
+      );
+    }
+
+    const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const form = new FormData();
+    form.append('media_category', 'tweet_image');
+    form.append('media', new Blob([body], { type: 'image/jpeg' }), 'tweet-image.jpg');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: this.buildOAuth1AuthorizationHeader('POST', url, tokenConfig),
+      },
+      body: form,
+    });
+    const rawBody = await response.text();
+    const payload = this.parseResponseBody<XV1MediaUploadResponse | XApiErrorPayload>(rawBody);
+
+    if (!response.ok) {
+      throw new Error(
+        `X media upload failed with both OAuth2 and OAuth1 fallback. OAuth2 failure: ${oauth2FailureContext} OAuth1 fallback failed with ${response.status} ${response.statusText}. Auth: OAuth1 v1.1 (${tokenConfig.source}). ${this.describeErrorPayload(payload, rawBody)}`,
+      );
+    }
+
+    const mediaId = (payload as XV1MediaUploadResponse | null)?.media_id_string ?? null;
+    if (!mediaId) {
+      throw new Error(
+        `X OAuth1 media upload succeeded but returned no media id. OAuth2 failure: ${oauth2FailureContext} Raw response: ${rawBody}`,
+      );
+    }
+
+    return mediaId;
+  }
+
   private resolveOAuth2TokenConfig(): XOAuth2TokenConfig {
     const storedTokens = this.readTokenStore();
     const storedAccessToken = storedTokens.accessToken?.trim() || null;
     const storedRefreshToken = storedTokens.refreshToken?.trim() || null;
+    const storedScope = storedTokens.scope?.trim() || null;
     const envAccessToken =
       this.config.get<string>('X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN')?.trim() ||
       this.config.get<string>('X_PUBLISH_USER_ACCESS_TOKEN')?.trim() ||
@@ -244,15 +338,37 @@ export class XApiPublisher extends XPublisherPort {
       refreshToken,
       clientId,
       clientSecret,
+      scope: storedScope,
       source: storedAccessToken
         ? `${this.getTokenStorePath()}`
         : 'X_PUBLISH_OAUTH2_USER_ACCESS_TOKEN',
     };
   }
 
-  private async refreshOAuth2Token(
-    tokenConfig: XOAuth2TokenConfig,
-  ): Promise<XOAuth2TokenConfig> {
+  private resolveOAuth1TokenConfig(): XOAuth1TokenConfig | null {
+    const apiKey = this.config.get<string>('X_PUBLISH_API_KEY')?.trim() || null;
+    const apiKeySecret =
+      this.config.get<string>('X_PUBLISH_API_KEY_SECRET')?.trim() ||
+      this.config.get<string>('X_PUBLISH_API_SECRET')?.trim() ||
+      null;
+    const accessToken = this.config.get<string>('X_PUBLISH_ACCESS_TOKEN')?.trim() || null;
+    const accessTokenSecret =
+      this.config.get<string>('X_PUBLISH_ACCESS_TOKEN_SECRET')?.trim() || null;
+
+    if (!apiKey || !apiKeySecret || !accessToken || !accessTokenSecret) {
+      return null;
+    }
+
+    return {
+      apiKey,
+      apiKeySecret,
+      accessToken,
+      accessTokenSecret,
+      source: 'X_PUBLISH_API_KEY + X_PUBLISH_ACCESS_TOKEN',
+    };
+  }
+
+  private async refreshOAuth2Token(tokenConfig: XOAuth2TokenConfig): Promise<XOAuth2TokenConfig> {
     if (!tokenConfig.refreshToken) {
       throw new Error('X OAuth2 access token expired and no refresh token is configured.');
     }
@@ -308,12 +424,80 @@ export class XApiPublisher extends XPublisherPort {
     this.writeTokenStore(refreshedStore);
 
     return {
-      accessToken: refreshedStore.accessToken!,
+      accessToken: payload.access_token,
       refreshToken: refreshedStore.refreshToken ?? null,
       clientId: tokenConfig.clientId,
       clientSecret: tokenConfig.clientSecret,
+      scope: refreshedStore.scope ?? tokenConfig.scope,
       source: `${this.getTokenStorePath()} refreshed from X_PUBLISH_OAUTH2_REFRESH_TOKEN`,
     };
+  }
+
+  private assertMediaWriteScope(tokenConfig: XOAuth2TokenConfig): void {
+    if (this.hasMediaWriteScope(tokenConfig)) {
+      return;
+    }
+
+    throw new Error(
+      `X media upload blocked before request: OAuth2 token does not include required scope "${REQUIRED_X_MEDIA_SCOPE}". ${this.formatScopeDiagnostics(tokenConfig)} Regenerate the X OAuth2 user token with tweet.write, ${REQUIRED_X_MEDIA_SCOPE}, and offline.access, then restart API/worker.`,
+    );
+  }
+
+  private hasMediaWriteScope(tokenConfig: XOAuth2TokenConfig): boolean {
+    if (!tokenConfig.scope) {
+      return true;
+    }
+
+    const scopes = tokenConfig.scope.split(/\s+/).filter(Boolean);
+    return scopes.includes(REQUIRED_X_MEDIA_SCOPE);
+  }
+
+  private formatScopeDiagnostics(tokenConfig: XOAuth2TokenConfig): string {
+    return `Token source: ${tokenConfig.source}. Token scopes: ${tokenConfig.scope ?? 'unknown'}.`;
+  }
+
+  private buildOAuth1AuthorizationHeader(
+    method: 'POST',
+    url: string,
+    tokenConfig: XOAuth1TokenConfig,
+  ): string {
+    const oauthParams: Record<string, string> = {
+      oauth_consumer_key: tokenConfig.apiKey,
+      oauth_nonce: randomBytes(16).toString('hex'),
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+      oauth_token: tokenConfig.accessToken,
+      oauth_version: '1.0',
+    };
+
+    const signatureBaseParams = Object.entries(oauthParams)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => `${this.oauth1Encode(key)}=${this.oauth1Encode(value)}`)
+      .join('&');
+    const signatureBaseString = [
+      method,
+      this.oauth1Encode(url),
+      this.oauth1Encode(signatureBaseParams),
+    ].join('&');
+    const signingKey = `${this.oauth1Encode(tokenConfig.apiKeySecret)}&${this.oauth1Encode(
+      tokenConfig.accessTokenSecret,
+    )}`;
+
+    oauthParams.oauth_signature = createHmac('sha1', signingKey)
+      .update(signatureBaseString)
+      .digest('base64');
+
+    return `OAuth ${Object.entries(oauthParams)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => `${this.oauth1Encode(key)}="${this.oauth1Encode(value)}"`)
+      .join(', ')}`;
+  }
+
+  private oauth1Encode(value: string): string {
+    return encodeURIComponent(value).replace(
+      /[!'()*]/g,
+      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
   }
 
   private readTokenStore(): XOAuth2TokenStore {
@@ -368,6 +552,7 @@ export class XApiPublisher extends XPublisherPort {
     payload:
       | XStatusUpdateResponse
       | XMediaUploadResponse
+      | XV1MediaUploadResponse
       | XApiErrorPayload
       | XOAuth2TokenResponse
       | null,
@@ -379,8 +564,7 @@ export class XApiPublisher extends XPublisherPort {
 
     const parts: string[] = [];
     const primaryError = 'errors' in payload ? payload.errors?.[0] : undefined;
-    const primaryErrorCode =
-      primaryError && 'code' in primaryError ? primaryError.code : undefined;
+    const primaryErrorCode = primaryError && 'code' in primaryError ? primaryError.code : undefined;
 
     if ('error' in payload && payload.error) {
       parts.push(`Error: ${payload.error}`);

@@ -24,6 +24,8 @@ import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transacti
 
 const MAX_STAGE_1_ATTEMPTS = 5;
 const X_PUBLISHING_CHARACTER_TARGET = 260;
+const TELEGRAM_IMAGE_CAPTION_CHARACTER_TARGET = 900;
+const DISCORD_WEBHOOK_CHARACTER_TARGET = 1800;
 const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
 const TERMINAL_CAMPAIGN_STATUSES = new Set([
   'draft',
@@ -83,7 +85,11 @@ export interface RunCampaignStage1Result {
 }
 
 function getLatestSourceVersion(versions: ArticleSourceVersion[]): ArticleSourceVersion | null {
-  return [...versions].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()).at(-1) ?? null;
+  return (
+    [...versions]
+      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .at(-1) ?? null
+  );
 }
 
 function getChannelLabel(channel: string): string {
@@ -124,6 +130,7 @@ function buildDefaultChannelRules(channel: string): string[] {
         'Prefer short paragraphs.',
         'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
         'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
+        'Keep the final text under 900 characters so it can be used safely as a Telegram image caption.',
         'Do not use hashtags.',
         'Do not use emojis unless absolutely necessary.',
       ];
@@ -139,6 +146,7 @@ function buildDefaultChannelRules(channel: string): string[] {
       return [
         'Keep the text simple and immediately understandable.',
         'Prefer plain words and short phrasing.',
+        'Keep the final text under 1800 characters so it fits Discord webhook content limits.',
         'Do not use hashtags.',
         'Do not use emojis.',
       ];
@@ -154,10 +162,7 @@ function buildDefaultChannelRules(channel: string): string[] {
   }
 }
 
-function getProjectChannelRule(
-  brandMemory: BrandMemory,
-  channel: string,
-): string | null {
+function getProjectChannelRule(brandMemory: BrandMemory, channel: string): string | null {
   switch (channel) {
     case 'channel_telegram':
       return brandMemory.adaptationPromptRules.telegram;
@@ -177,8 +182,7 @@ function buildPromptInstructions(
   brandMemory: BrandMemory,
 ): string | null {
   const defaultRules = buildDefaultChannelRules(plannedPublication.channel);
-  const projectGeneralRules =
-    brandMemory.adaptationPromptRules.generalInstructions?.trim() || null;
+  const projectGeneralRules = brandMemory.adaptationPromptRules.generalInstructions?.trim() || null;
   const projectChannelRules =
     getProjectChannelRule(brandMemory, plannedPublication.channel)?.trim() || null;
   const instructions: string[] = [];
@@ -253,33 +257,53 @@ function isSuccessfulQualityOutcome(outcome: AiGatewayQualityOutcome): boolean {
   return outcome === 'passed' || outcome === 'warning';
 }
 
-function buildXLengthQualityResult(channel: string, content: string): AiQualityCheckResult | null {
-  if (channel !== 'channel_x') {
+function buildPublicationLengthQualityResult(
+  channel: string,
+  content: string,
+): AiQualityCheckResult | null {
+  const limit =
+    channel === 'channel_x'
+      ? X_PUBLISHING_CHARACTER_TARGET
+      : channel === 'channel_telegram'
+        ? TELEGRAM_IMAGE_CAPTION_CHARACTER_TARGET
+        : channel === 'channel_discord'
+          ? DISCORD_WEBHOOK_CHARACTER_TARGET
+          : null;
+
+  if (limit == null) {
     return null;
   }
 
   const length = Array.from(content).length;
 
-  if (length <= X_PUBLISHING_CHARACTER_TARGET) {
+  if (length <= limit) {
     return null;
   }
 
+  const label = getChannelLabel(channel);
+  const reasonCode =
+    channel === 'channel_x'
+      ? 'x_post_too_long'
+      : channel === 'channel_telegram'
+        ? 'telegram_caption_too_long'
+        : 'discord_post_too_long';
+
   return {
     outcome: 'failed',
-    summary: `X adaptation is too long for publishing (${length} characters).`,
+    summary: `${label} adaptation is too long for publishing (${length} characters).`,
     reasons: [
       {
-        code: 'x_post_too_long',
+        code: reasonCode,
         severity: 'high',
-        message: `X post must be under ${X_PUBLISHING_CHARACTER_TARGET} characters, but the generated adaptation is ${length} characters.`,
+        message: `${label} post must be under ${limit} characters, but the generated adaptation is ${length} characters.`,
         excerpt: content,
-        suggestion: `Rewrite as one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+        suggestion: `Rewrite as one standalone ${label} post under ${limit} characters.`,
       },
     ],
     suggestedFix: {
-      summary: `Shorten the X post to under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      summary: `Shorten the ${label} post to under ${limit} characters.`,
       instructions: [
-        `Return one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters, including spaces.`,
+        `Return one standalone ${label} post under ${limit} characters, including spaces.`,
         'Preserve only the central idea and remove secondary details.',
         'Do not create a thread or multiple variants.',
       ],
@@ -335,16 +359,11 @@ export class RunCampaignStage1Executor {
     private readonly eventBus: EventBus,
   ) {}
 
-  async execute(
-    campaignId: string,
-    workflowRunId: string,
-  ): Promise<RunCampaignStage1Result> {
+  async execute(campaignId: string, workflowRunId: string): Promise<RunCampaignStage1Result> {
     let snapshot!: Stage1Snapshot;
     let inProgressPlannedPublicationId: string | null = null;
 
-    this.logger.log(
-      `Stage 1 started: campaign=${campaignId} workflowRun=${workflowRunId}`,
-    );
+    this.logger.log(`Stage 1 started: campaign=${campaignId} workflowRun=${workflowRunId}`);
 
     try {
       await this.transaction.run(
@@ -377,7 +396,9 @@ export class RunCampaignStage1Executor {
           }
 
           if (workflowRun.campaignId !== campaign.id) {
-            throw new Error(`Workflow run ${workflowRunId} does not belong to campaign ${campaignId}`);
+            throw new Error(
+              `Workflow run ${workflowRunId} does not belong to campaign ${campaignId}`,
+            );
           }
 
           if (workflowRun.status !== 'running') {
@@ -416,7 +437,9 @@ export class RunCampaignStage1Executor {
             sourceLanguage: sourceVersion.language,
             extraInstructions: campaign.extraInstructions,
             brandMemory: project.brandMemory,
-            plannedPublicationIds: pendingPublications.map((plannedPublication) => plannedPublication.id),
+            plannedPublicationIds: pendingPublications.map(
+              (plannedPublication) => plannedPublication.id,
+            ),
           };
         },
       );
@@ -425,7 +448,10 @@ export class RunCampaignStage1Executor {
 
       for (const plannedPublicationId of snapshot.plannedPublicationIds) {
         inProgressPlannedPublicationId = plannedPublicationId;
-        const publicationContext = await this.preparePlannedPublication(plannedPublicationId, snapshot);
+        const publicationContext = await this.preparePlannedPublication(
+          plannedPublicationId,
+          snapshot,
+        );
         this.logger.log(
           `Stage 1 publication started: campaign=${snapshot.campaignId} workflowRun=${workflowRunId} plannedPublication=${publicationContext.plannedPublicationId} channel=${publicationContext.channel} language=${publicationContext.language} type=${publicationContext.publicationType} style=${publicationContext.style}`,
         );
@@ -451,7 +477,9 @@ export class RunCampaignStage1Executor {
             throw new Error(`Workflow run ${workflowRunId} not found`);
           }
 
-          const plannedPublications = await plannedPublicationRepository.findByCampaignId(campaign.id);
+          const plannedPublications = await plannedPublicationRepository.findByCampaignId(
+            campaign.id,
+          );
           const hasStage1Failures = plannedPublications.some(
             (plannedPublication) => plannedPublication.status === 'stage_1_failed',
           );
@@ -493,7 +521,9 @@ export class RunCampaignStage1Executor {
         await this.transaction.run(
           async ({ campaignRepository, plannedPublicationRepository, workflowRunRepository }) => {
             const campaign = await campaignRepository.findById(snapshot.campaignId as never);
-            const persistedWorkflowRun = await workflowRunRepository.findById(workflowRunId as never);
+            const persistedWorkflowRun = await workflowRunRepository.findById(
+              workflowRunId as never,
+            );
 
             if (inProgressPlannedPublicationId) {
               const plannedPublication = await plannedPublicationRepository.findById(
@@ -559,12 +589,15 @@ export class RunCampaignStage1Executor {
           await campaignArtifactRepository.findByPlannedPublicationId(plannedPublication.id)
         ).find(
           (artifact) =>
-            artifact.artifactType === 'adaptation' && artifact.role === STAGE_1_BASE_ADAPTATION_ROLE,
+            artifact.artifactType === 'adaptation' &&
+            artifact.role === STAGE_1_BASE_ADAPTATION_ROLE,
         );
         let adaptation: ChannelAdaptation | null = null;
 
         if (adaptationArtifact) {
-          adaptation = await channelAdaptationRepository.findById(adaptationArtifact.artifactId as never);
+          adaptation = await channelAdaptationRepository.findById(
+            adaptationArtifact.artifactId as never,
+          );
           if (!adaptation) {
             throw new Error(
               `Adaptation ${adaptationArtifact.artifactId} linked to planned publication ${plannedPublication.id} not found`,
@@ -575,10 +608,7 @@ export class RunCampaignStage1Executor {
             articleId: snapshot.articleId as never,
             channelId: plannedPublication.channel as ChannelId,
             displayName: buildDisplayName(plannedPublication),
-            promptInstructions: buildPromptInstructions(
-              plannedPublication,
-              snapshot.brandMemory,
-            ),
+            promptInstructions: buildPromptInstructions(plannedPublication, snapshot.brandMemory),
             sourceLanguage: snapshot.sourceLanguage,
           });
 
@@ -628,33 +658,41 @@ export class RunCampaignStage1Executor {
     let lastQualityResult: AiQualityCheckResult | null = null;
 
     for (let attempt = 1; attempt <= MAX_STAGE_1_ATTEMPTS; attempt += 1) {
-      const aiResult: { content: string } =
-        attempt === 1
-          ? await this.aiGateway.generateAdaptation({
-              sourceContent: snapshot.sourceContent,
-              sourceLanguage: snapshot.sourceLanguage,
-              channel: publicationContext.channel,
-              displayName: publicationContext.displayName,
-              publicationType: publicationContext.publicationType,
-              style: publicationContext.style,
-              promptInstructions: publicationContext.promptInstructions,
-              brandMemory: snapshot.brandMemory,
-              extraInstructions: snapshot.extraInstructions,
-            })
-          : await this.aiGateway.reviseAdaptation({
-              currentContent: currentContent ?? '',
-              sourceLanguage: snapshot.sourceLanguage,
-              channel: publicationContext.channel,
-              displayName: publicationContext.displayName,
-              publicationType: publicationContext.publicationType,
-              style: publicationContext.style,
-              promptInstructions: publicationContext.promptInstructions,
-              instruction: buildRevisionInstruction(publicationContext, lastQualityResult!),
-              sourceContent: snapshot.sourceContent,
-              brandMemory: snapshot.brandMemory,
-              qualityReasons: lastQualityResult?.reasons ?? [],
-              suggestedFix: lastQualityResult?.suggestedFix ?? null,
-            });
+      let aiResult: { content: string };
+
+      if (attempt === 1) {
+        aiResult = await this.aiGateway.generateAdaptation({
+          sourceContent: snapshot.sourceContent,
+          sourceLanguage: snapshot.sourceLanguage,
+          channel: publicationContext.channel,
+          displayName: publicationContext.displayName,
+          publicationType: publicationContext.publicationType,
+          style: publicationContext.style,
+          promptInstructions: publicationContext.promptInstructions,
+          brandMemory: snapshot.brandMemory,
+          extraInstructions: snapshot.extraInstructions,
+        });
+      } else {
+        const previousQualityResult = lastQualityResult;
+        if (!previousQualityResult) {
+          throw new Error('Cannot revise adaptation without a previous quality result');
+        }
+
+        aiResult = await this.aiGateway.reviseAdaptation({
+          currentContent: currentContent ?? '',
+          sourceLanguage: snapshot.sourceLanguage,
+          channel: publicationContext.channel,
+          displayName: publicationContext.displayName,
+          publicationType: publicationContext.publicationType,
+          style: publicationContext.style,
+          promptInstructions: publicationContext.promptInstructions,
+          instruction: buildRevisionInstruction(publicationContext, previousQualityResult),
+          sourceContent: snapshot.sourceContent,
+          brandMemory: snapshot.brandMemory,
+          qualityReasons: previousQualityResult.reasons,
+          suggestedFix: previousQualityResult.suggestedFix,
+        });
+      }
 
       const persistedVersion = await this.persistAdaptationAttempt(
         publicationContext,
@@ -667,7 +705,7 @@ export class RunCampaignStage1Executor {
       currentContent = aiResult.content;
       currentSelectedVersionId = persistedVersion.id as AdaptationVersionId;
 
-      const lengthQualityResult = buildXLengthQualityResult(
+      const lengthQualityResult = buildPublicationLengthQualityResult(
         publicationContext.channel,
         aiResult.content,
       );

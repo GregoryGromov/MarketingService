@@ -65,12 +65,12 @@ const GlossarySchema = v.record(
 
 const AdaptationPromptRulesSchema = v.object({
   generalInstructions: v.optional(
-    v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000))),
+    v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000))),
   ),
-  telegram: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
-  x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
-  discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
-  blog: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  telegram: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
+  x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
+  discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
+  blog: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
   mediaAspectRatios: v.optional(
     v.nullish(
       v.object({

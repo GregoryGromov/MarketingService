@@ -1,7 +1,4 @@
-import type {
-  AdaptationVersionId,
-  TranslationVersionId,
-} from '@marketing-service/editorial';
+import type { AdaptationVersionId, TranslationVersionId } from '@marketing-service/editorial';
 import { Translation, TranslationVersion } from '@marketing-service/editorial';
 import type { DomainEvent } from '@marketing-service/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -23,6 +20,8 @@ import { CampaignFlowTransactionPort } from '../../ports/campaign-flow-transacti
 
 const MAX_STAGE_2_ATTEMPTS = 5;
 const X_PUBLISHING_CHARACTER_TARGET = 260;
+const TELEGRAM_IMAGE_CAPTION_CHARACTER_TARGET = 900;
+const DISCORD_WEBHOOK_CHARACTER_TARGET = 1800;
 const STAGE_1_BASE_ADAPTATION_ROLE = 'stage_1_base_adaptation';
 const STAGE_2_TRANSLATION_ROLE = 'stage_2_translation';
 const TERMINAL_CAMPAIGN_STATUSES = new Set([
@@ -120,33 +119,66 @@ function isSuccessfulQualityOutcome(outcome: AiGatewayQualityOutcome): boolean {
   return outcome === 'passed' || outcome === 'warning';
 }
 
-function buildXLengthQualityResult(channel: string, content: string): AiQualityCheckResult | null {
-  if (channel !== 'channel_x') {
+function getChannelLabel(channel: string): string {
+  switch (channel) {
+    case 'channel_telegram':
+      return 'Telegram';
+    case 'channel_x':
+      return 'X';
+    case 'channel_discord':
+      return 'Discord';
+    default:
+      return channel;
+  }
+}
+
+function buildPublicationLengthQualityResult(
+  channel: string,
+  content: string,
+): AiQualityCheckResult | null {
+  const limit =
+    channel === 'channel_x'
+      ? X_PUBLISHING_CHARACTER_TARGET
+      : channel === 'channel_telegram'
+        ? TELEGRAM_IMAGE_CAPTION_CHARACTER_TARGET
+        : channel === 'channel_discord'
+          ? DISCORD_WEBHOOK_CHARACTER_TARGET
+          : null;
+
+  if (limit == null) {
     return null;
   }
 
   const length = Array.from(content).length;
 
-  if (length <= X_PUBLISHING_CHARACTER_TARGET) {
+  if (length <= limit) {
     return null;
   }
 
+  const label = getChannelLabel(channel);
+  const reasonCode =
+    channel === 'channel_x'
+      ? 'x_post_too_long'
+      : channel === 'channel_telegram'
+        ? 'telegram_caption_too_long'
+        : 'discord_post_too_long';
+
   return {
     outcome: 'failed',
-    summary: `X translation is too long for publishing (${length} characters).`,
+    summary: `${label} translation is too long for publishing (${length} characters).`,
     reasons: [
       {
-        code: 'x_post_too_long',
+        code: reasonCode,
         severity: 'high',
-        message: `X post must be under ${X_PUBLISHING_CHARACTER_TARGET} characters, but the generated translation is ${length} characters.`,
+        message: `${label} post must be under ${limit} characters, but the generated translation is ${length} characters.`,
         excerpt: content,
-        suggestion: `Rewrite as one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+        suggestion: `Rewrite as one standalone ${label} post under ${limit} characters.`,
       },
     ],
     suggestedFix: {
-      summary: `Shorten the X translation to under ${X_PUBLISHING_CHARACTER_TARGET} characters.`,
+      summary: `Shorten the ${label} translation to under ${limit} characters.`,
       instructions: [
-        `Return one standalone X post under ${X_PUBLISHING_CHARACTER_TARGET} characters, including spaces.`,
+        `Return one standalone ${label} post under ${limit} characters, including spaces.`,
         'Preserve only the central idea and remove secondary details.',
         'Do not create a thread or multiple variants.',
       ],
@@ -190,16 +222,11 @@ export class RunCampaignStage2Executor {
     private readonly eventBus: EventBus,
   ) {}
 
-  async execute(
-    campaignId: string,
-    workflowRunId: string,
-  ): Promise<RunCampaignStage2Result> {
+  async execute(campaignId: string, workflowRunId: string): Promise<RunCampaignStage2Result> {
     let snapshot!: Stage2Snapshot;
     let inProgressPlannedPublicationId: string | null = null;
 
-    this.logger.log(
-      `Stage 2 started: campaign=${campaignId} workflowRun=${workflowRunId}`,
-    );
+    this.logger.log(`Stage 2 started: campaign=${campaignId} workflowRun=${workflowRunId}`);
 
     try {
       await this.transaction.run(
@@ -226,7 +253,9 @@ export class RunCampaignStage2Executor {
           }
 
           if (workflowRun.campaignId !== campaign.id) {
-            throw new Error(`Workflow run ${workflowRunId} does not belong to campaign ${campaignId}`);
+            throw new Error(
+              `Workflow run ${workflowRunId} does not belong to campaign ${campaignId}`,
+            );
           }
 
           if (workflowRun.status !== 'running') {
@@ -243,7 +272,9 @@ export class RunCampaignStage2Executor {
           ).sort((left, right) => left.scheduledFor.getTime() - right.scheduledFor.getTime());
 
           if (translatingPublications.length === 0) {
-            throw new Error(`Campaign ${campaignId} has no planned publications waiting for Stage 2`);
+            throw new Error(
+              `Campaign ${campaignId} has no planned publications waiting for Stage 2`,
+            );
           }
 
           snapshot = {
@@ -260,7 +291,10 @@ export class RunCampaignStage2Executor {
 
       for (const plannedPublicationId of snapshot.translatingPlannedPublicationIds) {
         inProgressPlannedPublicationId = plannedPublicationId;
-        const publicationContext = await this.preparePlannedPublication(plannedPublicationId, snapshot);
+        const publicationContext = await this.preparePlannedPublication(
+          plannedPublicationId,
+          snapshot,
+        );
         this.logger.log(
           `Stage 2 publication started: campaign=${snapshot.campaignId} workflowRun=${workflowRunId} plannedPublication=${publicationContext.plannedPublicationId} channel=${publicationContext.channel} language=${publicationContext.targetLanguage} type=${publicationContext.publicationType} style=${publicationContext.style}`,
         );
@@ -286,15 +320,13 @@ export class RunCampaignStage2Executor {
             throw new Error(`Workflow run ${workflowRunId} not found`);
           }
 
-          const plannedPublications = await plannedPublicationRepository.findByCampaignId(campaign.id);
+          const plannedPublications = await plannedPublicationRepository.findByCampaignId(
+            campaign.id,
+          );
           const hasUnresolvedPublicationIssues = plannedPublications.some((plannedPublication) =>
-            [
-              'source_blocked',
-              'stage_1_failed',
-              'stage_2_failed',
-              'blocked',
-              'failed',
-            ].includes(plannedPublication.status),
+            ['source_blocked', 'stage_1_failed', 'stage_2_failed', 'blocked', 'failed'].includes(
+              plannedPublication.status,
+            ),
           );
           const allReady = plannedPublications.every(
             (plannedPublication) => plannedPublication.status === 'ready',
@@ -334,7 +366,9 @@ export class RunCampaignStage2Executor {
         await this.transaction.run(
           async ({ campaignRepository, plannedPublicationRepository, workflowRunRepository }) => {
             const campaign = await campaignRepository.findById(snapshot.campaignId as never);
-            const persistedWorkflowRun = await workflowRunRepository.findById(workflowRunId as never);
+            const persistedWorkflowRun = await workflowRunRepository.findById(
+              workflowRunId as never,
+            );
 
             if (inProgressPlannedPublicationId) {
               const plannedPublication = await plannedPublicationRepository.findById(
@@ -402,7 +436,8 @@ export class RunCampaignStage2Executor {
           await campaignArtifactRepository.findByPlannedPublicationId(plannedPublication.id)
         ).find(
           (artifact) =>
-            artifact.artifactType === 'adaptation' && artifact.role === STAGE_1_BASE_ADAPTATION_ROLE,
+            artifact.artifactType === 'adaptation' &&
+            artifact.role === STAGE_1_BASE_ADAPTATION_ROLE,
         );
         if (!adaptationArtifact) {
           throw new Error(
@@ -410,7 +445,9 @@ export class RunCampaignStage2Executor {
           );
         }
 
-        const adaptation = await channelAdaptationRepository.findById(adaptationArtifact.artifactId as never);
+        const adaptation = await channelAdaptationRepository.findById(
+          adaptationArtifact.artifactId as never,
+        );
         if (!adaptation || !adaptation.adaptedContent) {
           throw new Error(
             `Adaptation ${adaptationArtifact.artifactId} for planned publication ${plannedPublication.id} is missing content`,
@@ -427,13 +464,17 @@ export class RunCampaignStage2Executor {
         let currentTranslationVersionId: TranslationVersionId | null = null;
 
         if (translationArtifact) {
-          translation = await translationRepository.findById(translationArtifact.artifactId as never);
+          translation = await translationRepository.findById(
+            translationArtifact.artifactId as never,
+          );
           if (!translation) {
             throw new Error(
               `Translation ${translationArtifact.artifactId} linked to planned publication ${plannedPublication.id} not found`,
             );
           }
-        } else if (!translationNotRequired(plannedPublication.language, adaptation.sourceLanguage)) {
+        } else if (
+          !translationNotRequired(plannedPublication.language, adaptation.sourceLanguage)
+        ) {
           translation = await translationRepository.findByAdaptationIdAndTargetLanguage(
             adaptation.id,
             plannedPublication.language,
@@ -463,8 +504,9 @@ export class RunCampaignStage2Executor {
         if (translation) {
           const versions = await translationVersionRepository.findByTranslationId(translation.id);
           currentTranslationVersionId =
-            [...versions].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()).at(-1)
-              ?.id ?? null;
+            [...versions]
+              .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+              .at(-1)?.id ?? null;
         }
 
         result = {
@@ -494,13 +536,20 @@ export class RunCampaignStage2Executor {
     publicationContext: TranslationPublicationContext,
     snapshot: Stage2Snapshot,
   ): Promise<RunCampaignStage2ItemResult> {
-    if (translationNotRequired(publicationContext.targetLanguage, publicationContext.adaptationSourceLanguage)) {
+    if (
+      translationNotRequired(
+        publicationContext.targetLanguage,
+        publicationContext.adaptationSourceLanguage,
+      )
+    ) {
       await this.transaction.run(async ({ plannedPublicationRepository }) => {
         const plannedPublication = await plannedPublicationRepository.findById(
           publicationContext.plannedPublicationId as never,
         );
         if (!plannedPublication) {
-          throw new Error(`Planned publication ${publicationContext.plannedPublicationId} not found`);
+          throw new Error(
+            `Planned publication ${publicationContext.plannedPublicationId} not found`,
+          );
         }
 
         plannedPublication.markReady();
@@ -556,7 +605,10 @@ export class RunCampaignStage2Executor {
           currentContent = aiResult.content;
           currentVersionId = version.id;
         } else if (!currentVersionId) {
-          const version = await this.persistRecoveredTranslationVersion(publicationContext, currentContent);
+          const version = await this.persistRecoveredTranslationVersion(
+            publicationContext,
+            currentContent,
+          );
           currentVersionId = version.id;
         }
       } else {
@@ -586,7 +638,7 @@ export class RunCampaignStage2Executor {
         currentVersionId = version.id;
       }
 
-      const lengthQualityResult = buildXLengthQualityResult(
+      const lengthQualityResult = buildPublicationLengthQualityResult(
         publicationContext.channel,
         currentContent ?? '',
       );
@@ -654,7 +706,9 @@ export class RunCampaignStage2Executor {
     let version!: TranslationVersion;
 
     await this.transaction.run(async ({ translationRepository, translationVersionRepository }) => {
-      const translation = await translationRepository.findById(publicationContext.translationId as never);
+      const translation = await translationRepository.findById(
+        publicationContext.translationId as never,
+      );
       if (!translation) {
         throw new Error(`Translation ${publicationContext.translationId} not found`);
       }
@@ -686,7 +740,9 @@ export class RunCampaignStage2Executor {
     const events: DomainEvent[] = [];
 
     await this.transaction.run(async ({ translationRepository, translationVersionRepository }) => {
-      const translation = await translationRepository.findById(publicationContext.translationId as never);
+      const translation = await translationRepository.findById(
+        publicationContext.translationId as never,
+      );
       if (!translation) {
         throw new Error(`Translation ${publicationContext.translationId} not found`);
       }
@@ -759,10 +815,14 @@ export class RunCampaignStage2Executor {
           publicationContext.plannedPublicationId as never,
         );
         if (!plannedPublication) {
-          throw new Error(`Planned publication ${publicationContext.plannedPublicationId} not found`);
+          throw new Error(
+            `Planned publication ${publicationContext.plannedPublicationId} not found`,
+          );
         }
 
-        const translation = await translationRepository.findById(publicationContext.translationId as never);
+        const translation = await translationRepository.findById(
+          publicationContext.translationId as never,
+        );
         if (!translation) {
           throw new Error(`Translation ${publicationContext.translationId} not found`);
         }

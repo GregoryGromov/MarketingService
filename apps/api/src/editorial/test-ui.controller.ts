@@ -1355,6 +1355,14 @@ ${renderDevConsoleScript()}
         font-weight: 700;
         white-space: nowrap;
       }
+      .publication-detail-image {
+        display: block;
+        width: min(520px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.72);
+        object-fit: cover;
+      }
       .section-stack,
       .cards {
         display: grid;
@@ -1712,6 +1720,7 @@ ${renderDevConsoleStyles()}
           </div>
           <button type="button" onclick="closePublicationDetailsModal()">Close</button>
         </div>
+        <div id="publicationDetailsImage"></div>
         <div id="publicationDetailsGrid" class="publication-detail-grid"></div>
         <div class="modal-actions">
           <a id="publicationExternalLink" class="btn primary publication-detail-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open published post</a>
@@ -2124,6 +2133,21 @@ ${renderDevConsoleStyles()}
         '</div>';
       }
 
+      function resolveArticlePublicationImageUrl(article, channelId) {
+        const coverPath = String(article?.defaultCoverUrl || '').trim();
+        if (!coverPath || !channelId) {
+          return null;
+        }
+
+        const parts = coverPath.split(/[\\\\/]+/).filter(Boolean);
+        const campaignId = parts.length >= 2 ? parts[parts.length - 2] : '';
+        if (!campaignId) {
+          return null;
+        }
+
+        return '/campaign-media/' + encodeURIComponent(campaignId) + '/' + encodeURIComponent(channelId + '.jpg');
+      }
+
       function openDashboardPublicationDetails(event, detailKey) {
         if (event) {
           event.stopPropagation();
@@ -2146,6 +2170,7 @@ ${renderDevConsoleStyles()}
         const modal = document.getElementById('publicationDetailsModalBackdrop');
         const externalLink = document.getElementById('publicationExternalLink');
         const campaignLink = document.getElementById('publicationCampaignLink');
+        const imageRoot = document.getElementById('publicationDetailsImage');
 
         document.getElementById('publicationDetailsTitle').textContent =
           campaign?.name || detail.articleTitle || 'Publication';
@@ -2163,6 +2188,9 @@ ${renderDevConsoleStyles()}
           renderPublicationDetailItem('External account', publication?.telegramChatId || null),
           renderPublicationDetailItem('External post', publication?.telegramMessageId || null),
         ].join('');
+        imageRoot.innerHTML = detail.imageUrl
+          ? '<img class="publication-detail-image" src="' + escapeHtml(detail.imageUrl) + '" alt="Publication image preview" loading="lazy" />'
+          : '';
 
         if (url) {
           externalLink.hidden = false;
@@ -2804,6 +2832,7 @@ ${renderDevConsoleStyles()}
               targetLanguage: plan.targetLanguage,
               publishAt: new Date(plan.publishAt),
               publication,
+              imageUrl: resolveArticlePublicationImageUrl(article, plan.channelId),
             };
             dashboardPublicationDetails.set(detailKey, detail);
 

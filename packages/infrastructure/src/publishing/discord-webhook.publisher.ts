@@ -13,7 +13,10 @@ interface DiscordWebhookResponse {
   guild_id?: string;
   channel_id?: string;
   message?: string;
+  code?: number;
 }
+
+const DISCORD_CONTENT_CHARACTER_LIMIT = 2000;
 
 @Injectable()
 export class DiscordWebhookPublisher extends DiscordPublisherPort {
@@ -21,13 +24,18 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
     super();
   }
 
-  async publishMessage(
-    params: PublishDiscordMessageParams,
-  ): Promise<PublishDiscordMessageResult> {
+  async publishMessage(params: PublishDiscordMessageParams): Promise<PublishDiscordMessageResult> {
     const webhookUrl = this.config.get<string>('DISCORD_WEBHOOK_URL');
+    const textLength = Array.from(params.text).length;
 
     if (!webhookUrl) {
       throw new Error('DISCORD_WEBHOOK_URL is not configured');
+    }
+
+    if (textLength > DISCORD_CONTENT_CHARACTER_LIMIT) {
+      throw new Error(
+        `Discord publish blocked before request: text is ${textLength} characters, but Discord webhook content must be ${DISCORD_CONTENT_CHARACTER_LIMIT} characters or shorter. Regenerate or edit the publication to fit the Discord limit. ${this.formatPostTextDiagnostics(params.text, textLength)}`,
+      );
     }
 
     const url = webhookUrl.includes('?') ? `${webhookUrl}&wait=true` : `${webhookUrl}?wait=true`;
@@ -46,18 +54,19 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
           }),
     });
 
-    const payload = (await response.json()) as DiscordWebhookResponse;
+    const rawBody = await response.text();
+    const payload = this.parseResponseBody<DiscordWebhookResponse>(rawBody);
 
     if (!response.ok) {
       throw new Error(
-        payload.message ?? `Discord webhook publish failed with ${response.status}`,
+        `Discord webhook publish failed with ${response.status} ${response.statusText}. ${this.formatPostTextDiagnostics(params.text, textLength)} ${this.describeErrorPayload(payload, rawBody)}`,
       );
     }
 
     return {
-      guildId: payload.guild_id ?? null,
-      channelId: payload.channel_id ?? null,
-      messageId: payload.id ?? null,
+      guildId: payload?.guild_id ?? null,
+      channelId: payload?.channel_id ?? null,
+      messageId: payload?.id ?? null,
     };
   }
 
@@ -70,5 +79,37 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
     form.append('files[0]', new Blob([body], { type: 'image/jpeg' }), basename(imagePath));
 
     return form;
+  }
+
+  private parseResponseBody<T>(rawBody: string): T | null {
+    if (!rawBody.trim()) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawBody) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  private describeErrorPayload(payload: DiscordWebhookResponse | null, rawBody: string): string {
+    if (!payload) {
+      return rawBody.trim() ? `Raw response: ${rawBody}` : 'Response body is empty.';
+    }
+
+    const parts: string[] = [];
+    if (payload.message) {
+      parts.push(`Message: ${payload.message}`);
+    }
+    if (payload.code != null) {
+      parts.push(`Code: ${String(payload.code)}`);
+    }
+    parts.push(`Raw response: ${rawBody}`);
+    return parts.join(' ');
+  }
+
+  private formatPostTextDiagnostics(text: string, textLength: number): string {
+    return `Attempted post text (${textLength} characters): ${JSON.stringify(text)}`;
   }
 }

@@ -12,15 +12,13 @@ const X_PUBLICATION_TYPE_OPTIONS = [
   { value: 'thread', label: 'Thread' },
 ] as const;
 
-export const PUBLICATION_TYPE_OPTIONS_BY_CHANNEL: Record<
-  string,
-  readonly PublicationTypeOption[]
-> = {
-  channel_telegram: DEFAULT_PUBLICATION_TYPE_OPTIONS,
-  channel_discord: DEFAULT_PUBLICATION_TYPE_OPTIONS,
-  channel_blog: DEFAULT_PUBLICATION_TYPE_OPTIONS,
-  channel_x: X_PUBLICATION_TYPE_OPTIONS,
-} as const;
+export const PUBLICATION_TYPE_OPTIONS_BY_CHANNEL: Record<string, readonly PublicationTypeOption[]> =
+  {
+    channel_telegram: DEFAULT_PUBLICATION_TYPE_OPTIONS,
+    channel_discord: DEFAULT_PUBLICATION_TYPE_OPTIONS,
+    channel_blog: DEFAULT_PUBLICATION_TYPE_OPTIONS,
+    channel_x: X_PUBLICATION_TYPE_OPTIONS,
+  } as const;
 
 const NON_X_PUBLICATION_TYPE_ALIASES: Record<string, PublicationType> = {
   default: 'default',
@@ -51,7 +49,9 @@ const X_PUBLICATION_TYPE_ALIASES: Record<string, PublicationType> = {
 };
 
 function normalizeToken(value?: string | null): string {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 export function getPublicationTypeOptionsForChannel(
@@ -115,8 +115,8 @@ export function describePublicationTypeForChannel(
   }
 
   if (normalizedChannel === 'channel_discord') {
-    return 'Write the standard Discord format for this channel: one community-friendly post, concise, readable, and self-contained.';
+    return 'Write the standard Discord format for this channel: one community-friendly post, concise, readable, self-contained, and under 1800 characters.';
   }
 
-  return 'Write the standard publication format for this channel: one complete standalone post in the normal channel style.';
+  return 'Write the standard publication format for this channel: one complete standalone post in the normal channel style. If this channel publishes with images, keep the text caption-safe and concise.';
 }

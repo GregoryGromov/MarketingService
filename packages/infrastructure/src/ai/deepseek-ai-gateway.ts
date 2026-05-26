@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AiGatewayPort,
@@ -73,9 +70,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     );
   }
 
-  async generateAdaptation(
-    params: GenerateAdaptationAiParams,
-  ): Promise<{ content: string }> {
+  async generateAdaptation(params: GenerateAdaptationAiParams): Promise<{ content: string }> {
     return this.runTextOperation(
       'generateAdaptation',
       this.buildAdaptationSystemPrompt(params),
@@ -84,9 +79,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     );
   }
 
-  async reviseAdaptation(
-    params: ReviseAdaptationAiParams,
-  ): Promise<{ content: string }> {
+  async reviseAdaptation(params: ReviseAdaptationAiParams): Promise<{ content: string }> {
     return this.runTextOperation(
       'reviseAdaptation',
       this.buildAdaptationRevisionSystemPrompt(params),
@@ -95,9 +88,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     );
   }
 
-  async generateTranslation(
-    params: GenerateTranslationAiParams,
-  ): Promise<{ content: string }> {
+  async generateTranslation(params: GenerateTranslationAiParams): Promise<{ content: string }> {
     return this.runTextOperation(
       'generateTranslation',
       this.buildTranslationSystemPrompt(params),
@@ -106,9 +97,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     );
   }
 
-  async reviseTranslation(
-    params: ReviseTranslationAiParams,
-  ): Promise<{ content: string }> {
+  async reviseTranslation(params: ReviseTranslationAiParams): Promise<{ content: string }> {
     return this.runTextOperation(
       'reviseTranslation',
       this.buildTranslationRevisionSystemPrompt(params),
@@ -326,22 +315,14 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     const record = this.ensureRecord(payload, 'quality check result');
 
     return {
-      outcome: this.readPicklist(
-        record,
-        'outcome',
-        QUALITY_CHECK_OUTCOMES,
-        'quality check result',
-      ),
+      outcome: this.readPicklist(record, 'outcome', QUALITY_CHECK_OUTCOMES, 'quality check result'),
       summary: this.readNonEmptyString(record, 'summary', 'quality check result'),
       reasons: this.readReasons(record, 'quality check result'),
       suggestedFix: this.readSuggestedFix(record, 'quality check result'),
     };
   }
 
-  private readReasons(
-    record: Record<string, unknown>,
-    context: string,
-  ): AiGatewayReason[] {
+  private readReasons(record: Record<string, unknown>, context: string): AiGatewayReason[] {
     const rawReasons = record.reasons;
 
     if (!Array.isArray(rawReasons)) {
@@ -536,6 +517,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Return exactly 3 sentences.',
         'The output must be substantially shorter than the original article.',
         'Each sentence should carry one key idea only.',
+        'Keep the final output under 900 characters so it can be used safely as a Telegram image caption.',
         'Use a strong opening hook.',
         'Keep the tone expert and clear.',
         'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
@@ -563,6 +545,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Rewrite the provided long-form article into a Discord post in the same language.',
         'Preserve the core meaning and factual accuracy.',
         'Return no more than 2 sentences.',
+        'Keep the final output under 1800 characters so it fits Discord webhook content limits.',
         'Explain everything as simply as possible.',
         'Use plain words and short phrasing.',
         'Make it easy to understand immediately for a non-expert reader.',
@@ -638,6 +621,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Do not collapse the whole text into one long line or one dense paragraph if the current text is already split naturally.',
         'Return the complete revised Telegram adaptation text, not just the fragment.',
         'The final output must still read like a concise Telegram post.',
+        'Keep the final output under 900 characters so it can be used safely as a Telegram image caption.',
         'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
         'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
         'Do not add commentary, quotes, explanations, or markdown.',
@@ -663,6 +647,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Keep the text in the same language and preserve the rest unless a tiny surrounding adjustment is required.',
         'Return the complete revised Discord post, not just the fragment.',
         'The final output must remain no more than 2 sentences.',
+        'Keep the final output under 1800 characters so it fits Discord webhook content limits.',
         'Keep the wording as simple and easy to understand as possible.',
         'Avoid jargon unless absolutely necessary.',
         'Do not add commentary, quotes, explanations, or markdown.',
@@ -862,6 +847,27 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         );
       }
 
+      if (channel === 'channel_telegram') {
+        rules.push(
+          [
+            'Non-negotiable Telegram publishing constraints:',
+            '- Keep the final text under 900 characters whenever an image may be attached.',
+            '- Use Telegram HTML tags for emphasis, not Markdown.',
+            '- If the source is long, compress aggressively into the central point only.',
+          ].join('\n'),
+        );
+      }
+
+      if (channel === 'channel_discord') {
+        rules.push(
+          [
+            'Non-negotiable Discord publishing constraints:',
+            '- Keep the final text under 1800 characters because Discord webhook content is limited.',
+            '- If the source is long, compress aggressively into the central point only.',
+          ].join('\n'),
+        );
+      }
+
       return rules.join('\n\n');
     }
 
@@ -872,6 +878,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         '- Prefer short paragraphs.',
         '- Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
         '- Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
+        '- Keep the final text under 900 characters whenever an image may be attached.',
         '- Do not use hashtags.',
         '- Do not use emojis unless absolutely necessary.',
       ].join('\n');
@@ -892,6 +899,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
       return [
         'Channel-specific rules:',
         '- Keep the wording simple and community-friendly.',
+        '- Keep the final text under 1800 characters because Discord webhook content is limited.',
         '- Avoid jargon unless necessary.',
         '- Do not use hashtags.',
         '- Do not use emojis unless they are part of the intended voice.',

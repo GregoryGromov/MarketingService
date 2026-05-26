@@ -27,6 +27,7 @@ const DEFAULT_ADAPTATION_RULES_BY_CHANNEL = {
     'Prefer short paragraphs.',
     'Use Telegram HTML tags for formatting when emphasis is needed, for example <b>important phrase</b>.',
     'Do not use Markdown formatting such as **bold** because Telegram will not render it in HTML parse mode.',
+    'Keep the final text under 900 characters so it can be used safely as a Telegram image caption.',
     'Do not use hashtags.',
     'Do not use emojis unless absolutely necessary.',
   ].join('\n'),
@@ -40,6 +41,7 @@ const DEFAULT_ADAPTATION_RULES_BY_CHANNEL = {
   channel_discord: [
     'Keep the text simple and immediately understandable.',
     'Prefer plain words and short phrasing.',
+    'Keep the final text under 1800 characters so it fits Discord webhook content limits.',
     'Do not use hashtags.',
     'Do not use emojis.',
   ].join('\n'),
@@ -377,6 +379,22 @@ function renderCampaignUiStyles(): string {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+      .publication-image-preview {
+        display: block;
+        width: min(320px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.72);
+        object-fit: cover;
+      }
+      .publication-image-thumb {
+        width: 120px;
+        max-width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.72);
+        object-fit: cover;
       }
       .done-publication-editor textarea {
         min-height: 280px;
@@ -1085,6 +1103,12 @@ function renderSharedClientScript(): string {
         return '<span class="badge ' + badgeTone(status) + '">' + escapeHtml(status || 'unknown') + '</span>';
       }
 
+      function renderPublicationImage(imageUrl, className = 'publication-image-preview') {
+        return imageUrl
+          ? '<img class="' + escapeHtml(className) + '" src="' + escapeHtml(imageUrl) + '" alt="Publication image preview" loading="lazy" />'
+          : '';
+      }
+
       function toTitle(value) {
         return String(value || '')
           .split(/[_\\s-]+/)
@@ -1623,6 +1647,7 @@ export class CampaignTestUiController {
             <div class="form-grid done-publication-grid">
               <label class="field full">
                 Content
+                <div id="donePublicationImagePreview"></div>
                 <textarea id="donePublicationContent" required></textarea>
               </label>
               <label class="field">
@@ -2078,6 +2103,12 @@ export class CampaignTestUiController {
           );
         }
 
+        function renderPublicationImage(imageUrl, className = 'publication-image-preview') {
+          return imageUrl
+            ? '<img class="' + escapeHtml(className) + '" src="' + escapeHtml(imageUrl) + '" alt="Publication image preview" loading="lazy" />'
+            : '';
+        }
+
         function renderDonePublications(overview) {
           const rows = overview?.items || [];
           const root = document.getElementById('donePublicationRows');
@@ -2095,6 +2126,7 @@ export class CampaignTestUiController {
               '<td>' + renderBadge(item.publicationStatus || item.plannedStatus) + '</td>' +
               '<td>' +
                 '<div class="stack">' +
+                  renderPublicationImage(item.imageUrl, 'publication-image-thumb') +
                   (item.publicationId ? '<span class="mono">' + escapeHtml(item.publicationId) + '</span>' : '') +
                   (item.exportPlanId ? '<span class="mono">' + escapeHtml(item.exportPlanId) + '</span>' : '') +
                   (!item.publicationId && !item.exportPlanId ? '<span class="soft">Dashboard planned publication</span>' : '') +
@@ -2182,6 +2214,7 @@ export class CampaignTestUiController {
             '<span class="pill">' + escapeHtml(formatDateTime(item.scheduledFor)) + '</span>' +
             '<span class="pill">' + escapeHtml(toTitle(item.publishMode || 'auto_publish')) + '</span>' +
             '<span class="pill">' + escapeHtml(item.artifactType || 'publication') + '</span>';
+          document.getElementById('donePublicationImagePreview').innerHTML = renderPublicationImage(item.imageUrl);
           document.getElementById('donePublicationContent').value = content;
           document.getElementById('donePublicationDate').value = formatDateInputValue(item.scheduledFor);
           const scheduledParts = getMoscowDateParts(item.scheduledFor);
@@ -3614,6 +3647,7 @@ export class CampaignTestUiController {
             </div>
             <div class="actions">
               <button class="primary" type="submit">Save Prompt Rules</button>
+              <p id="promptSaveStatus" style="margin:0;color:var(--muted);"></p>
             </div>
           </form>
         </section>
@@ -3625,20 +3659,38 @@ export class CampaignTestUiController {
         function fillPromptRules(brandMemory) {
           const adaptationPromptRules = brandMemory.adaptationPromptRules || {};
           document.getElementById('adaptationRulesGeneral').value =
-            adaptationPromptRules.generalInstructions || '';
+            adaptationPromptRules.generalInstructions ?? '';
           document.getElementById('adaptationRulesTelegram').value =
-            adaptationPromptRules.telegram || defaultAdaptationRulesByChannel.channel_telegram || '';
+            adaptationPromptRules.telegram ?? defaultAdaptationRulesByChannel.channel_telegram ?? '';
           document.getElementById('adaptationRulesX').value =
-            adaptationPromptRules.x || defaultAdaptationRulesByChannel.channel_x || '';
+            adaptationPromptRules.x ?? defaultAdaptationRulesByChannel.channel_x ?? '';
           document.getElementById('adaptationRulesDiscord').value =
-            adaptationPromptRules.discord || defaultAdaptationRulesByChannel.channel_discord || '';
+            adaptationPromptRules.discord ?? defaultAdaptationRulesByChannel.channel_discord ?? '';
           document.getElementById('adaptationRulesBlog').value =
-            adaptationPromptRules.blog || defaultAdaptationRulesByChannel.channel_blog || '';
+            adaptationPromptRules.blog ?? defaultAdaptationRulesByChannel.channel_blog ?? '';
           const ratios = adaptationPromptRules.mediaAspectRatios || {};
-          document.getElementById('mediaRatioTelegram').value = ratios.telegram || '1:1';
-          document.getElementById('mediaRatioX').value = ratios.x || '16:9';
-          document.getElementById('mediaRatioDiscord').value = ratios.discord || '16:9';
-          document.getElementById('mediaRatioBlog').value = ratios.blog || '1200:630';
+          document.getElementById('mediaRatioTelegram').value = ratios.telegram ?? '1:1';
+          document.getElementById('mediaRatioX').value = ratios.x ?? '16:9';
+          document.getElementById('mediaRatioDiscord').value = ratios.discord ?? '16:9';
+          document.getElementById('mediaRatioBlog').value = ratios.blog ?? '1200:630';
+        }
+
+        function normalizePromptRulesForCompare(promptRules) {
+          const rules = promptRules || {};
+          const ratios = rules.mediaAspectRatios || {};
+          return {
+            generalInstructions: rules.generalInstructions ?? null,
+            telegram: rules.telegram ?? null,
+            x: rules.x ?? null,
+            discord: rules.discord ?? null,
+            blog: rules.blog ?? null,
+            mediaAspectRatios: {
+              telegram: ratios.telegram ?? '1:1',
+              x: ratios.x ?? '16:9',
+              discord: ratios.discord ?? '16:9',
+              blog: ratios.blog ?? '1200:630',
+            },
+          };
         }
 
         async function loadPage() {
@@ -3685,17 +3737,55 @@ export class CampaignTestUiController {
         document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('promptManagementForm').addEventListener('submit', async (event) => {
             event.preventDefault();
+            const status = document.getElementById('promptSaveStatus');
+            status.textContent = 'Saving prompt rules…';
+            status.style.color = 'var(--muted)';
             const payload = buildPayload();
-            const updated = await request(
-              '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
-              {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              },
-            );
-            document.getElementById('updatedAt').textContent =
-              'Last update ' + formatDateTime(updated.updatedAt);
+            try {
+              await request(
+                '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
+                {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                },
+                { renderResponse: false },
+              );
+
+              const persisted = await request(
+                '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
+                undefined,
+                { renderResponse: false },
+              );
+              const submittedRules = normalizePromptRulesForCompare(payload.adaptationPromptRules);
+              const persistedRules = normalizePromptRulesForCompare(
+                persisted.brandMemory?.adaptationPromptRules,
+              );
+              const wasPersisted =
+                JSON.stringify(submittedRules) === JSON.stringify(persistedRules);
+
+              document.getElementById('updatedAt').textContent =
+                'Last update ' + formatDateTime(persisted.updatedAt);
+              fillPromptRules(persisted.brandMemory || {});
+
+              if (!wasPersisted) {
+                status.textContent = 'Prompt rules were not persisted. Check Dev output.';
+                status.style.color = 'var(--danger)';
+                setOutput({
+                  saved: false,
+                  submittedPromptRules: submittedRules,
+                  persistedPromptRules: persistedRules,
+                });
+                return;
+              }
+
+              status.textContent = 'Prompt rules saved.';
+              setOutput({ saved: true, promptRules: persistedRules });
+            } catch (error) {
+              status.textContent = error instanceof Error ? error.message : String(error);
+              status.style.color = 'var(--danger)';
+              setOutput(error instanceof Error ? error.message : String(error));
+            }
           });
         });
 
@@ -5509,6 +5599,7 @@ export class CampaignTestUiController {
               '<td>' + renderBadge(item.plannedStatus) + '</td>' +
               '<td>' +
                 '<div class="stack">' +
+                  renderPublicationImage(item.imageUrl, 'publication-image-thumb') +
                   (item.publicationId ? '<span class="mono">' + escapeHtml(item.publicationId) + '</span>' : '') +
                   (item.exportPlanId ? '<span class="mono">' + escapeHtml(item.exportPlanId) + '</span>' : '') +
                   (item.publicationStatus ? renderBadge(item.publicationStatus) : '<span class="soft">No linked publication yet</span>') +

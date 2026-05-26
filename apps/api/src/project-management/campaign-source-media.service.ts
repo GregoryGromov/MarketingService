@@ -35,6 +35,7 @@ const CHANNEL_RATIO_KEYS: Array<{
 ];
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const CHANNEL_VARIANT_LONG_SIDE = 1280;
 
 @Injectable()
 export class CampaignSourceMediaService {
@@ -74,8 +75,14 @@ export class CampaignSourceMediaService {
       throw new Error('Source image must be a JPEG, PNG, or WebP data URL.');
     }
 
-    const mimeType = match[1]!.toLowerCase().replace('image/jpg', 'image/jpeg');
-    const buffer = Buffer.from(match[2]!, 'base64');
+    const matchedMimeType = match[1];
+    const matchedPayload = match[2];
+    if (!matchedMimeType || !matchedPayload) {
+      throw new Error('Source image must be a JPEG, PNG, or WebP data URL.');
+    }
+
+    const mimeType = matchedMimeType.toLowerCase().replace('image/jpg', 'image/jpeg');
+    const buffer = Buffer.from(matchedPayload, 'base64');
 
     if (buffer.byteLength === 0) {
       throw new Error('Source image is empty.');
@@ -105,8 +112,14 @@ export class CampaignSourceMediaService {
     ratioText: string;
   }): Promise<void> {
     const ratio = parseAspectRatio(params.ratioText);
-    const width = ratio.width >= ratio.height ? 1600 : Math.round((1600 * ratio.width) / ratio.height);
-    const height = ratio.width >= ratio.height ? Math.round((1600 * ratio.height) / ratio.width) : 1600;
+    const width =
+      ratio.width >= ratio.height
+        ? CHANNEL_VARIANT_LONG_SIDE
+        : Math.round((CHANNEL_VARIANT_LONG_SIDE * ratio.width) / ratio.height);
+    const height =
+      ratio.width >= ratio.height
+        ? Math.round((CHANNEL_VARIANT_LONG_SIDE * ratio.height) / ratio.width)
+        : CHANNEL_VARIANT_LONG_SIDE;
 
     await sharp(params.input)
       .rotate()
@@ -121,10 +134,7 @@ export class CampaignSourceMediaService {
   }
 }
 
-export function resolveChannelImageVariantPath(
-  originalPath: string,
-  channelId: string,
-): string {
+export function resolveChannelImageVariantPath(originalPath: string, channelId: string): string {
   return join(dirname(originalPath), `${channelId}.jpg`);
 }
 

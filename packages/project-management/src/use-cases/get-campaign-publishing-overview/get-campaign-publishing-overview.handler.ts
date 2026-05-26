@@ -1,10 +1,13 @@
 import { Inject } from '@nestjs/common';
 import {
+  ArticleRepository,
   ChannelAdaptationRepository,
   TranslationRepository,
 } from '@marketing-service/editorial';
 import { resolvePublicationExternalUrl } from '@marketing-service/shared';
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { existsSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { CampaignArtifactRepository } from '../../domain/campaign-artifact.repository.js';
 import { CampaignRepository } from '../../domain/campaign.repository.js';
 import { PlannedPublicationRepository } from '../../domain/planned-publication.repository.js';
@@ -40,6 +43,7 @@ export interface CampaignPublishingOverviewItemResult {
   externalAccountRef: string | null;
   externalPostId: string | null;
   externalUrl: string | null;
+  imageUrl: string | null;
   publishedAt: Date | null;
   errorMessage: string | null;
 }
@@ -100,6 +104,30 @@ function countPublication(metrics: CampaignPublishingOverviewMetrics, item: Camp
   }
 }
 
+function createCampaignMediaUrl(filePath: string): string {
+  return `/campaign-media/${encodeURIComponent(basename(dirname(filePath)))}/${encodeURIComponent(
+    basename(filePath),
+  )}`;
+}
+
+function resolvePublicationImageUrl(defaultCoverUrl: string | null | undefined, channelId: string): string | null {
+  const originalPath = defaultCoverUrl?.trim();
+  if (!originalPath) {
+    return null;
+  }
+
+  const variantPath = join(dirname(originalPath), `${channelId}.jpg`);
+  if (existsSync(variantPath)) {
+    return createCampaignMediaUrl(variantPath);
+  }
+
+  if (existsSync(originalPath)) {
+    return createCampaignMediaUrl(originalPath);
+  }
+
+  return null;
+}
+
 @QueryHandler(GetCampaignPublishingOverviewQuery)
 export class GetCampaignPublishingOverviewHandler
   implements
@@ -121,6 +149,8 @@ export class GetCampaignPublishingOverviewHandler
     private readonly translationRepository: TranslationRepository,
     @Inject(CampaignPublishingPort)
     private readonly campaignPublishingPort: CampaignPublishingPort,
+    @Inject(ArticleRepository)
+    private readonly articleRepository: ArticleRepository,
   ) {}
 
   async execute(
@@ -137,6 +167,23 @@ export class GetCampaignPublishingOverviewHandler
 
     const items: CampaignPublishingOverviewItemResult[] = [];
     const metrics = createEmptyMetrics();
+    const imageUrlByArticleId = new Map<string, string | null>();
+
+    const getImageUrl = async (articleId: string | null, channelId: string): Promise<string | null> => {
+      if (!articleId) {
+        return null;
+      }
+
+      const cacheKey = `${articleId}:${channelId}`;
+      if (imageUrlByArticleId.has(cacheKey)) {
+        return imageUrlByArticleId.get(cacheKey) ?? null;
+      }
+
+      const article = await this.articleRepository.findById(articleId as never);
+      const imageUrl = resolvePublicationImageUrl(article?.defaultCoverUrl ?? null, channelId);
+      imageUrlByArticleId.set(cacheKey, imageUrl);
+      return imageUrl;
+    };
 
     for (const plannedPublication of plannedPublications) {
       const [scheduledPublication, exportPlan, artifacts] = await Promise.all([
@@ -160,10 +207,11 @@ export class GetCampaignPublishingOverviewHandler
       const translation = translationArtifact
         ? await this.translationRepository.findById(translationArtifact.artifactId as never)
         : null;
+      const articleId = adaptation?.articleId ?? null;
 
       const item: CampaignPublishingOverviewItemResult = {
         plannedPublicationId: plannedPublication.id,
-        articleId: adaptation?.articleId ?? null,
+        articleId,
         adaptationId: adaptation?.id ?? null,
         translationId: translation?.id ?? null,
         artifactType: translation ? 'translation' : adaptation ? 'adaptation' : null,
@@ -185,6 +233,7 @@ export class GetCampaignPublishingOverviewHandler
           externalAccountRef: scheduledPublication?.externalAccountRef ?? null,
           externalPostId: scheduledPublication?.externalPostId ?? null,
         }),
+        imageUrl: await getImageUrl(articleId, plannedPublication.channel),
         publishedAt: scheduledPublication?.publishedAt ?? null,
         errorMessage: scheduledPublication?.errorMessage ?? null,
       };
