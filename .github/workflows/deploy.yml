@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-api:
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      tag: ${{ github.sha }}
+    secrets: inherit
+
+  deploy-worker:
+    uses: ./.github/workflows/deploy-worker.yml
+    with:
+      tag: ${{ github.sha }}
+    secrets: inherit

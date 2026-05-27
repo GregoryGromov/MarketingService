@@ -1,0 +1,46 @@
+name: Deploy api
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Full 40-char commit SHA (NOT a tag/branch). For rollback copy from DEPLOYED_SHA variable."
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-tag:
+    name: Validate tag format
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ensure tag is full SHA
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::tag must be a 40-char lowercase hex commit SHA, got '$TAG'"
+            exit 1
+          fi
+
+  deploy:
+    needs: validate-tag
+    uses: ovnstable/infra/.github/workflows/deploy-full.yaml@main
+    with:
+      registry: registry.overnight.fi
+      image: marketing-api
+      tag: ${{ inputs.tag }}
+      service_name: marketing-api
+      gitops_folder: frontend/ai-marketing/marketing-api
+      server_folder: /data/ai-marketing/marketing-api
+      vault_paths: ai-marketing-service
+      dockerfile_path: apps/api/Dockerfile
+    secrets: inherit
