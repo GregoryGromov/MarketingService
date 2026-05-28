@@ -987,10 +987,29 @@ function renderSharedClientScript(): string {
         }
 
         if (!res.ok) {
-          throw new Error(payload?.message || 'Request failed');
+          throw new Error(extractRequestErrorMessage(payload));
         }
 
         return payload;
+      }
+
+      function extractRequestErrorMessage(payload) {
+        if (!payload) {
+          return 'Request failed';
+        }
+        if (typeof payload === 'string') {
+          return payload || 'Request failed';
+        }
+        if (Array.isArray(payload.message)) {
+          return payload.message.join('; ') || 'Request failed';
+        }
+        if (typeof payload.message === 'string') {
+          return payload.message;
+        }
+        if (typeof payload.error === 'string') {
+          return payload.error;
+        }
+        return JSON.stringify(payload);
       }
 
       function readFileAsDataUrl(file) {
@@ -1000,6 +1019,73 @@ function renderSharedClientScript(): string {
           reader.onerror = () => reject(reader.error || new Error('File read failed'));
           reader.readAsDataURL(file);
         });
+      }
+
+      function loadImageFromDataUrl(dataUrl) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error('Source image could not be decoded.'));
+          image.src = dataUrl;
+        });
+      }
+
+      function canvasToJpegDataUrl(canvas, quality) {
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Source image could not be compressed.'));
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result || ''));
+              reader.onerror = () => reject(reader.error || new Error('Compressed image read failed'));
+              reader.readAsDataURL(blob);
+            },
+            'image/jpeg',
+            quality,
+          );
+        });
+      }
+
+      function estimateDataUrlBytes(dataUrl) {
+        const commaIndex = dataUrl.indexOf(',');
+        const payload = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+        return Math.floor((payload.length * 3) / 4);
+      }
+
+      async function prepareSourceImageDataUrl(file) {
+        const maxBytes = 9.5 * 1024 * 1024;
+        const maxSide = 2400;
+        const sourceDataUrl = await readFileAsDataUrl(file);
+        const image = await loadImageFromDataUrl(sourceDataUrl);
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Source image could not be prepared.');
+        }
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+
+        let quality = 0.88;
+        let compressedDataUrl = await canvasToJpegDataUrl(canvas, quality);
+        while (estimateDataUrlBytes(compressedDataUrl) > maxBytes && quality > 0.55) {
+          quality -= 0.08;
+          compressedDataUrl = await canvasToJpegDataUrl(canvas, quality);
+        }
+
+        if (estimateDataUrlBytes(compressedDataUrl) > maxBytes) {
+          throw new Error('Source image is too large after compression. Use a smaller image.');
+        }
+
+        return compressedDataUrl;
       }
 
       function toMoscowShiftedDate(value) {
@@ -2908,7 +2994,7 @@ export class CampaignTestUiController {
             setPrimaryButtonBusy('longreadNext', true, 'Starting AI...', 'Next');
             try {
               const sourceImageDataUrl = sourceImageFile
-                ? await readFileAsDataUrl(sourceImageFile)
+                ? await prepareSourceImageDataUrl(sourceImageFile)
                 : null;
               await request(
                 '/campaigns/' + encodeURIComponent(createdCampaignId) + '/source',

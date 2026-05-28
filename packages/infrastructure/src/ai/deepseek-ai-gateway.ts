@@ -24,6 +24,7 @@ interface DeepSeekChatCompletionResponse {
   choices?: Array<{
     message?: {
       content?: string | null;
+      reasoning_content?: string | null;
     };
   }>;
   error?: {
@@ -45,6 +46,13 @@ class AiGatewayTransportError extends Error {
 class AiGatewayValidationError extends Error {}
 
 type StructuredResultParser<TResult> = (payload: unknown) => TResult;
+type DeepSeekThinkingType = 'enabled' | 'disabled';
+
+interface DeepSeekCompletionOptions {
+  model?: string;
+  thinkingType?: DeepSeekThinkingType;
+  reasoningEffort?: 'high' | 'max';
+}
 
 const SOURCE_VALIDATION_OUTCOMES = ['passed', 'needs_review', 'blocked'] as const;
 const QUALITY_CHECK_OUTCOMES = ['passed', 'warning', 'failed', 'blocked'] as const;
@@ -138,7 +146,11 @@ export class DeepSeekAiGateway extends AiGatewayPort {
   ): Promise<{ content: string }> {
     return this.executeWithRetry(operationName, async () => {
       const content = this.parseTextResult(
-        await this.requestCompletion(systemPrompt, userPrompt, temperature),
+        await this.requestCompletion(systemPrompt, userPrompt, temperature, {
+          model: this.resolveAdaptationModel(),
+          thinkingType: this.resolveAdaptationThinkingType(),
+          reasoningEffort: this.resolveAdaptationReasoningEffort(),
+        }),
       );
 
       return { content };
@@ -207,13 +219,40 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     systemPrompt: string,
     userPrompt: string,
     temperature: number,
+    options: DeepSeekCompletionOptions = {},
   ): Promise<string> {
     const baseUrl = this.config.get<string>('DEEPSEEK_BASE_URL') ?? 'https://api.deepseek.com';
     const apiKey = this.config.get<string>('DEEPSEEK_API_KEY');
-    const model = this.config.get<string>('DEEPSEEK_MODEL') ?? 'deepseek-v4-flash';
+    const model =
+      options.model?.trim() ||
+      this.config.get<string>('DEEPSEEK_MODEL')?.trim() ||
+      'deepseek-v4-flash';
+    const thinkingType = options.thinkingType ?? 'disabled';
 
     if (!apiKey) {
       throw new AiGatewayConfigurationError('DEEPSEEK_API_KEY is not configured');
+    }
+
+    const body: Record<string, unknown> = {
+      model,
+      thinking: { type: thinkingType },
+      stream: false,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+    };
+
+    if (thinkingType === 'enabled') {
+      body.reasoning_effort = options.reasoningEffort ?? 'max';
+    } else {
+      body.temperature = temperature;
     }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -222,22 +261,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        thinking: { type: 'disabled' },
-        temperature,
-        stream: false,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
     });
 
     const payload = (await response.json()) as DeepSeekChatCompletionResponse;
@@ -255,6 +279,38 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     }
 
     return content;
+  }
+
+  private resolveAdaptationModel(): string {
+    return (
+      this.config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
+      this.config.get<string>('DEEPSEEK_CONTENT_MODEL')?.trim() ||
+      'deepseek-v4-pro'
+    );
+  }
+
+  private resolveAdaptationThinkingType(): DeepSeekThinkingType {
+    const value = (
+      this.config.get<string>('DEEPSEEK_ADAPTATION_THINKING') ??
+      this.config.get<string>('DEEPSEEK_CONTENT_THINKING') ??
+      'enabled'
+    )
+      .trim()
+      .toLowerCase();
+
+    return value === 'disabled' ? 'disabled' : 'enabled';
+  }
+
+  private resolveAdaptationReasoningEffort(): 'high' | 'max' {
+    const value = (
+      this.config.get<string>('DEEPSEEK_ADAPTATION_REASONING_EFFORT') ??
+      this.config.get<string>('DEEPSEEK_CONTENT_REASONING_EFFORT') ??
+      'max'
+    )
+      .trim()
+      .toLowerCase();
+
+    return value === 'high' ? 'high' : 'max';
   }
 
   private parseTextResult(rawContent: string): string {
