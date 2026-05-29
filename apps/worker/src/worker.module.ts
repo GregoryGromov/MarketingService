@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { resolvePrettyPinoTransport } from '@marketing-service/shared';
 import { InfrastructureModule } from '@marketing-service/infrastructure';
 import { ProjectManagementModule } from '@marketing-service/project-management';
 import { CqrsModule } from '@nestjs/cqrs';
 import { resolve } from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
+import { resolvePrettyPinoTransport } from './infrastructure/logging/pretty-pino.transport';
 import { CampaignProductionWorker } from './processors/campaign-production.worker';
 
 @Module({
