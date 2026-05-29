@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolvePrettyPinoTransport } from '@marketing-service/shared';
 import { resolve } from 'node:path';
 import { EditorialModule } from '@marketing-service/editorial';
 import { InfrastructureModule } from '@marketing-service/infrastructure';
@@ -24,7 +25,7 @@ import { PublishingHttpModule } from './publishing/publishing-http.module';
     }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+        transport: resolvePrettyPinoTransport(),
       },
     }),
     InfrastructureModule,   // DB + all port→adapter bindings

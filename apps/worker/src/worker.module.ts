@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolvePrettyPinoTransport } from '@marketing-service/shared';
 import { InfrastructureModule } from '@marketing-service/infrastructure';
 import { ProjectManagementModule } from '@marketing-service/project-management';
 import { CqrsModule } from '@nestjs/cqrs';
@@ -18,7 +19,7 @@ import { CampaignProductionWorker } from './processors/campaign-production.worke
     }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+        transport: resolvePrettyPinoTransport(),
       },
     }),
     InfrastructureModule,
