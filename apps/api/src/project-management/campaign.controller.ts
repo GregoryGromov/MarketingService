@@ -1,19 +1,19 @@
 import {
   ApproveCampaignForPublishingCommand,
   AttachCampaignSourceCommand,
+  type CampaignId,
   DeleteCampaignCommand,
   GetCampaignApprovalInboxQuery,
-  GetCampaignDetailQuery,
-  GetCampaignExecutionHistoryQuery,
-  GetCampaignPublishingOverviewQuery,
-  GetProjectQuery,
-  RescheduleCampaignPlannedPublicationCommand,
-  type CampaignId,
   type GetCampaignApprovalInboxResult,
+  GetCampaignDetailQuery,
   type GetCampaignDetailResult,
+  GetCampaignExecutionHistoryQuery,
   type GetCampaignExecutionHistoryResult,
+  GetCampaignPublishingOverviewQuery,
   type GetCampaignPublishingOverviewResult,
+  GetProjectQuery,
   type ProjectId,
+  RescheduleCampaignPlannedPublicationCommand,
   ReviewGeneratedArtifactIssueCommand,
   ReviewSourceIssueCommand,
   RunCampaignStage1Command,
@@ -26,15 +26,16 @@ import {
   Delete,
   Get,
   Inject,
+  Logger,
   NotFoundException,
   Param,
   Post,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import * as v from 'valibot';
-import { rethrowProjectManagementHttpError } from './project-management-http-error';
-import { CampaignSourceMediaService } from './campaign-source-media.service';
 import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
+import { CampaignSourceMediaService } from './campaign-source-media.service';
+import { rethrowProjectManagementHttpError } from './project-management-http-error';
 
 const AttachCampaignSourceSchema = v.object({
   content: v.pipe(v.string(), v.trim(), v.minLength(1)),
@@ -68,13 +69,29 @@ type RescheduleCampaignPlannedPublicationDto = v.InferOutput<
   typeof RescheduleCampaignPlannedPublicationSchema
 >;
 
+function serializeErrorForLog(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return {
+    message: String(error),
+  };
+}
+
 @Controller('campaigns')
 export class CampaignController {
+  private readonly logger = new Logger(CampaignController.name);
+
   constructor(
     @Inject(CommandBus)
     private readonly commandBus: CommandBus,
     @Inject(QueryBus)
     private readonly queryBus: QueryBus,
+    @Inject(CampaignSourceMediaService)
     private readonly sourceMediaService: CampaignSourceMediaService,
   ) {}
 
@@ -103,13 +120,21 @@ export class CampaignController {
     @Param('id') id: string,
     @Body(new ValibotPipe(AttachCampaignSourceSchema)) dto: AttachCampaignSourceDto,
   ) {
+    const startedAt = Date.now();
     try {
+      this.logger.log({
+        message: 'Attach campaign source requested',
+        campaignId: id,
+        contentLength: dto.content.length,
+        language: dto.language,
+        hasSourceImage: Boolean(dto.sourceImageDataUrl),
+        sourceImageDataUrlLength: dto.sourceImageDataUrl?.length ?? 0,
+      });
+
       let defaultCoverUrl: string | null = null;
 
       if (dto.sourceImageDataUrl) {
-        const campaign = await this.queryBus.execute(
-          new GetCampaignDetailQuery(id as CampaignId),
-        );
+        const campaign = await this.queryBus.execute(new GetCampaignDetailQuery(id as CampaignId));
         if (!campaign) {
           throw new NotFoundException(`Campaign ${id} not found`);
         }
@@ -121,8 +146,7 @@ export class CampaignController {
         defaultCoverUrl = await this.sourceMediaService.saveSourceImage({
           campaignId: id,
           dataUrl: dto.sourceImageDataUrl,
-          aspectRatios:
-            project?.brandMemory?.adaptationPromptRules?.mediaAspectRatios ?? null,
+          aspectRatios: project?.brandMemory?.adaptationPromptRules?.mediaAspectRatios ?? null,
         });
       }
 
@@ -138,17 +162,51 @@ export class CampaignController {
         new StartCampaignProductionCommand(id as CampaignId),
       );
 
+      this.logger.log({
+        message: 'Attach campaign source completed',
+        campaignId: id,
+        durationMs: Date.now() - startedAt,
+        sourceArticleId: source.articleId,
+        production,
+      });
+
       return { ...source, production };
     } catch (error) {
+      this.logger.error({
+        message: 'Attach campaign source failed',
+        campaignId: id,
+        durationMs: Date.now() - startedAt,
+        error: serializeErrorForLog(error),
+      });
       rethrowProjectManagementHttpError(error);
     }
   }
 
   @Post(':id/start-production')
   async startProduction(@Param('id') id: string) {
+    const startedAt = Date.now();
     try {
-      return await this.commandBus.execute(new StartCampaignProductionCommand(id as CampaignId));
+      this.logger.log({
+        message: 'Start campaign production requested',
+        campaignId: id,
+      });
+      const result = await this.commandBus.execute(
+        new StartCampaignProductionCommand(id as CampaignId),
+      );
+      this.logger.log({
+        message: 'Start campaign production completed',
+        campaignId: id,
+        durationMs: Date.now() - startedAt,
+        result,
+      });
+      return result;
     } catch (error) {
+      this.logger.error({
+        message: 'Start campaign production failed',
+        campaignId: id,
+        durationMs: Date.now() - startedAt,
+        error: serializeErrorForLog(error),
+      });
       rethrowProjectManagementHttpError(error);
     }
   }
@@ -182,9 +240,7 @@ export class CampaignController {
   }
 
   @Get(':id/execution-history')
-  async getExecutionHistory(
-    @Param('id') id: string,
-  ): Promise<GetCampaignExecutionHistoryResult> {
+  async getExecutionHistory(@Param('id') id: string): Promise<GetCampaignExecutionHistoryResult> {
     const executionHistory = await this.queryBus.execute(
       new GetCampaignExecutionHistoryQuery(id as CampaignId),
     );

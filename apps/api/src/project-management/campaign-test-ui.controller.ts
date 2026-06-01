@@ -973,7 +973,24 @@ function renderSharedClientScript(): string {
       });
 
       async function request(url, options = {}, config = {}) {
-        const res = await fetch(url, options);
+        const method = String(options.method || 'GET').toUpperCase();
+        const startedAt = Date.now();
+        let res;
+        try {
+          res = await fetch(url, options);
+        } catch (error) {
+          const networkLog = {
+            ok: false,
+            type: 'network_error',
+            method,
+            url,
+            durationMs: Date.now() - startedAt,
+            error: String(error),
+          };
+          setOutput(networkLog);
+          throw error;
+        }
+
         const text = await res.text();
         let payload;
         try {
@@ -982,26 +999,63 @@ function renderSharedClientScript(): string {
           payload = text;
         }
 
+        const responseLog = {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+          method,
+          url,
+          durationMs: Date.now() - startedAt,
+          payload,
+        };
+
         if (config.renderResponse !== false) {
-          setOutput({ status: res.status, ok: res.ok, url, payload });
+          setOutput(responseLog);
         }
 
         if (!res.ok) {
-          throw new Error(extractRequestErrorMessage(payload));
+          setOutput({
+            ...responseLog,
+            requestBody: summarizeRequestBody(options.body),
+          });
+          throw new Error(extractRequestErrorMessage(payload, res));
         }
 
         return payload;
       }
 
-      function extractRequestErrorMessage(payload) {
+      function summarizeRequestBody(body) {
+        if (!body || typeof body !== 'string') {
+          return null;
+        }
+        try {
+          const parsed = JSON.parse(body);
+          if (typeof parsed.content === 'string') {
+            parsed.contentPreview = parsed.content.slice(0, 400);
+            parsed.contentLength = parsed.content.length;
+            delete parsed.content;
+          }
+          if (typeof parsed.sourceImageDataUrl === 'string') {
+            parsed.sourceImageDataUrl = '[data-url omitted, length=' + parsed.sourceImageDataUrl.length + ']';
+          }
+          return parsed;
+        } catch {
+          return body.length > 1000 ? body.slice(0, 1000) + '...[truncated]' : body;
+        }
+      }
+
+      function extractRequestErrorMessage(payload, response) {
+        const fallback = response
+          ? 'Request failed: HTTP ' + response.status + ' ' + response.statusText
+          : 'Request failed';
         if (!payload) {
-          return 'Request failed';
+          return fallback;
         }
         if (typeof payload === 'string') {
-          return payload || 'Request failed';
+          return payload || fallback;
         }
         if (Array.isArray(payload.message)) {
-          return payload.message.join('; ') || 'Request failed';
+          return payload.message.join('; ') || fallback;
         }
         if (typeof payload.message === 'string') {
           return payload.message;
@@ -1260,9 +1314,10 @@ function renderCampaignUiPage(params: {
   script: string;
   showHero?: boolean;
 }): string {
-  const heroMarkup = params.showHero === false
-    ? ''
-    : `
+  const heroMarkup =
+    params.showHero === false
+      ? ''
+      : `
       <section class="hero">
         <div class="hero-copy">
           <span class="eyebrow">${escapeHtml(params.eyebrow)}</span>
@@ -1321,8 +1376,7 @@ export class CampaignTestUiController {
       title: 'Marketing Service - Campaigns',
       eyebrow: 'Campaigns',
       heading: 'Campaigns',
-      summary:
-        'Project campaign workspace.',
+      summary: 'Project campaign workspace.',
       showHero: false,
       body: `
         <section class="panel stack">
