@@ -41,6 +41,9 @@ importers:
       '@marketing-service/publishing':
         specifier: workspace:*
         version: link:../../packages/publishing
+      '@marketing-service/seo-briefing':
+        specifier: workspace:*
+        version: link:../../packages/seo-briefing
       '@marketing-service/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -150,6 +153,9 @@ importers:
       '@marketing-service/publishing':
         specifier: workspace:*
         version: link:../../packages/publishing
+      '@marketing-service/seo-briefing':
+        specifier: workspace:*
+        version: link:../../packages/seo-briefing
       '@marketing-service/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -279,6 +285,9 @@ importers:
       '@marketing-service/publishing':
         specifier: workspace:*
         version: link:../publishing
+      '@marketing-service/seo-briefing':
+        specifier: workspace:*
+        version: link:../seo-briefing
       '@marketing-service/shared':
         specifier: workspace:*
         version: link:../shared
@@ -304,9 +313,18 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      reflect-metadata:
+        specifier: ^0.2.0
+        version: 0.2.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      unplugin-swc:
+        specifier: ^1.5.0
+        version: 1.5.9(@swc/core@1.15.30)(rollup@4.60.2)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@25.6.0)(terser@5.46.2)(tsx@4.21.0)
 
   packages/project-management:
     dependencies:
@@ -366,6 +384,37 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  packages/seo-briefing:
+    dependencies:
+      '@marketing-service/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@nestjs/common':
+        specifier: ^11.0.0
+        version: 11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/cqrs':
+        specifier: ^11.0.0
+        version: 11.0.3(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+    devDependencies:
+      '@marketing-service/config-typescript':
+        specifier: workspace:*
+        version: link:../config-typescript
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
+      reflect-metadata:
+        specifier: ^0.2.0
+        version: 0.2.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      unplugin-swc:
+        specifier: ^1.5.0
+        version: 1.5.9(@swc/core@1.15.30)(rollup@4.60.2)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@25.6.0)(terser@5.46.2)(tsx@4.21.0)
 
   packages/shared:
     dependencies:

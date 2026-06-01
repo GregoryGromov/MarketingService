@@ -17,6 +17,7 @@
     "@marketing-service/infrastructure": "workspace:*",
     "@marketing-service/project-management": "workspace:*",
     "@marketing-service/publishing": "workspace:*",
+    "@marketing-service/seo-briefing": "workspace:*",
     "@marketing-service/shared": "workspace:*",
     "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
