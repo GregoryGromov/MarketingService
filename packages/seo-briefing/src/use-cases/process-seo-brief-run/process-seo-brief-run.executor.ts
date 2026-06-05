@@ -16,7 +16,9 @@ import {
 import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import type {
+  ExtractUserPainScenariosResult,
   SeoBriefAiKeywordIntent,
+  SeoBriefAiModelMode,
   SeoBriefAiProductFit,
 } from '../../ports/seo-brief-ai.port.js';
 import { SeoBriefAiPort } from '../../ports/seo-brief-ai.port.js';
@@ -28,7 +30,6 @@ import { ProductScoreService } from '../../services/product-score.service.js';
 import { SeoBriefScoreLoggerService } from '../../services/seo-brief-score-logger.service.js';
 import { SeoScoreService } from '../../services/seo-score.service.js';
 
-const KEYWORD_EXPANSION_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.keywordExpansionLimit;
 const RELATED_KEYWORD_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.relatedKeywordLimit;
 const RELATED_KEYWORD_SEED_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.relatedKeywordSeedLimit;
 const SERP_RESEARCH_KEYWORD_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.serpResearchKeywordLimit;
@@ -232,6 +233,10 @@ export class ProcessSeoBriefRunExecutor {
 
     const priorArtifacts = await this.artifactRepository.findByRunId(run.id);
     const keywordExpansionPrompt = readKeywordExpansionPrompt(priorArtifacts);
+    const aiModelMode = readAiModelMode(priorArtifacts);
+    const campaignContext = readCampaignContext(priorArtifacts);
+    const seoProductContext = readSeoProductContext(priorArtifacts);
+    const hypothesesCount = readHypothesesCount(priorArtifacts);
 
     run.start();
     await this.runRepository.save(run);
@@ -239,9 +244,50 @@ export class ProcessSeoBriefRunExecutor {
     try {
       const keywordExpansion = shouldExecuteStage(options.startStage, 'keyword_expansion')
         ? await this.executeStage(run.id, 'keyword_expansion', async (step) => {
+            const existingUserPainScenarios = restoreUserPainScenariosOrNull(priorArtifacts);
+            const userPainScenarios =
+              existingUserPainScenarios ??
+              (await this.ai.extractUserPainScenarios({
+                runId: run.id,
+                stepId: step.id,
+                modelMode: aiModelMode,
+                topicSeed: run.topicSeed,
+                market: {
+                  country: run.country,
+                  language: run.language,
+                  locationName: run.country,
+                },
+                audience: run.audience,
+                productName: run.productName,
+                productDescription: run.productDescription,
+                keyMessage: run.keyMessage,
+                seoProductContext,
+                brandMemorySnapshot: run.brandMemorySnapshot,
+              }));
+            if (!existingUserPainScenarios) {
+              await this.saveArtifact({
+                runId: run.id,
+                stage: 'keyword_expansion',
+                artifactType: 'user_pain_scenarios',
+                payload: {
+                  artifactVersion: 'user_pain_scenarios_v1',
+                  generatedFrom: seoProductContext
+                    ? 'seo_product_context'
+                    : 'legacy_run_fields',
+                  topicSeed: run.topicSeed,
+                  seoProductContext: seoProductContext as SeoBriefJsonValue | null,
+                  topicHintInterpretation: userPainScenarios.topicHintInterpretation,
+                  userPains: userPainScenarios.userPains as unknown as SeoBriefJsonValue,
+                  userScenarios: userPainScenarios.userScenarios as unknown as SeoBriefJsonValue,
+                  riskNotes: userPainScenarios.riskNotes,
+                },
+                attempt: step.attemptNumber,
+              });
+            }
             const result = await this.ai.expandKeywords({
               runId: run.id,
               stepId: step.id,
+              modelMode: aiModelMode,
               topicSeed: run.topicSeed,
               market: {
                 country: run.country,
@@ -251,20 +297,33 @@ export class ProcessSeoBriefRunExecutor {
               audience: run.audience,
               productName: run.productName,
               productDescription: run.productDescription,
+              keyMessage: run.keyMessage,
+              audienceBefore: run.audienceBefore,
+              audienceAfter: run.audienceAfter,
+              campaignContext,
               brandMemorySnapshot: run.brandMemorySnapshot,
+              seoProductContext,
+              userPainScenarios,
               keywordExpansionPrompt,
-              limit: KEYWORD_EXPANSION_LIMIT,
+              limit: hypothesesCount,
             });
-            const limitedResult: KeywordExpansionResult = {
-              hypotheses: result.hypotheses.slice(0, KEYWORD_EXPANSION_LIMIT),
-            };
+            const limitedResult = limitKeywordExpansionResult(result, hypothesesCount);
 
             await this.saveArtifact({
               runId: run.id,
               stage: 'keyword_expansion',
               artifactType: 'keyword_hypotheses',
               payload: {
+                artifactVersion: 'search_hypotheses_v2',
+                generatedFrom: seoProductContext
+                  ? 'manual_user_pains_and_seo_product_context'
+                  : 'manual_user_pains_and_legacy_run_fields',
                 topicSeed: run.topicSeed,
+                hypothesesCount,
+                seoProductContext: seoProductContext as SeoBriefJsonValue | null,
+                userPainScenarios: userPainScenarios as unknown as SeoBriefJsonValue,
+                searchHypotheses: limitedResult.hypotheses as unknown as SeoBriefJsonValue,
+                groups: (limitedResult.groups ?? []) as unknown as SeoBriefJsonValue,
                 hypotheses: limitedResult.hypotheses as unknown as SeoBriefJsonValue,
               },
               attempt: step.attemptNumber,
@@ -625,6 +684,7 @@ export class ProcessSeoBriefRunExecutor {
             const triageResult = await this.ai.triageKeywords({
               runId: run.id,
               stepId: step.id,
+              modelMode: aiModelMode,
               topicSeed: run.topicSeed,
               audience: run.audience,
               productName: run.productName,
@@ -708,6 +768,7 @@ export class ProcessSeoBriefRunExecutor {
             const clusteringResult = await this.ai.clusterKeywords({
               runId: run.id,
               stepId: step.id,
+              modelMode: aiModelMode,
               topicSeed: run.topicSeed,
               keywords: triage.accepted.map((item) => item.keyword),
             });
@@ -789,6 +850,7 @@ export class ProcessSeoBriefRunExecutor {
               const productBridge = await this.ai.buildProductBridge({
                 runId: run.id,
                 stepId: step.id,
+                modelMode: aiModelMode,
                 clusterLabel: cluster.label,
                 primaryKeyword: cluster.representativeKeyword,
                 intent: cluster.intent,
@@ -997,6 +1059,7 @@ export class ProcessSeoBriefRunExecutor {
             const explanation = await this.ai.explainClusterSelection({
               runId: run.id,
               stepId: step.id,
+              modelMode: aiModelMode,
               selectedClusterLabel: selectedCluster.label,
               candidates: rankedClusters.map((cluster) => ({
                 label: cluster.label,
@@ -1108,6 +1171,7 @@ export class ProcessSeoBriefRunExecutor {
             const brief = await this.ai.generateSeoBrief({
               runId: run.id,
               stepId: step.id,
+              modelMode: aiModelMode,
               primaryKeyword: selectedCluster.representativeKeyword,
               clusterLabel: selectedCluster.label,
               intent: selectedCluster.intent,
@@ -1417,6 +1481,14 @@ function asArrayField<T>(
   return value as T[];
 }
 
+function asOptionalArrayField<T>(
+  record: Record<string, SeoBriefJsonValue>,
+  field: string,
+): T[] | undefined {
+  const value = record[field];
+  return Array.isArray(value) ? (value as T[]) : undefined;
+}
+
 function asNullableString(value: SeoBriefJsonValue, fallback: string | null = null): string | null {
   return typeof value === 'string' ? value : fallback;
 }
@@ -1431,6 +1503,92 @@ function readKeywordExpansionPrompt(artifacts: SeoBriefArtifact[]): string {
   return resolveSeoBriefKeywordExpansionPrompt(asNullableString(payload.keywordExpansionPrompt));
 }
 
+function readAiModelMode(artifacts: SeoBriefArtifact[]): SeoBriefAiModelMode {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'normalized_input');
+  if (!artifact) {
+    return 'pro';
+  }
+
+  const payload = asObjectRecord(artifact.payload, 'normalized_input');
+  const value = asNullableString(payload.aiModelMode);
+  return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
+}
+
+function readCampaignContext(artifacts: SeoBriefArtifact[]): string | null {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'normalized_input');
+  if (!artifact) {
+    return null;
+  }
+
+  const payload = asObjectRecord(artifact.payload, 'normalized_input');
+  return asNullableString(payload.campaignContext);
+}
+
+function readSeoProductContext(artifacts: SeoBriefArtifact[]): SeoBriefJsonObject | null {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'seo_product_context');
+  if (!artifact) {
+    return null;
+  }
+
+  return asObjectRecord(artifact.payload, 'seo_product_context');
+}
+
+function readHypothesesCount(artifacts: SeoBriefArtifact[]): number {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'normalized_input');
+  if (!artifact) {
+    return 10;
+  }
+
+  const payload = asObjectRecord(artifact.payload, 'normalized_input');
+  const value = payload.hypothesesCount;
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 10;
+}
+
+function restoreUserPainScenariosOrNull(
+  artifacts: SeoBriefArtifact[],
+): ExtractUserPainScenariosResult | null {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'user_pain_scenarios');
+  if (!artifact) {
+    return null;
+  }
+
+  const payload = asObjectRecord(artifact.payload, 'user_pain_scenarios');
+  return {
+    topicHintInterpretation: asNullableString(payload.topicHintInterpretation, '') ?? '',
+    userPains: asOptionalArrayField<ExtractUserPainScenariosResult['userPains'][number]>(
+      payload,
+      'userPains',
+    ) ?? [],
+    userScenarios: asOptionalArrayField<ExtractUserPainScenariosResult['userScenarios'][number]>(
+      payload,
+      'userScenarios',
+    ) ?? [],
+    riskNotes: asOptionalArrayField<string>(payload, 'riskNotes') ?? [],
+  };
+}
+
+function limitKeywordExpansionResult(
+  result: KeywordExpansionResult,
+  limit: number,
+): KeywordExpansionResult {
+  const hypotheses = result.hypotheses.slice(0, limit);
+  if (!result.groups?.length) {
+    return { hypotheses };
+  }
+
+  const allowedKeywords = new Set(hypotheses.map((item) => item.keyword.trim().toLowerCase()));
+  const groups = result.groups
+    .map((group) => ({
+      ...group,
+      hypotheses: group.hypotheses.filter((item) =>
+        allowedKeywords.has(item.keyword.trim().toLowerCase()),
+      ),
+    }))
+    .filter((group) => group.hypotheses.length > 0);
+
+  return { hypotheses, groups };
+}
+
 function restoreKeywordExpansion(artifacts: SeoBriefArtifact[]): KeywordExpansionResult {
   const payload = asObjectRecord(
     findLatestArtifactByType(artifacts, 'keyword_hypotheses').payload,
@@ -1442,6 +1600,10 @@ function restoreKeywordExpansion(artifacts: SeoBriefArtifact[]): KeywordExpansio
       payload,
       'hypotheses',
       'keyword_hypotheses',
+    ),
+    groups: asOptionalArrayField<NonNullable<KeywordExpansionResult['groups']>[number]>(
+      payload,
+      'groups',
     ),
   };
 }

@@ -5,6 +5,7 @@ import {
   type GetOnPageParseParams,
   type GetOrganicSerpParams,
   type GetOrganicSerpSnapshotParams,
+  type GetRankedKeywordsParams,
   type GetSearchVolumeParams,
   SeoBriefArtifact,
   SeoBriefRun,
@@ -70,6 +71,10 @@ class FakeSeoResearchPort extends SeoResearchPort {
   getSearchVolume(_params: GetSearchVolumeParams): Promise<never> {
     throw new Error('Not implemented in test');
   }
+
+  getRankedKeywords(_params: GetRankedKeywordsParams): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
 }
 
 function createRun(): SeoBriefRun {
@@ -96,12 +101,22 @@ function createRun(): SeoBriefRun {
 }
 
 describe('FetchKeywordSerpPreviewsHandler', () => {
-  it('fetches and stores SERP preview artifacts for every generated keyword', async () => {
+  it('selects hypotheses for SERP enrichment and stores preview artifacts', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
     const seoResearch = new FakeSeoResearchPort();
     const run = createRun();
     await runRepository.save(run);
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'created',
+        artifactType: 'normalized_input',
+        payload: {
+          serpEnrichmentCount: 3,
+        },
+      }),
+    );
     await artifactRepository.save(
       SeoBriefArtifact.create({
         runId: run.id,
@@ -111,9 +126,27 @@ describe('FetchKeywordSerpPreviewsHandler', () => {
           hypotheses: [
             {
               keyword: 'earn usdt',
+              hypothesisType: 'pain',
+              productFitHypothesis: 'education_bridge',
+              riskFlags: [],
             },
             {
               keyword: 'usdt savings',
+              hypothesisType: 'action',
+              productFitHypothesis: 'workflow_bridge',
+              riskFlags: [],
+            },
+            {
+              keyword: 'binance earn usdt',
+              hypothesisType: 'ecosystem',
+              productFitHypothesis: 'workflow_bridge',
+              riskFlags: [],
+            },
+            {
+              keyword: 'usdt guaranteed profit',
+              hypothesisType: 'risk',
+              productFitHypothesis: 'weak',
+              riskFlags: ['guaranteed_return'],
             },
           ],
         },
@@ -127,31 +160,39 @@ describe('FetchKeywordSerpPreviewsHandler', () => {
 
     const result = await handler.execute(new FetchKeywordSerpPreviewsCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const derived = artifacts.find(
-      (artifact) => artifact.artifactType === 'keyword_serp_derived_keywords',
-    )?.payload as {
-      items?: Array<{ keyword: string; similarSearchQueries: Array<{ query: string }> }>;
-    };
+    const raw = artifacts.find(
+      (artifact) => artifact.artifactType === 'keyword_serp_preview_raw_responses',
+    )?.payload as { items?: Array<{ keyword: string }> } | undefined;
+    const snapshots = artifacts.find(
+      (artifact) => artifact.artifactType === 'keyword_serp_preview_snapshots',
+    )?.payload as { items?: Array<{ keyword: string }> } | undefined;
 
-    expect(result.keywordCount).toBe(2);
+    expect(result.keywordCount).toBe(3);
     expect(seoResearch.organicSerpSnapshotCalls.map((call) => call.keyword)).toEqual([
       'earn usdt',
       'usdt savings',
+      'binance earn usdt',
     ]);
-    expect(derived?.items).toHaveLength(2);
-    expect(derived?.items?.[0]?.similarSearchQueries).toEqual([
-      {
-        query: 'How does earn usdt work',
-        reason: 'Direct question from the People Also Ask SERP block.',
-        source: 'people_also_ask',
-        sourceText: 'How does earn usdt work?',
-      },
-      {
-        query: 'earn usdt basics',
-        reason: 'Visible related search query from the SERP.',
-        source: 'related_search',
-        sourceText: 'earn usdt basics',
-      },
+    expect(raw?.items?.map((item) => item.keyword)).toEqual([
+      'earn usdt',
+      'usdt savings',
+      'binance earn usdt',
     ]);
+    expect(snapshots?.items?.map((item) => item.keyword)).toEqual([
+      'earn usdt',
+      'usdt savings',
+      'binance earn usdt',
+    ]);
+    expect(snapshots?.items?.map((item) => item.keyword)).not.toContain('usdt guaranteed profit');
+    expect(
+      (
+        snapshots as
+          | { selectedHypotheses?: Array<{ keyword: string; selectionReason: string }> }
+          | undefined
+      )?.selectedHypotheses?.map((item) => item.keyword),
+    ).toEqual(['earn usdt', 'usdt savings', 'binance earn usdt']);
+    expect(
+      artifacts.find((artifact) => artifact.artifactType === 'keyword_serp_derived_keywords'),
+    ).toBeUndefined();
   });
 });

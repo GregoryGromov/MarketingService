@@ -4,7 +4,6 @@ import { SeoBriefProjectNotFoundError } from '../../errors/seo-brief-project-not
 import {
   InMemoryBrandMemoryReader,
   InMemorySeoBriefArtifactRepository,
-  InMemorySeoBriefRunJobPort,
   InMemorySeoBriefRunRepository,
   InMemorySeoBriefRunStepRepository,
 } from '../../testing/run-test-harness.js';
@@ -16,7 +15,6 @@ function createHandler() {
   const runRepository = new InMemorySeoBriefRunRepository();
   const runStepRepository = new InMemorySeoBriefRunStepRepository();
   const artifactRepository = new InMemorySeoBriefArtifactRepository();
-  const jobs = new InMemorySeoBriefRunJobPort();
   const eventBus = { publishAll: vi.fn() } as unknown as EventBus;
 
   return {
@@ -24,14 +22,12 @@ function createHandler() {
     runRepository,
     runStepRepository,
     artifactRepository,
-    jobs,
     eventBus,
     handler: new CreateSeoBriefRunHandler(
       brandMemoryReader,
       runRepository,
       runStepRepository,
       artifactRepository,
-      jobs,
       eventBus,
     ),
   };
@@ -61,12 +57,17 @@ describe('CreateSeoBriefRunHandler', () => {
       new CreateSeoBriefRunCommand({
         projectId: 'project-1',
         topicSeed: ' how to earn with USDT ',
+        hypothesesCount: 20,
+        serpEnrichmentCount: 10,
+        competitorKeywordsJsonId: ' nigeria_usdt_competitors_v1 ',
         market: {
           country: ' Nigeria ',
           language: ' English ',
           locationName: ' Lagos ',
         },
         audience: ' Beginners holding USDT ',
+        userPains: [' Save money in dollars ', 'Avoid naira devaluation'],
+        userScenarios: ['Uses Binance P2P', 'Stores USDT in Trust Wallet'],
         keywordExpansionPrompt: 'Keep the keywords short and head-term oriented.',
         product: {
           name: ' Reinforce ',
@@ -78,6 +79,15 @@ describe('CreateSeoBriefRunHandler', () => {
           after: 'Understands options and sees Reinforce as one path',
         },
         cta: ' Learn more ',
+        knownCompetitors: {
+          mustInclude: [' Binance Earn ', 'Nexo'],
+          optional: ['Trust Wallet'],
+          exclude: ['Scammy faucets'],
+        },
+        brandConstraints: ['No hype'],
+        claimsConstraints: ['No guaranteed returns'],
+        preferredAngle: 'Educational comparison',
+        excludedTopics: ['Leverage'],
         seoProductBalance: {
           seoWeight: 0.7,
         },
@@ -88,18 +98,11 @@ describe('CreateSeoBriefRunHandler', () => {
     const storedSteps = await ctx.runStepRepository.findByRunId(result.runId as never);
     const storedArtifacts = await ctx.artifactRepository.findByRunId(result.runId as never);
 
-    expect(result.status).toBe('queued');
+    expect(result.status).toBe('awaiting_confirmation');
     expect(result.deduplicated).toBe(false);
     expect(result.projectId).toBe('project-1');
-    expect(ctx.jobs.jobs).toEqual([
-      {
-        runId: result.runId,
-        startStage: 'keyword_expansion',
-        stopAfterStage: 'keyword_expansion',
-      },
-    ]);
     expect(storedRun).not.toBeNull();
-    expect(storedRun?.status).toBe('queued');
+    expect(storedRun?.status).toBe('awaiting_confirmation');
     expect(storedRun?.brandMemorySnapshot.brandName).toBe('Reinforce');
     expect(storedRun?.brandMemorySnapshot.productDescription).toBe(
       'Helps users make idle USDT productive',
@@ -110,7 +113,7 @@ describe('CreateSeoBriefRunHandler', () => {
     expect(storedSteps).toHaveLength(1);
     expect(storedSteps[0]?.stage).toBe('created');
     expect(storedSteps[0]?.status).toBe('completed');
-    expect(storedArtifacts).toHaveLength(3);
+    expect(storedArtifacts).toHaveLength(5);
 
     const inputArtifact = storedArtifacts.find(
       (artifact) => artifact.artifactType === 'normalized_input',
@@ -118,25 +121,49 @@ describe('CreateSeoBriefRunHandler', () => {
     const brandMemoryArtifact = storedArtifacts.find(
       (artifact) => artifact.artifactType === 'brand_memory_snapshot',
     );
+    const manualPainsArtifact = storedArtifacts.find(
+      (artifact) => artifact.artifactType === 'user_pain_scenarios',
+    );
+    const seoProductContextArtifact = storedArtifacts.find(
+      (artifact) => artifact.artifactType === 'seo_product_context',
+    );
     const operationalLimitsArtifact = storedArtifacts.find(
       (artifact) => artifact.artifactType === 'operational_limits_snapshot',
     );
 
     expect(inputArtifact?.payload).toEqual({
+      inputVersion: 'topic_hint_manual_pains_v2',
       projectId: 'project-1',
+      aiModelMode: 'pro',
+      topicHint: 'how to earn with USDT',
       topicSeed: 'how to earn with USDT',
+      hypothesesCount: 20,
+      serpEnrichmentCount: 10,
+      competitorKeywordsJsonId: 'nigeria_usdt_competitors_v1',
       market: {
         country: 'Nigeria',
         language: 'English',
         locationName: 'Lagos',
       },
       audience: 'Beginners holding USDT',
+      userPains: ['Save money in dollars', 'Avoid naira devaluation'],
+      userScenarios: ['Uses Binance P2P', 'Stores USDT in Trust Wallet'],
       keywordExpansionPrompt: 'Keep the keywords short and head-term oriented.',
       product: {
         name: 'Reinforce',
         description: 'Helps users make idle USDT productive',
       },
       keyMessage: 'Idle USDT can be used more productively',
+      knownCompetitors: {
+        mustInclude: ['Binance Earn', 'Nexo'],
+        optional: ['Trust Wallet'],
+        exclude: ['Scammy faucets'],
+      },
+      brandConstraints: ['No hype'],
+      claimsConstraints: ['No guaranteed returns'],
+      preferredAngle: 'Educational comparison',
+      excludedTopics: ['Leverage'],
+      campaignContext: null,
       audienceShift: {
         before: 'Does not know earning options',
         after: 'Understands options and sees Reinforce as one path',
@@ -148,13 +175,112 @@ describe('CreateSeoBriefRunHandler', () => {
       },
     });
     expect(brandMemoryArtifact?.payload).toEqual({
+      artifactVersion: 'brand_memory_snapshot_v1',
+      algorithmStep: 'brand_memory_snapshot',
+      purpose:
+        'Source-of-truth product, trust, claims, phrase, and brand constraints used by downstream SEO brief steps.',
       source: 'project_brand_memory',
       projectId: 'project-1',
       projectName: 'Reinforce Project',
+      summary: {
+        brandName: 'Reinforce',
+        hasProjectBrandMemory: true,
+        approvedFactCount: 1,
+        forbiddenClaimCount: 1,
+        requiredPhraseCount: 1,
+        bannedPhraseCount: 1,
+        glossaryTermCount: 1,
+        brandDocCount: 1,
+        hasAdaptationPromptRules: true,
+      },
+      usageRules: [
+        'Use approvedFacts, glossary, requiredPhrases, and brandDocs as allowed context.',
+        'Use forbiddenClaims and bannedPhrases as hard constraints.',
+        'Do not infer persistent brand facts from marketer one-off files unless they are already in this snapshot.',
+      ],
       snapshot: storedRun?.brandMemorySnapshot,
     });
+    expect(manualPainsArtifact?.payload).toMatchObject({
+      artifactVersion: 'manual_user_pain_scenarios_v1',
+      algorithmStep: 'input_manual_user_pains',
+      source: 'marketer_input',
+      userPains: [
+        {
+          pain: 'Save money in dollars',
+          productConnection: 'education',
+        },
+        {
+          pain: 'Avoid naira devaluation',
+          productConnection: 'education',
+        },
+      ],
+      userScenarios: [
+        {
+          scenario: 'Uses Binance P2P',
+          type: 'action',
+          productFitHypothesis: 'education_bridge',
+        },
+        {
+          scenario: 'Stores USDT in Trust Wallet',
+          type: 'action',
+          productFitHypothesis: 'education_bridge',
+        },
+      ],
+    });
+    expect(seoProductContextArtifact?.payload).toMatchObject({
+      artifactVersion: 'seo_product_context_v1',
+      algorithmStep: 'seo_product_context',
+      researchFrame: {
+        topicHint: 'how to earn with USDT',
+        market: {
+          country: 'Nigeria',
+          language: 'English',
+          locationName: 'Lagos',
+        },
+        audience: 'Beginners holding USDT',
+        preferredAngle: 'Educational comparison',
+        keyMessage: 'Idle USDT can be used more productively',
+        cta: 'Learn more',
+        campaignContext: null,
+        audienceShift: {
+          before: 'Does not know earning options',
+          after: 'Understands options and sees Reinforce as one path',
+        },
+        manualUserContext: {
+          userPains: ['Save money in dollars', 'Avoid naira devaluation'],
+          userScenarios: ['Uses Binance P2P', 'Stores USDT in Trust Wallet'],
+        },
+      },
+      v2Controls: {
+        hypothesesCount: 20,
+        serpEnrichmentCount: 10,
+        competitorKeywordsJsonId: 'nigeria_usdt_competitors_v1',
+      },
+      competitorContext: {
+        mustInclude: ['Binance Earn', 'Nexo'],
+        optional: ['Trust Wallet'],
+        exclude: ['Scammy faucets'],
+      },
+      marketerConstraints: {
+        brandConstraints: ['No hype'],
+        claimsConstraints: ['No guaranteed returns'],
+        excludedTopics: ['Leverage'],
+      },
+      brandMemoryContext: {
+        source: 'project_brand_memory',
+        projectId: 'project-1',
+        projectName: 'Reinforce Project',
+        brandName: 'Reinforce',
+        productDescription: 'Helps users make idle USDT productive',
+        targetAudience: 'Crypto beginners',
+        approvedFacts: ['Supports USDT productivity flows'],
+        forbiddenClaims: ['Guaranteed returns'],
+        requiredPhrases: ['capital at risk'],
+        bannedPhrases: ['risk-free'],
+      },
+    });
     expect(operationalLimitsArtifact?.payload).toMatchObject({
-      keywordExpansionLimit: 3,
+      keywordExpansionLimit: 9,
       maxClustersToScore: 5,
       maxManualRerunAttemptsPerStage: 3,
     });
@@ -179,17 +305,10 @@ describe('CreateSeoBriefRunHandler', () => {
     );
 
     const storedRun = await ctx.runRepository.findById(result.runId as never);
-    expect(ctx.jobs.jobs).toEqual([
-      {
-        runId: result.runId,
-        startStage: 'keyword_expansion',
-        stopAfterStage: 'keyword_expansion',
-      },
-    ]);
-    expect(result.status).toBe('queued');
+    expect(result.status).toBe('awaiting_confirmation');
     expect(result.deduplicated).toBe(false);
     expect(storedRun?.projectId).toBeNull();
-    expect(storedRun?.status).toBe('queued');
+    expect(storedRun?.status).toBe('awaiting_confirmation');
     expect(storedRun?.brandMemorySnapshot).toEqual({
       brandName: 'Reinforce',
       productDescription: 'Helps users understand low-friction yield options',
@@ -261,13 +380,6 @@ describe('CreateSeoBriefRunHandler', () => {
     expect(first.deduplicated).toBe(false);
     expect(second.deduplicated).toBe(true);
     expect(second.runId).toBe(first.runId);
-    expect(ctx.jobs.jobs).toEqual([
-      {
-        runId: first.runId,
-        startStage: 'keyword_expansion',
-        stopAfterStage: 'keyword_expansion',
-      },
-    ]);
     expect(ctx.runRepository.records.size).toBe(1);
   });
 
@@ -308,7 +420,6 @@ describe('CreateSeoBriefRunHandler', () => {
     expect(first.deduplicated).toBe(false);
     expect(second.deduplicated).toBe(false);
     expect(second.runId).not.toBe(first.runId);
-    expect(ctx.jobs.jobs).toHaveLength(2);
     expect(ctx.runRepository.records.size).toBe(2);
   });
 });

@@ -1,6 +1,8 @@
 import {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
+  type ClassifySerpDomainsParams,
+  type ClassifySerpDomainsResult,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type CompleteSeoBriefLlmCallLogParams,
@@ -8,17 +10,28 @@ import {
   type ExpandKeywordsResult,
   type ExplainClusterSelectionParams,
   type ExplainClusterSelectionResult,
+  type ExtractedSeoBriefContext,
+  type ExtractSeoBriefContextParams,
+  type ExtractUserPainScenariosParams,
+  type ExtractUserPainScenariosResult,
   type FailSeoBriefLlmCallLogParams,
   type GenerateSeoBriefParams,
   type GenerateSeoBriefResult,
+  type ReviewClusterProductFitParams,
+  type ReviewClusterProductFitResult,
+  type ScoreDirtyKeywordCandidatesParams,
+  type ScoreDirtyKeywordCandidatesResult,
   type SelectRelatedKeywordsParams,
   type SelectRelatedKeywordsResult,
+  type SeoBriefAiModelMode,
   SeoBriefAiTransportError,
   SeoBriefAiValidationError,
   type SeoBriefJsonValue,
   SeoBriefLlmCallLog,
   SeoBriefLlmLogRepository,
   type StartSeoBriefLlmCallLogParams,
+  type SynthesizeOnPageParams,
+  type SynthesizeOnPageResult,
   type TriageKeywordsParams,
   type TriageKeywordsResult,
 } from '@marketing-service/seo-briefing';
@@ -26,20 +39,32 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   buildClusterKeywordsPrompt,
+  buildClassifySerpDomainsPrompt,
   buildExpandKeywordsPrompt,
   buildExplainClusterSelectionPrompt,
+  buildExtractContextPrompt,
+  buildExtractUserPainScenariosPrompt,
   buildGenerateSeoBriefPrompt,
   buildProductBridgePrompt,
+  buildReviewClusterProductFitPrompt,
+  buildScoreDirtyKeywordCandidatesPrompt,
   buildSelectRelatedKeywordsPrompt,
+  buildSynthesizeOnPagePrompt,
   buildTriageKeywordsPrompt,
 } from './deepseek-seo-brief-ai.prompts.js';
 import {
   validateBuildProductBridgeResult,
+  validateClassifySerpDomainsResult,
   validateClusterKeywordsResult,
   validateExpandKeywordsResult,
   validateExplainClusterSelectionResult,
+  validateExtractContextResult,
+  validateExtractUserPainScenariosResult,
   validateGenerateSeoBriefResult,
+  validateReviewClusterProductFitResult,
+  validateScoreDirtyKeywordCandidatesResult,
   validateSelectRelatedKeywordsResult,
+  validateSynthesizeOnPageResult,
   validateTriageKeywordsResult,
 } from './deepseek-seo-brief-ai.validators.js';
 import {
@@ -70,11 +95,42 @@ export class DeepSeekSeoBriefAiAdapter {
     private readonly llmLogRepository: SeoBriefLlmLogRepository,
   ) {}
 
+  async extractContext(params: ExtractSeoBriefContextParams): Promise<ExtractedSeoBriefContext> {
+    const prompt = buildExtractContextPrompt(params);
+    const modelMode = params.modelMode ?? null;
+    const model = this.getModel(modelMode);
+    const completionRequest = this.createCompletionRequest(
+      model,
+      modelMode,
+      prompt,
+      prompt.userPrompt,
+    );
+    const response = await this.executeWithRetry(prompt.operation, () =>
+      this.httpClient.requestCompletion(completionRequest),
+    );
+    const jsonPayload = this.parseJsonPayload(
+      response.content,
+      prompt.operation,
+      response.rawPayload,
+    );
+    return validateExtractContextResult(jsonPayload, prompt.operation);
+  }
+
   async expandKeywords(params: ExpandKeywordsParams): Promise<ExpandKeywordsResult> {
     return this.runStructuredOperation(
       buildExpandKeywordsPrompt(params),
       params,
       validateExpandKeywordsResult,
+    );
+  }
+
+  async extractUserPainScenarios(
+    params: ExtractUserPainScenariosParams,
+  ): Promise<ExtractUserPainScenariosResult> {
+    return this.runStructuredOperation(
+      buildExtractUserPainScenariosPrompt(params),
+      params,
+      validateExtractUserPainScenariosResult,
     );
   }
 
@@ -104,11 +160,41 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
+  async classifySerpDomains(
+    params: ClassifySerpDomainsParams,
+  ): Promise<ClassifySerpDomainsResult> {
+    return this.runStructuredOperation(
+      buildClassifySerpDomainsPrompt(params),
+      params,
+      validateClassifySerpDomainsResult,
+    );
+  }
+
+  async scoreDirtyKeywordCandidates(
+    params: ScoreDirtyKeywordCandidatesParams,
+  ): Promise<ScoreDirtyKeywordCandidatesResult> {
+    return this.runStructuredOperation(
+      buildScoreDirtyKeywordCandidatesPrompt(params),
+      params,
+      validateScoreDirtyKeywordCandidatesResult,
+    );
+  }
+
   async buildProductBridge(params: BuildProductBridgeParams): Promise<BuildProductBridgeResult> {
     return this.runStructuredOperation(
       buildProductBridgePrompt(params),
       params,
       validateBuildProductBridgeResult,
+    );
+  }
+
+  async reviewClusterProductFit(
+    params: ReviewClusterProductFitParams,
+  ): Promise<ReviewClusterProductFitResult> {
+    return this.runStructuredOperation(
+      buildReviewClusterProductFitPrompt(params),
+      params,
+      validateReviewClusterProductFitResult,
     );
   }
 
@@ -122,6 +208,14 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
+  async synthesizeOnPage(params: SynthesizeOnPageParams): Promise<SynthesizeOnPageResult> {
+    return this.runStructuredOperation(
+      buildSynthesizeOnPagePrompt(params),
+      params,
+      validateSynthesizeOnPageResult,
+    );
+  }
+
   async generateSeoBrief(params: GenerateSeoBriefParams): Promise<GenerateSeoBriefResult> {
     return this.runStructuredOperation(
       buildGenerateSeoBriefPrompt(params),
@@ -131,21 +225,31 @@ export class DeepSeekSeoBriefAiAdapter {
   }
 
   private async runStructuredOperation<
-    TParams extends { runId: string; stepId?: string | null },
+    TParams extends {
+      runId: string;
+      stepId?: string | null;
+      modelMode?: SeoBriefAiModelMode | null;
+    },
     TResult,
   >(
     prompt: SeoBriefStructuredPrompt,
     params: TParams,
     validator: (payload: unknown, operation: string) => TResult,
   ): Promise<TResult> {
-    const model = this.getModel();
+    const modelMode = params.modelMode ?? null;
+    const model = this.getModel(modelMode);
     const maxRepairAttempts = this.getStructuredRepairAttempts();
     let repairAttempt = 0;
     let userPrompt = prompt.userPrompt;
 
     while (repairAttempt <= maxRepairAttempts) {
-      const completionRequest = this.createCompletionRequest(model, prompt, userPrompt);
-      const requestPayload = this.createRequestLogPayload(prompt, completionRequest, repairAttempt);
+      const completionRequest = this.createCompletionRequest(model, modelMode, prompt, userPrompt);
+      const requestPayload = this.createRequestLogPayload(
+        prompt,
+        completionRequest,
+        repairAttempt,
+        modelMode,
+      );
       const log = await this.startLog({
         runId: params.runId as never,
         stepId: (params.stepId ?? null) as never,
@@ -221,10 +325,11 @@ export class DeepSeekSeoBriefAiAdapter {
 
   private createCompletionRequest(
     model: string,
+    modelMode: SeoBriefAiModelMode | null,
     prompt: SeoBriefStructuredPrompt,
     userPrompt: string,
   ): SeoBriefAiCompletionRequest {
-    const thinkingType = this.getThinkingType();
+    const thinkingType = this.getThinkingType(modelMode);
 
     return {
       model,
@@ -241,9 +346,11 @@ export class DeepSeekSeoBriefAiAdapter {
     prompt: SeoBriefStructuredPrompt,
     request: SeoBriefAiCompletionRequest,
     repairAttempt: number,
+    modelMode: SeoBriefAiModelMode | null,
   ): SeoBriefJsonValue {
     return {
       ...request,
+      modelMode,
       promptVersion: prompt.promptVersion,
       repairAttempt,
     };
@@ -326,7 +433,24 @@ export class DeepSeekSeoBriefAiAdapter {
     ].join('\n');
   }
 
-  private getModel(): string {
+  private getModel(modelMode: SeoBriefAiModelMode | null): string {
+    if (modelMode === 'flash') {
+      return (
+        this.config.get<string>('SEO_BRIEF_AI_FLASH_MODEL')?.trim() ||
+        this.config.get<string>('DEEPSEEK_FLASH_MODEL')?.trim() ||
+        'deepseek-v4-flash'
+      );
+    }
+
+    if (modelMode === 'pro' || modelMode === 'pro_thinking') {
+      return (
+        this.config.get<string>('SEO_BRIEF_AI_PRO_MODEL')?.trim() ||
+        this.config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
+        this.config.get<string>('SEO_BRIEF_AI_MODEL')?.trim() ||
+        'deepseek-v4-pro'
+      );
+    }
+
     return (
       this.config.get<string>('SEO_BRIEF_AI_MODEL')?.trim() ||
       this.config.get<string>('DEEPSEEK_MODEL')?.trim() ||
@@ -334,7 +458,15 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
-  private getThinkingType(): SeoBriefAiThinkingType {
+  private getThinkingType(modelMode: SeoBriefAiModelMode | null): SeoBriefAiThinkingType {
+    if (modelMode === 'flash' || modelMode === 'pro') {
+      return 'disabled';
+    }
+
+    if (modelMode === 'pro_thinking') {
+      return 'enabled';
+    }
+
     const rawValue =
       this.config.get<string>('SEO_BRIEF_AI_THINKING_TYPE')?.trim().toLowerCase() ||
       this.config.get<string>('DEEPSEEK_THINKING_TYPE')?.trim().toLowerCase() ||
@@ -353,7 +485,7 @@ export class DeepSeekSeoBriefAiAdapter {
   }
 
   private getTimeoutMs(): number {
-    return this.getPositiveIntegerConfig('SEO_BRIEF_AI_TIMEOUT_MS', 20_000);
+    return this.getPositiveIntegerConfig('SEO_BRIEF_AI_TIMEOUT_MS', 300_000);
   }
 
   private getMaxAttempts(): number {

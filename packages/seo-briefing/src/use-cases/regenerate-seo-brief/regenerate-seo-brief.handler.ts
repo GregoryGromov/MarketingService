@@ -1,3 +1,4 @@
+import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import {
   type SeoBriefRunControlResult,
@@ -9,7 +10,10 @@ import { RegenerateSeoBriefCommand } from './regenerate-seo-brief.command.js';
 export class RegenerateSeoBriefHandler
   implements ICommandHandler<RegenerateSeoBriefCommand, SeoBriefRunControlResult>
 {
-  constructor(private readonly control: SeoBriefRunControlService) {}
+  constructor(
+    @Inject(SeoBriefRunControlService)
+    private readonly control: SeoBriefRunControlService,
+  ) {}
 
   async execute(command: RegenerateSeoBriefCommand): Promise<SeoBriefRunControlResult> {
     return this.control.rerun({

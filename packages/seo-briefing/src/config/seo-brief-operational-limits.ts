@@ -1,7 +1,7 @@
 export const SEO_BRIEF_OPERATIONAL_LIMITS = {
   duplicateScanLimit: 50,
   duplicateWindowMs: 30 * 60 * 1000,
-  keywordExpansionLimit: 3,
+  keywordExpansionLimit: 9,
   relatedKeywordLimit: 10,
   relatedKeywordSeedLimit: 3,
   serpResearchKeywordLimit: 3,

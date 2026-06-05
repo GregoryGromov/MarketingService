@@ -1,8 +1,19 @@
 import * as v from 'valibot';
 
+const OptionalTextListSchema = v.optional(
+  v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+);
+
 export const CreateSeoBriefRunSchema = v.object({
   projectId: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
-  topicSeed: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240)),
+  aiModelMode: v.optional(v.nullish(v.picklist(['flash', 'pro', 'pro_thinking']))),
+  topicHint: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
+  topicSeed: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
+  hypothesesCount: v.optional(v.nullish(v.pipe(v.number(), v.minValue(1), v.maxValue(100)))),
+  serpEnrichmentCount: v.optional(v.nullish(v.pipe(v.number(), v.minValue(1), v.maxValue(100)))),
+  competitorKeywordsJsonId: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240))),
+  ),
   market: v.object({
     country: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)),
     language: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(64)),
@@ -11,6 +22,8 @@ export const CreateSeoBriefRunSchema = v.object({
     ),
   }),
   audience: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(1000)),
+  userPains: OptionalTextListSchema,
+  userScenarios: OptionalTextListSchema,
   keywordExpansionPrompt: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(8000))),
   ),
@@ -20,6 +33,24 @@ export const CreateSeoBriefRunSchema = v.object({
   }),
   keyMessage: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000))),
+  ),
+  knownCompetitors: v.optional(
+    v.nullish(
+      v.object({
+        mustInclude: OptionalTextListSchema,
+        optional: OptionalTextListSchema,
+        exclude: OptionalTextListSchema,
+      }),
+    ),
+  ),
+  brandConstraints: OptionalTextListSchema,
+  claimsConstraints: OptionalTextListSchema,
+  preferredAngle: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000))),
+  ),
+  excludedTopics: OptionalTextListSchema,
+  campaignContext: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(8000))),
   ),
   audienceShift: v.optional(
     v.nullish(

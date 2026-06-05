@@ -1,5 +1,6 @@
 import type {
   BuildProductBridgeParams,
+  ClassifySerpDomainsParams,
   ClusterKeywordsParams,
   ExpandKeywordsParams,
   ExplainClusterSelectionParams,
@@ -109,12 +110,27 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
         status: 200,
         model: 'deepseek-v4-pro',
         content: JSON.stringify({
-          hypotheses: [
+          search_hypotheses: [
             {
-              keyword: 'usdt yield for beginners',
-              intent: 'informational',
-              rationale: 'Matches novice intent and the topic seed.',
-              audienceFit: 'Explains entry-level options for idle USDT.',
+              query: 'is it safe to earn interest on usdt',
+              hypothesis_type: 'risk',
+              why_generated: 'Matches the manual fear around losing funds or getting scammed.',
+              product_fit_hypothesis: 'education_bridge',
+              risk_flags: [],
+            },
+            {
+              query: 'how to earn interest on usdt without locking it',
+              hypothesis_type: 'action',
+              why_generated: 'Reflects the scenario of wanting productive but accessible USDT.',
+              product_fit_hypothesis: 'workflow_bridge',
+              risk_flags: [],
+            },
+            {
+              query: 'binance earn vs nexo for usdt',
+              hypothesis_type: 'comparison',
+              why_generated: 'Uses explicit competitor ecosystem hints for validation.',
+              product_fit_hypothesis: 'alternative_solution',
+              risk_flags: [],
             },
           ],
         }),
@@ -129,14 +145,14 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     const result = await adapter.expandKeywords(params);
     const logs = await repository.findByRunId(params.runId);
 
-    expect(result.hypotheses).toEqual([
-      {
-        keyword: 'usdt yield for beginners',
-        intent: 'informational',
-        rationale: 'Matches novice intent and the topic seed.',
-        audienceFit: 'Explains entry-level options for idle USDT.',
-      },
-    ]);
+    expect(result.hypotheses).toHaveLength(3);
+    expect(result.groups).toHaveLength(3);
+    expect(result.hypotheses[0]).toMatchObject({
+      keyword: 'is it safe to earn interest on usdt',
+      intent: 'informational',
+      hypothesisType: 'risk',
+      productFitHypothesis: 'education_bridge',
+    });
     expect(logs).toHaveLength(1);
     expect(logs[0]?.operation).toBe('expandKeywords');
     expect(logs[0]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.expandKeywords);
@@ -443,5 +459,57 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(result.rejected[0]?.query).toBe('what is');
     expect(logs[0]?.operation).toBe('selectRelatedKeywords');
     expect(logs[0]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.selectRelatedKeywords);
+  });
+
+  it('normalizes unsupported on-page domain types instead of failing classification', async () => {
+    const { adapter } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          ranked_keywords_targets: [
+            {
+              domain: 'binance.com',
+              domain_type: 'cex_p2p',
+              priority: 'high',
+              reason: 'Relevant exchange competitor.',
+            },
+          ],
+          onpage_only_targets: [
+            {
+              domain: 'example-crypto-guide.com',
+              domain_type: 'crypto_education',
+              reason: 'Useful article structure, but not a ranked keyword target.',
+            },
+          ],
+          pain_signal_targets: [],
+          ignored_targets: [],
+        }),
+        rawPayload: { id: 'domain-classification' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: ClassifySerpDomainsParams = {
+      runId: 'seo_brief_run_ai_6' as never,
+      topicSeed: 'how to earn with usdt',
+      audience: 'Beginners holding USDT',
+      productName: 'Reinforce',
+      market: {
+        country: 'Nigeria',
+        language: 'English',
+      },
+      serpDomainAggregation: {
+        domains: [{ domain: 'example-crypto-guide.com' }],
+      },
+    };
+
+    const result = await adapter.classifySerpDomains(params);
+
+    expect(result.onpageOnlyTargets[0]).toMatchObject({
+      domain: 'example-crypto-guide.com',
+      domainType: 'other',
+    });
   });
 });

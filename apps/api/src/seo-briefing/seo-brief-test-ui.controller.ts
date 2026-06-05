@@ -14,10 +14,15 @@ function escapeHtmlServer(value: string): string {
 export class SeoBriefTestUiController {
   @Get('seo-briefing')
   @Header('Content-Type', 'text/html; charset=utf-8')
-  getSeoBriefUi(@Query('runId') runId?: string, @Query('projectId') projectId?: string): string {
+  getSeoBriefUi(
+    @Query('runId') runId?: string,
+    @Query('projectId') projectId?: string,
+    @Query('step') step?: string,
+  ): string {
     const initialState = JSON.stringify({
       runId: runId?.trim() || null,
       projectId: projectId?.trim() || null,
+      step: step?.trim() || null,
     }).replace(/</g, '\\u003c');
     const defaultKeywordExpansionPrompt = escapeHtmlServer(
       DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT,
@@ -171,12 +176,22 @@ export class SeoBriefTestUiController {
       .main {
         display: grid;
         gap: 18px;
-        grid-template-columns: 430px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
         align-items: start;
       }
-      .sidebar, .detail {
+      .sidebar {
+        display: contents;
+      }
+      .sidebar > .panel:first-child {
+        order: 1;
+      }
+      .detail {
         display: grid;
         gap: 18px;
+        order: 2;
+      }
+      .sidebar > .panel:last-child {
+        order: 3;
       }
       .panel {
         display: grid;
@@ -194,7 +209,7 @@ export class SeoBriefTestUiController {
         gap: 8px;
         min-width: 0;
       }
-      label.field span {
+      label.field span, .field > span {
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -266,6 +281,48 @@ export class SeoBriefTestUiController {
       }
       .launch-grid .full {
         grid-column: 1 / -1;
+      }
+      .input-mode-tabs {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .input-mode-tabs label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.58);
+        cursor: pointer;
+      }
+      .context-panel {
+        border: 1px solid rgba(27, 107, 75, 0.18);
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(27, 107, 75, 0.07);
+        display: grid;
+        gap: 10px;
+      }
+      .context-panel[hidden] {
+        display: none;
+      }
+      .context-result {
+        border: 1px dashed var(--line-strong);
+        border-radius: 18px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.62);
+        color: var(--muted);
+        display: grid;
+        gap: 8px;
+      }
+      .context-result strong {
+        color: var(--text);
+      }
+      .context-result ul {
+        margin: 0;
+        padding-left: 18px;
       }
       .metric-row, .run-list {
         display: grid;
@@ -353,6 +410,41 @@ export class SeoBriefTestUiController {
       .timeline, .log-list, .score-list {
         display: grid;
         gap: 10px;
+      }
+      .brand-memory-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .brand-memory-block {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.72);
+        display: grid;
+        gap: 8px;
+      }
+      .brand-memory-block.full {
+        grid-column: 1 / -1;
+      }
+      .brand-memory-block h4 {
+        margin: 0;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .brand-memory-block ul {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 4px;
+      }
+      .brand-memory-block li {
+        color: var(--ink);
+      }
+      .brand-memory-block .muted {
+        color: var(--muted);
       }
       .timeline-item, .log-item, .score-item {
         border: 1px solid var(--line);
@@ -456,6 +548,32 @@ export class SeoBriefTestUiController {
       .stage-output-item small {
         color: var(--muted);
       }
+      .metric-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 14px 0;
+      }
+      .metric-grid > div {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.62);
+        display: grid;
+        gap: 4px;
+      }
+      .metric-grid strong {
+        font-size: 22px;
+      }
+      .metric-grid span, .section-subhead p {
+        color: var(--muted);
+      }
+      .section-subhead {
+        margin: 18px 0 10px;
+      }
+      .section-subhead h4 {
+        margin: 0 0 4px;
+      }
       .related-query-inline {
         margin-top: 4px;
         padding-top: 10px;
@@ -493,6 +611,42 @@ export class SeoBriefTestUiController {
       .keyword-serp-body {
         display: grid;
         gap: 10px;
+      }
+      .seo-step-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .seo-step-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.62);
+        color: var(--muted);
+      }
+      .seo-step-tab.is-active {
+        background: var(--text);
+        border-color: var(--text);
+        color: white;
+      }
+      .seo-step-tab.is-ready:not(.is-active) {
+        color: #117a43;
+        border-color: rgba(17, 122, 67, 0.34);
+        background: rgba(17, 122, 67, 0.08);
+      }
+      .seo-step-tab.is-ready:not(.is-active) .seo-step-dot {
+        background: #117a43;
+        opacity: 1;
+      }
+      .seo-step-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.6;
       }
       @keyframes seo-progress {
         0% { transform: translateX(-115%); }
@@ -610,7 +764,7 @@ export class SeoBriefTestUiController {
         min-height: 120px;
       }
       .main {
-        grid-template-columns: 470px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
         gap: 18px;
       }
       .panel,
@@ -763,6 +917,7 @@ export class SeoBriefTestUiController {
             </p>
           </div>
           <div class="actions">
+            <button type="button" class="primary" id="startNewRunBtn">Start New SEO Brief</button>
             <button type="button" id="refreshAllBtn">Refresh</button>
             <a class="button-like" href="/seo-briefing/health">Health</a>
           </div>
@@ -771,12 +926,13 @@ export class SeoBriefTestUiController {
 
       <div class="main">
         <aside class="sidebar">
-          <section class="panel">
+          <section class="panel" id="launchPanel">
             <div class="section-head">
               <div class="stack">
-                <div class="eyebrow">Launch</div>
-                <h2>New Run</h2>
+                <div class="eyebrow">Step 0</div>
+                <h2>Input</h2>
               </div>
+              <button class="primary" type="submit" id="launchBtn" form="launchForm">Create SEO Brief Run</button>
             </div>
             <form id="launchForm" class="launch-grid">
               <label class="field full">
@@ -786,8 +942,45 @@ export class SeoBriefTestUiController {
                 </select>
               </label>
               <label class="field full">
-                <span>Topic Seed</span>
-                <input id="topicSeed" required value="how to earn with USDT" />
+                <span>AI Model</span>
+                <select id="aiModelMode">
+                  <option value="flash">Flash - faster, cheaper, no thinking</option>
+                  <option value="pro" selected>Pro - better quality, no thinking</option>
+                  <option value="pro_thinking">Pro Thinking - best reasoning, slower</option>
+                </select>
+              </label>
+              <div class="field full">
+                <span>Input Mode</span>
+                <div class="input-mode-tabs">
+                  <label><input type="radio" name="inputMode" value="manual" checked /> Manual fields</label>
+                  <label><input type="radio" name="inputMode" value="brief_text" /> One brief text</label>
+                  <label><input type="radio" name="inputMode" value="file" /> File</label>
+                </div>
+              </div>
+              <section id="briefTextPanel" class="context-panel full" hidden>
+                <label class="field full">
+                  <span>One Brief Text</span>
+                  <textarea id="briefContextText" placeholder="Paste the full SEO task brief here: topic, launch context, market, audience, product context, constraints, CTA."></textarea>
+                </label>
+                <div class="actions">
+                  <button type="button" id="extractBriefTextBtn">Extract Fields From Text</button>
+                </div>
+              </section>
+              <section id="filePanel" class="context-panel full" hidden>
+                <label class="field full">
+                  <span>Brief File</span>
+                  <input id="briefContextFile" type="file" accept=".txt,.md,.json,.csv,text/plain,text/markdown,application/json" />
+                </label>
+                <div class="actions">
+                  <button type="button" id="extractFileBtn">Extract Fields From File</button>
+                </div>
+              </section>
+              <div id="contextExtractionResult" class="context-result full" hidden></div>
+              <textarea id="campaignContext" hidden></textarea>
+              <label class="field full">
+                <span>Topic Hint</span>
+                <em>Research direction from the marketer. This is not a final keyword and not an article title.</em>
+                <textarea id="topicHint" required>How people in emerging markets can make idle USDT productive</textarea>
               </label>
               <label class="field">
                 <span>Country</span>
@@ -800,6 +993,20 @@ export class SeoBriefTestUiController {
               <label class="field full">
                 <span>Audience</span>
                 <textarea id="audience">Beginners holding USDT who want simple earning options.</textarea>
+              </label>
+              <label class="field full">
+                <span>User Pains</span>
+                <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
+                <textarea id="userPains" required>Save money in dollars
+Avoid naira devaluation
+Make idle USDT useful without hype</textarea>
+              </label>
+              <label class="field full">
+                <span>User Scenarios</span>
+                <em>Manual search, behavior, ecosystem, comparison, or action scenarios.</em>
+                <textarea id="userScenarios" required>Uses Binance P2P
+Stores USDT in Trust Wallet
+Needs to understand TRC20 vs BEP20</textarea>
               </label>
               <label class="field">
                 <span>Product Name</span>
@@ -817,6 +1024,44 @@ export class SeoBriefTestUiController {
                 <span>Key Message</span>
                 <textarea id="keyMessage">Idle USDT can become productive if users understand the options and risks clearly.</textarea>
               </label>
+              <label class="field full">
+                <span>Known Competitor Domains To Include</span>
+                <em>Optional. One domain per line or comma-separated. These are explicit competitor targets for DataForSEO Ranked Keywords.</em>
+                <textarea id="knownCompetitorsMustInclude">binance.com
+nexo.com</textarea>
+              </label>
+              <label class="field">
+                <span>Optional Competitor Domains</span>
+                <textarea id="knownCompetitorsOptional">trustwallet.com
+kraken.com</textarea>
+              </label>
+              <label class="field">
+                <span>Competitors / Sources To Exclude</span>
+                <textarea id="knownCompetitorsExclude">Scammy faucets
+Unsupported regions</textarea>
+              </label>
+              <label class="field full">
+                <span>Brand Constraints</span>
+                <textarea id="brandConstraints">No hype
+No get-rich-quick framing
+Keep trust and proof central</textarea>
+              </label>
+              <label class="field full">
+                <span>Claims / Compliance Constraints</span>
+                <textarea id="claimsConstraints">Do not promise guaranteed returns
+Explain risks clearly
+Do not present yield as risk-free</textarea>
+              </label>
+              <label class="field full">
+                <span>Preferred Angle</span>
+                <input id="preferredAngle" value="Educational comparison for cautious USDT holders" />
+              </label>
+              <label class="field full">
+                <span>Excluded Topics</span>
+                <textarea id="excludedTopics">Airdrops
+Faucets
+High-risk leverage</textarea>
+              </label>
               <label class="field">
                 <span>Audience Before</span>
                 <input id="audienceBefore" value="User holds USDT but does not understand earning options." />
@@ -824,6 +1069,18 @@ export class SeoBriefTestUiController {
               <label class="field">
                 <span>Audience After</span>
                 <input id="audienceAfter" value="User understands the options and sees Reinforce as one practical next step." />
+              </label>
+              <label class="field">
+                <span>Hypotheses Count</span>
+                <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="10" />
+              </label>
+              <label class="field">
+                <span>SERP Enrichment Count</span>
+                <input id="serpEnrichmentCount" type="number" min="1" max="100" step="1" value="10" />
+              </label>
+              <label class="field full">
+                <span>Competitor Keywords JSON ID</span>
+                <input id="competitorKeywordsJsonId" placeholder="nigeria_usdt_wallet_cex_v1_2026_06_04" />
               </label>
               <label class="field full balance-field">
                 <span>SEO / Product Balance</span>
@@ -841,7 +1098,6 @@ export class SeoBriefTestUiController {
                 <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
               </label>
               <div class="actions full">
-                <button class="primary" type="submit" id="launchBtn">Generate 3 Keywords</button>
                 <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
               </div>
             </form>
@@ -903,11 +1159,41 @@ export class SeoBriefTestUiController {
         selectedRunId: null,
         filterProjectId: null,
         filterStatus: null,
+        initialRunSelectionDone: false,
+        activeSeoStep: initialState.step || 'input',
+        keywordHypothesesLoading: false,
         serpPreviewLoading: false,
-        relatedQuerySelectionLoading: false,
+        serpDerivedCandidatesLoading: false,
+        rankedKeywordsLoading: false,
+        competitorMatchingLoading: false,
+        dirtyKeywordPoolLoading: false,
+        candidateScoringLoading: false,
+        keywordClusteringLoading: false,
+        clusterProductFitLoading: false,
+        clusterSelectionLoading: false,
+        onPageLoading: false,
+        onPageSynthesisLoading: false,
+        finalBriefLoading: false,
       };
+      let launchPanelNode = null;
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
+      const SEO_STEP_TABS = [
+        { id: 'input', label: 'Input' },
+        { id: 'keywords', label: 'Keywords' },
+        { id: 'serp', label: 'SERP Snapshots' },
+        { id: 'candidates', label: 'SERP Candidates' },
+        { id: 'rankedKeywords', label: 'Competitor Keywords' },
+        { id: 'competitorMatching', label: 'Matching' },
+        { id: 'dirtyPool', label: 'Dirty Pool' },
+        { id: 'candidateScoring', label: 'Filtering' },
+        { id: 'clusters', label: 'Clusters' },
+        { id: 'productFit', label: 'Product Fit' },
+        { id: 'selection', label: 'Selection' },
+        { id: 'onPage', label: 'OnPage' },
+        { id: 'onPageSynthesis', label: 'OnPage Synthesis' },
+        { id: 'finalBrief', label: 'Final Brief' },
+      ];
 
       function qs(id) {
         return document.getElementById(id);
@@ -970,6 +1256,108 @@ export class SeoBriefTestUiController {
         qs('productWeightLabel').textContent = productPercent + '%';
       }
 
+      function getInputMode() {
+        return document.querySelector('input[name="inputMode"]:checked')?.value || 'manual';
+      }
+
+      function syncInputMode() {
+        const mode = getInputMode();
+        qs('briefTextPanel').hidden = mode !== 'brief_text';
+        qs('filePanel').hidden = mode !== 'file';
+      }
+
+      function readTextFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('File read failed'));
+          reader.readAsText(file);
+        });
+      }
+
+      function setIfPresent(id, value) {
+        if (typeof value !== 'string' || !value.trim()) return;
+        qs(id).value = value.trim();
+      }
+
+      function setListIfPresent(id, value) {
+        if (!Array.isArray(value) || value.length === 0) return;
+        const nextValue = value
+          .filter((item) => typeof item === 'string' && item.trim())
+          .map((item) => item.trim())
+          .join('\\n');
+        if (nextValue) qs(id).value = nextValue;
+      }
+
+      function parseListInput(id) {
+        return qs(id).value
+          .split(/[\\n,]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function applyExtractedContext(result) {
+        setIfPresent('topicHint', result.topicHint || result.topicSeed);
+        setIfPresent('country', result.country);
+        setIfPresent('language', result.language);
+        setIfPresent('audience', result.audience);
+        setListIfPresent('userPains', result.userPains);
+        setListIfPresent('userScenarios', result.userScenarios);
+        setIfPresent('productName', result.productName);
+        setIfPresent('productDescription', result.productDescription);
+        setIfPresent('keyMessage', result.keyMessage);
+        setIfPresent('audienceBefore', result.audienceBefore);
+        setIfPresent('audienceAfter', result.audienceAfter);
+        setIfPresent('cta', result.cta);
+        setListIfPresent('knownCompetitorsMustInclude', result.knownCompetitors);
+        setListIfPresent('brandConstraints', result.brandConstraints);
+        setListIfPresent('claimsConstraints', result.claimsConstraints);
+        setIfPresent('preferredAngle', result.preferredAngle);
+        setListIfPresent('excludedTopics', result.excludedTopics);
+        const contextLines = []
+          .concat(Array.isArray(result.temporaryConstraints) ? result.temporaryConstraints.map((item) => 'Constraint: ' + item) : [])
+          .concat(Array.isArray(result.notes) ? result.notes.map((item) => 'Note: ' + item) : []);
+        qs('campaignContext').value = contextLines.join('\\n').slice(0, 8000);
+      }
+
+      function renderExtractionResult(result) {
+        const missing = Array.isArray(result.missingFields) ? result.missingFields : [];
+        const constraints = Array.isArray(result.temporaryConstraints) ? result.temporaryConstraints : [];
+        const notes = Array.isArray(result.notes) ? result.notes : [];
+        const root = qs('contextExtractionResult');
+        root.hidden = false;
+        root.innerHTML =
+          '<strong>' + (missing.length > 0 ? 'Missing fields' : 'Extracted fields look usable') + '</strong>' +
+          (missing.length > 0
+            ? '<ul>' + missing.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
+            : '<p>Review the filled fields below before launching the run.</p>') +
+          (constraints.length > 0
+            ? '<strong>Temporary constraints</strong><ul>' + constraints.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
+            : '') +
+          (notes.length > 0
+            ? '<strong>Notes</strong><ul>' + notes.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
+            : '');
+      }
+
+      async function extractContextFromText(contextText) {
+        const trimmed = String(contextText || '').trim();
+        if (!trimmed) {
+          showToast('Brief context is empty');
+          return;
+        }
+        const result = await fetchJson('/seo-briefing/context/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            aiModelMode: qs('aiModelMode').value,
+            contextText: trimmed,
+          }),
+        });
+        applyExtractedContext(result);
+        renderExtractionResult(result);
+        showToast('Brief context extracted');
+      }
+
       const STAGE_ORDER = [
         'keyword_expansion',
         'keyword_research',
@@ -987,7 +1375,7 @@ export class SeoBriefTestUiController {
       const STAGE_META = {
         keyword_expansion: {
           title: 'Generate Initial Keywords',
-          loading: 'AI is generating 3 initial keyword hypotheses from the topic, audience, product, and brand memory.',
+          loading: 'AI is generating 10 initial keyword hypotheses from the topic, audience, product, and brand memory.',
           action: 'Fetch SERP for the first keyword',
         },
         keyword_research: {
@@ -1094,6 +1482,186 @@ export class SeoBriefTestUiController {
           : DEFAULT_KEYWORD_EXPANSION_PROMPT;
       }
 
+      function readRunAiModelMode(run) {
+        const artifact = findArtifact(run, 'normalized_input');
+        const value = artifact?.payload?.aiModelMode;
+        return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
+      }
+
+      function aiModelModeLabel(value) {
+        if (value === 'flash') return 'Flash';
+        if (value === 'pro_thinking') return 'Pro Thinking';
+        return 'Pro';
+      }
+
+      function renderMemoryList(items, emptyText) {
+        const values = Array.isArray(items)
+          ? items.filter((item) => typeof item === 'string' && item.trim())
+          : [];
+        return values.length
+          ? '<ul>' + values.map((item) => '<li>' + escapeHtmlClient(item.trim()) + '</li>').join('') + '</ul>'
+          : '<p class="muted">' + escapeHtmlClient(emptyText) + '</p>';
+      }
+
+      function renderBrandMemorySnapshot(run) {
+        const artifact = findArtifact(run, 'brand_memory_snapshot');
+        const payload = artifact?.payload || {};
+        const snapshot = payload.snapshot || run.brandMemorySnapshot || {};
+        const summary = payload.summary || {};
+        const source = typeof payload.source === 'string' ? payload.source : 'unknown';
+        const sourceLabel = source === 'project_brand_memory'
+          ? 'Project Brand Memory'
+          : source === 'input_fallback'
+            ? 'Input fallback'
+            : source;
+        const glossary = snapshot.glossary && typeof snapshot.glossary === 'object' && !Array.isArray(snapshot.glossary)
+          ? snapshot.glossary
+          : {};
+        const glossaryEntries = Object.entries(glossary);
+        const brandDocs = Array.isArray(snapshot.brandDocs) ? snapshot.brandDocs : [];
+        const usageRules = Array.isArray(payload.usageRules) ? payload.usageRules : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head">' +
+              '<div class="stack"><div class="eyebrow">Algorithm Step 2</div><h3>Brand Memory Snapshot</h3></div>' +
+              '<span class="badge">' + escapeHtmlClient(sourceLabel) + '</span>' +
+            '</div>' +
+            '<p>' + escapeHtmlClient(payload.purpose || 'Brand Memory used as source-of-truth for product, trust, claims, and phrase constraints.') + '</p>' +
+            '<dl class="definition-list">' +
+              '<dt>Brand</dt><dd>' + escapeHtmlClient(snapshot.brandName || run.product.name || '—') + '</dd>' +
+              '<dt>Source Project</dt><dd>' + escapeHtmlClient(payload.projectName || payload.projectId || run.projectId || '—') + '</dd>' +
+              '<dt>Approved Facts</dt><dd>' + escapeHtmlClient(String(summary.approvedFactCount ?? (snapshot.approvedFacts || []).length ?? 0)) + '</dd>' +
+              '<dt>Forbidden Claims</dt><dd>' + escapeHtmlClient(String(summary.forbiddenClaimCount ?? (snapshot.forbiddenClaims || []).length ?? 0)) + '</dd>' +
+              '<dt>Required / Banned Phrases</dt><dd>' + escapeHtmlClient(String(summary.requiredPhraseCount ?? (snapshot.requiredPhrases || []).length ?? 0)) + ' / ' + escapeHtmlClient(String(summary.bannedPhraseCount ?? (snapshot.bannedPhrases || []).length ?? 0)) + '</dd>' +
+            '</dl>' +
+            '<div class="brand-memory-grid">' +
+              '<div class="brand-memory-block full"><h4>Product Description</h4><p>' + escapeHtmlClient(snapshot.productDescription || run.product.description || 'No product description in Brand Memory snapshot.') + '</p></div>' +
+              '<div class="brand-memory-block full"><h4>Target Audience</h4><p>' + escapeHtmlClient(snapshot.targetAudience || run.audience || 'No target audience in Brand Memory snapshot.') + '</p></div>' +
+              '<div class="brand-memory-block"><h4>Approved Facts</h4>' + renderMemoryList(snapshot.approvedFacts, 'No approved facts saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Forbidden Claims</h4>' + renderMemoryList(snapshot.forbiddenClaims, 'No forbidden claims saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Required Phrases</h4>' + renderMemoryList(snapshot.requiredPhrases, 'No required phrases saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Banned Phrases</h4>' + renderMemoryList(snapshot.bannedPhrases, 'No banned phrases saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Glossary</h4>' +
+                (glossaryEntries.length
+                  ? '<ul>' + glossaryEntries.map(([term, definition]) => '<li><strong>' + escapeHtmlClient(term) + ':</strong> ' + escapeHtmlClient(String(definition)) + '</li>').join('') + '</ul>'
+                  : '<p class="muted">No glossary terms saved.</p>') +
+              '</div>' +
+              '<div class="brand-memory-block"><h4>Brand Docs</h4>' +
+                (brandDocs.length
+                  ? '<ul>' + brandDocs.map((doc) => '<li>' + escapeHtmlClient(doc.title || doc.url || 'Untitled doc') + (doc.notes ? ' · ' + escapeHtmlClient(doc.notes) : '') + '</li>').join('') + '</ul>'
+                  : '<p class="muted">No brand docs saved.</p>') +
+              '</div>' +
+              '<div class="brand-memory-block full"><h4>Usage Rules</h4>' + renderMemoryList(usageRules, 'Default Brand Memory usage rules apply.') + '</div>' +
+            '</div>' +
+            '<details><summary>Raw Brand Memory Snapshot</summary><div><pre>' + escapeHtmlClient(prettyJson(payload.snapshot ? payload : { snapshot })) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderSeoProductContext(run) {
+        const artifact = findArtifact(run, 'seo_product_context');
+        if (!artifact?.payload) {
+          return '';
+        }
+
+        const payload = artifact.payload;
+        const researchFrame = payload.researchFrame || {};
+        const competitorContext = payload.competitorContext || {};
+        const marketerConstraints = payload.marketerConstraints || {};
+        const brandMemoryContext = payload.brandMemoryContext || {};
+        const sourcePriority = Array.isArray(payload.sourcePriority) ? payload.sourcePriority : [];
+        const generationGuardrails = Array.isArray(payload.generationGuardrails) ? payload.generationGuardrails : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head">' +
+              '<div class="stack"><div class="eyebrow">Algorithm Step 3</div><h3>SEO Product Context</h3></div>' +
+              '<span class="badge">' + escapeHtmlClient(payload.artifactVersion || 'context') + '</span>' +
+            '</div>' +
+            '<p>' + escapeHtmlClient(payload.purpose || 'Compact SEO context assembled before keyword generation.') + '</p>' +
+            '<div class="brand-memory-grid">' +
+              '<div class="brand-memory-block full"><h4>Research Frame</h4>' +
+                '<dl class="definition-list">' +
+                  '<dt>Topic Hint</dt><dd>' + escapeHtmlClient(researchFrame.topicHint || run.topicSeed || '—') + '</dd>' +
+                  '<dt>Market</dt><dd>' + escapeHtmlClient(((researchFrame.market?.country || run.market.country || '—') + ' · ' + (researchFrame.market?.language || run.market.language || '—'))) + '</dd>' +
+                  '<dt>Audience</dt><dd>' + escapeHtmlClient(researchFrame.audience || run.audience || '—') + '</dd>' +
+                  '<dt>Preferred Angle</dt><dd>' + escapeHtmlClient(researchFrame.preferredAngle || '—') + '</dd>' +
+                  '<dt>Key Message</dt><dd>' + escapeHtmlClient(researchFrame.keyMessage || run.keyMessage || '—') + '</dd>' +
+                  '<dt>CTA</dt><dd>' + escapeHtmlClient(researchFrame.cta || run.cta || '—') + '</dd>' +
+                '</dl>' +
+              '</div>' +
+              '<div class="brand-memory-block"><h4>Competitors: Must Include</h4>' + renderMemoryList(competitorContext.mustInclude, 'No must-include competitors.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Competitors: Optional</h4>' + renderMemoryList(competitorContext.optional, 'No optional competitors.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Competitors / Sources To Exclude</h4>' + renderMemoryList(competitorContext.exclude, 'No excluded competitors.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Excluded Topics</h4>' + renderMemoryList(marketerConstraints.excludedTopics, 'No excluded topics.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Brand Constraints</h4>' + renderMemoryList(marketerConstraints.brandConstraints, 'No run-specific brand constraints.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Claims Constraints</h4>' + renderMemoryList(marketerConstraints.claimsConstraints, 'No run-specific claims constraints.') + '</div>' +
+              '<div class="brand-memory-block full"><h4>Brand Memory Product Context</h4>' +
+                '<p><strong>' + escapeHtmlClient(brandMemoryContext.brandName || run.product.name || 'Brand') + '</strong></p>' +
+                '<p>' + escapeHtmlClient(brandMemoryContext.productDescription || run.product.description || 'No product description.') + '</p>' +
+                renderMemoryList(brandMemoryContext.approvedFacts, 'No approved facts in Brand Memory.') +
+              '</div>' +
+              '<div class="brand-memory-block"><h4>Source Priority</h4>' + renderMemoryList(sourcePriority, 'Default source priority applies.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Generation Guardrails</h4>' + renderMemoryList(generationGuardrails, 'Default generation guardrails apply.') + '</div>' +
+            '</div>' +
+            '<details><summary>Raw SEO Product Context</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderUserPainScenarios(run) {
+        const artifact = findArtifact(run, 'user_pain_scenarios');
+        if (!artifact?.payload) {
+          return '';
+        }
+
+        const payload = artifact.payload;
+        const userPains = Array.isArray(payload.userPains) ? payload.userPains : [];
+        const userScenarios = Array.isArray(payload.userScenarios) ? payload.userScenarios : [];
+        const riskNotes = Array.isArray(payload.riskNotes) ? payload.riskNotes : [];
+
+        const renderPain = (item) => (
+          '<div class="stage-output-item">' +
+            '<strong>' + escapeHtmlClient(item?.pain || 'Untitled pain') + '</strong>' +
+            '<small>' + escapeHtmlClient(item?.productConnection || 'connection n/a') + '</small>' +
+            '<p>' + escapeHtmlClient(item?.whyRelevant || 'No explanation provided.') + '</p>' +
+          '</div>'
+        );
+
+        const renderScenario = (item) => (
+          '<div class="stage-output-item">' +
+            '<strong>' + escapeHtmlClient(item?.scenario || 'Untitled scenario') + '</strong>' +
+            '<small>' + escapeHtmlClient([item?.type || null, item?.productFitHypothesis || null].filter(Boolean).join(' · ') || 'scenario') + '</small>' +
+            '<p>' + escapeHtmlClient(item?.whyCheck || 'No explanation provided.') + '</p>' +
+          '</div>'
+        );
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head">' +
+              '<div class="stack"><div class="eyebrow">Algorithm Step 4</div><h3>User Pains & Search Scenarios</h3></div>' +
+              '<span class="badge">' + escapeHtmlClient(payload.artifactVersion || 'user_pain_scenarios_v1') + '</span>' +
+            '</div>' +
+            '<p>' + escapeHtmlClient(payload.topicHintInterpretation || 'Topic hint interpreted into user pains before keyword generation.') + '</p>' +
+            '<div class="brand-memory-grid">' +
+              '<div class="brand-memory-block full"><h4>User Pains</h4>' +
+                (userPains.length
+                  ? '<div class="stage-output-list">' + userPains.map(renderPain).join('') + '</div>'
+                  : '<p class="muted">No user pains saved.</p>') +
+              '</div>' +
+              '<div class="brand-memory-block full"><h4>Search Scenarios</h4>' +
+                (userScenarios.length
+                  ? '<div class="stage-output-list">' + userScenarios.map(renderScenario).join('') + '</div>'
+                  : '<p class="muted">No search scenarios saved.</p>') +
+              '</div>' +
+              '<div class="brand-memory-block full"><h4>Risk Notes</h4>' + renderMemoryList(riskNotes, 'No risk notes saved.') + '</div>' +
+            '</div>' +
+            '<details><summary>Raw User Pain Scenarios</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
       function getLatestCompletedStage(run) {
         const latest = latestStepByStage(run.steps);
         for (let index = STAGE_ORDER.length - 1; index >= 0; index -= 1) {
@@ -1143,20 +1711,28 @@ export class SeoBriefTestUiController {
       function renderKeywordHypotheses(run) {
         const artifact = findArtifact(run, 'keyword_hypotheses');
         const hypotheses = Array.isArray(artifact?.payload?.hypotheses) ? artifact.payload.hypotheses : [];
+        const groups = Array.isArray(artifact?.payload?.groups) ? artifact.payload.groups : [];
         const relatedSelections = readKeywordRelatedSelections(run);
         if (!hypotheses.length) {
           return '<div class="empty">No keyword hypotheses yet.</div>';
         }
 
-        return '<div class="stage-output-list">' + hypotheses.map((item, index) => {
+        const renderHypothesis = (item, index) => {
           const keyword = typeof item.keyword === 'string' ? item.keyword.trim() : '';
           const selectedRelatedQueries = relatedSelections.get(keyword.toLowerCase()) || null;
 
           return (
             '<div class="stage-output-item">' +
               '<strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (keyword || 'Untitled keyword')) + '</strong>' +
-              '<small>' + escapeHtmlClient(item.intent || 'intent n/a') + '</small>' +
+              '<small>' + escapeHtmlClient([
+                item.intent || 'intent n/a',
+                item.hypothesisType || item.groupLabel || null,
+                item.productFitHypothesis || null,
+              ].filter(Boolean).join(' · ')) + '</small>' +
               '<p>' + escapeHtmlClient(item.rationale || item.audienceFit || 'No explanation provided.') + '</p>' +
+              (Array.isArray(item.riskFlags) && item.riskFlags.length
+                ? '<p class="muted">Risk: ' + escapeHtmlClient(item.riskFlags.join(', ')) + '</p>'
+                : '') +
               (selectedRelatedQueries
                 ? '<div class="related-query-inline"><span>Selected related queries</span>' +
                     (selectedRelatedQueries.length
@@ -1166,7 +1742,27 @@ export class SeoBriefTestUiController {
                 : '') +
             '</div>'
           );
-        }).join('') + '</div>';
+        };
+
+        if (groups.length) {
+          let indexOffset = 0;
+          return '<div class="stage-output-list">' + groups.map((group) => {
+            const groupHypotheses = Array.isArray(group.hypotheses) ? group.hypotheses : [];
+            const html = (
+              '<details class="keyword-serp-item" open>' +
+                '<summary>' + escapeHtmlClient(group.label || group.groupId || 'Keyword group') + '</summary>' +
+                '<div class="keyword-serp-body">' +
+                  '<p>' + escapeHtmlClient(group.purpose || 'Grouped keyword hypotheses.') + '</p>' +
+                  groupHypotheses.map((item, localIndex) => renderHypothesis(item, indexOffset + localIndex)).join('') +
+                '</div>' +
+              '</details>'
+            );
+            indexOffset += groupHypotheses.length;
+            return html;
+          }).join('') + '</div>';
+        }
+
+        return '<div class="stage-output-list">' + hypotheses.map(renderHypothesis).join('') + '</div>';
       }
 
       function renderFirstKeywordSerpPreview(run) {
@@ -1187,6 +1783,11 @@ export class SeoBriefTestUiController {
         const visibleRelatedSelectionArtifact = aggregateRelatedSelectionArtifact || relatedSelectionArtifact;
         const hypothesisArtifact = findArtifact(run, 'keyword_hypotheses');
         const hypotheses = Array.isArray(hypothesisArtifact?.payload?.hypotheses) ? hypothesisArtifact.payload.hypotheses : [];
+        const selectedHypotheses = Array.isArray(visibleSnapshotArtifact?.payload?.selectedHypotheses)
+          ? visibleSnapshotArtifact.payload.selectedHypotheses
+          : Array.isArray(visibleRawArtifact?.payload?.selectedHypotheses)
+            ? visibleRawArtifact.payload.selectedHypotheses
+            : [];
         const normalizedDisplayQuery = (value) => value.replace(/\\s+/g, ' ').trim().replace(/[?!.。！？]+$/u, '').trim();
         const toItems = (artifact) => Array.isArray(artifact?.payload?.items)
           ? artifact.payload.items
@@ -1206,15 +1807,23 @@ export class SeoBriefTestUiController {
         const derivedByKeyword = mapByKeyword(toItems(visibleDerivedKeywordsArtifact));
         const snapshotByKeyword = mapByKeyword(toItems(visibleSnapshotArtifact));
         const rawByKeyword = mapByKeyword(toItems(visibleRawArtifact));
-        const previewKeywords = hypotheses.length
+        const previewKeywords = selectedHypotheses.length
+          ? selectedHypotheses.map((item, index) => ({
+              index: typeof item?.index === 'number' ? item.index : index,
+              keyword: typeof item?.keyword === 'string' ? item.keyword.trim() : 'Keyword ' + String(index + 1),
+              selectionReason: typeof item?.selectionReason === 'string' ? item.selectionReason : '',
+            }))
+          : hypotheses.length
           ? hypotheses.map((item, index) => ({
               index,
               keyword: typeof item?.keyword === 'string' ? item.keyword.trim() : 'Keyword ' + String(index + 1),
+              selectionReason: '',
             }))
           : toItems(visibleDerivedKeywordsArtifact || visibleSnapshotArtifact || visibleRawArtifact || visibleRelatedSelectionArtifact)
               .map((item, index) => ({
                 index: typeof item?.index === 'number' ? item.index : index,
                 keyword: typeof item?.keyword === 'string' ? item.keyword.trim() : 'Keyword ' + String(index + 1),
+                selectionReason: '',
               }));
         const keywordCards = previewKeywords.map((item, index) => {
           const lookupKey = item.keyword ? item.keyword.toLowerCase() : 'index:' + String(item.index);
@@ -1227,11 +1836,51 @@ export class SeoBriefTestUiController {
                 .map((selection) => typeof selection?.keyword === 'string' ? normalizedDisplayQuery(selection.keyword) : '')
                 .filter(Boolean)
             : [];
+          const similarQueries = Array.isArray(derived?.similarSearchQueries)
+            ? derived.similarSearchQueries
+                .map((candidate) => ({
+                  query: typeof candidate?.query === 'string' ? normalizedDisplayQuery(candidate.query) : '',
+                  source: typeof candidate?.source === 'string' ? candidate.source : 'serp',
+                }))
+                .filter((candidate) => candidate.query)
+            : [];
+          const serpThemes = Array.isArray(derived?.serpThemes)
+            ? derived.serpThemes
+                .map((theme) => ({
+                  theme: typeof theme?.theme === 'string' ? theme.theme.trim() : '',
+                  source: typeof theme?.source === 'string' ? theme.source : 'serp_theme',
+                }))
+                .filter((theme) => theme.theme)
+                .slice(0, 8)
+            : [];
+          const features = Array.isArray(snapshot?.snapshot?.serpFeatures)
+            ? snapshot.snapshot.serpFeatures
+            : Array.isArray(snapshot?.serpFeatures)
+              ? snapshot.serpFeatures
+              : [];
 
           return (
             '<details class="keyword-serp-item" ' + (index === 0 ? 'open' : '') + '>' +
               '<summary>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + item.keyword) + '</summary>' +
               '<div class="keyword-serp-body">' +
+                (derived
+                  ? '<div class="related-query-inline"><span>SERP-derived related queries</span>' +
+                      (similarQueries.length
+                        ? '<ul>' + similarQueries.map((candidate) => '<li>' + escapeHtmlClient(candidate.query) + ' <small>' + escapeHtmlClient(candidate.source) + '</small></li>').join('') + '</ul>'
+                        : '<p>No People Also Ask or related search queries found.</p>') +
+                    '</div>' +
+                    '<div class="related-query-inline"><span>Competitor / SERP content themes</span>' +
+                      (serpThemes.length
+                        ? '<ul>' + serpThemes.map((theme) => '<li>' + escapeHtmlClient(theme.theme) + ' <small>' + escapeHtmlClient(theme.source) + '</small></li>').join('') + '</ul>'
+                        : '<p>No compact SERP themes extracted.</p>') +
+                    '</div>'
+                  : '') +
+                (features.length
+                  ? '<div class="related-query-inline"><span>SERP features</span><p>' + escapeHtmlClient(features.join(', ')) + '</p></div>'
+                  : '') +
+                (item.selectionReason
+                  ? '<div class="related-query-inline"><span>Why selected for SERP</span><p>' + escapeHtmlClient(item.selectionReason) + '</p></div>'
+                  : '') +
                 '<div class="related-query-inline"><span>Selected related queries</span>' +
                   (selected
                     ? selectedQueries.length
@@ -1240,7 +1889,7 @@ export class SeoBriefTestUiController {
                     : '<p>Selection has not been generated for this keyword yet.</p>') +
                 '</div>' +
                 (derived
-                  ? '<details><summary>SERP-derived similar queries and themes</summary><div><pre>' + escapeHtmlClient(prettyJson(derived)) + '</pre></div></details>'
+                  ? '<details><summary>Raw SERP-derived candidates</summary><div><pre>' + escapeHtmlClient(prettyJson(derived)) + '</pre></div></details>'
                   : '') +
                 (snapshot
                   ? '<details><summary>Normalized snapshot</summary><div><pre>' + escapeHtmlClient(prettyJson(snapshot)) + '</pre></div></details>'
@@ -1308,6 +1957,1019 @@ export class SeoBriefTestUiController {
         showToast.timer = setTimeout(() => toast.classList.remove('is-visible'), 2500);
       }
 
+      function renderSerpDomainAggregation(run) {
+        const artifact = findArtifact(run, 'serp_domain_aggregation');
+        const payload = artifact?.payload || null;
+        const domains = Array.isArray(payload?.domains) ? payload.domains : [];
+        const formatSignals = Array.isArray(payload?.formatSignals) ? payload.formatSignals : [];
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No SERP domain aggregation yet.</div></section>';
+        }
+
+        const domainCards = domains.length
+          ? domains.map((domain, index) => {
+              const rankingUrls = Array.isArray(domain?.ranking_urls) ? domain.ranking_urls : [];
+              const queries = Array.isArray(domain?.queries) ? domain.queries : [];
+              const features = Array.isArray(domain?.serp_feature_context) ? domain.serp_feature_context : [];
+              return (
+                '<details class="keyword-serp-item" ' + (index < 3 ? 'open' : '') + '>' +
+                  '<summary>' +
+                    escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (domain?.domain || 'unknown domain')) +
+                    ' · ' + escapeHtmlClient(String(domain?.appearances ?? 0)) + ' appearances' +
+                    ' · best ' + escapeHtmlClient(domain?.best_rank ?? 'AI ref') +
+                  '</summary>' +
+                  '<div class="keyword-serp-body">' +
+                    '<div class="inline-meta">' +
+                      '<span>Avg rank: ' + escapeHtmlClient(domain?.avg_rank ?? '—') + '</span>' +
+                      '<span>Ranking URLs: ' + escapeHtmlClient(String(rankingUrls.length)) + '</span>' +
+                    '</div>' +
+                    (queries.length
+                      ? '<div class="related-query-inline"><span>Queries</span><ul>' + queries.map((query) => '<li>' + escapeHtmlClient(query) + '</li>').join('') + '</ul></div>'
+                      : '') +
+                    (features.length
+                      ? '<div class="related-query-inline"><span>SERP feature context</span><p>' + escapeHtmlClient(features.join(', ')) + '</p></div>'
+                      : '') +
+                    (rankingUrls.length
+                      ? '<div class="stage-output-list">' + rankingUrls.slice(0, 8).map((url) => (
+                          '<div class="stage-output-item">' +
+                            '<div class="inline-meta"><strong>' + escapeHtmlClient(url?.type || 'organic') + '</strong><span>' + escapeHtmlClient(url?.rank_absolute ?? 'AI ref') + '</span></div>' +
+                            '<p>' + escapeHtmlClient(url?.title || url?.url || 'Untitled') + '</p>' +
+                            '<p class="mono">' + escapeHtmlClient(url?.url || '—') + '</p>' +
+                            '<p>' + escapeHtmlClient(url?.query || '') + '</p>' +
+                          '</div>'
+                        )).join('') + '</div>'
+                      : '<div class="empty">No ranking URL evidence.</div>') +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('')
+          : '<div class="empty">No domains found in SERP evidence.</div>';
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 4</div><h3>SERP Domain Aggregation</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'serp_domain_aggregation') + '</span></div>' +
+            '<dl class="definition-list">' +
+              '<dt>Queries</dt><dd>' + escapeHtmlClient(payload?.queryCount ?? 0) + '</dd>' +
+              '<dt>Domains</dt><dd>' + escapeHtmlClient(payload?.domainCount ?? domains.length) + '</dd>' +
+              '<dt>Ranking URLs</dt><dd>' + escapeHtmlClient(payload?.rankingUrlCount ?? 0) + '</dd>' +
+            '</dl>' +
+            domainCards +
+            (formatSignals.length
+              ? '<details><summary>Format signals</summary><div><pre>' + escapeHtmlClient(prettyJson(formatSignals)) + '</pre></div></details>'
+              : '') +
+          '</section>'
+        );
+      }
+
+      function renderSerpDomainClassification(run) {
+        const artifact = findArtifact(run, 'serp_domain_classification');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No SERP domain classification yet.</div></section>';
+        }
+
+        const rankedTargets = Array.isArray(payload?.rankedKeywordsTargets)
+          ? payload.rankedKeywordsTargets
+          : [];
+        const onpageTargets = Array.isArray(payload?.onpageOnlyTargets)
+          ? payload.onpageOnlyTargets
+          : [];
+        const painTargets = Array.isArray(payload?.painSignalTargets)
+          ? payload.painSignalTargets
+          : [];
+        const ignoredTargets = Array.isArray(payload?.ignoredTargets)
+          ? payload.ignoredTargets
+          : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 5</div><h3>SERP Domain Classification</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'serp_domain_classification') + '</span></div>' +
+            '<p>Primary output: domains that should be used as competitors for the next Ranked Keywords step. Everything else is context, not a keyword source.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(rankedTargets.length) + '</strong><span>Ranked Keywords targets</span></div>' +
+              '<div><strong>' + escapeHtmlClient(onpageTargets.length) + '</strong><span>On-page only</span></div>' +
+              '<div><strong>' + escapeHtmlClient(painTargets.length) + '</strong><span>Pain signals</span></div>' +
+              '<div><strong>' + escapeHtmlClient(ignoredTargets.length) + '</strong><span>Ignored</span></div>' +
+            '</div>' +
+            '<div class="section-subhead"><h4>Selected 3-6 Ranked Keywords Targets</h4><p>These are the domains AI thinks can provide useful keyword universes.</p></div>' +
+            renderDomainClassificationCards(rankedTargets, 'ranked') +
+            '<details open><summary>Secondary: on-page-only targets</summary>' + renderDomainClassificationCards(onpageTargets, 'onpage') + '</details>' +
+            '<details><summary>Secondary: pain signal targets</summary>' + renderDomainClassificationCards(painTargets, 'pain') + '</details>' +
+            '<details><summary>Ignored targets</summary>' + renderDomainClassificationCards(ignoredTargets, 'ignored') + '</details>' +
+            '<details><summary>Raw domain classification</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderDomainClassificationCards(items, mode) {
+        if (!items.length) {
+          return '<div class="empty">No domains in this bucket.</div>';
+        }
+
+        return (
+          '<div class="stage-output-list">' +
+            items.map((item, index) => {
+              const meta = [
+                item?.domainType,
+                item?.priority,
+              ].filter(Boolean).join(' · ');
+              const prefix = mode === 'ranked'
+                ? String(index + 1).padStart(2, '0') + '. '
+                : '';
+              return (
+                '<div class="stage-output-item">' +
+                  '<div class="inline-meta"><strong>' + escapeHtmlClient(prefix + (item?.domain || 'unknown domain')) + '</strong>' + (meta ? '<span>' + escapeHtmlClient(meta) + '</span>' : '') + '</div>' +
+                  '<p>' + escapeHtmlClient(item?.reason || 'No reason saved.') + '</p>' +
+                '</div>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderRankedKeywordsUniverse(run) {
+        const artifact =
+          findArtifact(run, 'competitor_keyword_map') ||
+          findArtifact(run, 'ranked_keywords_universe');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No competitor keyword map built yet.</div></section>';
+        }
+
+        const targetResults = Array.isArray(payload?.targetResults) ? payload.targetResults : [];
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        const flatKeywords = Array.isArray(payload?.allKeywordsFlat) ? payload.allKeywordsFlat : [];
+        const skippedCompetitors = Array.isArray(payload?.manualCompetitors?.skipped)
+          ? payload.manualCompetitors.skipped
+          : [];
+        const topItems = items
+          .slice()
+          .sort((left, right) => {
+            const leftVolume = Number(left?.metrics?.searchVolume ?? -1);
+            const rightVolume = Number(right?.metrics?.searchVolume ?? -1);
+            if (rightVolume !== leftVolume) return rightVolume - leftVolume;
+            return Number(left?.competitorEvidence?.rankAbsolute ?? 999) -
+              Number(right?.competitorEvidence?.rankAbsolute ?? 999);
+          })
+          .slice(0, 40);
+
+        const targetCards = targetResults.length
+          ? '<div class="stage-output-list">' + targetResults.map((target, index) => (
+              '<details class="keyword-serp-item" ' + (index < 3 ? 'open' : '') + '>' +
+                '<summary>' +
+                  escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (target?.target || 'unknown domain')) +
+                  ' · ' + escapeHtmlClient(String(target?.itemsCount ?? 0)) + ' keywords' +
+                  ' · ETV ' + escapeHtmlClient(target?.metrics?.organicEtv ?? '—') +
+                '</summary>' +
+                '<div class="keyword-serp-body">' +
+                  '<dl class="definition-list">' +
+                    '<dt>Total count</dt><dd>' + escapeHtmlClient(target?.totalCount ?? '—') + '</dd>' +
+                    '<dt>Pos 1</dt><dd>' + escapeHtmlClient(target?.metrics?.organicPos1 ?? '—') + '</dd>' +
+                    '<dt>Pos 2-3</dt><dd>' + escapeHtmlClient(target?.metrics?.organicPos2To3 ?? '—') + '</dd>' +
+                    '<dt>Pos 4-10</dt><dd>' + escapeHtmlClient(target?.metrics?.organicPos4To10 ?? '—') + '</dd>' +
+                  '</dl>' +
+                  renderRankedKeywordCards(Array.isArray(target?.items) ? target.items.slice(0, 8) : []) +
+                '</div>' +
+              '</details>'
+            )).join('') + '</div>'
+          : '<div class="empty">No target results saved.</div>';
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Competitor Keyword Map</div><h3>Manual Competitor Ranked Keywords</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'competitor_keyword_map') + '</span></div>' +
+            '<p>Primary output: DataForSEO Ranked Keywords from manual competitor domains only. This is still an unfiltered evidence pool, not the final keyword list.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.targetCount ?? targetResults.length) + '</strong><span>Queried domains</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.itemCount ?? items.length) + '</strong><span>Ranked keyword rows</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.deduplicatedKeywordCount ?? flatKeywords.length) + '</strong><span>Unique competitor keywords</span></div>' +
+              '<div><strong>' + escapeHtmlClient(targetResults.reduce((sum, target) => sum + Number(target?.metrics?.organicEtv ?? 0), 0).toFixed(1)) + '</strong><span>Total organic ETV</span></div>' +
+            '</div>' +
+            '<dl class="definition-list">' +
+              '<dt>competitor_keywords_json_id</dt><dd class="mono">' + escapeHtmlClient(payload?.competitorKeywordsJsonId || '—') + '</dd>' +
+              '<dt>Endpoint</dt><dd class="mono">' + escapeHtmlClient(payload?.endpoint || '—') + '</dd>' +
+            '</dl>' +
+            (skippedCompetitors.length
+              ? '<div class="section-subhead"><h4>Skipped competitor hints</h4><p>These were not queried because they were excluded or not domain-like targets.</p></div>' +
+                '<div class="stage-output-list">' + skippedCompetitors.map((item) => (
+                  '<div class="stage-output-item"><div class="inline-meta"><strong>' + escapeHtmlClient(item?.raw || 'unknown') + '</strong><span>' + escapeHtmlClient(item?.source || '—') + '</span></div><p>' + escapeHtmlClient(item?.reason || 'Skipped') + '</p></div>'
+                )).join('') + '</div>'
+              : '') +
+            '<div class="section-subhead"><h4>Target domains</h4><p>These came from manual competitors in Step 0 input.</p></div>' +
+            targetCards +
+            '<div class="section-subhead"><h4>Top normalized keyword evidence</h4><p>Sorted by search volume, then competitor rank. Product-fit filtering is a later step.</p></div>' +
+            renderRankedKeywordCards(topItems) +
+            '<details><summary>Raw competitor keyword map artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderRankedKeywordCards(items) {
+        if (!items.length) {
+          return '<div class="empty">No ranked keyword rows.</div>';
+        }
+
+        return (
+          '<div class="stage-output-list">' +
+            items.map((item, index) => {
+              const metrics = item?.metrics || {};
+              const evidence = item?.competitorEvidence || {};
+              const features = Array.isArray(item?.serpEvidence?.serpFeatures)
+                ? item.serpEvidence.serpFeatures
+                : [];
+              return (
+                '<div class="stage-output-item">' +
+                  '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.text || 'unknown keyword')) + '</strong><span>' + escapeHtmlClient(item?.sourceDomain || '—') + '</span></div>' +
+                  '<p>' +
+                    'SV: ' + escapeHtmlClient(metrics.searchVolume ?? '—') +
+                    ' · KD: ' + escapeHtmlClient(metrics.keywordDifficulty ?? '—') +
+                    ' · intent: ' + escapeHtmlClient(metrics.intent || '—') +
+                    ' · rank: ' + escapeHtmlClient(evidence.rankAbsolute ?? '—') +
+                  '</p>' +
+                  '<p>' + escapeHtmlClient(evidence.rankingTitle || 'No ranking title') + '</p>' +
+                  '<p class="mono">' + escapeHtmlClient(evidence.rankingUrl || '—') + '</p>' +
+                  (features.length ? '<p>SERP: ' + escapeHtmlClient(features.join(', ')) + '</p>' : '') +
+                '</div>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderCompetitorKeywordMatches(run) {
+        const artifact = findArtifact(run, 'competitor_keyword_matches');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No competitor keyword matching saved yet.</div></section>';
+        }
+
+        const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+        const topCandidates = candidates
+          .slice()
+          .sort((left, right) =>
+            Number(right?.proxyEvaluation?.proxyDemandScore ?? 0) -
+              Number(left?.proxyEvaluation?.proxyDemandScore ?? 0),
+          )
+          .slice(0, 80);
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 5</div><h3>Competitor Keyword Matching</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'competitor_keyword_matches') + '</span></div>' +
+            '<p>Primary output: candidate queries matched to competitor ranked keywords. Competitor volume is used only as proxy evidence, not copied onto candidate queries.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.candidateCount ?? candidates.length) + '</strong><span>Candidates checked</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.matchedCandidateCount ?? 0) + '</strong><span>Matched candidates</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.competitorKeywordCount ?? 0) + '</strong><span>Competitor keywords</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.averageProxyDemandScore ?? 0) + '</strong><span>Avg proxy score</span></div>' +
+            '</div>' +
+            renderCompetitorMatchCards(topCandidates) +
+            '<details><summary>Raw competitor keyword matches</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderCompetitorMatchCards(items) {
+        if (!items.length) {
+          return '<div class="empty">No competitor keyword matches.</div>';
+        }
+
+        return (
+          '<div class="stage-output-list">' +
+            items.map((item, index) => {
+              const proxy = item?.proxyEvaluation || {};
+              const matches = Array.isArray(proxy?.semanticMatches) ? proxy.semanticMatches : [];
+              return (
+                '<details class="keyword-serp-item" ' + (index < 12 ? 'open' : '') + '>' +
+                  '<summary>' +
+                    escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.text || 'unknown query')) +
+                    ' · proxy ' + escapeHtmlClient(proxy?.proxyDemandScore ?? 0) +
+                    ' · ' + escapeHtmlClient(proxy?.bestMatchType || 'no_match') +
+                  '</summary>' +
+                  '<div class="keyword-serp-body">' +
+                    '<p>' +
+                      'origin: ' + escapeHtmlClient(item?.originType || '—') +
+                      ' · candidate score: ' + escapeHtmlClient(item?.candidateScore ?? '—') +
+                      ' · domains: ' + escapeHtmlClient(Array.isArray(proxy?.matchingDomains) ? proxy.matchingDomains.join(', ') : '—') +
+                    '</p>' +
+                    '<div class="stage-output-list">' +
+                      matches.slice(0, 6).map((match) => (
+                        '<div class="stage-output-item">' +
+                          '<div class="inline-meta"><strong>' + escapeHtmlClient(match?.competitorKeyword || 'unknown keyword') + '</strong><span>' + escapeHtmlClient(match?.sourceDomain || '—') + '</span></div>' +
+                          '<p>' + escapeHtmlClient((match?.matchType || 'no_match') + ' · confidence ' + (match?.matchConfidence ?? '—') + ' · proxy contribution ' + (match?.proxyContribution ?? 0)) + '</p>' +
+                          '<p>' + escapeHtmlClient(match?.why || 'Matched by deterministic lexical signals.') + '</p>' +
+                        '</div>'
+                      )).join('') +
+                    '</div>' +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderDirtyKeywordPool(run) {
+        const artifact = findArtifact(run, 'dirty_keyword_pool');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No dirty keyword pool built yet.</div></section>';
+        }
+
+        const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+        const sourceCounts = payload?.sourceCounts && typeof payload.sourceCounts === 'object'
+          ? payload.sourceCounts
+          : {};
+        const topCandidates = candidates
+          .slice()
+          .sort((left, right) => {
+            if (Number(right?.sourceCount ?? 0) !== Number(left?.sourceCount ?? 0)) {
+              return Number(right?.sourceCount ?? 0) - Number(left?.sourceCount ?? 0);
+            }
+            return Number(right?.metrics?.searchVolume ?? -1) -
+              Number(left?.metrics?.searchVolume ?? -1);
+          })
+          .slice(0, 80);
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 6</div><h3>Dirty Keyword Pool</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'dirty_keyword_pool') + '</span></div>' +
+            '<p>Primary output: one intentionally dirty pool of keyword candidates from hypotheses, SERP-derived queries, selected related queries, and Ranked Keywords. Filtering happens later.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.candidateCount ?? candidates.length) + '</strong><span>Unique candidates</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.duplicateEvidenceCount ?? 0) + '</strong><span>Merged duplicate evidence</span></div>' +
+              '<div><strong>' + escapeHtmlClient(sourceCounts.keyword_hypothesis ?? 0) + '</strong><span>Initial hypotheses</span></div>' +
+              '<div><strong>' + escapeHtmlClient(sourceCounts.competitor_keyword_match ?? 0) + '</strong><span>Competitor matches</span></div>' +
+            '</div>' +
+            '<div class="section-subhead"><h4>Source mix</h4><p>Counts show how many unique candidates have evidence from each source.</p></div>' +
+            '<dl class="definition-list">' +
+              '<dt>Hypotheses</dt><dd>' + escapeHtmlClient(sourceCounts.keyword_hypothesis ?? 0) + '</dd>' +
+              '<dt>SERP-derived</dt><dd>' + escapeHtmlClient(sourceCounts.serp_derived_candidate ?? 0) + '</dd>' +
+              '<dt>Selected related</dt><dd>' + escapeHtmlClient(sourceCounts.selected_related_query ?? 0) + '</dd>' +
+              '<dt>Competitor matches</dt><dd>' + escapeHtmlClient(sourceCounts.competitor_keyword_match ?? 0) + '</dd>' +
+              '<dt>Ranked Keywords</dt><dd>' + escapeHtmlClient(sourceCounts.ranked_keywords ?? 0) + '</dd>' +
+            '</dl>' +
+            '<div class="section-subhead"><h4>Candidate pool</h4><p>Sorted by source coverage and search volume. This is not filtered by Product Fit yet.</p></div>' +
+            renderDirtyKeywordCards(topCandidates) +
+            '<details><summary>Raw dirty keyword pool</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderDirtyKeywordCards(items) {
+        if (!items.length) {
+          return '<div class="empty">No dirty keyword candidates.</div>';
+        }
+
+        return (
+          '<div class="stage-output-list">' +
+            items.map((item, index) => {
+              const metrics = item?.metrics || {};
+              const sources = Array.isArray(item?.sources) ? item.sources : [];
+              const evidence = Array.isArray(item?.evidence) ? item.evidence : [];
+              return (
+                '<details class="keyword-serp-item" ' + (index < 12 ? 'open' : '') + '>' +
+                  '<summary>' +
+                    escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.text || 'unknown keyword')) +
+                    ' · ' + escapeHtmlClient(sources.join(', ') || 'no source') +
+                    ' · SV ' + escapeHtmlClient(metrics.searchVolume ?? '—') +
+                  '</summary>' +
+                  '<div class="keyword-serp-body">' +
+                    '<p>' +
+                      'Intent: ' + escapeHtmlClient(metrics.intent || '—') +
+                      ' · KD: ' + escapeHtmlClient(metrics.keywordDifficulty ?? '—') +
+                      ' · best rank: ' + escapeHtmlClient(metrics.bestRankAbsolute ?? '—') +
+                      ' · proxy: ' + escapeHtmlClient(metrics.proxyDemandScore ?? '—') +
+                    '</p>' +
+                    '<div class="stage-output-list">' +
+                      evidence.slice(0, 8).map((entry) => (
+                        '<div class="stage-output-item">' +
+                          '<div class="inline-meta"><strong>' + escapeHtmlClient(entry?.source || 'source') + '</strong><span>' + escapeHtmlClient(entry?.sourceDomain || entry?.keywordGroup || '—') + '</span></div>' +
+                          '<p>' + escapeHtmlClient(entry?.reason || entry?.sourceText || entry?.sourceKeyword || 'Evidence saved.') + '</p>' +
+                        '</div>'
+                      )).join('') +
+                    '</div>' +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderKeywordCandidateScoring(run) {
+        const artifact = findArtifact(run, 'keyword_candidate_scoring');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No candidate scoring saved yet.</div></section>';
+        }
+
+        const accepted = Array.isArray(payload?.accepted) ? payload.accepted : [];
+        const maybe = Array.isArray(payload?.maybe) ? payload.maybe : [];
+        const rejected = Array.isArray(payload?.rejected) ? payload.rejected : [];
+        const notes = Array.isArray(payload?.summary?.notes) ? payload.summary.notes : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 7</div><h3>Staged Candidate Filtering</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'keyword_candidate_scoring') + '</span></div>' +
+            '<p>Primary output: dirty-pool candidates split into accepted, maybe, and rejected through noise filtering, semantic buckets, product-fit scoring, and per-bucket shortlist caps.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.acceptedCount ?? accepted.length) + '</strong><span>Accepted</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.maybeCount ?? maybe.length) + '</strong><span>Maybe</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.rejectedCount ?? rejected.length) + '</strong><span>Rejected</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.keptAfterNoiseCount ?? 0) + '</strong><span>After noise</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.hardExcludedCandidateCount ?? 0) + '</strong><span>Hard excluded</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.llmScoredCandidateCount ?? payload?.aiScoredCandidateCount ?? 0) + '</strong><span>LLM calls</span></div>' +
+            '</div>' +
+            renderStagedFilteringSummary(payload?.stagedFiltering) +
+            (notes.length ? '<div class="section-subhead"><h4>Filtering notes</h4><p>' + escapeHtmlClient(notes.join(' ')) + '</p></div>' : '') +
+            renderScoredCandidateSection('Accepted', accepted, 'Candidates safe enough to continue into narrowing and clustering.', true) +
+            renderScoredCandidateSection('Maybe', maybe, 'Candidates that need human review, reframing, or extra evidence.', false) +
+            renderScoredCandidateSection('Rejected', rejected, 'Candidates removed because of weak fit, risk, compliance, or poor evidence.', false) +
+            '<details><summary>Raw candidate scoring artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderStagedFilteringSummary(stagedFiltering) {
+        const stages = Array.isArray(stagedFiltering?.stages) ? stagedFiltering.stages : [];
+        const buckets = Array.isArray(stagedFiltering?.buckets) ? stagedFiltering.buckets : [];
+        if (!stages.length && !buckets.length) {
+          return '';
+        }
+
+        return (
+          '<details class="keyword-serp-item" open>' +
+            '<summary>Staged filtering summary</summary>' +
+            '<div class="keyword-serp-body">' +
+              (stages.length
+                ? '<div class="stage-output-list compact">' + stages.map((stage) => (
+                    '<div class="stage-output-item">' +
+                      '<div class="inline-meta"><strong>' + escapeHtmlClient(stage?.stage || 'stage') + '</strong><span>' + escapeHtmlClient(stage?.keptCount ?? stage?.acceptedCount ?? stage?.bucketCount ?? '') + '</span></div>' +
+                      '<p>' + escapeHtmlClient(stage?.description || 'Stage completed.') + '</p>' +
+                    '</div>'
+                  )).join('') + '</div>'
+                : '') +
+              (buckets.length
+                ? '<div class="section-subhead"><h4>Bucket shortlists</h4></div><div class="stage-output-list">' + buckets.filter((bucket) => Number(bucket?.inputCount || 0) > 0).map((bucket) => {
+                    const topCandidates = Array.isArray(bucket?.topCandidates) ? bucket.topCandidates : [];
+                    return (
+                      '<div class="stage-output-item">' +
+                        '<div class="inline-meta"><strong>' + escapeHtmlClient(bucket?.label || bucket?.bucket || 'Bucket') + '</strong><span>' + escapeHtmlClient((bucket?.acceptedCount ?? 0) + ' accepted · ' + (bucket?.maybeCount ?? 0) + ' maybe · ' + (bucket?.rejectedCount ?? 0) + ' rejected') + '</span></div>' +
+                        '<p>' + escapeHtmlClient(bucket?.description || '') + '</p>' +
+                        (topCandidates.length ? '<ul>' + topCandidates.map((candidate) => '<li>' + escapeHtmlClient(candidate?.keyword || 'keyword') + ' · ' + escapeHtmlClient(candidate?.status || 'status') + ' · score ' + escapeHtmlClient(candidate?.totalScore ?? '—') + '</li>').join('') + '</ul>' : '') +
+                      '</div>'
+                    );
+                  }).join('') + '</div>'
+                : '') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderScoredCandidateSection(label, items, description, openByDefault) {
+        return (
+          '<details class="keyword-serp-item" ' + (openByDefault ? 'open' : '') + '>' +
+            '<summary>' + escapeHtmlClient(label + ' · ' + items.length) + '</summary>' +
+            '<div class="keyword-serp-body">' +
+              '<p>' + escapeHtmlClient(description) + '</p>' +
+              (items.length ? '<div class="stage-output-list">' + items.map(renderScoredCandidateCard).join('') + '</div>' : '<div class="empty">No candidates in this bucket.</div>') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderScoredCandidateCard(item, index) {
+        const scores = item?.scores || {};
+        const fit = item?.fit || {};
+        const sourceCandidate = item?.sourceCandidate || {};
+        const metrics = sourceCandidate?.metrics || {};
+        const sources = Array.isArray(sourceCandidate?.sources) ? sourceCandidate.sources : [];
+        const reasons = Array.isArray(item?.reasons) ? item.reasons : [];
+        const riskFlags = Array.isArray(item?.riskFlags) ? item.riskFlags : [];
+        const evidenceNotes = Array.isArray(item?.evidenceNotes) ? item.evidenceNotes : [];
+
+        return (
+          '<div class="stage-output-item">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.keyword || sourceCandidate?.text || 'unknown keyword')) + '</strong><span>score ' + escapeHtmlClient(item?.totalScore ?? '—') + '</span></div>' +
+            '<p>' +
+              'intent: ' + escapeHtmlClient(item?.intent || metrics.intent || '—') +
+              ' · stage: ' + escapeHtmlClient(item?.stage || '—') +
+              ' · sources: ' + escapeHtmlClient(sources.join(', ') || '—') +
+            '</p>' +
+            '<p>' +
+              'topic ' + escapeHtmlClient(scores.topicFit ?? '—') + '/' + escapeHtmlClient(fit.topicFit || '—') +
+              ' · product ' + escapeHtmlClient(scores.productFit ?? '—') + '/' + escapeHtmlClient(fit.productFit || '—') +
+              ' · audience ' + escapeHtmlClient(scores.audienceFit ?? '—') + '/' + escapeHtmlClient(fit.audienceFit || '—') +
+              ' · risk ' + escapeHtmlClient(scores.riskCompliance ?? '—') + '/' + escapeHtmlClient(fit.riskCompliance || '—') +
+              ' · evidence ' + escapeHtmlClient(scores.evidence ?? '—') + '/' + escapeHtmlClient(fit.evidence || '—') +
+            '</p>' +
+            '<p>SV: ' + escapeHtmlClient(metrics.searchVolume ?? '—') + ' · KD: ' + escapeHtmlClient(metrics.keywordDifficulty ?? '—') + ' · best rank: ' + escapeHtmlClient(metrics.bestRankAbsolute ?? '—') + ' · proxy: ' + escapeHtmlClient(metrics.proxyDemandScore ?? '—') + ' · candidate: ' + escapeHtmlClient(metrics.candidateScore ?? '—') + '</p>' +
+            (reasons.length ? '<p><strong>Reasons:</strong> ' + escapeHtmlClient(reasons.join(' ')) + '</p>' : '') +
+            (riskFlags.length ? '<p><strong>Risk flags:</strong> ' + escapeHtmlClient(riskFlags.join(' · ')) + '</p>' : '') +
+            (evidenceNotes.length ? '<p><strong>Evidence:</strong> ' + escapeHtmlClient(evidenceNotes.join(' ')) + '</p>' : '') +
+          '</div>'
+        );
+      }
+
+      function renderIntentClusters(run) {
+        const artifact = findArtifact(run, 'cluster_snapshot');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No intent clusters built yet.</div></section>';
+        }
+
+        const clusters = Array.isArray(payload?.clusters) ? payload.clusters : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 8</div><h3>Intent Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_snapshot') + '</span></div>' +
+            '<p>Primary output: accepted and maybe candidates grouped by user intent. Product Fit review happens in the next step.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.clusterCount ?? clusters.length) + '</strong><span>Clusters</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.inputCandidateCount ?? 0) + '</strong><span>Input candidates</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.acceptedCandidateCount ?? 0) + '</strong><span>Accepted input</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.maybeCandidateCount ?? 0) + '</strong><span>Maybe input</span></div>' +
+            '</div>' +
+            renderIntentClusterCards(clusters) +
+            '<details><summary>Raw intent clusters artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderIntentClusterCards(clusters) {
+        if (!clusters.length) {
+          return '<div class="empty">No clusters saved.</div>';
+        }
+
+        return (
+          '<div class="stage-output-list">' +
+            clusters.map((cluster, index) => {
+              const secondary = Array.isArray(cluster?.secondaryKeywords) ? cluster.secondaryKeywords : [];
+              const questions = Array.isArray(cluster?.questions) ? cluster.questions : [];
+              const supporting = Array.isArray(cluster?.supportingItems) ? cluster.supportingItems : [];
+              const supportingDetails = Array.isArray(cluster?.supportingItemDetails) ? cluster.supportingItemDetails : [];
+              const competitorUrls = Array.isArray(cluster?.competitorUrls) ? cluster.competitorUrls : [];
+              const keywords = Array.isArray(cluster?.keywords) ? cluster.keywords : [];
+              return (
+                '<details class="keyword-serp-item" ' + (index < 4 ? 'open' : '') + '>' +
+                  '<summary>' +
+                    escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (cluster?.clusterName || cluster?.label || 'Intent cluster')) +
+                    ' · ' + escapeHtmlClient(cluster?.intent || 'intent n/a') +
+                    ' · ' + escapeHtmlClient(cluster?.sourceConfidence || 'confidence n/a') +
+                  '</summary>' +
+                  '<div class="keyword-serp-body">' +
+                    '<dl class="definition-list">' +
+                      '<dt>Primary</dt><dd>' + escapeHtmlClient(cluster?.primaryKeywordCandidate || cluster?.primaryKeyword || '—') + '</dd>' +
+                      '<dt>User intent</dt><dd>' + escapeHtmlClient(cluster?.userIntent || '—') + '</dd>' +
+                      '<dt>Evidence</dt><dd>' + escapeHtmlClient(cluster?.evidenceSummary || cluster?.rationale || '—') + '</dd>' +
+                    '</dl>' +
+                    renderCompactStringList('Secondary keywords', secondary.length ? secondary : keywords.slice(1)) +
+                    renderCompactStringList('Questions', questions) +
+                    renderCompactStringList('Supporting items', supporting) +
+                    renderSupportingItemDetails(supportingDetails) +
+                    (competitorUrls.length
+                      ? '<div class="section-subhead"><h4>Competitor URLs</h4></div><div class="stage-output-list">' + competitorUrls.slice(0, 6).map((url) => (
+                          '<div class="stage-output-item">' +
+                            '<div class="inline-meta"><strong>' + escapeHtmlClient(url?.domain || 'domain') + '</strong><span>' + escapeHtmlClient(url?.rankAbsolute ?? '—') + '</span></div>' +
+                            '<p>' + escapeHtmlClient(url?.title || url?.url || 'Untitled') + '</p>' +
+                            '<p class="mono">' + escapeHtmlClient(url?.url || '—') + '</p>' +
+                          '</div>'
+                        )).join('') + '</div>'
+                      : '') +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderSupportingItemDetails(items) {
+        if (!items.length) {
+          return '';
+        }
+
+        return (
+          '<div class="section-subhead"><h4>Supporting evidence</h4></div>' +
+          '<div class="stage-output-list">' +
+            items.slice(0, 8).map((item) => {
+              const metrics = item?.metrics || {};
+              const sources = Array.isArray(item?.sources) ? item.sources : [];
+              return (
+                '<div class="stage-output-item">' +
+                  '<div class="inline-meta"><strong>' + escapeHtmlClient(item?.text || 'supporting item') + '</strong><span>' + escapeHtmlClient(item?.originType || sources[0] || 'source n/a') + '</span></div>' +
+                  '<p>Candidate: ' + escapeHtmlClient(item?.candidateScore ?? '—') +
+                    ' · proxy: ' + escapeHtmlClient(metrics.proxyDemandScore ?? '—') +
+                    ' · competitor: ' + escapeHtmlClient(metrics.competitorMatchScore ?? '—') +
+                    ' · SV: ' + escapeHtmlClient(metrics.searchVolume ?? '—') +
+                    ' · best rank: ' + escapeHtmlClient(metrics.bestRankAbsolute ?? '—') +
+                  '</p>' +
+                  (sources.length ? '<p class="muted">Sources: ' + escapeHtmlClient(sources.join(' · ')) + '</p>' : '') +
+                  (item?.whyInCluster ? '<p>' + escapeHtmlClient(item.whyInCluster) + '</p>' : '') +
+                '</div>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderClusterProductFitReview(run) {
+        const artifact = findArtifact(run, 'cluster_product_fit_review');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No cluster Product Fit review saved yet.</div></section>';
+        }
+
+        const reviews = Array.isArray(payload?.clusterProductFit) ? payload.clusterProductFit : [];
+        const approved = reviews.filter((item) => item?.decision === 'approve');
+        const supportingOnly = reviews.filter((item) => item?.decision === 'supporting_only');
+        const rejected = reviews.filter((item) => item?.decision === 'reject');
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 9</div><h3>Cluster Product Fit Review</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_product_fit_review') + '</span></div>' +
+            '<p>Primary output: every intent cluster reviewed for whether Reinforce can naturally answer the user intent. This is not final cluster selection yet.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.inputClusterCount ?? reviews.length) + '</strong><span>Input clusters</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.approvedCount ?? approved.length) + '</strong><span>Approved</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.supportingOnlyCount ?? supportingOnly.length) + '</strong><span>Supporting only</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.rejectedCount ?? rejected.length) + '</strong><span>Rejected</span></div>' +
+            '</div>' +
+            renderClusterProductFitSection('Approved', approved, true) +
+            renderClusterProductFitSection('Supporting only', supportingOnly, true) +
+            renderClusterProductFitSection('Rejected', rejected, false) +
+            '<details><summary>Raw Product Fit review</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderClusterProductFitSection(label, items, openByDefault) {
+        return (
+          '<details class="keyword-serp-item" ' + (openByDefault ? 'open' : '') + '>' +
+            '<summary>' + escapeHtmlClient(label + ' · ' + items.length) + '</summary>' +
+            '<div class="keyword-serp-body">' +
+              (items.length ? '<div class="stage-output-list">' + items.map(renderClusterProductFitCard).join('') + '</div>' : '<div class="empty">No clusters in this bucket.</div>') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderClusterProductFitCard(item, index) {
+        const cluster = item?.sourceCluster || {};
+        const whatNotToClaim = Array.isArray(item?.whatNotToClaim) ? item.whatNotToClaim : [];
+        const keywords = Array.isArray(cluster?.keywords) ? cluster.keywords : [];
+        const competitorUrls = Array.isArray(cluster?.competitorUrls) ? cluster.competitorUrls : [];
+        const supportingDetails = Array.isArray(cluster?.supportingItemDetails) ? cluster.supportingItemDetails : [];
+        return (
+          '<div class="stage-output-item">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.clusterName || 'Cluster')) + '</strong><span>' + escapeHtmlClient((item?.decision || 'decision') + ' · ' + (item?.productFitScore ?? '—') + '/100') + '</span></div>' +
+            '<p><strong>' + escapeHtmlClient(item?.productFitType || 'fit n/a') + '</strong> · ' + escapeHtmlClient(item?.reason || 'No reason saved.') + '</p>' +
+            '<dl class="definition-list">' +
+              '<dt>Primary</dt><dd>' + escapeHtmlClient(cluster?.primaryKeywordCandidate || '—') + '</dd>' +
+              '<dt>User intent</dt><dd>' + escapeHtmlClient(cluster?.userIntent || '—') + '</dd>' +
+              '<dt>Insertion angle</dt><dd>' + escapeHtmlClient(item?.productInsertionAngle || '—') + '</dd>' +
+              '<dt>Where to insert</dt><dd>' + escapeHtmlClient(item?.whereToInsert || '—') + '</dd>' +
+            '</dl>' +
+            renderCompactStringList('What not to claim', whatNotToClaim) +
+            renderCompactStringList('Cluster keywords', keywords.slice(0, 8)) +
+            renderSupportingItemDetails(supportingDetails.slice(0, 4)) +
+            (competitorUrls.length
+              ? '<div class="related-query-inline"><span>Evidence URLs</span><ul>' + competitorUrls.slice(0, 4).map((url) => '<li>' + escapeHtmlClient((url?.domain || 'domain') + ' · ' + (url?.title || url?.url || 'URL')) + '</li>').join('') + '</ul></div>'
+              : '') +
+          '</div>'
+        );
+      }
+
+      function renderClusterSelection(run) {
+        const artifact = findArtifact(run, 'cluster_selection_snapshot');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No main/supporting cluster selection saved yet.</div></section>';
+        }
+
+        const main = payload?.mainCluster || null;
+        const supporting = Array.isArray(payload?.supportingClusters) ? payload.supportingClusters : [];
+        const rejected = Array.isArray(payload?.rejectedClusters) ? payload.rejectedClusters : [];
+        const ranked = Array.isArray(payload?.rankedClusters) ? payload.rankedClusters : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 10</div><h3>Main Cluster Selection</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
+            '<p>Primary output: one main cluster for the SEO brief plus supporting clusters for internal links or adjacent articles.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(main ? '1' : '0') + '</strong><span>Main</span></div>' +
+              '<div><strong>' + escapeHtmlClient(supporting.length) + '</strong><span>Supporting</span></div>' +
+              '<div><strong>' + escapeHtmlClient(rejected.length) + '</strong><span>Rejected</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.inputClusterCount ?? ranked.length) + '</strong><span>Input clusters</span></div>' +
+            '</div>' +
+            (main ? renderSelectedClusterCard('Main cluster', main, true) : '<div class="empty">No eligible approved main cluster selected.</div>') +
+            renderSelectedClusterList('Supporting clusters', supporting, true) +
+            renderSelectedClusterList('Rejected clusters', rejected, false) +
+            '<details><summary>Ranked clusters and raw selection</summary><div>' +
+              renderSelectedClusterList('All ranked clusters', ranked, false) +
+              '<pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre>' +
+            '</div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderSelectedClusterList(label, items, openByDefault) {
+        return (
+          '<details class="keyword-serp-item" ' + (openByDefault ? 'open' : '') + '>' +
+            '<summary>' + escapeHtmlClient(label + ' · ' + items.length) + '</summary>' +
+            '<div class="keyword-serp-body">' +
+              (items.length
+                ? '<div class="stage-output-list">' + items.map((item, index) => renderSelectedClusterCard(String(index + 1).padStart(2, '0'), item, false)).join('') + '</div>'
+                : '<div class="empty">No clusters in this bucket.</div>') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderSelectedClusterCard(label, item, prominent) {
+        const breakdown = item?.scoreBreakdown || {};
+        const cluster = item?.sourceCluster || {};
+        const keywords = Array.isArray(cluster?.keywords) ? cluster.keywords : [];
+        return (
+          '<div class="stage-output-item ' + (prominent ? 'is-prominent' : '') + '">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(label + '. ' + (item?.clusterName || 'Cluster')) + '</strong><span>' + escapeHtmlClient((item?.priorityScore ?? '—') + '/100') + '</span></div>' +
+            '<p><strong>' + escapeHtmlClient(item?.primaryKeyword || 'No primary keyword') + '</strong></p>' +
+            '<p>' + escapeHtmlClient(item?.reason || 'No reason saved.') + '</p>' +
+            '<p class="muted">Product Fit: ' + escapeHtmlClient(item?.productFitType || '—') + ' · decision: ' + escapeHtmlClient(item?.productFitDecision || '—') + (item?.role ? ' · role: ' + escapeHtmlClient(item.role) : '') + '</p>' +
+            renderSelectionScoreBreakdown(breakdown) +
+            renderCompactStringList('Cluster keywords', keywords.slice(0, 6)) +
+          '</div>'
+        );
+      }
+
+      function renderSelectionScoreBreakdown(breakdown) {
+        return (
+          '<div class="metric-grid compact">' +
+            '<div><strong>' + escapeHtmlClient(breakdown.productFit ?? '—') + '</strong><span>Product</span></div>' +
+            '<div><strong>' + escapeHtmlClient(breakdown.competitorProxyDemandEvidence ?? '—') + '</strong><span>Proxy</span></div>' +
+            '<div><strong>' + escapeHtmlClient(breakdown.intentRelevance ?? '—') + '</strong><span>Intent</span></div>' +
+            '<div><strong>' + escapeHtmlClient(breakdown.serpEnrichmentSupport ?? '—') + '</strong><span>SERP</span></div>' +
+            '<div><strong>' + escapeHtmlClient(breakdown.sourceDiversityConfidence ?? '—') + '</strong><span>Sources</span></div>' +
+            '<div><strong>' + escapeHtmlClient(breakdown.riskPenalty ?? '—') + '</strong><span>Risk penalty</span></div>' +
+          '</div>'
+        );
+      }
+
+      function renderSelectedClusterOnPage(run) {
+        const artifact = findArtifact(run, 'onpage_research_snapshot');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No selected-cluster OnPage evidence saved yet.</div></section>';
+        }
+
+        const targets = Array.isArray(payload?.targets) ? payload.targets : [];
+        const pages = Array.isArray(payload?.pages) ? payload.pages : [];
+        const completed = pages.filter((page) => page?.status === 'completed');
+        const failed = pages.filter((page) => page?.status === 'failed');
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 11</div><h3>Selected Cluster OnPage Evidence</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'onpage_research_snapshot') + '</span></div>' +
+            '<p>Primary output: parsed page evidence from selected SERP URLs for the final SEO brief. This is page evidence, not keyword generation.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.targetCount ?? targets.length) + '</strong><span>Targets</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.successfulPageCount ?? completed.length) + '</strong><span>Parsed</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.failedPageCount ?? failed.length) + '</strong><span>Failed</span></div>' +
+              '<div><strong>' + escapeHtmlClient(targets.filter((target) => target?.role === 'closest_intent_match').length) + '</strong><span>Closest intent</span></div>' +
+            '</div>' +
+            '<div class="section-subhead"><h4>Selected URLs</h4><p>Chosen from already saved SERP evidence. Video/social/homepage URLs are excluded.</p></div>' +
+            renderOnPageTargetList(targets) +
+            '<div class="section-subhead"><h4>Parsed pages</h4></div>' +
+            (pages.length ? '<div class="stage-output-list">' + pages.map(renderOnPagePageCard).join('') + '</div>' : '<div class="empty">No pages saved.</div>') +
+            '<details><summary>Raw OnPage snapshot</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderOnPageTargetList(targets) {
+        return targets.length
+          ? '<div class="stage-output-list compact">' + targets.map((target, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (target?.domain || 'domain')) + '</strong><span>' + escapeHtmlClient(target?.role || 'role n/a') + '</span></div>' +
+                '<p class="mono">' + escapeHtmlClient(target?.url || '—') + '</p>' +
+                '<p>' + escapeHtmlClient(target?.selectionReason || 'No selection reason saved.') + '</p>' +
+                '<p class="muted">Query: ' + escapeHtmlClient(target?.sourceQuery || '—') + ' · rank: ' + escapeHtmlClient(target?.rankAbsolute ?? '—') + '</p>' +
+              '</div>'
+            )).join('') + '</div>'
+          : '<div class="empty">No selected OnPage targets.</div>';
+      }
+
+      function renderOnPagePageCard(page, index) {
+        const h1 = Array.isArray(page?.h1) ? page.h1 : [];
+        const h2 = Array.isArray(page?.h2) ? page.h2 : [];
+        const h3 = Array.isArray(page?.h3) ? page.h3 : [];
+        const textBlocks = Array.isArray(page?.textBlocks) ? page.textBlocks : [];
+        const importantLinks = Array.isArray(page?.importantLinks) ? page.importantLinks : [];
+        const status = page?.status || 'unknown';
+
+        return (
+          '<div class="stage-output-item ' + (status === 'failed' ? 'is-rejected' : '') + '">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (page?.title || page?.domain || 'Page')) + '</strong><span>' + escapeHtmlClient(status + ' · ' + (page?.role || 'role n/a')) + '</span></div>' +
+            '<p class="mono">' + escapeHtmlClient(page?.url || '—') + '</p>' +
+            (page?.errorMessage ? '<p class="error-text">' + escapeHtmlClient(page.errorMessage) + '</p>' : '') +
+            '<dl class="definition-list">' +
+              '<dt>Meta</dt><dd>' + escapeHtmlClient(page?.metaDescription || '—') + '</dd>' +
+              '<dt>Canonical</dt><dd class="mono">' + escapeHtmlClient(page?.canonical || '—') + '</dd>' +
+              '<dt>Status</dt><dd>' + escapeHtmlClient(page?.statusCode ?? '—') + '</dd>' +
+            '</dl>' +
+            renderCompactStringList('H1', h1.slice(0, 3)) +
+            renderCompactStringList('H2', h2.slice(0, 8)) +
+            renderCompactStringList('H3', h3.slice(0, 6)) +
+            renderCompactStringList('Text signals', textBlocks.slice(0, 5)) +
+            (importantLinks.length
+              ? '<details><summary>Important links · ' + escapeHtmlClient(importantLinks.length) + '</summary><div><pre>' + escapeHtmlClient(prettyJson(importantLinks)) + '</pre></div></details>'
+              : '') +
+          '</div>'
+        );
+      }
+
+      function renderOnPageSynthesis(run) {
+        const artifact = findArtifact(run, 'onpage_synthesis_snapshot');
+        const payload = artifact?.payload || null;
+        if (!artifact) {
+          return '<section class="card full"><div class="empty">No OnPage synthesis saved yet.</div></section>';
+        }
+
+        const summary = payload?.competitorStructureSummary || {};
+        const structure = payload?.recommendedArticleStructure || {};
+        const insertion = payload?.productInsertion || {};
+        const h2 = Array.isArray(structure?.h2) ? structure.h2 : [];
+        const faq = Array.isArray(structure?.faq) ? structure.faq : [];
+        const risks = Array.isArray(payload?.riskAndComplianceNotes) ? payload.riskAndComplianceNotes : [];
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 12</div><h3>OnPage Synthesis</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'onpage_synthesis_snapshot') + '</span></div>' +
+            '<p>Primary output: article structure requirements extracted from parsed competitor pages. This is the bridge between OnPage evidence and the final SEO brief.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.pageCount ?? '—') + '</strong><span>Parsed pages</span></div>' +
+              '<div><strong>' + escapeHtmlClient(h2.length) + '</strong><span>Recommended H2</span></div>' +
+              '<div><strong>' + escapeHtmlClient((summary?.contentGaps || []).length || 0) + '</strong><span>Content gaps</span></div>' +
+              '<div><strong>' + escapeHtmlClient(faq.length) + '</strong><span>FAQ</span></div>' +
+            '</div>' +
+            '<div class="brand-memory-grid">' +
+              '<div class="brand-memory-block"><h4>Common H2 Patterns</h4>' + renderMemoryList(summary?.commonH2Patterns, 'No repeated H2 patterns saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Common Content Blocks</h4>' + renderMemoryList(summary?.commonContentBlocks, 'No common content blocks saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Common FAQ Questions</h4>' + renderMemoryList(summary?.commonFaqQuestions, 'No common FAQ saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Tables / Comparisons</h4>' + renderMemoryList(summary?.commonTablesOrComparisons, 'No table/comparison patterns saved.') + '</div>' +
+              '<div class="brand-memory-block full"><h4>Content Gaps</h4>' + renderMemoryList(summary?.contentGaps, 'No content gaps saved.') + '</div>' +
+            '</div>' +
+            '<div class="section-subhead"><h4>Recommended Article Structure</h4><p>H1: ' + escapeHtmlClient(structure?.h1 || '—') + '</p></div>' +
+            renderRecommendedOnPageSections(h2) +
+            renderCompactStringList('Recommended FAQ', faq) +
+            '<div class="section-subhead"><h4>Product Insertion</h4></div>' +
+            '<div class="stage-output-item is-prominent">' +
+              '<p><strong>Section:</strong> ' + escapeHtmlClient(insertion?.section || '—') + '</p>' +
+              '<p><strong>Angle:</strong> ' + escapeHtmlClient(insertion?.angle || '—') + '</p>' +
+              renderCompactStringList('Do', Array.isArray(insertion?.do) ? insertion.do : []) +
+              renderCompactStringList('Avoid', Array.isArray(insertion?.avoid) ? insertion.avoid : []) +
+            '</div>' +
+            renderCompactStringList('Risk and compliance notes', risks) +
+            '<details><summary>Raw OnPage synthesis</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderRecommendedOnPageSections(sections) {
+        return sections.length
+          ? '<div class="stage-output-list">' + sections.map((section, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (section?.heading || 'Section')) + '</strong><span>H2</span></div>' +
+                '<p>' + escapeHtmlClient(section?.purpose || 'No purpose saved.') + '</p>' +
+                renderCompactStringList('Subpoints', Array.isArray(section?.subpoints) ? section.subpoints : []) +
+              '</div>'
+            )).join('') + '</div>'
+          : '<div class="empty">No recommended article sections saved.</div>';
+      }
+
+      function renderFinalSeoBrief(run) {
+        const artifact = findArtifact(run, 'final_brief_snapshot');
+        const brief = artifact?.payload?.brief || run.finalBrief?.briefPayload || null;
+        if (!brief) {
+          return '<section class="card full"><div class="empty">No final SEO brief generated yet.</div></section>';
+        }
+
+        const outline = Array.isArray(brief.outline) ? brief.outline : [];
+        const faq = Array.isArray(brief.faq) ? brief.faq : [];
+        const productInsertion = brief.productInsertion || {};
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Final Output</div><h3>Final SEO Brief</h3></div><span class="badge">' + escapeHtmlClient(artifact?.payload?.artifactVersion || 'final_seo_brief_v2') + '</span></div>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(brief.primaryKeyword || '—') + '</strong><span>Primary keyword</span></div>' +
+              '<div><strong>' + escapeHtmlClient((brief.secondaryKeywords || []).length || 0) + '</strong><span>Secondary</span></div>' +
+              '<div><strong>' + escapeHtmlClient(outline.length) + '</strong><span>Outline H2</span></div>' +
+              '<div><strong>' + escapeHtmlClient(faq.length) + '</strong><span>FAQ</span></div>' +
+            '</div>' +
+            '<dl class="definition-list">' +
+              '<dt>Recommended title</dt><dd>' + escapeHtmlClient(brief.recommendedTitle || brief.title || '—') + '</dd>' +
+              '<dt>H1</dt><dd>' + escapeHtmlClient(brief.recommendedH1 || brief.recommendedTitle || '—') + '</dd>' +
+              '<dt>Meta title</dt><dd>' + escapeHtmlClient(brief.recommendedMetaTitle || brief.metaTitle || '—') + '</dd>' +
+              '<dt>Meta description</dt><dd>' + escapeHtmlClient(brief.recommendedMetaDescription || brief.metaDescription || '—') + '</dd>' +
+              '<dt>Search intent</dt><dd>' + escapeHtmlClient(brief.searchIntent || brief.angle || '—') + '</dd>' +
+              '<dt>Content type</dt><dd>' + escapeHtmlClient(brief.contentType || '—') + '</dd>' +
+              '<dt>Target reader</dt><dd>' + escapeHtmlClient(brief.targetReader || run.audience || '—') + '</dd>' +
+            '</dl>' +
+            renderCompactStringList('Secondary keywords', Array.isArray(brief.secondaryKeywords) ? brief.secondaryKeywords : []) +
+            '<div class="section-subhead"><h4>Outline</h4></div>' +
+            renderFinalBriefOutline(outline) +
+            renderFinalBriefFaq(faq) +
+            '<div class="section-subhead"><h4>Product Insertion</h4></div>' +
+            '<div class="stage-output-item is-prominent">' +
+              '<p><strong>Where:</strong> ' + escapeHtmlClient(productInsertion.where || '—') + '</p>' +
+              '<p><strong>How:</strong> ' + escapeHtmlClient(productInsertion.how || '—') + '</p>' +
+              '<p><strong>Sample angle:</strong> ' + escapeHtmlClient(productInsertion.sampleAngle || '—') + '</p>' +
+              renderCompactStringList('Avoid', Array.isArray(productInsertion.avoid) ? productInsertion.avoid : []) +
+            '</div>' +
+            renderCompactStringList('Competitor gaps to fill', Array.isArray(brief.competitorGapsToFill) ? brief.competitorGapsToFill : []) +
+            renderCompactStringList('Risk notes', Array.isArray(brief.riskNotes) ? brief.riskNotes : []) +
+            renderCompactStringList('Internal links', Array.isArray(brief.internalLinks) ? brief.internalLinks : []) +
+            renderCompactStringList('External sources needed', Array.isArray(brief.externalSourcesNeeded) ? brief.externalSourcesNeeded : []) +
+            '<div class="section-subhead"><h4>CTA</h4><p>' + escapeHtmlClient(brief.cta || '—') + '</p></div>' +
+            '<details><summary>Raw final brief</summary><div><pre>' + escapeHtmlClient(prettyJson(brief)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderFinalBriefOutline(outline) {
+        return outline.length
+          ? '<div class="stage-output-list">' + outline.map((section, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (section?.h2 || section?.heading || 'Section')) + '</strong><span>H2</span></div>' +
+                '<p>' + escapeHtmlClient(section?.notes || section?.purpose || 'No notes saved.') + '</p>' +
+                renderCompactStringList('H3', Array.isArray(section?.h3) ? section.h3 : Array.isArray(section?.keyPoints) ? section.keyPoints : []) +
+              '</div>'
+            )).join('') + '</div>'
+          : '<div class="empty">No outline saved.</div>';
+      }
+
+      function renderFinalBriefFaq(faq) {
+        return faq.length
+          ? '<div class="section-subhead"><h4>FAQ</h4></div><div class="stage-output-list">' + faq.map((item, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (item?.question || 'Question')) + '</strong><span>FAQ</span></div>' +
+                '<p>' + escapeHtmlClient(item?.answerDirection || item?.answer || 'No answer direction saved.') + '</p>' +
+              '</div>'
+            )).join('') + '</div>'
+          : '';
+      }
+
+      function renderCompactStringList(label, items) {
+        return items.length
+          ? '<div class="related-query-inline"><span>' + escapeHtmlClient(label) + '</span><ul>' + items.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul></div>'
+          : '';
+      }
+
+      function getLaunchPanelNode() {
+        if (!launchPanelNode) {
+          launchPanelNode = qs('launchPanel');
+        }
+        return launchPanelNode;
+      }
+
+      function detachLaunchPanel() {
+        const panel = getLaunchPanelNode();
+        if (panel?.parentNode) {
+          panel.parentNode.removeChild(panel);
+        }
+        return panel;
+      }
+
+      function renderEmptyDetail() {
+        const launchPanel = detachLaunchPanel();
+        appState.activeSeoStep = 'input';
+        qs('detailContent').innerHTML =
+          renderStepTabs({ input: true }) +
+          '<section id="launchPanelMount" class="full"></section>';
+        bindEmptyWorkflowTabs();
+        if (launchPanel) {
+          qs('launchPanelMount').appendChild(launchPanel);
+          bindLaunchFormActions();
+          populateProjectControls();
+          syncBalanceSlider();
+          syncInputMode();
+        }
+      }
+
+      function bindEmptyWorkflowTabs() {
+        document.querySelectorAll('[data-seo-step]').forEach((node) => {
+          node.addEventListener('click', () => {
+            const nextStep = node.getAttribute('data-seo-step');
+            if (nextStep === 'input') {
+              appState.activeSeoStep = 'input';
+              renderEmptyDetail();
+              return;
+            }
+            showToast('Create a run first');
+          });
+        });
+      }
+
       function syncRunPolling(run) {
         clearTimeout(syncRunPolling.timer);
         if (!run || !appState.selectedRunId || !isBusyStatus(run.status)) {
@@ -1342,22 +3004,35 @@ export class SeoBriefTestUiController {
         } else {
           url.searchParams.delete('projectId');
         }
+        if (appState.activeSeoStep && appState.activeSeoStep !== 'input') {
+          url.searchParams.set('step', appState.activeSeoStep);
+        } else {
+          url.searchParams.delete('step');
+        }
         history.replaceState({}, '', url);
       }
 
       async function loadProjects() {
         const projects = await fetchJson('/projects');
         appState.projects = Array.isArray(projects) ? projects : [];
+        populateProjectControls();
+      }
+
+      function populateProjectControls() {
         const options = ['<option value="">No project context</option>']
           .concat(appState.projects.map((project) => '<option value="' + escapeHtmlClient(project.id) + '">' + escapeHtmlClient(project.name) + '</option>'))
           .join('');
-        qs('projectId').innerHTML = options;
-        qs('projectFilter').innerHTML = '<option value="">All projects</option>' + appState.projects
+        if (qs('projectId')) {
+          qs('projectId').innerHTML = options;
+        }
+        if (qs('projectFilter')) {
+          qs('projectFilter').innerHTML = '<option value="">All projects</option>' + appState.projects
           .map((project) => '<option value="' + escapeHtmlClient(project.id) + '">' + escapeHtmlClient(project.name) + '</option>')
           .join('');
+        }
         if (initialState.projectId) {
-          qs('projectId').value = initialState.projectId;
-          qs('projectFilter').value = initialState.projectId;
+          if (qs('projectId')) qs('projectId').value = initialState.projectId;
+          if (qs('projectFilter')) qs('projectFilter').value = initialState.projectId;
           appState.filterProjectId = initialState.projectId;
         }
       }
@@ -1396,15 +3071,22 @@ export class SeoBriefTestUiController {
             await selectRun(appState.selectedRunId, false);
             return;
           }
+          appState.selectedRunId = null;
+          appState.selectedRun = null;
+          syncRunPolling(null);
+          updateUrl(null);
+          renderRunList();
         }
 
-        if (!appState.selectedRunId && initialState.runId) {
+        if (!appState.initialRunSelectionDone && !appState.selectedRunId && initialState.runId) {
+          appState.initialRunSelectionDone = true;
           await selectRun(initialState.runId, false);
           return;
         }
 
-        if (!appState.selectedRunId && appState.runs[0]) {
-          await selectRun(appState.runs[0].id, false);
+        appState.initialRunSelectionDone = true;
+        if (!appState.selectedRunId) {
+          renderEmptyDetail();
         }
       }
 
@@ -1455,6 +3137,311 @@ export class SeoBriefTestUiController {
         return Object.keys(payload).length ? payload : null;
       }
 
+      function getManualStepFlags(run) {
+        return {
+          input: true,
+          keywords: Boolean(findArtifact(run, 'keyword_hypotheses')),
+          serp: Boolean(
+            findArtifact(run, 'keyword_serp_preview_snapshots') ||
+              findArtifact(run, 'first_keyword_serp_preview_snapshot'),
+          ),
+          candidates: Boolean(
+            findArtifact(run, 'keyword_serp_derived_keywords') ||
+              findArtifact(run, 'first_keyword_serp_derived_keywords'),
+          ),
+          rankedKeywords: Boolean(
+            findArtifact(run, 'competitor_keyword_map') ||
+              findArtifact(run, 'ranked_keywords_universe'),
+          ),
+          competitorMatching: Boolean(findArtifact(run, 'competitor_keyword_matches')),
+          dirtyPool: Boolean(findArtifact(run, 'dirty_keyword_pool')),
+          candidateScoring: Boolean(findArtifact(run, 'keyword_candidate_scoring')),
+          clusters: Boolean(findArtifact(run, 'cluster_snapshot')),
+          productFit: Boolean(findArtifact(run, 'cluster_product_fit_review')),
+          selection: Boolean(findArtifact(run, 'cluster_selection_snapshot')),
+          onPage: Boolean(findArtifact(run, 'onpage_research_snapshot')),
+          onPageSynthesis: Boolean(findArtifact(run, 'onpage_synthesis_snapshot')),
+          finalBrief: Boolean(findArtifact(run, 'final_brief_snapshot') || run.finalBrief),
+        };
+      }
+
+      function getStepLoading(step) {
+        return (
+          (step === 'keywords' && appState.keywordHypothesesLoading) ||
+          (step === 'serp' && appState.serpPreviewLoading) ||
+          (step === 'candidates' && appState.serpDerivedCandidatesLoading) ||
+          (step === 'rankedKeywords' && appState.rankedKeywordsLoading) ||
+          (step === 'competitorMatching' && appState.competitorMatchingLoading) ||
+          (step === 'dirtyPool' && appState.dirtyKeywordPoolLoading) ||
+          (step === 'candidateScoring' && appState.candidateScoringLoading) ||
+          (step === 'clusters' && appState.keywordClusteringLoading) ||
+          (step === 'productFit' && appState.clusterProductFitLoading) ||
+          (step === 'selection' && appState.clusterSelectionLoading) ||
+          (step === 'onPage' && appState.onPageLoading) ||
+          (step === 'onPageSynthesis' && appState.onPageSynthesisLoading) ||
+          (step === 'finalBrief' && appState.finalBriefLoading)
+        );
+      }
+
+      function normalizeActiveSeoStep() {
+        if (!SEO_STEP_TABS.some((step) => step.id === appState.activeSeoStep)) {
+          appState.activeSeoStep = 'input';
+        }
+      }
+
+      function renderStepTabs(flags) {
+        normalizeActiveSeoStep();
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>Manual SEO Brief Flow</h3></div></div>' +
+            '<div class="seo-step-tabs">' +
+              SEO_STEP_TABS.map((step, index) => {
+                const active = step.id === appState.activeSeoStep;
+                const ready = Boolean(flags[step.id]);
+                const loading = getStepLoading(step.id);
+                const className = [
+                  'seo-step-tab',
+                  active ? 'is-active' : '',
+                  ready ? 'is-ready' : '',
+                  loading ? 'is-loading' : '',
+                ].filter(Boolean).join(' ');
+                return (
+                  '<button type="button" class="' + escapeHtmlClient(className) + '" data-seo-step="' + escapeHtmlClient(step.id) + '">' +
+                    '<span class="seo-step-dot"></span>' +
+                    '<span>' + escapeHtmlClient(String(index) + ' ' + step.label) + '</span>' +
+                  '</button>'
+                );
+              }).join('') +
+            '</div>' +
+          '</section>'
+        );
+      }
+
+      function renderStepActionCard(run, flags) {
+        const step = appState.activeSeoStep;
+        const actionByStep = {
+          input: {
+            title: 'Input',
+            message: 'This is the source context for the current run.',
+            button: '',
+            progress: '',
+          },
+          keywords: {
+            title: 'Search Hypotheses',
+            message: 'Generate Google-like search hypotheses from topic hint, manual user pains, manual scenarios, product context, and Brand Memory.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient('primary ' + (appState.keywordHypothesesLoading ? 'is-loading' : '')) + '" id="generateKeywordHypothesesBtn" ' + (appState.keywordHypothesesLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordHypothesesLoading ? 'Generating hypotheses...' : flags.keywords ? 'Refresh Search Hypotheses' : 'Generate Search Hypotheses') + '</button>',
+            progress: appState.keywordHypothesesLoading
+              ? '<div class="inline-progress"><p>AI is generating search hypotheses from manual pains and scenarios.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          serp: {
+            title: 'SERP Snapshots',
+            message: flags.keywords
+              ? 'Select hypotheses by SERP enrichment count and fetch Google Organic SERP Advanced snapshots.'
+              : 'Generate keywords first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.keywords ? 'primary ' : '') + (appState.serpPreviewLoading ? 'is-loading' : '')) + '" id="previewKeywordSerpsBtn" ' + (!flags.keywords || appState.serpPreviewLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.serpPreviewLoading ? 'Fetching SERPs...' : flags.serp ? 'Refresh Selected SERPs' : 'Fetch Selected SERPs') + '</button>',
+            progress: appState.serpPreviewLoading
+              ? '<div class="inline-progress"><p>Selecting hypotheses and saving raw + normalized SERP snapshots.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          candidates: {
+            title: 'SERP Candidates',
+            message: flags.serp
+              ? 'Extract related queries, PAA questions, SERP features, and content themes from saved snapshots.'
+              : 'Fetch SERP snapshots first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.serp ? 'primary ' : '') + (appState.serpDerivedCandidatesLoading ? 'is-loading' : '')) + '" id="extractSerpDerivedCandidatesBtn" ' + (!flags.serp || appState.serpDerivedCandidatesLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.serpDerivedCandidatesLoading ? 'Extracting candidates...' : flags.candidates ? 'Refresh SERP Candidates' : 'Extract SERP Candidates') + '</button>',
+            progress: appState.serpDerivedCandidatesLoading
+              ? '<div class="inline-progress"><p>Extracting candidates from saved SERP snapshots.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          rankedKeywords: {
+            title: 'Competitor Keyword Map',
+            message: 'Build reusable DataForSEO Ranked Keywords map from manual competitor domains in Step 0 input.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient('primary ' + (appState.rankedKeywordsLoading ? 'is-loading' : '')) + '" id="buildCompetitorKeywordMapBtn" ' + (appState.rankedKeywordsLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.rankedKeywordsLoading ? 'Building competitor map...' : flags.rankedKeywords ? 'Refresh Competitor Keyword Map' : 'Build Competitor Keyword Map') + '</button>',
+            progress: appState.rankedKeywordsLoading
+              ? '<div class="inline-progress"><p>Fetching Ranked Keywords from manual competitor domains and saving competitor_keywords_json_id.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          competitorMatching: {
+            title: 'Competitor Keyword Matching',
+            message: flags.rankedKeywords && flags.keywords && flags.candidates
+              ? 'Match AI/SERP candidate queries against competitor ranked keywords and calculate proxy demand evidence.'
+              : 'Generate keywords, extract SERP candidates, and build Competitor Keyword Map first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading ? 'Matching competitor keywords...' : flags.competitorMatching ? 'Refresh Competitor Matching' : 'Match Competitor Keywords') + '</button>',
+            progress: appState.competitorMatchingLoading
+              ? '<div class="inline-progress"><p>Matching candidate queries to competitor ranked keywords without copying competitor volume.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          dirtyPool: {
+            title: 'Dirty Keyword Pool',
+            message: flags.competitorMatching
+              ? 'Merge hypotheses, SERP-derived candidates, competitor matches, selected related queries, and Ranked Keywords into one dirty pool.'
+              : 'Run Competitor Keyword Matching first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.competitorMatching ? 'primary ' : '') + (appState.dirtyKeywordPoolLoading ? 'is-loading' : '')) + '" id="buildDirtyKeywordPoolBtn" ' + (!flags.competitorMatching || appState.dirtyKeywordPoolLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.dirtyKeywordPoolLoading ? 'Building dirty pool...' : flags.dirtyPool ? 'Refresh Dirty Keyword Pool' : 'Build Dirty Keyword Pool') + '</button>',
+            progress: appState.dirtyKeywordPoolLoading
+              ? '<div class="inline-progress"><p>Merging saved keyword evidence into one candidate pool.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          candidateScoring: {
+            title: 'Staged Candidate Filtering',
+            message: flags.dirtyPool
+              ? 'Filter dirty-pool candidates through noise removal, semantic buckets, product fit, and per-bucket shortlist caps.'
+              : 'Build the dirty keyword pool first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.candidateScoringLoading ? 'is-loading' : '')) + '" id="scoreKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.candidateScoringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.candidateScoringLoading ? 'Filtering candidates...' : flags.candidateScoring ? 'Refresh Staged Filtering' : 'Run Staged Filtering') + '</button>',
+            progress: appState.candidateScoringLoading
+              ? '<div class="inline-progress"><p>Running deterministic staged filtering without an LLM scoring call.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          clusters: {
+            title: 'Intent Clusters',
+            message: flags.candidateScoring
+              ? 'Group accepted and maybe candidates into intent-based SEO clusters.'
+              : 'Filter and score candidates first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.candidateScoring ? 'primary ' : '') + (appState.keywordClusteringLoading ? 'is-loading' : '')) + '" id="clusterKeywordCandidatesBtn" ' + (!flags.candidateScoring || appState.keywordClusteringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordClusteringLoading ? 'Building clusters...' : flags.clusters ? 'Refresh Intent Clusters' : 'Build Intent Clusters') + '</button>',
+            progress: appState.keywordClusteringLoading
+              ? '<div class="inline-progress"><p>Grouping viable candidates by user intent and preserving evidence.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          productFit: {
+            title: 'Cluster Product Fit Review',
+            message: flags.clusters
+              ? 'Review whether Reinforce can naturally fit each whole intent cluster.'
+              : 'Build intent clusters first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.clusters ? 'primary ' : '') + (appState.clusterProductFitLoading ? 'is-loading' : '')) + '" id="reviewClusterProductFitBtn" ' + (!flags.clusters || appState.clusterProductFitLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterProductFitLoading ? 'Reviewing Product Fit...' : flags.productFit ? 'Refresh Product Fit Review' : 'Review Product Fit') + '</button>',
+            progress: appState.clusterProductFitLoading
+              ? '<div class="inline-progress"><p>Reviewing whole clusters against product facts, Brand Memory, audience fit, and compliance constraints.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          selection: {
+            title: 'Main & Supporting Cluster Selection',
+            message: flags.productFit
+              ? 'Select 1 main cluster and 2-3 supporting clusters using Product Fit, proxy demand evidence, intent, SERP support, source confidence, and risk penalty.'
+              : 'Review Product Fit first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.productFit ? 'primary ' : '') + (appState.clusterSelectionLoading ? 'is-loading' : '')) + '" id="selectSeoBriefClustersBtn" ' + (!flags.productFit || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterSelectionLoading ? 'Selecting clusters...' : flags.selection ? 'Refresh Cluster Selection' : 'Select Main Cluster') + '</button>',
+            progress: appState.clusterSelectionLoading
+              ? '<div class="inline-progress"><p>Scoring clusters by Product Fit, proxy demand evidence, intent relevance, SERP support, source diversity, and risk penalty.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          onPage: {
+            title: 'Selected Cluster OnPage Evidence',
+            message: flags.selection
+              ? 'Fetch content parsing and instant page metadata for 3-5 selected SERP URLs from the chosen cluster.'
+              : 'Select the main cluster first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.selection ? 'primary ' : '') + (appState.onPageLoading ? 'is-loading' : '')) + '" id="fetchSelectedClusterOnPageBtn" ' + (!flags.selection || appState.onPageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.onPageLoading ? 'Fetching OnPage evidence...' : flags.onPage ? 'Refresh OnPage Evidence' : 'Fetch OnPage Evidence') + '</button>',
+            progress: appState.onPageLoading
+              ? '<div class="inline-progress"><p>Parsing selected competitor pages through DataForSEO content parsing and instant pages.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          onPageSynthesis: {
+            title: 'OnPage Synthesis',
+            message: flags.onPage
+              ? 'AI turns parsed competitor pages into article structure requirements, gaps, FAQ ideas, and product insertion guardrails.'
+              : 'Fetch selected cluster OnPage evidence first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.onPage ? 'primary ' : '') + (appState.onPageSynthesisLoading ? 'is-loading' : '')) + '" id="synthesizeOnPageBtn" ' + (!flags.onPage || appState.onPageSynthesisLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.onPageSynthesisLoading ? 'Synthesizing OnPage...' : flags.onPageSynthesis ? 'Refresh OnPage Synthesis' : 'Synthesize OnPage') + '</button>',
+            progress: appState.onPageSynthesisLoading
+              ? '<div class="inline-progress"><p>AI is comparing competitor page structures and extracting brief requirements.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          finalBrief: {
+            title: 'Final SEO Brief',
+            message: flags.onPageSynthesis
+              ? 'Generate the production-ready SEO content brief from selected cluster, keyword evidence, Product Fit, and OnPage synthesis.'
+              : 'Synthesize OnPage evidence first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.onPageSynthesis ? 'primary ' : '') + (appState.finalBriefLoading ? 'is-loading' : '')) + '" id="generateFinalBriefBtn" ' + (!flags.onPageSynthesis || appState.finalBriefLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.finalBriefLoading ? 'Generating final brief...' : flags.finalBrief ? 'Refresh Final Brief' : 'Generate Final Brief') + '</button>',
+            progress: appState.finalBriefLoading
+              ? '<div class="inline-progress"><p>AI is assembling title, metadata, outline, FAQ, product insertion, gaps, risks, CTA, and source requirements.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+        };
+        const current = actionByStep[step] || actionByStep.input;
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Step Action</div><h3>' + escapeHtmlClient(current.title) + '</h3></div><span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span></div>' +
+            '<p>' + escapeHtmlClient(current.message) + '</p>' +
+            (current.button ? '<div class="actions">' + current.button + '</div>' : '') +
+            current.progress +
+          '</section>'
+        );
+      }
+
+      function renderInputStep(run) {
+        const inputArtifact = findArtifact(run, 'normalized_input');
+        const inputPayload = inputArtifact?.payload || {};
+        const manualPains = Array.isArray(inputPayload.userPains) ? inputPayload.userPains : [];
+        const manualScenarios = Array.isArray(inputPayload.userScenarios) ? inputPayload.userScenarios : [];
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Input</div><h3>Run Context</h3></div></div>' +
+            '<dl class="definition-list">' +
+              '<dt>Topic</dt><dd>' + escapeHtmlClient(run.topicSeed) + '</dd>' +
+              '<dt>Project</dt><dd>' + escapeHtmlClient(getProjectName(run.projectId)) + '</dd>' +
+              '<dt>Market</dt><dd>' + escapeHtmlClient(run.market.country + ' · ' + run.market.language) + '</dd>' +
+              '<dt>AI Model</dt><dd>' + escapeHtmlClient(aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
+              '<dt>Hypotheses / SERP Enrichment</dt><dd>' + escapeHtmlClient(String(inputPayload.hypothesesCount ?? '—') + ' / ' + String(inputPayload.serpEnrichmentCount ?? '—')) + '</dd>' +
+              '<dt>Competitor Keyword Map</dt><dd>' + escapeHtmlClient(inputPayload.competitorKeywordsJsonId || '—') + '</dd>' +
+              '<dt>Audience</dt><dd>' + escapeHtmlClient(run.audience || '—') + '</dd>' +
+              '<dt>Product</dt><dd>' + escapeHtmlClient(run.product.name) + '</dd>' +
+            '</dl>' +
+            '<div class="brand-memory-grid">' +
+              '<div class="brand-memory-block"><h4>Manual User Pains</h4>' + renderMemoryList(manualPains, 'No manual user pains saved.') + '</div>' +
+              '<div class="brand-memory-block"><h4>Manual User Scenarios</h4>' + renderMemoryList(manualScenarios, 'No manual user scenarios saved.') + '</div>' +
+            '</div>' +
+          '</section>'
+        );
+      }
+
+      function renderActiveStepContent(run, flags) {
+        switch (appState.activeSeoStep) {
+          case 'keywords':
+            return flags.keywords
+              ? '<section class="card full"><div class="section-head"><div class="stack"><div class="eyebrow">Output</div><h3>Search Hypotheses From Manual Input</h3></div></div>' + renderKeywordHypotheses(run) + '</section>'
+              : '<section class="card full"><div class="empty">No keyword hypotheses generated yet.</div></section>';
+          case 'serp':
+            return flags.serp
+              ? renderFirstKeywordSerpPreview(run)
+              : '<section class="card full"><div class="empty">No SERP snapshots fetched yet.</div></section>';
+          case 'candidates':
+            return flags.candidates
+              ? renderFirstKeywordSerpPreview(run)
+              : '<section class="card full"><div class="empty">No SERP candidates extracted yet.</div></section>';
+          case 'rankedKeywords':
+            return renderRankedKeywordsUniverse(run);
+          case 'competitorMatching':
+            return renderCompetitorKeywordMatches(run);
+          case 'dirtyPool':
+            return renderDirtyKeywordPool(run);
+          case 'candidateScoring':
+            return renderKeywordCandidateScoring(run);
+          case 'clusters':
+            return renderIntentClusters(run);
+          case 'productFit':
+            return renderClusterProductFitReview(run);
+          case 'selection':
+            return renderClusterSelection(run);
+          case 'onPage':
+            return renderSelectedClusterOnPage(run);
+          case 'onPageSynthesis':
+            return renderOnPageSynthesis(run);
+          case 'finalBrief':
+            return renderFinalSeoBrief(run);
+          default:
+            return renderInputStep(run);
+        }
+      }
+
       async function runControlAction(runId, path, payload, successMessage) {
         await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + path, {
           method: 'POST',
@@ -1467,135 +3454,8 @@ export class SeoBriefTestUiController {
       }
 
       function renderDetail(run) {
-        const finalBrief = run.finalBrief?.briefPayload || null;
-        const uiLogsHidden = areUiLogsHidden(run.id);
-        const hasKeywordHypotheses = Boolean(findArtifact(run, 'keyword_hypotheses'));
-        const hasKeywordSerpPreview = Boolean(
-          findArtifact(run, 'keyword_serp_preview_snapshots') ||
-            findArtifact(run, 'first_keyword_serp_preview_snapshot'),
-        );
-        const hasKeywordSerpDerivedKeywords = Boolean(
-          findArtifact(run, 'keyword_serp_derived_keywords') ||
-            findArtifact(run, 'first_keyword_serp_derived_keywords'),
-        );
-        const hasKeywordRelatedQuerySelection = Boolean(
-          findArtifact(run, 'keyword_related_query_selections') ||
-            findArtifact(run, 'first_keyword_related_query_selection'),
-        );
-        const outline = Array.isArray(finalBrief?.outline) ? finalBrief.outline : [];
-        const faq = Array.isArray(finalBrief?.faq) ? finalBrief.faq : [];
-        const nextStage = findNextStage(run);
-        const runningStage = findRunningStage(run);
-        const workflowStage = runningStage || nextStage || getLatestCompletedStage(run);
-        const workflowMeta = workflowStage ? STAGE_META[workflowStage] : null;
-        const isFirstKeywordSerpGate =
-          !runningStage &&
-          nextStage === 'keyword_research' &&
-          hasKeywordHypotheses &&
-          run.status !== 'done' &&
-          run.status !== 'rejected' &&
-          run.status !== 'needs_manual_review';
-        const canContinue =
-          !isFirstKeywordSerpGate &&
-          !isBusyStatus(run.status) &&
-          nextStage &&
-          run.status !== 'done' &&
-          run.status !== 'rejected' &&
-          run.status !== 'needs_manual_review';
-        const workflowTitle = isFirstKeywordSerpGate
-          ? 'Review First Keyword SERP'
-          : workflowMeta?.title || 'Run Ready';
-        const workflowMessage = isFirstKeywordSerpGate
-          ? hasKeywordSerpPreview
-            ? 'The keyword SERP snapshots are saved below. Review the extracted SERP data before changing the next pipeline stage.'
-            : 'Before any deeper research step, fetch live Google SERP snapshots for every generated keyword and review the normalized data.'
-          : canContinue
-            ? workflowMeta?.action || 'Approve and continue to the next step.'
-            : run.status === 'done'
-              ? 'The workflow is complete.'
-              : run.status === 'needs_manual_review'
-                ? 'This run is waiting for manual review.'
-                : run.status === 'rejected'
-                  ? 'This run was rejected and will not advance automatically.'
-                  : 'This run is waiting for the next operator action.';
-        const workflowCardHtml = isBusyStatus(run.status)
-          ? (
-              '<section class="card full">' +
-                '<div class="section-head"><div class="stack"><div class="eyebrow">Processing</div><h3>' + escapeHtmlClient(workflowMeta?.title || 'Working') + '</h3></div><span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span></div>' +
-                '<div class="progress-shell">' +
-                  '<p>' + escapeHtmlClient(workflowMeta?.loading || 'The system is working on the next SEO brief step.') + '</p>' +
-                  '<div class="progress-track"><div class="progress-bar"></div></div>' +
-                '</div>' +
-              '</section>'
-            )
-          : (
-              '<section class="card full">' +
-                '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>' + escapeHtmlClient(workflowTitle) + '</h3></div><span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span></div>' +
-                '<p>' + escapeHtmlClient(workflowMessage) + '</p>' +
-                ((canContinue || hasKeywordHypotheses || hasKeywordSerpDerivedKeywords)
-                  ? '<div class="actions">' +
-                      (canContinue
-                        ? '<button type="button" class="primary" id="continueRunBtn">' + escapeHtmlClient(workflowMeta?.action || 'Continue') + '</button>'
-                        : '') +
-                      (hasKeywordHypotheses
-                        ? '<button type="button" class="' + escapeHtmlClient((isFirstKeywordSerpGate ? 'primary ' : '') + (appState.serpPreviewLoading ? 'is-loading' : '')) + '" id="previewKeywordSerpsBtn" ' + (appState.serpPreviewLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.serpPreviewLoading ? 'Fetching SERPs...' : hasKeywordSerpPreview ? 'Refresh SERPs For All Keywords' : 'Fetch SERPs For All Keywords') + '</button>'
-                        : '') +
-                      (hasKeywordSerpDerivedKeywords
-                        ? '<button type="button" class="' + escapeHtmlClient(appState.relatedQuerySelectionLoading ? 'is-loading' : '') + '" id="selectKeywordRelatedQueriesBtn" ' + (appState.relatedQuerySelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.relatedQuerySelectionLoading ? 'Selecting related queries...' : hasKeywordRelatedQuerySelection ? 'Refresh Related Query Selection For All' : 'Select Related Queries For All') + '</button>'
-                        : '') +
-                    '</div>'
-                  : '') +
-                (appState.serpPreviewLoading
-                  ? '<div class="inline-progress"><p>Fetching live Google SERP from DataForSEO for every generated keyword and saving normalized snapshots.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-                  : '') +
-                (appState.relatedQuerySelectionLoading
-                  ? '<div class="inline-progress"><p>Selecting up to 3 grounded related queries per keyword from SERP-derived candidates. The model can only choose existing queries.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-                  : '') +
-              '</section>'
-            );
-        const stageOutputHtml =
-          '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Latest Output</div><h3>' + escapeHtmlClient(STAGE_META[getLatestCompletedStage(run)]?.title || 'No Completed Step Yet') + '</h3></div></div>' +
-            renderStageOutput(run) +
-          '</section>';
-        const scoreLogsHtml = run.scoreLogs.length === 0
-          ? '<div class="empty">No score logs yet.</div>'
-          : run.scoreLogs.map((item) => (
-              '<div class="score-item">' +
-                '<div class="inline-meta"><strong>' + escapeHtmlClient(item.formulaName) + '</strong><span>' + escapeHtmlClient(prettyDate(item.createdAt)) + '</span></div>' +
-                '<pre>' + escapeHtmlClient(prettyJson(item.resultPayload)) + '</pre>' +
-              '</div>'
-            )).join('');
-
-        const llmLogsHtml = run.llmCalls.length === 0
-          ? '<div class="empty">No LLM calls yet.</div>'
-          : run.llmCalls.map((log) => (
-              '<details><summary>' + escapeHtmlClient(log.operation) + ' · ' + escapeHtmlClient(log.status) + '</summary>' +
-                '<div><pre>' + escapeHtmlClient(prettyJson({
-                  model: log.model,
-                  promptVersion: log.promptVersion,
-                  tokenUsageInput: log.tokenUsageInput,
-                  tokenUsageOutput: log.tokenUsageOutput,
-                  estimatedCost: log.estimatedCost,
-                  requestPayload: log.requestPayload,
-                  responsePayload: log.responsePayload,
-                  errorMessage: log.errorMessage,
-                })) + '</pre></div></details>'
-            )).join('');
-
-        const externalLogsHtml = run.externalCalls.length === 0
-          ? '<div class="empty">No external calls yet.</div>'
-          : run.externalCalls.map((log) => (
-              '<details><summary>' + escapeHtmlClient(log.provider + ' · ' + log.endpoint) + '</summary>' +
-                '<div><pre>' + escapeHtmlClient(prettyJson({
-                  status: log.status,
-                  cacheHit: log.cacheHit,
-                  estimatedCost: log.estimatedCost,
-                  requestPayload: log.requestPayload,
-                  responsePayload: log.responsePayload,
-                  errorMessage: log.errorMessage,
-                })) + '</pre></div></details>'
-            )).join('');
+        detachLaunchPanel();
+        const manualStepFlags = getManualStepFlags(run);
 
         qs('detailContent').innerHTML =
           '<section class="card full">' +
@@ -1604,84 +3464,57 @@ export class SeoBriefTestUiController {
               '<dt>Run ID</dt><dd class="mono">' + escapeHtmlClient(run.id) + '</dd>' +
               '<dt>Project</dt><dd>' + escapeHtmlClient(getProjectName(run.projectId)) + '</dd>' +
               '<dt>Market</dt><dd>' + escapeHtmlClient(run.market.country + ' · ' + run.market.language) + '</dd>' +
+              '<dt>AI Model</dt><dd>' + escapeHtmlClient(aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
               '<dt>Product</dt><dd>' + escapeHtmlClient(run.product.name) + '</dd>' +
               '<dt>Created</dt><dd>' + escapeHtmlClient(prettyDate(run.createdAt)) + '</dd>' +
               '<dt>Updated</dt><dd>' + escapeHtmlClient(prettyDate(run.updatedAt)) + '</dd>' +
               '<dt>Failure Reason</dt><dd>' + escapeHtmlClient(run.failureReason || '—') + '</dd>' +
             '</dl>' +
-            '<div class="actions">' +
-              '<button type="button" id="toggleUiLogsBtn">' + escapeHtmlClient(uiLogsHidden ? 'Show UI Logs' : 'Clear UI Logs') + '</button>' +
-            '</div>' +
-            (uiLogsHidden ? '<p class="empty">UI logs for this run are hidden locally in this browser.</p>' : '') +
           '</section>' +
 
-          workflowCardHtml +
-          stageOutputHtml +
-          renderFirstKeywordSerpPreview(run) +
-
-          '<section class="card">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Final Brief</div><h3>' + escapeHtmlClient(finalBrief?.title || 'Not generated yet') + '</h3></div></div>' +
-            (finalBrief ? (
-              '<div class="stack">' +
-                '<p><strong>Meta Title:</strong> ' + escapeHtmlClient(finalBrief.metaTitle || '—') + '</p>' +
-                '<p><strong>Meta Description:</strong> ' + escapeHtmlClient(finalBrief.metaDescription || '—') + '</p>' +
-                '<p><strong>Angle:</strong> ' + escapeHtmlClient(finalBrief.angle || '—') + '</p>' +
-                '<p><strong>Primary Keyword:</strong> ' + escapeHtmlClient(finalBrief.primaryKeyword || '—') + '</p>' +
-                '<p><strong>Secondary Keywords:</strong> ' + escapeHtmlClient((finalBrief.secondaryKeywords || []).join(', ') || '—') + '</p>' +
-                '<details open><summary>Outline</summary><div>' +
-                  (outline.length ? outline.map((item) =>
-                    '<div class="log-item"><strong>' + escapeHtmlClient(item.heading) + '</strong><p>' + escapeHtmlClient(item.purpose || '') + '</p><pre>' + escapeHtmlClient(prettyJson(item.keyPoints || [])) + '</pre></div>'
-                  ).join('') : '<div class="empty">No outline yet.</div>') +
-                '</div></details>' +
-                '<details><summary>FAQ</summary><div>' +
-                  (faq.length ? faq.map((item) =>
-                    '<div class="log-item"><strong>' + escapeHtmlClient(item.question) + '</strong><p>' + escapeHtmlClient(item.answer || '') + '</p></div>'
-                  ).join('') : '<div class="empty">No FAQ yet.</div>') +
-                '</div></details>' +
-                '<details><summary>Product Placement</summary><div><pre>' + escapeHtmlClient(prettyJson(finalBrief.productPlacement || null)) + '</pre></div></details>' +
-              '</div>'
-            ) : '<div class="empty">This run has not produced a final brief yet.</div>') +
-          '</section>' +
-
-          (uiLogsHidden ? '' : (
-            '<section class="card full">' +
-              '<div class="section-head"><div class="stack"><div class="eyebrow">Timeline</div><h3>Step Trace</h3></div></div>' +
-              '<div class="timeline">' +
-                run.steps.map((step) => (
-                  '<div class="timeline-item">' +
-                    '<div class="inline-meta"><strong>' + escapeHtmlClient(step.stage) + '</strong><span class="badge ' + statusClass(step.status) + '">' + escapeHtmlClient(step.status) + '</span></div>' +
-                    '<div class="inline-meta"><span>Attempt ' + escapeHtmlClient(step.attemptNumber) + '</span><span>' + escapeHtmlClient(prettyDate(step.finishedAt || step.startedAt)) + '</span></div>' +
-                    (step.errorMessage ? '<p>' + escapeHtmlClient(step.errorMessage) + '</p>' : '') +
-                  '</div>'
-                )).join('') +
-              '</div>' +
-            '</section>' +
-
-            '<section class="card">' +
-              '<div class="section-head"><div class="stack"><div class="eyebrow">Scores</div><h3>Score Logs</h3></div></div>' +
-              '<div class="score-list">' + scoreLogsHtml + '</div>' +
-            '</section>' +
-
-            '<section class="card">' +
-              '<div class="section-head"><div class="stack"><div class="eyebrow">Logs</div><h3>LLM Calls</h3></div></div>' +
-              '<div class="log-list">' + llmLogsHtml + '</div>' +
-            '</section>' +
-
-            '<section class="card full">' +
-              '<div class="section-head"><div class="stack"><div class="eyebrow">External</div><h3>External Calls</h3></div></div>' +
-              '<div class="log-list">' + externalLogsHtml + '</div>' +
-            '</section>'
-          ));
+          renderStepTabs(manualStepFlags) +
+          renderStepActionCard(run, manualStepFlags) +
+          renderActiveStepContent(run, manualStepFlags);
 
         bindDetailActions(run);
       }
 
       function bindDetailActions(run) {
-        qs('toggleUiLogsBtn')?.addEventListener('click', () => {
-          const nextHidden = !areUiLogsHidden(run.id);
-          setUiLogsHidden(run.id, nextHidden);
+        document.querySelectorAll('[data-seo-step]').forEach((node) => {
+          node.addEventListener('click', () => {
+            const nextStep = node.getAttribute('data-seo-step');
+            if (!nextStep) return;
+            appState.activeSeoStep = nextStep;
+            updateUrl(run.id);
+            renderDetail(run);
+          });
+        });
+
+        qs('generateKeywordHypothesesBtn')?.addEventListener('click', async () => {
+          if (appState.keywordHypothesesLoading) return;
+          appState.keywordHypothesesLoading = true;
           renderDetail(run);
-          showToast(nextHidden ? 'UI logs hidden for this run' : 'UI logs shown for this run');
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/generate-keyword-hypotheses',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Keyword hypotheses generated from user pains');
+            await loadRuns();
+            appState.keywordHypothesesLoading = false;
+            appState.activeSeoStep = 'keywords';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.keywordHypothesesLoading = false;
+            renderDetail(run);
+            showToast(error instanceof Error ? error.message : 'Failed to generate keywords');
+          }
         });
         qs('continueRunBtn')?.addEventListener('click', async () => {
           await runControlAction(
@@ -1701,9 +3534,10 @@ export class SeoBriefTestUiController {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({}),
             });
-            showToast('SERP snapshots saved for all generated keywords');
+            showToast('SERP snapshots saved for selected hypotheses');
             await loadRuns();
             appState.serpPreviewLoading = false;
+            appState.activeSeoStep = 'serp';
             await selectRun(run.id, false);
           } catch (error) {
             appState.serpPreviewLoading = false;
@@ -1711,30 +3545,311 @@ export class SeoBriefTestUiController {
             showToast(error instanceof Error ? error.message : 'Failed to fetch SERP snapshots');
           }
         });
-        qs('selectKeywordRelatedQueriesBtn')?.addEventListener('click', async () => {
-          if (appState.relatedQuerySelectionLoading) return;
-          appState.relatedQuerySelectionLoading = true;
+        qs('extractSerpDerivedCandidatesBtn')?.addEventListener('click', async () => {
+          if (appState.serpDerivedCandidatesLoading) return;
+          appState.serpDerivedCandidatesLoading = true;
           renderDetail(run);
           try {
             await fetchJson(
               '/seo-briefing/runs/' +
                 encodeURIComponent(run.id) +
-                '/select-keyword-related-queries',
+                '/extract-serp-derived-candidates',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
               },
             );
-            showToast('Related queries selected from SERP evidence for all keywords');
+            showToast('SERP-derived candidates extracted');
             await loadRuns();
-            appState.relatedQuerySelectionLoading = false;
+            appState.serpDerivedCandidatesLoading = false;
+            appState.activeSeoStep = 'candidates';
             await selectRun(run.id, false);
           } catch (error) {
-            appState.relatedQuerySelectionLoading = false;
+            appState.serpDerivedCandidatesLoading = false;
             renderDetail(run);
             showToast(
-              error instanceof Error ? error.message : 'Failed to select related queries',
+              error instanceof Error ? error.message : 'Failed to extract SERP candidates',
+            );
+          }
+        });
+        qs('buildCompetitorKeywordMapBtn')?.addEventListener('click', async () => {
+          if (appState.rankedKeywordsLoading) return;
+          appState.rankedKeywordsLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/build-competitor-keyword-map',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Competitor keyword map built');
+            await loadRuns();
+            appState.rankedKeywordsLoading = false;
+            appState.activeSeoStep = 'rankedKeywords';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.rankedKeywordsLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to build competitor keyword map',
+            );
+          }
+        });
+        qs('matchCompetitorKeywordsBtn')?.addEventListener('click', async () => {
+          if (appState.competitorMatchingLoading) return;
+          appState.competitorMatchingLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/match-competitor-keywords',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Competitor keyword matching saved');
+            await loadRuns();
+            appState.competitorMatchingLoading = false;
+            appState.activeSeoStep = 'competitorMatching';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.competitorMatchingLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to match competitor keywords',
+            );
+          }
+        });
+        qs('buildDirtyKeywordPoolBtn')?.addEventListener('click', async () => {
+          if (appState.dirtyKeywordPoolLoading) return;
+          appState.dirtyKeywordPoolLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/build-dirty-keyword-pool',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Dirty keyword pool built');
+            await loadRuns();
+            appState.dirtyKeywordPoolLoading = false;
+            appState.activeSeoStep = 'dirtyPool';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.dirtyKeywordPoolLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to build dirty keyword pool',
+            );
+          }
+        });
+        qs('scoreKeywordCandidatesBtn')?.addEventListener('click', async () => {
+          if (appState.candidateScoringLoading) return;
+          appState.candidateScoringLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/score-keyword-candidates',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Keyword candidates filtered and scored');
+            await loadRuns();
+            appState.candidateScoringLoading = false;
+            appState.activeSeoStep = 'candidateScoring';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.candidateScoringLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to score keyword candidates',
+            );
+          }
+        });
+        qs('clusterKeywordCandidatesBtn')?.addEventListener('click', async () => {
+          if (appState.keywordClusteringLoading) return;
+          appState.keywordClusteringLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/cluster-keyword-candidates',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Intent clusters built');
+            await loadRuns();
+            appState.keywordClusteringLoading = false;
+            appState.activeSeoStep = 'clusters';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.keywordClusteringLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to build intent clusters',
+            );
+          }
+        });
+        qs('reviewClusterProductFitBtn')?.addEventListener('click', async () => {
+          if (appState.clusterProductFitLoading) return;
+          appState.clusterProductFitLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/review-cluster-product-fit',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Cluster Product Fit review saved');
+            await loadRuns();
+            appState.clusterProductFitLoading = false;
+            appState.activeSeoStep = 'productFit';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.clusterProductFitLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to review cluster Product Fit',
+            );
+          }
+        });
+        qs('selectSeoBriefClustersBtn')?.addEventListener('click', async () => {
+          if (appState.clusterSelectionLoading) return;
+          appState.clusterSelectionLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/select-seo-brief-clusters',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Main and supporting clusters selected');
+            await loadRuns();
+            appState.clusterSelectionLoading = false;
+            appState.activeSeoStep = 'selection';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.clusterSelectionLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to select SEO brief clusters',
+            );
+          }
+        });
+        qs('fetchSelectedClusterOnPageBtn')?.addEventListener('click', async () => {
+          if (appState.onPageLoading) return;
+          appState.onPageLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/fetch-selected-cluster-onpage',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Selected cluster OnPage evidence saved');
+            await loadRuns();
+            appState.onPageLoading = false;
+            appState.activeSeoStep = 'onPage';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.onPageLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to fetch selected cluster OnPage',
+            );
+          }
+        });
+        qs('synthesizeOnPageBtn')?.addEventListener('click', async () => {
+          if (appState.onPageSynthesisLoading) return;
+          appState.onPageSynthesisLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/synthesize-onpage',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('OnPage synthesis saved');
+            await loadRuns();
+            appState.onPageSynthesisLoading = false;
+            appState.activeSeoStep = 'onPageSynthesis';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.onPageSynthesisLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to synthesize OnPage evidence',
+            );
+          }
+        });
+        qs('generateFinalBriefBtn')?.addEventListener('click', async () => {
+          if (appState.finalBriefLoading) return;
+          appState.finalBriefLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/generate-final-brief',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Final SEO brief generated');
+            await loadRuns();
+            appState.finalBriefLoading = false;
+            appState.activeSeoStep = 'finalBrief';
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.finalBriefLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to generate final SEO brief',
             );
           }
         });
@@ -1751,6 +3866,27 @@ export class SeoBriefTestUiController {
         syncRunPolling(run);
       }
 
+      function startNewRun() {
+        appState.selectedRunId = null;
+        appState.selectedRun = null;
+        appState.keywordHypothesesLoading = false;
+        appState.serpPreviewLoading = false;
+        appState.serpDerivedCandidatesLoading = false;
+        appState.rankedKeywordsLoading = false;
+        appState.competitorMatchingLoading = false;
+        appState.dirtyKeywordPoolLoading = false;
+        appState.candidateScoringLoading = false;
+        appState.keywordClusteringLoading = false;
+        appState.clusterProductFitLoading = false;
+        appState.activeSeoStep = 'input';
+        syncRunPolling(null);
+        updateUrl(null);
+        renderRunList();
+        renderEmptyDetail();
+        qs('topicHint').focus();
+        showToast('Ready for a new SEO brief');
+      }
+
       async function createRun(event) {
         event.preventDefault();
         const launchBtn = qs('launchBtn');
@@ -1758,18 +3894,34 @@ export class SeoBriefTestUiController {
         try {
           const payload = {
             projectId: qs('projectId').value || null,
-            topicSeed: qs('topicSeed').value,
+            aiModelMode: qs('aiModelMode').value,
+            topicHint: qs('topicHint').value,
+            hypothesesCount: Number(qs('hypothesesCount').value || '10'),
+            serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
+            competitorKeywordsJsonId: qs('competitorKeywordsJsonId').value || null,
             market: {
               country: qs('country').value,
               language: qs('language').value,
             },
             audience: qs('audience').value,
+            userPains: parseListInput('userPains'),
+            userScenarios: parseListInput('userScenarios'),
             keywordExpansionPrompt: qs('keywordExpansionPrompt').value || null,
             product: {
               name: qs('productName').value,
               description: qs('productDescription').value,
             },
             keyMessage: qs('keyMessage').value || null,
+            knownCompetitors: {
+              mustInclude: parseListInput('knownCompetitorsMustInclude'),
+              optional: parseListInput('knownCompetitorsOptional'),
+              exclude: parseListInput('knownCompetitorsExclude'),
+            },
+            brandConstraints: parseListInput('brandConstraints'),
+            claimsConstraints: parseListInput('claimsConstraints'),
+            preferredAngle: qs('preferredAngle').value || null,
+            excludedTopics: parseListInput('excludedTopics'),
+            campaignContext: qs('campaignContext').value || null,
             audienceShift: qs('audienceBefore').value && qs('audienceAfter').value
               ? { before: qs('audienceBefore').value, after: qs('audienceAfter').value }
               : null,
@@ -1784,7 +3936,9 @@ export class SeoBriefTestUiController {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
-          showToast(result.deduplicated ? 'Reused recent run: ' + result.runId : 'Generating first 3 keyword hypotheses');
+          appState.selectedRunId = result.runId;
+          appState.activeSeoStep = 'keywords';
+          showToast(result.deduplicated ? 'Reused recent run: ' + result.runId : 'Run created. Generate search hypotheses next.');
           await loadRuns();
           await selectRun(result.runId);
         } catch (error) {
@@ -1794,10 +3948,45 @@ export class SeoBriefTestUiController {
         }
       }
 
+      function bindLaunchFormActions() {
+        const launchForm = qs('launchForm');
+        if (!launchForm || launchForm.dataset.bound === 'true') {
+          return;
+        }
+        launchForm.dataset.bound = 'true';
+        launchForm.addEventListener('submit', createRun);
+        qs('balanceSlider')?.addEventListener('input', syncBalanceSlider);
+        document.querySelectorAll('input[name="inputMode"]').forEach((input) => {
+          input.addEventListener('change', syncInputMode);
+        });
+        qs('extractBriefTextBtn')?.addEventListener('click', async () => {
+          try {
+            await extractContextFromText(qs('briefContextText').value);
+          } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Failed to extract context');
+          }
+        });
+        qs('extractFileBtn')?.addEventListener('click', async () => {
+          const file = qs('briefContextFile').files?.[0] || null;
+          if (!file) {
+            showToast('Select a brief file first');
+            return;
+          }
+          try {
+            const text = await readTextFile(file);
+            await extractContextFromText(text);
+          } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Failed to extract file context');
+          }
+        });
+        qs('fillFromBrandMemoryBtn')?.addEventListener('click', fillFromBrandMemory);
+      }
+
       async function boot() {
-        qs('launchForm').addEventListener('submit', createRun);
-        qs('balanceSlider').addEventListener('input', syncBalanceSlider);
+        bindLaunchFormActions();
+        qs('startNewRunBtn').addEventListener('click', startNewRun);
         syncBalanceSlider();
+        syncInputMode();
         qs('refreshAllBtn').addEventListener('click', async () => {
           await loadRuns();
           if (appState.selectedRunId) {
@@ -1817,8 +4006,6 @@ export class SeoBriefTestUiController {
           await loadRuns();
           updateUrl(null);
         });
-        qs('fillFromBrandMemoryBtn').addEventListener('click', fillFromBrandMemory);
-
         await loadProjects();
         await loadRuns();
       }

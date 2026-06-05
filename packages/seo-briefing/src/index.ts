@@ -102,32 +102,75 @@ export {
 export {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
+  type ClassifySerpDomainsParams,
+  type ClassifySerpDomainsResult,
+  type ClusterProductFitReview,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
+  type ClusterKeywordCandidateInput,
+  type ClusterKeywordCompetitorUrl,
   type ClusterSelectionCandidateExplanation,
   type ExpandKeywordsParams,
   type ExpandKeywordsResult,
   type ExplainClusterSelectionParams,
   type ExplainClusterSelectionResult,
+  type ExtractedSeoBriefContext,
+  type ExtractSeoBriefContextParams,
+  type ExtractUserPainScenariosParams,
+  type ExtractUserPainScenariosResult,
   type GenerateSeoBriefParams,
   type GenerateSeoBriefResult,
+  type IgnoredSerpDomain,
+  type OnPageOnlyTargetDomain,
+  type PainSignalTargetDomain,
+  type RankedKeywordsTargetDomain,
   type RejectedClusterExplanation,
   type RejectedRelatedKeyword,
+  type ProductFitReviewClusterInput,
+  type ReviewClusterProductFitParams,
+  type ReviewClusterProductFitResult,
   type SelectedRelatedKeyword,
   type SelectRelatedKeywordCandidateInput,
   type SelectRelatedKeywordsParams,
   type SelectRelatedKeywordsResult,
   type SeoBriefAiJourneyStage,
+  type SeoBriefClusterProductFitDecision,
+  type SeoBriefClusterProductFitType,
+  type SeoBriefClusterSourceConfidence,
   type SeoBriefAiKeywordIntent,
+  type SeoBriefAiModelMode,
+  type SeoBriefPainProductConnection,
+  type SeoBriefDomainPriority,
+  type SeoBriefOnPageDomainType,
+  type SeoBriefPainSignalDomainType,
+  type SeoBriefProductFitHypothesis,
+  type SeoBriefRankedKeywordsDomainType,
+  type SeoBriefScenarioType,
+  type SeoBriefSearchHypothesisType,
   SeoBriefAiPort,
   type SeoBriefAiProductFit,
   type SeoBriefAiRequestContext,
   type SeoBriefFaqItem,
   type SeoBriefKeywordHypothesis,
+  type KeywordCandidateFitBreakdown,
+  type KeywordCandidateFitLevel,
+  type KeywordCandidateScoreBreakdown,
+  type KeywordCandidateScoringStatus,
   type SeoBriefOutlineSection,
   type SeoBriefProductPlacementPlan,
   type SeoBriefSerpInsight,
   type SeoKeywordCluster,
+  type ScoreDirtyKeywordCandidateInput,
+  type ScoreDirtyKeywordCandidatesParams,
+  type ScoreDirtyKeywordCandidatesResult,
+  type ScoredDirtyKeywordCandidate,
+  type OnPageCompetitorStructureSummary,
+  type OnPageProductInsertionPlan,
+  type RecommendedArticleStructure,
+  type RecommendedOnPageSection,
+  type SynthesizeOnPagePageInput,
+  type SynthesizeOnPageParams,
+  type SynthesizeOnPageResult,
   type TriageAcceptedKeyword,
   type TriageKeywordCandidate,
   type TriageKeywordsParams,
@@ -144,9 +187,12 @@ export {
 export {
   type GetDomainMetricsParams,
   type GetKeywordSuggestionsParams,
+  type GetOnPageContentParsingParams,
+  type GetOnPageInstantPagesParams,
   type GetOnPageParseParams,
   type GetOrganicSerpParams,
   type GetOrganicSerpSnapshotParams,
+  type GetRankedKeywordsParams,
   type GetSearchVolumeParams,
   type SeoDomainMetricsResult,
   type SeoKeywordSuggestionItem,
@@ -158,10 +204,16 @@ export {
   type SeoNormalizedSerpPeopleAlsoAskItem,
   type SeoNormalizedSerpSnapshot,
   type SeoNormalizedSerpSpecialBlock,
+  type SeoOnPageContentLink,
+  type SeoOnPageContentParsingResult,
+  type SeoOnPageInstantPagesResult,
   type SeoOnPageParseResult,
   type SeoOrganicSerpItem,
   type SeoOrganicSerpResult,
   type SeoOrganicSerpSnapshotResult,
+  type SeoRankedKeywordItem,
+  type SeoRankedKeywordMonthlySearch,
+  type SeoRankedKeywordsResult,
   type SeoResearchMarket,
   SeoResearchPort,
   type SeoSearchVolumeItem,
@@ -201,6 +253,16 @@ export {
   type SeoScoreResult,
   SeoScoreService,
 } from './services/seo-score.service.js';
+export { AggregateSerpDomainsCommand } from './use-cases/aggregate-serp-domains/aggregate-serp-domains.command.js';
+export type { AggregateSerpDomainsResult } from './use-cases/aggregate-serp-domains/aggregate-serp-domains.handler.js';
+export { BuildCompetitorKeywordMapCommand } from './use-cases/build-competitor-keyword-map/build-competitor-keyword-map.command.js';
+export type { BuildCompetitorKeywordMapResult } from './use-cases/build-competitor-keyword-map/build-competitor-keyword-map.handler.js';
+export { BuildDirtyKeywordPoolCommand } from './use-cases/build-dirty-keyword-pool/build-dirty-keyword-pool.command.js';
+export type { BuildDirtyKeywordPoolResult } from './use-cases/build-dirty-keyword-pool/build-dirty-keyword-pool.handler.js';
+export { ClassifySerpDomainsCommand } from './use-cases/classify-serp-domains/classify-serp-domains.command.js';
+export type { ClassifySerpDomainsResult as ClassifySerpDomainsUseCaseResult } from './use-cases/classify-serp-domains/classify-serp-domains.handler.js';
+export { ClusterKeywordCandidatesCommand } from './use-cases/cluster-keyword-candidates/cluster-keyword-candidates.command.js';
+export type { ClusterKeywordCandidatesResult } from './use-cases/cluster-keyword-candidates/cluster-keyword-candidates.handler.js';
 export { ContinueSeoBriefRunCommand } from './use-cases/continue-seo-brief-run/continue-seo-brief-run.command.js';
 export {
   type CreateSeoBriefRunAudienceShiftInput,
@@ -211,10 +273,22 @@ export {
   type CreateSeoBriefRunSeoProductBalanceInput,
 } from './use-cases/create-seo-brief-run/create-seo-brief-run.command.js';
 export type { CreateSeoBriefRunResult } from './use-cases/create-seo-brief-run/create-seo-brief-run.handler.js';
+export { ExtractSerpDerivedCandidatesCommand } from './use-cases/extract-serp-derived-candidates/extract-serp-derived-candidates.command.js';
+export type { ExtractSerpDerivedCandidatesResult } from './use-cases/extract-serp-derived-candidates/extract-serp-derived-candidates.handler.js';
 export { FetchFirstKeywordSerpPreviewCommand } from './use-cases/fetch-first-keyword-serp-preview/fetch-first-keyword-serp-preview.command.js';
 export type { FetchFirstKeywordSerpPreviewResult } from './use-cases/fetch-first-keyword-serp-preview/fetch-first-keyword-serp-preview.handler.js';
 export { FetchKeywordSerpPreviewsCommand } from './use-cases/fetch-keyword-serp-previews/fetch-keyword-serp-previews.command.js';
 export type { FetchKeywordSerpPreviewsResult } from './use-cases/fetch-keyword-serp-previews/fetch-keyword-serp-previews.handler.js';
+export { FetchRankedKeywordsCommand } from './use-cases/fetch-ranked-keywords/fetch-ranked-keywords.command.js';
+export type { FetchRankedKeywordsResult } from './use-cases/fetch-ranked-keywords/fetch-ranked-keywords.handler.js';
+export { FetchSelectedClusterOnPageCommand } from './use-cases/fetch-selected-cluster-onpage/fetch-selected-cluster-onpage.command.js';
+export type { FetchSelectedClusterOnPageResult } from './use-cases/fetch-selected-cluster-onpage/fetch-selected-cluster-onpage.handler.js';
+export { GenerateKeywordHypothesesCommand } from './use-cases/generate-keyword-hypotheses/generate-keyword-hypotheses.command.js';
+export type { GenerateKeywordHypothesesResult } from './use-cases/generate-keyword-hypotheses/generate-keyword-hypotheses.handler.js';
+export { GenerateFinalSeoBriefCommand } from './use-cases/generate-final-seo-brief/generate-final-seo-brief.command.js';
+export type { GenerateFinalSeoBriefUseCaseResult } from './use-cases/generate-final-seo-brief/generate-final-seo-brief.handler.js';
+export { GenerateUserPainScenariosCommand } from './use-cases/generate-user-pain-scenarios/generate-user-pain-scenarios.command.js';
+export type { GenerateUserPainScenariosResult } from './use-cases/generate-user-pain-scenarios/generate-user-pain-scenarios.handler.js';
 export type {
   GetSeoBriefRunArtifactResult,
   GetSeoBriefRunEvidencePackResult,
@@ -232,6 +306,8 @@ export {
   MarkSeoBriefRunManualReviewCommand,
   type MarkSeoBriefRunManualReviewInput,
 } from './use-cases/mark-seo-brief-run-manual-review/mark-seo-brief-run-manual-review.command.js';
+export { MatchCompetitorKeywordsCommand } from './use-cases/match-competitor-keywords/match-competitor-keywords.command.js';
+export type { MatchCompetitorKeywordsResult } from './use-cases/match-competitor-keywords/match-competitor-keywords.handler.js';
 export type { ProcessSeoBriefRunResult } from './use-cases/process-seo-brief-run/process-seo-brief-run.executor.js';
 export {
   ProcessSeoBriefRunExecutor,
@@ -242,6 +318,8 @@ export {
   RejectSeoBriefRunCommand,
   type RejectSeoBriefRunInput,
 } from './use-cases/reject-seo-brief-run/reject-seo-brief-run.command.js';
+export { ReviewClusterProductFitCommand } from './use-cases/review-cluster-product-fit/review-cluster-product-fit.command.js';
+export type { ReviewClusterProductFitUseCaseResult } from './use-cases/review-cluster-product-fit/review-cluster-product-fit.handler.js';
 export {
   RerunSeoBriefRunCommand,
   type RerunSeoBriefRunInput,
@@ -250,7 +328,13 @@ export {
   RerunSeoBriefStageCommand,
   type RerunSeoBriefStageInput,
 } from './use-cases/rerun-seo-brief-stage/rerun-seo-brief-stage.command.js';
+export { ScoreKeywordCandidatesCommand } from './use-cases/score-keyword-candidates/score-keyword-candidates.command.js';
+export type { ScoreKeywordCandidatesResult } from './use-cases/score-keyword-candidates/score-keyword-candidates.handler.js';
 export { SelectFirstKeywordRelatedQueriesCommand } from './use-cases/select-first-keyword-related-queries/select-first-keyword-related-queries.command.js';
 export type { SelectFirstKeywordRelatedQueriesResult } from './use-cases/select-first-keyword-related-queries/select-first-keyword-related-queries.handler.js';
 export { SelectKeywordRelatedQueriesCommand } from './use-cases/select-keyword-related-queries/select-keyword-related-queries.command.js';
 export type { SelectKeywordRelatedQueriesResult } from './use-cases/select-keyword-related-queries/select-keyword-related-queries.handler.js';
+export { SelectSeoBriefClustersCommand } from './use-cases/select-seo-brief-clusters/select-seo-brief-clusters.command.js';
+export type { SelectSeoBriefClustersResult } from './use-cases/select-seo-brief-clusters/select-seo-brief-clusters.handler.js';
+export { SynthesizeOnPageCommand } from './use-cases/synthesize-onpage/synthesize-onpage.command.js';
+export type { SynthesizeOnPageUseCaseResult } from './use-cases/synthesize-onpage/synthesize-onpage.handler.js';

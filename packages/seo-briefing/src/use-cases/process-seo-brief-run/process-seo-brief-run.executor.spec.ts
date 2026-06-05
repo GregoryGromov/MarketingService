@@ -2,18 +2,23 @@ import { describe, expect, it } from 'vitest';
 import {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
+  type ClassifySerpDomainsParams,
+  type ClassifySerpDomainsResult,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type ExpandKeywordsParams,
   type ExpandKeywordsResult,
   type ExplainClusterSelectionParams,
   type ExplainClusterSelectionResult,
+  type ExtractUserPainScenariosParams,
+  type ExtractUserPainScenariosResult,
   type GenerateSeoBriefParams,
   type GenerateSeoBriefResult,
   type GetDomainMetricsParams,
   type GetKeywordSuggestionsParams,
   type GetOnPageParseParams,
   type GetOrganicSerpParams,
+  type GetRankedKeywordsParams,
   type GetSearchVolumeParams,
   type SelectRelatedKeywordsParams,
   type SelectRelatedKeywordsResult,
@@ -36,9 +41,51 @@ import {
 import { ProcessSeoBriefRunExecutor } from './process-seo-brief-run.executor.js';
 
 class FakeSeoBriefAiPort extends SeoBriefAiPort {
+  extractUserPainScenarioCalls: ExtractUserPainScenariosParams[] = [];
   expandKeywordCalls: ExpandKeywordsParams[] = [];
   buildProductBridgeCalls: BuildProductBridgeParams[] = [];
   generateSeoBriefCalls: GenerateSeoBriefParams[] = [];
+  extractUserPainScenariosResult: ExtractUserPainScenariosResult = {
+    topicHintInterpretation: 'Research area around making idle USDT productive.',
+    userPains: [
+      {
+        pain: 'Protect savings from local currency depreciation',
+        whyRelevant: 'Users may hold USDT because local currency feels unstable.',
+        productConnection: 'alternative',
+      },
+      {
+        pain: 'Make idle USDT useful without chasing hype',
+        whyRelevant: 'Users want productive options but need realistic expectations.',
+        productConnection: 'education',
+      },
+      {
+        pain: 'Understand stablecoin earning risks',
+        whyRelevant: 'Trust and risk clarity are central to this topic.',
+        productConnection: 'education',
+      },
+    ],
+    userScenarios: [
+      {
+        scenario: 'dollar savings in Nigeria',
+        type: 'pain',
+        whyCheck: 'Core user problem behind holding USDT.',
+        productFitHypothesis: 'alternative_solution',
+      },
+      {
+        scenario: 'cash out USDT to naira',
+        type: 'action',
+        whyCheck: 'Concrete workflow users may search around.',
+        productFitHypothesis: 'workflow_bridge',
+      },
+      {
+        scenario: 'Trust Wallet and Binance P2P usage',
+        type: 'ecosystem',
+        whyCheck: 'Existing tools shape SERPs and competitor context.',
+        productFitHypothesis: 'education_bridge',
+      },
+    ],
+    riskNotes: ['Do not promise guaranteed yield'],
+  };
   expandKeywordsResult: ExpandKeywordsResult = {
     hypotheses: [
       {
@@ -55,6 +102,18 @@ class FakeSeoBriefAiPort extends SeoBriefAiPort {
       },
     ],
   };
+
+  extractContext(): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
+  async extractUserPainScenarios(
+    params: ExtractUserPainScenariosParams,
+  ): Promise<ExtractUserPainScenariosResult> {
+    this.extractUserPainScenarioCalls.push(params);
+
+    return this.extractUserPainScenariosResult;
+  }
 
   async expandKeywords(params: ExpandKeywordsParams): Promise<ExpandKeywordsResult> {
     this.expandKeywordCalls.push(params);
@@ -121,6 +180,21 @@ class FakeSeoBriefAiPort extends SeoBriefAiPort {
       selected: [],
       rejected: [],
     });
+  }
+
+  classifySerpDomains(
+    _params: ClassifySerpDomainsParams,
+  ): Promise<ClassifySerpDomainsResult> {
+    return Promise.resolve({
+      rankedKeywordsTargets: [],
+      onpageOnlyTargets: [],
+      painSignalTargets: [],
+      ignoredTargets: [],
+    });
+  }
+
+  scoreDirtyKeywordCandidates(): Promise<never> {
+    throw new Error('Not implemented in test');
   }
 
   buildProductBridge(params: BuildProductBridgeParams): Promise<BuildProductBridgeResult> {
@@ -198,6 +272,10 @@ class FakeSeoResearchPort extends SeoResearchPort {
   organicSerpCalls: GetOrganicSerpParams[] = [];
   domainMetricsCalls: GetDomainMetricsParams[] = [];
   onPageParseCalls: GetOnPageParseParams[] = [];
+
+  getRankedKeywords(_params: GetRankedKeywordsParams): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
 
   async getSearchVolume(params: GetSearchVolumeParams) {
     this.searchVolumeCalls.push(params);
@@ -374,6 +452,31 @@ describe('ProcessSeoBriefRunExecutor', () => {
         },
       }),
     );
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'created',
+        artifactType: 'seo_product_context',
+        payload: {
+          artifactVersion: 'seo_product_context_v1',
+          researchFrame: {
+            topicHint: 'how people can make idle USDT productive',
+            market: {
+              country: 'Nigeria',
+              language: 'English',
+            },
+            audience: 'USDT holders',
+          },
+          marketerConstraints: {
+            excludedTopics: ['airdrops'],
+          },
+          brandMemoryContext: {
+            approvedFacts: ['Supports USDT productivity flows'],
+            forbiddenClaims: ['Guaranteed returns'],
+          },
+        },
+      }),
+    );
 
     const executor = new ProcessSeoBriefRunExecutor(
       runRepository,
@@ -399,14 +502,66 @@ describe('ProcessSeoBriefRunExecutor', () => {
     expect(ai.expandKeywordCalls[0]?.keywordExpansionPrompt).toBe(
       'Use short, general head terms only.',
     );
+    expect(ai.extractUserPainScenarioCalls[0]?.seoProductContext).toMatchObject({
+      artifactVersion: 'seo_product_context_v1',
+      researchFrame: {
+        topicHint: 'how people can make idle USDT productive',
+      },
+    });
+    expect(ai.expandKeywordCalls[0]?.userPainScenarios).toEqual(
+      ai.extractUserPainScenariosResult,
+    );
+    expect(ai.expandKeywordCalls[0]?.seoProductContext).toMatchObject({
+      artifactVersion: 'seo_product_context_v1',
+      researchFrame: {
+        topicHint: 'how people can make idle USDT productive',
+      },
+      marketerConstraints: {
+        excludedTopics: ['airdrops'],
+      },
+    });
     expect(storedRun?.status).toBe('awaiting_confirmation');
     expect(steps.map((step) => [step.stage, step.status])).toEqual([
       ['keyword_expansion', 'completed'],
     ]);
     expect(seoResearch.searchVolumeCalls).toHaveLength(0);
+    const userPainScenariosArtifact = artifacts.find(
+      (artifact) => artifact.artifactType === 'user_pain_scenarios',
+    )?.payload as
+      | {
+          artifactVersion?: string;
+          generatedFrom?: string;
+          topicHintInterpretation?: string;
+          userPains?: Array<{ pain?: string }>;
+          userScenarios?: Array<{ scenario?: string }>;
+        }
+      | undefined;
+    expect(userPainScenariosArtifact).toMatchObject({
+      artifactVersion: 'user_pain_scenarios_v1',
+      generatedFrom: 'seo_product_context',
+      topicHintInterpretation: 'Research area around making idle USDT productive.',
+    });
+    expect(userPainScenariosArtifact?.userPains).toHaveLength(3);
+    expect(userPainScenariosArtifact?.userPains?.[0]).toMatchObject({
+      pain: 'Protect savings from local currency depreciation',
+    });
+    expect(userPainScenariosArtifact?.userScenarios).toHaveLength(3);
+    expect(userPainScenariosArtifact?.userScenarios?.[0]).toMatchObject({
+      scenario: 'dollar savings in Nigeria',
+    });
     expect(
       artifacts.find((artifact) => artifact.artifactType === 'keyword_hypotheses')?.payload,
     ).toMatchObject({
+      artifactVersion: 'search_hypotheses_v2',
+      generatedFrom: 'manual_user_pains_and_seo_product_context',
+      seoProductContext: {
+        artifactVersion: 'seo_product_context_v1',
+      },
+      hypothesesCount: 10,
+      searchHypotheses: [{ keyword: 'usdt passive income' }, { keyword: 'best way to earn with usdt' }],
+      userPainScenarios: {
+        topicHintInterpretation: 'Research area around making idle USDT productive.',
+      },
       hypotheses: [{ keyword: 'usdt passive income' }, { keyword: 'best way to earn with usdt' }],
     });
   });
@@ -419,7 +574,7 @@ describe('ProcessSeoBriefRunExecutor', () => {
     const scoreLogRepository = new InMemorySeoBriefScoreLogRepository();
     const ai = new FakeSeoBriefAiPort();
     ai.expandKeywordsResult = {
-      hypotheses: Array.from({ length: 10 }, (_, index) => ({
+      hypotheses: Array.from({ length: 20 }, (_, index) => ({
         keyword: `keyword ${index + 1}`,
         intent: 'informational',
         rationale: 'AI returned too many candidates.',
@@ -429,6 +584,16 @@ describe('ProcessSeoBriefRunExecutor', () => {
     const seoResearch = new FakeSeoResearchPort();
     const run = createQueuedRun();
     await runRepository.save(run);
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'created',
+        artifactType: 'normalized_input',
+        payload: {
+          hypothesesCount: 9,
+        },
+      }),
+    );
     const executor = new ProcessSeoBriefRunExecutor(
       runRepository,
       stepRepository,
@@ -448,13 +613,11 @@ describe('ProcessSeoBriefRunExecutor', () => {
       (artifact) => artifact.artifactType === 'keyword_hypotheses',
     )?.payload as { hypotheses?: Array<{ keyword: string }> } | undefined;
 
-    expect(result.hypothesisCount).toBe(3);
-    expect(keywordHypotheses?.hypotheses).toHaveLength(3);
-    expect(keywordHypotheses?.hypotheses?.map((item) => item.keyword)).toEqual([
-      'keyword 1',
-      'keyword 2',
-      'keyword 3',
-    ]);
+    expect(result.hypothesisCount).toBe(9);
+    expect(keywordHypotheses?.hypotheses).toHaveLength(9);
+    expect(keywordHypotheses?.hypotheses?.map((item) => item.keyword)).toEqual(
+      Array.from({ length: 9 }, (_, index) => `keyword ${index + 1}`),
+    );
   });
 
   it('processes research, triage, clustering, scoring, and selection with score logs', async () => {

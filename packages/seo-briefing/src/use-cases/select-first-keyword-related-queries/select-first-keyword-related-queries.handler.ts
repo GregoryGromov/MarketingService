@@ -9,6 +9,7 @@ import { SeoBriefSerpDerivedKeywordsNotFoundError } from '../../errors/seo-brief
 import {
   type SelectedRelatedKeyword,
   type SelectRelatedKeywordCandidateInput,
+  type SeoBriefAiModelMode,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
 import { SelectFirstKeywordRelatedQueriesCommand } from './select-first-keyword-related-queries.command.js';
@@ -30,6 +31,15 @@ function asObject(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+function readAiModelMode(artifacts: SeoBriefArtifact[]): SeoBriefAiModelMode {
+  const normalizedInputArtifact = [...artifacts]
+    .reverse()
+    .find((artifact) => artifact.artifactType === 'normalized_input');
+  const payload = asObject(normalizedInputArtifact?.payload);
+  const value = asString(payload?.aiModelMode);
+  return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
 }
 
 function normalizeQuery(value: string): string {
@@ -136,6 +146,7 @@ export class SelectFirstKeywordRelatedQueriesHandler
     }
 
     const artifacts = await this.artifactRepository.findByRunId(run.id);
+    const aiModelMode = readAiModelMode(artifacts);
     const derivedArtifact = [...artifacts]
       .reverse()
       .find((artifact) => artifact.artifactType === 'first_keyword_serp_derived_keywords');
@@ -146,6 +157,7 @@ export class SelectFirstKeywordRelatedQueriesHandler
 
     const aiResult = await this.ai.selectRelatedKeywords({
       runId: run.id,
+      modelMode: aiModelMode,
       seedKeyword: keyword,
       candidates,
       limit: MAX_SELECTED_RELATED_QUERIES,

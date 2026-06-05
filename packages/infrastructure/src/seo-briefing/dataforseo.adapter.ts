@@ -3,9 +3,12 @@ import {
   type FailSeoBriefExternalCallLogParams,
   type GetDomainMetricsParams,
   type GetKeywordSuggestionsParams,
+  type GetOnPageContentParsingParams,
+  type GetOnPageInstantPagesParams,
   type GetOnPageParseParams,
   type GetOrganicSerpParams,
   type GetOrganicSerpSnapshotParams,
+  type GetRankedKeywordsParams,
   type GetSearchVolumeParams,
   SeoBriefExternalCallLog,
   SeoBriefExternalCallLogRepository,
@@ -22,9 +25,14 @@ import {
   type SeoNormalizedSerpPeopleAlsoAskItem,
   type SeoNormalizedSerpSnapshot,
   type SeoNormalizedSerpSpecialBlock,
+  type SeoOnPageContentParsingResult,
+  type SeoOnPageInstantPagesResult,
   type SeoOnPageParseResult,
   type SeoOrganicSerpResult,
   type SeoOrganicSerpSnapshotResult,
+  type SeoRankedKeywordItem,
+  type SeoRankedKeywordMonthlySearch,
+  type SeoRankedKeywordsResult,
   SeoResearchTransportError,
   SeoResearchValidationError,
   type SeoSearchVolumeResult,
@@ -73,6 +81,14 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  }
+
+  return typeof value === 'string' && value.trim() ? [value] : [];
+}
+
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -95,13 +111,118 @@ function normalizeTarget(value: string): string {
   return nextValue;
 }
 
+function normalizeUrl(value: string): string {
+  const nextValue = value.trim();
+  if (nextValue.length === 0) {
+    throw new SeoResearchValidationError('URL must not be empty', 'input', 'dataforseo');
+  }
+
+  return nextValue;
+}
+
+function normalizeNullableDomain(value: string | null): string | null {
+  const normalized = value?.trim().toLowerCase().replace(/^www\./u, '');
+  return normalized || null;
+}
+
+function dedupeStrings(values: Array<string | null>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+function readOnPageLinks(value: unknown): Array<{ anchor?: string | null; url: string }> {
+  return asArray(value)
+    .map(asObject)
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .map((item) => ({
+      url: asString(item.url) ?? asString(item.href) ?? '',
+      anchor: asString(item.anchor) ?? asString(item.text),
+    }))
+    .filter((item) => item.url.trim().length > 0)
+    .slice(0, 120);
+}
+
+const DATAFORSEO_LANGUAGE_BY_INPUT = new Map<string, { code: string; name: string }>(
+  [
+    ['arabic', 'ar'],
+    ['chinese', 'zh'],
+    ['english', 'en'],
+    ['filipino', 'tl'],
+    ['french', 'fr'],
+    ['german', 'de'],
+    ['hindi', 'hi'],
+    ['indonesian', 'id'],
+    ['italian', 'it'],
+    ['japanese', 'ja'],
+    ['korean', 'ko'],
+    ['portuguese', 'pt'],
+    ['russian', 'ru'],
+    ['spanish', 'es'],
+    ['tagalog', 'tl'],
+    ['thai', 'th'],
+    ['turkish', 'tr'],
+    ['ukrainian', 'uk'],
+    ['vietnamese', 'vi'],
+  ].flatMap(([name, code]) => [
+    [name, { code, name: name[0]?.toUpperCase() + name.slice(1) }],
+    [code, { code, name: name[0]?.toUpperCase() + name.slice(1) }],
+  ]),
+);
+
+function normalizeDataForSeoLanguagePayload(language: string): SeoBriefJsonObject {
+  const value = language.trim();
+  if (value.length === 0) {
+    throw new SeoResearchValidationError('Language must not be empty', 'input', 'dataforseo');
+  }
+
+  const normalized = value.toLowerCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim();
+  const directMatch = DATAFORSEO_LANGUAGE_BY_INPUT.get(normalized);
+  if (directMatch) {
+    return {
+      language_code: directMatch.code,
+      language_name: directMatch.name,
+    };
+  }
+
+  for (const [key, languageEntry] of DATAFORSEO_LANGUAGE_BY_INPUT.entries()) {
+    if (key.length > 2 && normalized.includes(key)) {
+      return {
+        language_code: languageEntry.code,
+        language_name: languageEntry.name,
+      };
+    }
+  }
+
+  const codeMatch = normalized.match(/^[a-z]{2}(?:\s|$)/u);
+  if (codeMatch) {
+    return {
+      language_code: codeMatch[0].trim(),
+    };
+  }
+
+  return {
+    language_name: value,
+  };
+}
+
 function normalizeMarketPayload(params: {
   country: string;
   language: string;
   locationName?: string | null;
 }): SeoBriefJsonObject {
   return {
-    language_name: params.language.trim(),
+    ...normalizeDataForSeoLanguagePayload(params.language),
     location_name: params.locationName?.trim() || params.country.trim(),
   };
 }
@@ -297,6 +418,50 @@ export class DataForSeoAdapter {
     );
   }
 
+  async getRankedKeywords(params: GetRankedKeywordsParams): Promise<SeoRankedKeywordsResult> {
+    const endpoint = '/v3/dataforseo_labs/google/ranked_keywords/live';
+    const payload: SeoBriefJsonObject = {
+      ...normalizeMarketPayload(params.market),
+      target: normalizeTarget(params.target),
+      limit: params.limit ?? 100,
+      historical_serp_mode: params.historicalSerpMode ?? 'live',
+      load_rank_absolute: params.loadRankAbsolute ?? false,
+      ignore_synonyms: params.ignoreSynonyms ?? false,
+      include_clickstream_data: params.includeClickstreamData ?? false,
+    };
+
+    return this.runCachedOperation(params, endpoint, payload, (rawPayload) =>
+      this.parseRankedKeywords(rawPayload, params),
+    );
+  }
+
+  async getOnPageContentParsing(
+    params: GetOnPageContentParsingParams,
+  ): Promise<SeoOnPageContentParsingResult> {
+    const endpoint = '/v3/on_page/content_parsing/live';
+    const payload: SeoBriefJsonObject = {
+      url: normalizeUrl(params.url),
+      markdown_view: params.markdownView ?? true,
+    };
+
+    return this.runCachedOperation(params, endpoint, payload, (rawPayload) =>
+      this.parseOnPageContentParsing(rawPayload, params),
+    );
+  }
+
+  async getOnPageInstantPages(
+    params: GetOnPageInstantPagesParams,
+  ): Promise<SeoOnPageInstantPagesResult> {
+    const endpoint = '/v3/on_page/instant_pages';
+    const payload: SeoBriefJsonObject = {
+      url: normalizeUrl(params.url),
+    };
+
+    return this.runCachedOperation(params, endpoint, payload, (rawPayload) =>
+      this.parseOnPageInstantPages(rawPayload, params),
+    );
+  }
+
   async getOnPageParse(params: GetOnPageParseParams): Promise<SeoOnPageParseResult> {
     const payload: SeoBriefJsonObject = {
       target: normalizeTarget(params.target),
@@ -363,7 +528,6 @@ export class DataForSeoAdapter {
       ...normalizeMarketPayload(params.market),
       depth: params.depth ?? 10,
       keyword: normalizeKeyword(params.keyword),
-      language_code: params.market.language.trim().toLowerCase().slice(0, 2),
       device: params.device ?? 'desktop',
       ...(params.os ? { os: params.os } : {}),
     };
@@ -984,6 +1148,109 @@ export class DataForSeoAdapter {
     };
   }
 
+  private parseRankedKeywords(
+    payload: SeoBriefJsonValue,
+    params: GetRankedKeywordsParams,
+  ): SeoRankedKeywordsResult {
+    const task = this.getSingleTask(
+      payload,
+      '/v3/dataforseo_labs/google/ranked_keywords/live',
+    );
+    const result = asObject(task.result?.[0]);
+    const metrics = asObject(result?.metrics);
+    const organic = asObject(metrics?.organic);
+    const items = asArray(result?.items)
+      .map((item) => this.parseRankedKeywordItem(item, params))
+      .filter((item): item is SeoRankedKeywordItem => item !== null);
+
+    return {
+      provider: 'dataforseo',
+      target: normalizeTarget(params.target),
+      market: params.market,
+      totalCount: asNumber(result?.total_count),
+      itemsCount: asNumber(result?.items_count),
+      metrics: {
+        organicPos1: asNumber(organic?.pos_1),
+        organicPos2To3: asNumber(organic?.pos_2_3),
+        organicPos4To10: asNumber(organic?.pos_4_10),
+        organicEtv: asNumber(organic?.etv),
+      },
+      rawResponse: payload,
+      items,
+    };
+  }
+
+  private parseRankedKeywordItem(
+    value: unknown,
+    params: GetRankedKeywordsParams,
+  ): SeoRankedKeywordItem | null {
+    const item = asObject(value);
+    const keywordData = asObject(item?.keyword_data);
+    const keywordInfo = asObject(keywordData?.keyword_info);
+    const keywordProperties = asObject(keywordData?.keyword_properties);
+    const searchIntentInfo = asObject(keywordData?.search_intent_info);
+    const serpInfo = asObject(keywordData?.serp_info);
+    const rankedSerpElement = asObject(item?.ranked_serp_element);
+    const serpItem = asObject(rankedSerpElement?.serp_item);
+    const text = compactText(asString(keywordData?.keyword), 220);
+    if (!text) {
+      return null;
+    }
+
+    const searchVolume = asNumber(keywordInfo?.search_volume);
+    const keywordDifficulty =
+      asNumber(keywordProperties?.keyword_difficulty) ??
+      asNumber(rankedSerpElement?.keyword_difficulty);
+
+    return {
+      text,
+      type: 'keyword',
+      source: 'ranked_keywords',
+      sourceDomain: normalizeTarget(params.target),
+      metrics: {
+        searchVolume,
+        searchVolumeSource: searchVolume === null ? null : 'ranked_keywords',
+        keywordDifficulty,
+        cpc: asNumber(keywordInfo?.cpc),
+        competitionLevel: asString(keywordInfo?.competition_level),
+        intent: asString(searchIntentInfo?.main_intent),
+        monthlySearches: this.parseRankedKeywordMonthlySearches(
+          keywordInfo?.monthly_searches,
+        ),
+      },
+      competitorEvidence: {
+        domain: normalizeNullableDomain(asString(serpItem?.domain)),
+        rankingUrl: asString(serpItem?.url),
+        rankingTitle: compactText(asString(serpItem?.title), 500),
+        rankAbsolute: asNumber(serpItem?.rank_absolute),
+        estimatedTraffic: asNumber(serpItem?.etv) ?? asNumber(rankedSerpElement?.etv),
+      },
+      serpEvidence: {
+        serpFeatures: dedupeStrings(asArray(serpInfo?.serp_item_types).map(asString)),
+      },
+    };
+  }
+
+  private parseRankedKeywordMonthlySearches(value: unknown): SeoRankedKeywordMonthlySearch[] {
+    return asArray(value)
+      .map((item) => {
+        const record = asObject(item);
+        const month = asNumber(record?.month);
+        const year = asNumber(record?.year);
+        const searchVolume = asNumber(record?.search_volume);
+        if (month === null || year === null || searchVolume === null) {
+          return null;
+        }
+
+        return {
+          month,
+          year,
+          searchVolume,
+        };
+      })
+      .filter((item): item is SeoRankedKeywordMonthlySearch => item !== null);
+  }
+
   private parseOnPageSummary(
     payload: SeoBriefJsonValue,
     taskId: string,
@@ -1006,6 +1273,63 @@ export class DataForSeoAdapter {
     };
   }
 
+  private parseOnPageContentParsing(
+    payload: SeoBriefJsonValue,
+    params: GetOnPageContentParsingParams,
+  ): SeoOnPageContentParsingResult {
+    const task = this.getSingleTask(payload, '/v3/on_page/content_parsing/live');
+    const result = asObject(task.result?.[0]) ?? {};
+    const page = asObject(result.page) ?? result;
+    const content = asObject(page.content) ?? asObject(result.content) ?? page;
+    const headings = asObject(content.headings) ?? asObject(page.headings) ?? {};
+    const textBlocks = dedupeStrings([
+      ...asStringArray(content.text_blocks),
+      ...asStringArray(content.textBlocks),
+      ...asStringArray(content.paragraphs),
+      asString(content.text),
+      asString(page.text),
+    ]).slice(0, 80);
+
+    return {
+      provider: 'dataforseo',
+      rawResponse: payload,
+      url: normalizeUrl(params.url),
+      title: asString(page.title) ?? asString(result.title),
+      h1: dedupeStrings([...asStringArray(headings.h1), ...asStringArray(content.h1)]),
+      h2: dedupeStrings([...asStringArray(headings.h2), ...asStringArray(content.h2)]),
+      h3: dedupeStrings([...asStringArray(headings.h3), ...asStringArray(content.h3)]),
+      markdown: asString(content.markdown) ?? asString(page.markdown) ?? asString(result.markdown),
+      textBlocks,
+      tables: asArray(content.tables) as SeoBriefJsonValue[],
+      links: readOnPageLinks(content.links ?? page.links ?? result.links),
+    };
+  }
+
+  private parseOnPageInstantPages(
+    payload: SeoBriefJsonValue,
+    params: GetOnPageInstantPagesParams,
+  ): SeoOnPageInstantPagesResult {
+    const task = this.getSingleTask(payload, '/v3/on_page/instant_pages');
+    const result = asObject(task.result?.[0]) ?? {};
+    const page = asObject(result.page) ?? result;
+    const meta = asObject(page.meta) ?? asObject(result.meta) ?? {};
+
+    return {
+      provider: 'dataforseo',
+      rawResponse: payload,
+      url: normalizeUrl(params.url),
+      title: asString(page.title) ?? asString(result.title),
+      metaDescription:
+        asString(page.meta_description) ??
+        asString(page.metaDescription) ??
+        asString(meta.description) ??
+        asString(result.meta_description),
+      canonical: asString(page.canonical) ?? asString(result.canonical),
+      statusCode: asNumber(page.status_code) ?? asNumber(page.statusCode) ?? asNumber(result.status_code),
+      technicalChecks: (asObject(page.checks) ?? asObject(result.checks) ?? {}) as SeoBriefJsonObject,
+    };
+  }
+
   private isRetryableError(error: unknown): boolean {
     if (!(error instanceof SeoResearchTransportError)) {
       return false;
@@ -1025,14 +1349,14 @@ export class DataForSeoAdapter {
   private getTimeoutMs(): number {
     return Math.max(
       1000,
-      Number.parseInt(this.config.get<string>('DATAFORSEO_TIMEOUT_MS') ?? '10000', 10),
+      Number.parseInt(this.config.get<string>('DATAFORSEO_TIMEOUT_MS') ?? '60000', 10),
     );
   }
 
   private getMaxAttempts(): number {
     return Math.max(
       1,
-      Number.parseInt(this.config.get<string>('DATAFORSEO_MAX_ATTEMPTS') ?? '3', 10),
+      Number.parseInt(this.config.get<string>('DATAFORSEO_MAX_ATTEMPTS') ?? '2', 10),
     );
   }
 

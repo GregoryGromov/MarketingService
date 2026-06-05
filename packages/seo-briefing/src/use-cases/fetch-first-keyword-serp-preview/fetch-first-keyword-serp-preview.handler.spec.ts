@@ -5,6 +5,7 @@ import {
   type GetOnPageParseParams,
   type GetOrganicSerpParams,
   type GetOrganicSerpSnapshotParams,
+  type GetRankedKeywordsParams,
   type GetSearchVolumeParams,
   SeoBriefArtifact,
   SeoBriefKeywordHypothesesNotFoundError,
@@ -84,6 +85,10 @@ class FakeSeoResearchPort extends SeoResearchPort {
   }
 
   getSearchVolume(_params: GetSearchVolumeParams): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
+  getRankedKeywords(_params: GetRankedKeywordsParams): Promise<never> {
     throw new Error('Not implemented in test');
   }
 }

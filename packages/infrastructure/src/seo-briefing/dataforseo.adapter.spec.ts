@@ -238,6 +238,52 @@ describe('DataForSeoAdapter', () => {
     expect(logs[0]?.cacheHit).toBe(false);
   });
 
+  it('normalizes language aliases before sending SERP requests to DataForSEO', async () => {
+    const { adapter, client } = createAdapter([
+      {
+        type: 'response',
+        value: {
+          status: 200,
+          payload: {
+            tasks: [
+              {
+                cost: 0.002,
+                status_code: 20000,
+                result: [
+                  {
+                    keyword: 'usdt',
+                    location_name: 'Nigeria',
+                    language_name: 'English',
+                    language_code: 'en',
+                    device: 'mobile',
+                    os: 'android',
+                    item_types: [],
+                    items: [],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    await adapter.getOrganicSerpSnapshot({
+      runId: 'seo_brief_run_5' as never,
+      keyword: 'USDT',
+      market: {
+        country: 'Nigeria',
+        language: 'Nigerian English',
+      },
+    });
+
+    expect(client.requests[0]?.payload).toMatchObject({
+      language_code: 'en',
+      language_name: 'English',
+      location_name: 'Nigeria',
+    });
+  });
+
   it('maps a normalized serp snapshot with organic, paa, related searches, and special blocks', async () => {
     const { adapter, client, repository } = createAdapter([
       {
@@ -474,6 +520,134 @@ describe('DataForSeoAdapter', () => {
     expect(logs[0]?.status).toBe('completed');
   });
 
+  it('fetches ranked keywords with the configured DataForSEO Labs payload and normalizes keyword evidence', async () => {
+    const { adapter, client } = createAdapter([
+      {
+        type: 'response',
+        value: {
+          status: 200,
+          payload: {
+            tasks: [
+              {
+                cost: 0.01,
+                status_code: 20000,
+                result: [
+                  {
+                    target: 'trustwallet.com',
+                    total_count: 1000,
+                    items_count: 1,
+                    metrics: {
+                      organic: {
+                        pos_1: 2,
+                        pos_2_3: 4,
+                        pos_4_10: 12,
+                        etv: 55.5,
+                      },
+                    },
+                    items: [
+                      {
+                        keyword_data: {
+                          keyword: 'how to use trust wallet',
+                          keyword_info: {
+                            search_volume: 170,
+                            cpc: 0.4,
+                            competition_level: 'LOW',
+                            monthly_searches: [
+                              { year: 2026, month: 5, search_volume: 170 },
+                            ],
+                          },
+                          keyword_properties: {
+                            keyword_difficulty: 8,
+                          },
+                          search_intent_info: {
+                            main_intent: 'informational',
+                          },
+                          serp_info: {
+                            serp_item_types: ['organic', 'people_also_ask', 'organic'],
+                          },
+                        },
+                        ranked_serp_element: {
+                          serp_item: {
+                            domain: 'www.trustwallet.com',
+                            url: 'https://trustwallet.com/blog/how-to-use',
+                            title: 'How to Use Trust Wallet',
+                            rank_absolute: 3,
+                            etv: 51.68,
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    const result = await adapter.getRankedKeywords({
+      runId: 'seo_brief_run_ranked' as never,
+      target: 'TrustWallet.com',
+      market: {
+        country: 'Nigeria',
+        language: 'English',
+      },
+    });
+
+    expect(client.requests[0]?.path).toBe('/v3/dataforseo_labs/google/ranked_keywords/live');
+    expect(client.requests[0]?.payload).toMatchObject({
+      target: 'trustwallet.com',
+      location_name: 'Nigeria',
+      language_code: 'en',
+      language_name: 'English',
+      limit: 100,
+      historical_serp_mode: 'live',
+      load_rank_absolute: false,
+      ignore_synonyms: false,
+      include_clickstream_data: false,
+    });
+    expect(result).toMatchObject({
+      provider: 'dataforseo',
+      target: 'trustwallet.com',
+      totalCount: 1000,
+      itemsCount: 1,
+      metrics: {
+        organicPos1: 2,
+        organicPos2To3: 4,
+        organicPos4To10: 12,
+        organicEtv: 55.5,
+      },
+      items: [
+        {
+          text: 'how to use trust wallet',
+          type: 'keyword',
+          source: 'ranked_keywords',
+          sourceDomain: 'trustwallet.com',
+          metrics: {
+            searchVolume: 170,
+            searchVolumeSource: 'ranked_keywords',
+            keywordDifficulty: 8,
+            cpc: 0.4,
+            competitionLevel: 'LOW',
+            intent: 'informational',
+            monthlySearches: [{ year: 2026, month: 5, searchVolume: 170 }],
+          },
+          competitorEvidence: {
+            domain: 'trustwallet.com',
+            rankingUrl: 'https://trustwallet.com/blog/how-to-use',
+            rankingTitle: 'How to Use Trust Wallet',
+            rankAbsolute: 3,
+            estimatedTraffic: 51.68,
+          },
+          serpEvidence: {
+            serpFeatures: ['organic', 'people_also_ask'],
+          },
+        },
+      ],
+    });
+  });
+
   it('posts an on-page task, polls summary, and normalizes the final result', async () => {
     const { adapter, client, repository } = createAdapter([
       {
@@ -544,6 +718,126 @@ describe('DataForSeoAdapter', () => {
     expect(logs.map((log) => log.endpoint)).toEqual([
       '/v3/on_page/task_post',
       '/v3/on_page/summary/dfs-task-1',
+    ]);
+  });
+
+  it('fetches live content parsing and instant page metadata for on-page URLs', async () => {
+    const { adapter, client, repository } = createAdapter([
+      {
+        type: 'response',
+        value: {
+          status: 200,
+          payload: {
+            tasks: [
+              {
+                id: 'content-task-1',
+                cost: 0.02,
+                status_code: 20000,
+                result: [
+                  {
+                    page: {
+                      title: 'Earn USDT Rewards',
+                      content: {
+                        headings: {
+                          h1: ['Earn USDT Rewards'],
+                          h2: ['How USDT earn works', 'Risks to understand'],
+                          h3: ['Flexible access'],
+                        },
+                        markdown: '# Earn USDT Rewards',
+                        text_blocks: ['Earn rewards on your USDT holdings.', 'Understand the risks.'],
+                        tables: [{ rows: 2 }],
+                        links: [
+                          {
+                            url: 'https://example.com/risk',
+                            anchor: 'Risk disclosure',
+                          },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        type: 'response',
+        value: {
+          status: 200,
+          payload: {
+            tasks: [
+              {
+                id: 'instant-task-1',
+                cost: 0.01,
+                status_code: 20000,
+                result: [
+                  {
+                    title: 'Earn USDT Rewards',
+                    meta_description: 'Earn rewards with clear risk information.',
+                    canonical: 'https://trustwallet.com/stablecoin-earn/usdt',
+                    status_code: 200,
+                    checks: {
+                      is_https: true,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    const content = await adapter.getOnPageContentParsing({
+      runId: 'seo_brief_run_4' as never,
+      url: 'https://trustwallet.com/stablecoin-earn/usdt',
+      markdownView: true,
+    });
+    const instant = await adapter.getOnPageInstantPages({
+      runId: 'seo_brief_run_4' as never,
+      url: 'https://trustwallet.com/stablecoin-earn/usdt',
+    });
+    const logs = await repository.findByRunId('seo_brief_run_4' as never);
+
+    expect(client.requests.map((request) => request.path)).toEqual([
+      '/v3/on_page/content_parsing/live',
+      '/v3/on_page/instant_pages',
+    ]);
+    expect(client.requests[0]?.payload).toEqual({
+      url: 'https://trustwallet.com/stablecoin-earn/usdt',
+      markdown_view: true,
+    });
+    expect(content).toMatchObject({
+      provider: 'dataforseo',
+      url: 'https://trustwallet.com/stablecoin-earn/usdt',
+      title: 'Earn USDT Rewards',
+      h1: ['Earn USDT Rewards'],
+      h2: ['How USDT earn works', 'Risks to understand'],
+      h3: ['Flexible access'],
+      markdown: '# Earn USDT Rewards',
+      textBlocks: ['Earn rewards on your USDT holdings.', 'Understand the risks.'],
+      links: [
+        {
+          url: 'https://example.com/risk',
+          anchor: 'Risk disclosure',
+        },
+      ],
+    });
+    expect(instant).toMatchObject({
+      provider: 'dataforseo',
+      url: 'https://trustwallet.com/stablecoin-earn/usdt',
+      title: 'Earn USDT Rewards',
+      metaDescription: 'Earn rewards with clear risk information.',
+      canonical: 'https://trustwallet.com/stablecoin-earn/usdt',
+      statusCode: 200,
+      technicalChecks: {
+        is_https: true,
+      },
+    });
+    expect(logs.map((log) => log.endpoint)).toEqual([
+      '/v3/on_page/content_parsing/live',
+      '/v3/on_page/instant_pages',
     ]);
   });
 });

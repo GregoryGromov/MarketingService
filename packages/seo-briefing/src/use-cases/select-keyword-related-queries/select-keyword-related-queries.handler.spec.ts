@@ -16,7 +16,15 @@ import { SelectKeywordRelatedQueriesHandler } from './select-keyword-related-que
 class FakeSeoBriefAiPort extends SeoBriefAiPort {
   selectRelatedKeywordsCalls: SelectRelatedKeywordsParams[] = [];
 
+  extractContext(): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
   expandKeywords(): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
+  extractUserPainScenarios(): Promise<never> {
     throw new Error('Not implemented in test');
   }
 
@@ -25,6 +33,14 @@ class FakeSeoBriefAiPort extends SeoBriefAiPort {
   }
 
   clusterKeywords(): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
+  classifySerpDomains(): Promise<never> {
+    throw new Error('Not implemented in test');
+  }
+
+  scoreDirtyKeywordCandidates(): Promise<never> {
     throw new Error('Not implemented in test');
   }
 
