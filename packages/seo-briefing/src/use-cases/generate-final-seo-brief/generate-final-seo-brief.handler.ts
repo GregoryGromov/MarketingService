@@ -19,6 +19,12 @@ import { GenerateFinalSeoBriefCommand } from './generate-final-seo-brief.command
 
 type JsonRecord = Record<string, unknown>;
 
+const FINAL_BRIEF_ACCEPTED_KEYWORD_LIMIT = 24;
+const FINAL_BRIEF_MAYBE_KEYWORD_LIMIT = 8;
+const FINAL_BRIEF_SUPPORTING_CLUSTER_LIMIT = 5;
+const FINAL_BRIEF_BUCKET_LIMIT = 8;
+const FINAL_BRIEF_PRODUCT_FIT_CLUSTER_LIMIT = 8;
+
 export interface GenerateFinalSeoBriefUseCaseResult {
   artifactType: 'final_brief_snapshot';
   documentId: string;
@@ -83,10 +89,24 @@ export class GenerateFinalSeoBriefHandler
         run.cta,
       );
       const supportingClusters = readSupportingClusters(clusterSelection);
-      const keywordCandidateScoring = readLatestObjectArtifact(artifacts, 'keyword_candidate_scoring');
-      const productFitReview = readLatestObjectArtifact(artifacts, 'cluster_product_fit_review');
+      const finalClusterSelection = buildFinalClusterSelectionContext(
+        clusterSelection,
+        mainCluster,
+        supportingClusters,
+      );
+      const keywordCandidateScoring = buildFinalKeywordCandidateScoringContext(
+        readLatestObjectArtifact(artifacts, 'keyword_candidate_scoring'),
+      );
+      const productFitReview = buildFinalProductFitReviewContext(
+        readLatestObjectArtifact(artifacts, 'cluster_product_fit_review'),
+        mainCluster.clusterName,
+      );
       const competitorKeywordEvidence = buildCompetitorKeywordEvidence(artifacts);
       const serpEnrichmentContext = buildSerpEnrichmentContext(artifacts);
+      const onPageSynthesisForPrompt = buildFinalOnPageSynthesisContext(onPageSynthesis);
+      const seoProductContext = buildFinalSeoProductContext(
+        readLatestObjectArtifact(artifacts, 'seo_product_context'),
+      );
 
       const brief = await this.ai.generateSeoBrief({
         runId: run.id,
@@ -107,17 +127,17 @@ export class GenerateFinalSeoBriefHandler
         productBridge,
         constraints: buildConstraints(run.brandMemorySnapshot, run.keyMessage),
         brandMemorySnapshot: run.brandMemorySnapshot,
-        clusterSelection,
+        clusterSelection: finalClusterSelection,
         supportingClusters,
-        onPageSynthesis,
+        onPageSynthesis: onPageSynthesisForPrompt,
         keywordCandidateScoring,
         productFitReview,
         competitorKeywordEvidence,
         serpEnrichmentContext,
-        seoProductContext: readLatestObjectArtifact(artifacts, 'seo_product_context'),
+        seoProductContext,
       });
 
-      const selectedClusterPayload = clusterSelection as SeoBriefJsonValue;
+      const selectedClusterPayload = finalClusterSelection as SeoBriefJsonValue;
       const rejectedClustersPayload = readObjectArray(clusterSelection.rejectedClusters) as unknown as SeoBriefJsonValue;
       const briefPayload = buildFinalBriefPayload({
         brief,
@@ -135,7 +155,7 @@ export class GenerateFinalSeoBriefHandler
           language: run.language,
         },
         selectedCluster: selectedClusterPayload,
-        onPageSynthesis,
+        onPageSynthesis: onPageSynthesisForPrompt,
         keywordCandidateScoring,
         productFitReview,
         competitorKeywordEvidence,
@@ -403,6 +423,181 @@ function buildConstraints(
   ]);
 }
 
+function buildFinalClusterSelectionContext(
+  selection: SeoBriefJsonObject,
+  mainCluster: MainClusterContext,
+  supportingClusters: SeoBriefJsonObject[],
+): SeoBriefJsonObject {
+  const rawMainCluster = asObject(selection.mainCluster);
+
+  return {
+    artifactVersion: selection.artifactVersion ?? null,
+    mainCluster: {
+      clusterName: mainCluster.clusterName,
+      primaryKeyword: mainCluster.primaryKeyword,
+      intent: mainCluster.intent,
+      productFitType: mainCluster.productFitType,
+      productFitDecision: mainCluster.productFitDecision,
+      reason: readString(rawMainCluster?.reason),
+      secondaryKeywords: mainCluster.secondaryKeywords.slice(0, 12),
+    } as unknown as SeoBriefJsonValue,
+    supportingClusters: supportingClusters
+      .slice(0, FINAL_BRIEF_SUPPORTING_CLUSTER_LIMIT)
+      .map((cluster) => ({
+        clusterName: readString(cluster.clusterName),
+        primaryKeyword: readString(cluster.primaryKeyword),
+        role: readString(cluster.role),
+        reason: readString(cluster.reason),
+        keywords: readStringArray(cluster.keywords).slice(0, 8),
+      })) as unknown as SeoBriefJsonValue,
+    counts: {
+      supportingClusterCount: readObjectArray(selection.supportingClusters).length,
+      rejectedClusterCount: readObjectArray(selection.rejectedClusters).length,
+    } as unknown as SeoBriefJsonValue,
+  };
+}
+
+function buildFinalOnPageSynthesisContext(payload: SeoBriefJsonObject): SeoBriefJsonObject {
+  return {
+    artifactVersion: payload.artifactVersion ?? null,
+    competitorStructureSummary: compactJson(payload.competitorStructureSummary, {
+      maxArrayItems: 8,
+      maxDepth: 4,
+    }),
+    recommendedArticleStructure: compactJson(payload.recommendedArticleStructure, {
+      maxArrayItems: 10,
+      maxDepth: 4,
+    }),
+    productInsertion: compactJson(payload.productInsertion, { maxArrayItems: 8, maxDepth: 3 }),
+    riskAndComplianceNotes: compactJson(payload.riskAndComplianceNotes, {
+      maxArrayItems: 8,
+      maxDepth: 2,
+    }),
+  };
+}
+
+function buildFinalKeywordCandidateScoringContext(
+  payload: SeoBriefJsonObject | null,
+): SeoBriefJsonObject | null {
+  if (!payload) {
+    return null;
+  }
+
+  const stagedFiltering = asObject(payload.stagedFiltering);
+
+  return {
+    artifactVersion: payload.artifactVersion ?? null,
+    filteringMode: readString(payload.filteringMode),
+    summary: compactJson(payload.summary, { maxArrayItems: 5, maxDepth: 3 }),
+    counts: {
+      inputCandidateCount: readNumber(payload.inputCandidateCount),
+      acceptedCount: readNumber(payload.acceptedCount),
+      maybeCount: readNumber(payload.maybeCount),
+      rejectedCount: readNumber(payload.rejectedCount),
+      hardExcludedCandidateCount: readNumber(payload.hardExcludedCandidateCount),
+    } as unknown as SeoBriefJsonValue,
+    buckets: readObjectArray(stagedFiltering?.buckets)
+      .slice(0, FINAL_BRIEF_BUCKET_LIMIT)
+      .map(compactBucketSummary) as unknown as SeoBriefJsonValue,
+    accepted: readObjectArray(payload.accepted)
+      .slice(0, FINAL_BRIEF_ACCEPTED_KEYWORD_LIMIT)
+      .map(compactCandidateForFinalBrief) as unknown as SeoBriefJsonValue,
+    maybe: readObjectArray(payload.maybe)
+      .slice(0, FINAL_BRIEF_MAYBE_KEYWORD_LIMIT)
+      .map(compactCandidateForFinalBrief) as unknown as SeoBriefJsonValue,
+  };
+}
+
+function buildFinalProductFitReviewContext(
+  payload: SeoBriefJsonObject | null,
+  selectedClusterName: string,
+): SeoBriefJsonObject | null {
+  if (!payload) {
+    return null;
+  }
+
+  const reviews = readObjectArray(payload.clusterProductFit);
+  const selectedReview =
+    reviews.find((review) => normalizeText(readString(review.clusterName) ?? '') === normalizeText(selectedClusterName)) ??
+    null;
+
+  return {
+    artifactVersion: payload.artifactVersion ?? null,
+    counts: {
+      inputClusterCount: readNumber(payload.inputClusterCount),
+      reviewedClusterCount: readNumber(payload.reviewedClusterCount),
+      approvedCount: readNumber(payload.approvedCount),
+      supportingOnlyCount: readNumber(payload.supportingOnlyCount),
+      rejectedCount: readNumber(payload.rejectedCount),
+    } as unknown as SeoBriefJsonValue,
+    selectedClusterReview: selectedReview
+      ? compactProductFitReview(selectedReview)
+      : null,
+    approvedOrSupportingClusters: reviews
+      .filter((review) => readString(review.decision) !== 'reject')
+      .slice(0, FINAL_BRIEF_PRODUCT_FIT_CLUSTER_LIMIT)
+      .map(compactProductFitReview) as unknown as SeoBriefJsonValue,
+  };
+}
+
+function buildFinalSeoProductContext(payload: SeoBriefJsonObject | null): SeoBriefJsonObject | null {
+  return payload ? (compactJson(payload, { maxArrayItems: 8, maxDepth: 4 }) as SeoBriefJsonObject) : null;
+}
+
+function compactBucketSummary(bucket: JsonRecord): SeoBriefJsonObject {
+  return {
+    bucket: readString(bucket.bucket),
+    label: readString(bucket.label),
+    description: readString(bucket.description),
+    inputCount: readNumber(bucket.inputCount),
+    acceptedCount: readNumber(bucket.acceptedCount),
+    maybeCount: readNumber(bucket.maybeCount),
+    rejectedCount: readNumber(bucket.rejectedCount),
+    topCandidates: readObjectArray(bucket.topCandidates)
+      .slice(0, 4)
+      .map((candidate) => ({
+        keyword: readString(candidate.keyword),
+        status: readString(candidate.status),
+        totalScore: readNumber(candidate.totalScore),
+        productFit: readString(candidate.productFit),
+        insertionType: readString(candidate.insertionType),
+      })) as unknown as SeoBriefJsonValue,
+  };
+}
+
+function compactCandidateForFinalBrief(candidate: JsonRecord): SeoBriefJsonObject {
+  return {
+    keyword: readString(candidate.keyword) ?? readString(candidate.text),
+    status: readString(candidate.status),
+    bucket: readString(candidate.bucket),
+    bucketLabel: readString(candidate.bucketLabel),
+    productFitLabel: readString(candidate.productFitLabel),
+    insertionType: readString(candidate.insertionType),
+    sourceRole: readString(candidate.sourceRole),
+    totalScore: readNumber(candidate.totalScore),
+    intent: readString(candidate.intent),
+    stage: readString(candidate.stage),
+    scores: compactJson(candidate.scores, { maxArrayItems: 6, maxDepth: 2 }),
+    reasons: readStringArray(candidate.reasons).slice(0, 2),
+    riskFlags: readStringArray(candidate.riskFlags).slice(0, 4),
+    evidenceNotes: readStringArray(candidate.evidenceNotes).slice(0, 2),
+  };
+}
+
+function compactProductFitReview(review: JsonRecord): SeoBriefJsonObject {
+  return {
+    clusterName: readString(review.clusterName),
+    productFitScore: readNumber(review.productFitScore),
+    productFitType: readString(review.productFitType),
+    decision: readString(review.decision),
+    productInsertionAngle: readString(review.productInsertionAngle),
+    whereToInsert: readString(review.whereToInsert),
+    whatNotToClaim: readStringArray(review.whatNotToClaim).slice(0, 6),
+    reason: readString(review.reason),
+    source: readString(review.source),
+  };
+}
+
 function buildSerpEnrichmentContext(artifacts: SeoBriefArtifact[]): SeoBriefJsonObject | null {
   const candidates = readLatestObjectArtifact(artifacts, 'keyword_serp_derived_keywords');
   const related = readLatestObjectArtifact(artifacts, 'keyword_related_query_selections');
@@ -411,8 +606,8 @@ function buildSerpEnrichmentContext(artifacts: SeoBriefArtifact[]): SeoBriefJson
   }
 
   return {
-    derivedCandidates: compactJson(candidates, { maxArrayItems: 14, maxDepth: 4 }),
-    selectedRelatedQueries: compactJson(related, { maxArrayItems: 14, maxDepth: 4 }),
+    derivedCandidates: compactJson(candidates, { maxArrayItems: 8, maxDepth: 3 }),
+    selectedRelatedQueries: compactJson(related, { maxArrayItems: 8, maxDepth: 3 }),
   };
 }
 
@@ -424,8 +619,8 @@ function buildCompetitorKeywordEvidence(artifacts: SeoBriefArtifact[]): SeoBrief
   }
 
   return {
-    competitorKeywordMatches: compactJson(matches, { maxArrayItems: 20, maxDepth: 5 }),
-    competitorKeywordMap: compactJson(keywordMap, { maxArrayItems: 12, maxDepth: 4 }),
+    competitorKeywordMatches: compactJson(matches, { maxArrayItems: 10, maxDepth: 4 }),
+    competitorKeywordMap: compactJson(keywordMap, { maxArrayItems: 8, maxDepth: 3 }),
   };
 }
 
@@ -457,7 +652,19 @@ function compactJson(
     }
     const output: SeoBriefJsonObject = {};
     for (const [key, item] of Object.entries(value)) {
-      if (['rawResponse', 'rawResponses', 'rawPayload'].includes(key)) {
+      if (
+        [
+          'rawResponse',
+          'rawResponses',
+          'rawPayload',
+          'sourceCandidate',
+          'sourceCluster',
+          'supportingItemDetails',
+          'pages',
+          'markdown',
+          'markdownPreview',
+        ].includes(key)
+      ) {
         continue;
       }
       output[key] = compactJson(item, options, depth + 1);
@@ -496,6 +703,10 @@ function readStringArray(value: unknown): string[] {
     : [];
 }
 
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 function readIntent(value: unknown): SeoBriefAiKeywordIntent {
   return value === 'commercial' ||
     value === 'transactional' ||
@@ -518,4 +729,8 @@ function uniqueStrings(items: (string | null | undefined)[]): string[] {
     result.push(normalized);
   }
   return result;
+}
+
+function normalizeText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
