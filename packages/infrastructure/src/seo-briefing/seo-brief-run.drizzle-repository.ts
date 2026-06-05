@@ -33,15 +33,16 @@ export class SeoBriefRunDrizzleRepository extends SeoBriefRunRepository {
     return this.findMany({ projectId });
   }
 
-  async findMany(filters?: SeoBriefRunListFilters): Promise<SeoBriefRun[]> {
+  async findMany(filters: SeoBriefRunListFilters = {}): Promise<SeoBriefRun[]> {
+    const { limit, projectId, status } = filters;
     const whereClauses = [
-      filters?.projectId ? eq(seoBriefRuns.projectId, filters.projectId) : null,
-      filters?.status ? eq(seoBriefRuns.status, filters.status) : null,
+      projectId ? eq(seoBriefRuns.projectId, projectId) : null,
+      status ? eq(seoBriefRuns.status, status) : null,
     ].filter((clause): clause is NonNullable<typeof clause> => clause != null);
     const rows = await this.db.query.seoBriefRuns.findMany({
       where: whereClauses.length > 0 ? and(...whereClauses) : undefined,
       orderBy: [desc(seoBriefRuns.updatedAt), asc(seoBriefRuns.createdAt)],
-      limit: normalizeLimit(filters?.limit),
+      limit: normalizeLimit(limit),
     });
 
     return rows.map((row) => SeoBriefRun.rehydrate(this.toDomainProps(row)));
