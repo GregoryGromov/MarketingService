@@ -82,6 +82,20 @@ export class SeoBriefTestUiController {
         display: grid;
         gap: 16px;
       }
+      .run-library-panel {
+        display: grid;
+        gap: 14px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+      .run-library-panel[hidden] {
+        display: none;
+      }
+      .run-library-panel .run-list {
+        max-height: 520px;
+        overflow: auto;
+        padding-right: 4px;
+      }
       .hero-top, .section-head, .toolbar, .form-grid {
         display: flex;
         gap: 14px;
@@ -129,6 +143,42 @@ export class SeoBriefTestUiController {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
+      }
+      .mode-guide {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 2px;
+      }
+      .mode-card {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.62);
+        display: grid;
+        gap: 8px;
+        cursor: default;
+        text-align: left;
+        transition: 140ms ease;
+      }
+      .mode-card:hover {
+        border-color: var(--line-strong);
+      }
+      .mode-card.is-selected {
+        border-color: rgba(27, 107, 75, 0.36);
+        background: rgba(27, 107, 75, 0.08);
+      }
+      .mode-card.is-disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+        transform: none;
+      }
+      .mode-card strong {
+        font-size: 14px;
+      }
+      .mode-card p {
+        margin: 0;
+        color: var(--muted);
       }
       button, select, input, textarea {
         font: inherit;
@@ -190,9 +240,6 @@ export class SeoBriefTestUiController {
         gap: 18px;
         order: 2;
       }
-      .sidebar > .panel:last-child {
-        order: 3;
-      }
       .panel {
         display: grid;
         gap: 16px;
@@ -226,6 +273,13 @@ export class SeoBriefTestUiController {
       textarea {
         min-height: 110px;
         resize: vertical;
+      }
+      .json-editor {
+        min-height: 420px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre;
       }
       input[type="range"] {
         padding: 0;
@@ -274,6 +328,23 @@ export class SeoBriefTestUiController {
       .advanced-field textarea {
         background: rgba(255, 252, 246, 0.9);
       }
+      details.advanced-field summary {
+        cursor: pointer;
+        color: var(--warning);
+        font-weight: 700;
+      }
+      details.advanced-field > p {
+        margin-top: 8px;
+      }
+      .advanced-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 14px;
+      }
+      .advanced-grid .full {
+        grid-column: 1 / -1;
+      }
       .launch-grid {
         display: grid;
         gap: 12px;
@@ -296,6 +367,67 @@ export class SeoBriefTestUiController {
         padding: 10px 12px;
         background: rgba(255, 255, 255, 0.58);
         cursor: pointer;
+      }
+      .model-picker {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .workflow-mode-picker {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .model-option {
+        position: relative;
+        min-height: 104px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.58);
+        cursor: pointer;
+        display: grid;
+        gap: 8px;
+        transition: 140ms ease;
+      }
+      .model-option:hover {
+        transform: translateY(-1px);
+        border-color: var(--line-strong);
+        background: rgba(255, 255, 255, 0.78);
+      }
+      .model-option.is-selected {
+        border-color: rgba(20, 19, 17, 0.34);
+        background: linear-gradient(135deg, rgba(20, 19, 17, 0.92), rgba(20, 19, 17, 0.72));
+        color: #fffaf2;
+        box-shadow: 0 14px 32px rgba(20, 19, 17, 0.12);
+      }
+      .model-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .model-option strong {
+        font-size: 15px;
+      }
+      .model-option span {
+        color: inherit;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.72;
+      }
+      .model-option p {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .model-option.is-selected p {
+        color: rgba(255, 250, 242, 0.74);
+      }
+      .auto-flow-progress {
+        border-color: rgba(27, 107, 75, 0.26);
+        background: linear-gradient(135deg, rgba(27, 107, 75, 0.1), rgba(255, 255, 255, 0.72));
+      }
+      .auto-flow-progress strong {
+        display: block;
+        margin-bottom: 6px;
       }
       .context-panel {
         border: 1px solid rgba(27, 107, 75, 0.18);
@@ -323,6 +455,119 @@ export class SeoBriefTestUiController {
       .context-result ul {
         margin: 0;
         padding-left: 18px;
+      }
+      .prompt-inventory {
+        border: 1px solid rgba(180, 132, 41, 0.22);
+        border-radius: 22px;
+        background: rgba(255, 248, 232, 0.72);
+        padding: 0;
+      }
+      .prompt-inventory > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 16px 18px;
+        font-weight: 700;
+      }
+      .prompt-inventory > summary::-webkit-details-marker {
+        display: none;
+      }
+      .prompt-inventory-body {
+        border-top: 1px solid rgba(180, 132, 41, 0.16);
+        display: grid;
+        gap: 14px;
+        padding: 16px 18px 18px;
+      }
+      .prompt-group {
+        display: grid;
+        gap: 8px;
+      }
+      .prompt-group h4 {
+        margin: 0;
+      }
+      .prompt-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 12px 14px;
+        display: grid;
+        gap: 7px;
+      }
+      .prompt-card-head {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      .prompt-card code {
+        border-radius: 999px;
+        background: rgba(18, 18, 18, 0.06);
+        color: var(--muted);
+        font-size: 12px;
+        padding: 5px 8px;
+      }
+      .prompt-card p {
+        color: var(--muted);
+      }
+      .prompt-meta {
+        display: grid;
+        gap: 5px;
+      }
+      .prompt-meta span {
+        color: var(--muted);
+      }
+      .cost-receipt {
+        border-color: rgba(20, 19, 17, 0.16);
+        background: rgba(255, 255, 255, 0.72);
+      }
+      .cost-receipt > summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .cost-receipt > summary::-webkit-details-marker {
+        display: none;
+      }
+      .cost-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .cost-summary-grid article,
+      .cost-row {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.62);
+        padding: 12px 14px;
+      }
+      .cost-summary-grid strong {
+        display: block;
+        font-size: 24px;
+        letter-spacing: -0.04em;
+      }
+      .cost-summary-grid span,
+      .cost-row small {
+        color: var(--muted);
+      }
+      .cost-rows {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .cost-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 1.3fr) repeat(3, minmax(90px, 0.5fr)) minmax(220px, 1.4fr);
+        gap: 10px;
+        align-items: start;
+      }
+      .cost-row strong {
+        display: block;
+      }
+      .cost-row code {
+        display: inline-block;
+        color: var(--muted);
+        font-size: 12px;
+        word-break: break-word;
       }
       .metric-row, .run-list {
         display: grid;
@@ -524,6 +769,9 @@ export class SeoBriefTestUiController {
         background: linear-gradient(90deg, var(--accent), #52a47f);
         animation: seo-progress 1.3s ease-in-out infinite;
       }
+      .progress-bar.is-determinate {
+        animation: none;
+      }
       .inline-progress {
         margin-top: 12px;
         display: grid;
@@ -532,6 +780,42 @@ export class SeoBriefTestUiController {
       }
       .inline-progress[hidden] {
         display: none;
+      }
+      .ai-progress-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .ai-progress-step {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 9px 10px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.44);
+        font-size: 13px;
+      }
+      .ai-progress-step.is-active {
+        border-color: rgba(18, 18, 18, 0.36);
+        color: var(--text);
+        background: rgba(18, 18, 18, 0.06);
+      }
+      .ai-progress-step.is-done {
+        border-color: rgba(27, 107, 75, 0.24);
+        color: var(--accent);
+        background: rgba(27, 107, 75, 0.08);
+      }
+      .ai-progress-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .ai-progress-meta span {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 9px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.5);
+        font-size: 13px;
       }
       .stage-output-list {
         display: grid;
@@ -547,6 +831,141 @@ export class SeoBriefTestUiController {
       }
       .stage-output-item small {
         color: var(--muted);
+      }
+      .cluster-table-wrap {
+        overflow-x: auto;
+        margin-top: 14px;
+      }
+      .cluster-table {
+        width: 100%;
+        min-width: 980px;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+      }
+      .cluster-table th {
+        padding: 0 12px 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .cluster-table td {
+        padding: 13px 12px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: rgba(255,255,255,0.68);
+        vertical-align: middle;
+      }
+      .cluster-table td:first-child {
+        border-left: 1px solid var(--line);
+        border-radius: 18px 0 0 18px;
+      }
+      .cluster-table td:last-child {
+        border-right: 1px solid var(--line);
+        border-radius: 0 18px 18px 0;
+      }
+      .cluster-summary-row {
+        cursor: pointer;
+      }
+      .cluster-summary-row:hover td {
+        border-color: var(--line-strong);
+        background: rgba(255,255,255,0.88);
+      }
+      .cluster-name-cell {
+        display: grid;
+        gap: 4px;
+      }
+      .cluster-name-cell strong {
+        font-size: 14px;
+      }
+      .cluster-name-cell span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .cluster-pill {
+        display: inline-flex;
+        width: fit-content;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 5px 9px;
+        background: rgba(255,255,255,0.72);
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .cluster-pill.is-good {
+        border-color: rgba(27, 107, 75, 0.26);
+        background: rgba(27, 107, 75, 0.10);
+        color: var(--accent);
+      }
+      .cluster-pill.is-bad {
+        border-color: rgba(181, 56, 40, 0.25);
+        background: rgba(181, 56, 40, 0.08);
+        color: var(--danger);
+      }
+      .cluster-pill.is-warn {
+        border-color: rgba(154, 100, 16, 0.25);
+        background: rgba(154, 100, 16, 0.10);
+        color: var(--warning);
+      }
+      .cluster-row-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .cluster-row-actions button {
+        padding: 8px 12px;
+      }
+      .adaptation-schedule-grid {
+        display: grid;
+        grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+        margin-top: 10px;
+      }
+      .adaptation-schedule-grid label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .adaptation-schedule-grid input,
+      .adaptation-schedule-grid select {
+        min-height: 42px;
+      }
+      .adaptation-schedule-grid button {
+        min-height: 42px;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(20, 19, 17, 0.44);
+        padding: 32px;
+        display: grid;
+        place-items: center;
+      }
+      .modal-backdrop[hidden] {
+        display: none;
+      }
+      .modal-card {
+        width: min(1180px, 100%);
+        max-height: calc(100vh - 64px);
+        overflow: auto;
+        background: var(--panel-strong);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: 0 32px 80px rgba(18, 18, 18, 0.24);
+        padding: 20px;
+        display: grid;
+        gap: 14px;
+      }
+      .modal-card .stage-output-list {
+        margin-top: 8px;
       }
       .metric-grid {
         display: grid;
@@ -640,6 +1059,82 @@ export class SeoBriefTestUiController {
       .seo-step-tab.is-ready:not(.is-active) .seo-step-dot {
         background: #117a43;
         opacity: 1;
+      }
+      .seo-step-tab.is-article:not(.is-active) {
+        border-color: rgba(137, 93, 20, 0.28);
+        background: rgba(255, 247, 225, 0.7);
+        color: #7a4f06;
+      }
+      .seo-step-tab.is-article.is-ready:not(.is-active) {
+        border-color: rgba(17, 122, 67, 0.34);
+        background: rgba(17, 122, 67, 0.08);
+        color: #117a43;
+      }
+      .seo-step-tab.is-article.is-active {
+        background: #5f3d07;
+        border-color: #5f3d07;
+        color: white;
+      }
+      .article-generation-card {
+        border-color: rgba(137, 93, 20, 0.2);
+        background: rgba(255, 250, 238, 0.82);
+      }
+      .article-generation-card pre {
+        white-space: pre-wrap;
+      }
+      .seo-step-tab.is-audit:not(.is-active) {
+        border-color: rgba(18, 18, 18, 0.18);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--text);
+      }
+      .audit-grid {
+        display: grid;
+        gap: 12px;
+      }
+      .audit-section {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.62);
+        overflow: hidden;
+      }
+      .audit-section > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 14px 16px;
+        font-weight: 700;
+      }
+      .audit-section > summary::-webkit-details-marker {
+        display: none;
+      }
+      .audit-section-body {
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 9px;
+        padding: 12px;
+      }
+      .audit-row {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.66);
+        padding: 10px 12px;
+        display: grid;
+        gap: 7px;
+      }
+      .audit-row.is-failed {
+        border-color: rgba(180, 35, 24, 0.35);
+        background: rgba(180, 35, 24, 0.06);
+      }
+      .audit-row details {
+        border-top: 1px solid var(--line);
+        padding-top: 8px;
+      }
+      .audit-row summary {
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .audit-row pre {
+        max-height: 520px;
+        overflow: auto;
       }
       .seo-step-dot {
         width: 7px;
@@ -898,7 +1393,7 @@ export class SeoBriefTestUiController {
         background: linear-gradient(90deg, #121212, rgba(18, 18, 18, 0.34));
       }
       @media (max-width: 1180px) {
-        .main, .detail-grid, .metrics, .filters, .launch-grid {
+        .main, .detail-grid, .metrics, .filters, .launch-grid, .model-picker, .cost-summary-grid, .cost-row {
           grid-template-columns: 1fr;
         }
       }
@@ -918,10 +1413,46 @@ export class SeoBriefTestUiController {
           </div>
           <div class="actions">
             <button type="button" class="primary" id="startNewRunBtn">Start New SEO Brief</button>
+            <button type="button" id="runLibraryBtn" aria-expanded="false" aria-controls="runLibraryPanel">Run Library</button>
             <button type="button" id="refreshAllBtn">Refresh</button>
             <a class="button-like" href="/seo-briefing/health">Health</a>
           </div>
         </div>
+        <section class="run-library-panel" id="runLibraryPanel" hidden>
+          <div class="section-head">
+            <div class="stack">
+              <div class="eyebrow">Library</div>
+              <h2>Recent Runs</h2>
+            </div>
+          </div>
+          <div class="filters">
+            <label class="field">
+              <span>Project Filter</span>
+              <select id="projectFilter">
+                <option value="">All projects</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Status Filter</span>
+              <select id="statusFilter">
+                <option value="">All statuses</option>
+                <option value="created">created</option>
+                <option value="awaiting_confirmation">awaiting_confirmation</option>
+                <option value="queued">queued</option>
+                <option value="running">running</option>
+                <option value="done">done</option>
+                <option value="failed">failed</option>
+                <option value="rejected">rejected</option>
+                <option value="needs_manual_review">needs_manual_review</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button type="button" id="applyFiltersBtn">Apply Filters</button>
+            <button type="button" id="clearFiltersBtn">Clear Filters</button>
+          </div>
+          <div id="runList" class="run-list"></div>
+        </section>
       </section>
 
       <div class="main">
@@ -934,6 +1465,7 @@ export class SeoBriefTestUiController {
               </div>
               <button class="primary" type="submit" id="launchBtn" form="launchForm">Create SEO Brief Run</button>
             </div>
+            <div id="launchPromptInventory"></div>
             <form id="launchForm" class="launch-grid">
               <label class="field full">
                 <span>Project</span>
@@ -941,14 +1473,48 @@ export class SeoBriefTestUiController {
                   <option value="">No project context</option>
                 </select>
               </label>
-              <label class="field full">
+              <div class="field full">
                 <span>AI Model</span>
-                <select id="aiModelMode">
-                  <option value="flash">Flash - faster, cheaper, no thinking</option>
-                  <option value="pro" selected>Pro - better quality, no thinking</option>
-                  <option value="pro_thinking">Pro Thinking - best reasoning, slower</option>
-                </select>
-              </label>
+                <input id="aiModelMode" type="hidden" value="pro" />
+                <div class="model-picker" role="radiogroup" aria-label="AI Model">
+                  <label class="model-option" data-model-option="flash">
+                    <input type="radio" name="aiModelModeChoice" value="flash" />
+                    <span>Fast</span>
+                    <strong>Flash</strong>
+                    <p>Cheaper and quicker. Good for drafts and low-risk checks.</p>
+                  </label>
+                  <label class="model-option is-selected" data-model-option="pro">
+                    <input type="radio" name="aiModelModeChoice" value="pro" checked />
+                    <span>Balanced</span>
+                    <strong>Pro</strong>
+                    <p>Default quality mode. Better reasoning without thinking mode.</p>
+                  </label>
+                  <label class="model-option" data-model-option="pro_thinking">
+                    <input type="radio" name="aiModelModeChoice" value="pro_thinking" />
+                    <span>Deep</span>
+                    <strong>Pro Thinking</strong>
+                    <p>Slowest and most expensive. Use for hard semantic decisions.</p>
+                  </label>
+                </div>
+              </div>
+              <div class="field full">
+                <span>Workflow Mode</span>
+                <input id="workflowMode" type="hidden" value="manual" />
+                <div class="model-picker workflow-mode-picker" role="radiogroup" aria-label="Workflow Mode">
+                  <label class="model-option is-selected" data-workflow-mode-option="manual">
+                    <input type="radio" name="workflowModeChoice" value="manual" checked />
+                    <span>Controlled</span>
+                    <strong>Manual clicking</strong>
+                    <p>You run each semantic step yourself and inspect the output before moving on.</p>
+                  </label>
+                  <label class="model-option" data-workflow-mode-option="auto_until_selection">
+                    <input type="radio" name="workflowModeChoice" value="auto_until_selection" />
+                    <span>Auto</span>
+                    <strong>Auto until topic choice</strong>
+                    <p>Runs the workflow automatically until ranked cluster choices are ready.</p>
+                  </label>
+                </div>
+              </div>
               <div class="field full">
                 <span>Input Mode</span>
                 <div class="input-mode-tabs">
@@ -991,152 +1557,118 @@ export class SeoBriefTestUiController {
                 <input id="language" required value="English" />
               </label>
               <label class="field full">
-                <span>Audience</span>
-                <textarea id="audience">Beginners holding USDT who want simple earning options.</textarea>
-              </label>
-              <label class="field full">
                 <span>User Pains</span>
                 <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
                 <textarea id="userPains" required>Save money in dollars
 Avoid naira devaluation
 Make idle USDT useful without hype</textarea>
               </label>
-              <label class="field full">
-                <span>User Scenarios</span>
-                <em>Manual search, behavior, ecosystem, comparison, or action scenarios.</em>
-                <textarea id="userScenarios" required>Uses Binance P2P
+              <details class="field full advanced-field">
+                <summary>Advanced overrides and additional run context</summary>
+                <p>Brand Memory override fields are filled from the selected project and can be changed for this one SEO brief. Additional fields are run-specific extras.</p>
+                <div class="advanced-grid">
+                  <label class="field full">
+                    <span>Audience Override</span>
+                    <em>Brand Memory override. Leave as-is unless this run needs a different audience.</em>
+                    <textarea id="audience">Beginners holding USDT who want simple earning options.</textarea>
+                  </label>
+                  <label class="field full">
+                    <span>User Scenarios</span>
+                    <em>Run-specific additional context. Optional search, behavior, ecosystem, comparison, or action scenarios.</em>
+                    <textarea id="userScenarios">Uses Binance P2P
 Stores USDT in Trust Wallet
 Needs to understand TRC20 vs BEP20</textarea>
-              </label>
-              <label class="field">
-                <span>Product Name</span>
-                <input id="productName" required value="Reinforce" />
-              </label>
-              <label class="field">
-                <span>CTA</span>
-                <input id="cta" value="See how Reinforce works" />
-              </label>
-              <label class="field full">
-                <span>Product Description</span>
-                <textarea id="productDescription">Reinforce helps users make idle USDT productive without relying on hype or vague promises.</textarea>
-              </label>
-              <label class="field full">
-                <span>Key Message</span>
-                <textarea id="keyMessage">Idle USDT can become productive if users understand the options and risks clearly.</textarea>
-              </label>
-              <label class="field full">
-                <span>Known Competitor Domains To Include</span>
-                <em>Optional. One domain per line or comma-separated. These are explicit competitor targets for DataForSEO Ranked Keywords.</em>
-                <textarea id="knownCompetitorsMustInclude">binance.com
-nexo.com</textarea>
-              </label>
-              <label class="field">
-                <span>Optional Competitor Domains</span>
-                <textarea id="knownCompetitorsOptional">trustwallet.com
-kraken.com</textarea>
-              </label>
-              <label class="field">
-                <span>Competitors / Sources To Exclude</span>
-                <textarea id="knownCompetitorsExclude">Scammy faucets
-Unsupported regions</textarea>
-              </label>
-              <label class="field full">
-                <span>Brand Constraints</span>
-                <textarea id="brandConstraints">No hype
+                  </label>
+                  <label class="field">
+                    <span>Product Name Override</span>
+                    <em>Brand Memory override.</em>
+                    <input id="productName" required value="Reinforce" />
+                  </label>
+                  <label class="field full">
+                    <span>Product Description Override</span>
+                    <em>Brand Memory override.</em>
+                    <textarea id="productDescription">Reinforce helps users make idle USDT productive without relying on hype or vague promises.</textarea>
+                  </label>
+                  <label class="field">
+                    <span>CTA Override</span>
+                    <em>Brand Memory override.</em>
+                    <input id="cta" value="See how Reinforce works" />
+                  </label>
+                  <label class="field full">
+                    <span>Key Message Override</span>
+                    <em>Brand Memory override.</em>
+                    <textarea id="keyMessage">Idle USDT can become productive if users understand the options and risks clearly.</textarea>
+                  </label>
+                  <label class="field full">
+                    <span>Brand Constraints Override</span>
+                    <em>Brand Memory override.</em>
+                    <textarea id="brandConstraints">No hype
 No get-rich-quick framing
 Keep trust and proof central</textarea>
-              </label>
-              <label class="field full">
-                <span>Claims / Compliance Constraints</span>
-                <textarea id="claimsConstraints">Do not promise guaranteed returns
+                  </label>
+                  <label class="field full">
+                    <span>Claims / Compliance Constraints Override</span>
+                    <em>Brand Memory override.</em>
+                    <textarea id="claimsConstraints">Do not promise guaranteed returns
 Explain risks clearly
 Do not present yield as risk-free</textarea>
-              </label>
-              <label class="field full">
-                <span>Preferred Angle</span>
-                <input id="preferredAngle" value="Educational comparison for cautious USDT holders" />
-              </label>
-              <label class="field full">
-                <span>Excluded Topics</span>
-                <textarea id="excludedTopics">Airdrops
+                  </label>
+                  <label class="field full">
+                    <span>Preferred Angle</span>
+                    <em>Run-specific additional context.</em>
+                    <input id="preferredAngle" value="Educational comparison for cautious USDT holders" />
+                  </label>
+                  <label class="field full">
+                    <span>Excluded Topics</span>
+                    <em>Run-specific additional context.</em>
+                    <textarea id="excludedTopics">Airdrops
 Faucets
 High-risk leverage</textarea>
-              </label>
-              <label class="field">
-                <span>Audience Before</span>
-                <input id="audienceBefore" value="User holds USDT but does not understand earning options." />
-              </label>
-              <label class="field">
-                <span>Audience After</span>
-                <input id="audienceAfter" value="User understands the options and sees Reinforce as one practical next step." />
-              </label>
-              <label class="field">
-                <span>Hypotheses Count</span>
-                <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="10" />
-              </label>
-              <label class="field">
-                <span>SERP Enrichment Count</span>
-                <input id="serpEnrichmentCount" type="number" min="1" max="100" step="1" value="10" />
-              </label>
-              <label class="field full">
-                <span>Competitor Keywords JSON ID</span>
-                <input id="competitorKeywordsJsonId" placeholder="nigeria_usdt_wallet_cex_v1_2026_06_04" />
-              </label>
-              <label class="field full balance-field">
-                <span>SEO / Product Balance</span>
-                <div class="balance-values">
-                  <strong>SEO <b id="seoWeightLabel">60%</b></strong>
-                  <strong>Product <b id="productWeightLabel">40%</b></strong>
+                  </label>
+                  <label class="field">
+                    <span>Audience Before</span>
+                    <em>Run-specific additional context.</em>
+                    <input id="audienceBefore" value="User holds USDT but does not understand earning options." />
+                  </label>
+                  <label class="field">
+                    <span>Audience After</span>
+                    <em>Run-specific additional context.</em>
+                    <input id="audienceAfter" value="User understands the options and sees Reinforce as one practical next step." />
+                  </label>
+                  <label class="field">
+                    <span>Hypotheses Count</span>
+                    <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="10" />
+                  </label>
+                  <label class="field">
+                    <span>SERP Enrichment Count</span>
+                    <input id="serpEnrichmentCount" type="number" min="1" max="100" step="1" value="10" />
+                  </label>
+                  <label class="field">
+                    <span>Request Timeout, sec</span>
+                    <em>Advanced override for AI and DataForSEO requests.</em>
+                    <input id="requestTimeoutSeconds" type="number" min="30" max="900" step="10" value="300" />
+                  </label>
+                  <label class="field full balance-field">
+                    <span>SEO / Product Balance</span>
+                    <div class="balance-values">
+                      <strong>SEO <b id="seoWeightLabel">60%</b></strong>
+                      <strong>Product <b id="productWeightLabel">40%</b></strong>
+                    </div>
+                    <input id="balanceSlider" type="range" min="0" max="100" step="5" value="60" />
+                    <input id="seoWeight" type="hidden" value="0.6" />
+                    <input id="productWeight" type="hidden" value="0.4" />
+                  </label>
+                  <label class="field full">
+                    <span>Operator Prompt Override</span>
+                    <em>This is not marketer context. It only tunes how AI generates initial keyword hypotheses.</em>
+                    <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
+                  </label>
                 </div>
-                <input id="balanceSlider" type="range" min="0" max="100" step="5" value="60" />
-                <input id="seoWeight" type="hidden" value="0.6" />
-                <input id="productWeight" type="hidden" value="0.4" />
-              </label>
-              <label class="field full advanced-field">
-                <span>Operator Prompt Override</span>
-                <em>This is not marketer context. It only tunes how AI generates initial keyword hypotheses.</em>
-                <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
-              </label>
+              </details>
               <div class="actions full">
                 <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
               </div>
             </form>
-          </section>
-
-          <section class="panel">
-            <div class="section-head">
-              <div class="stack">
-                <div class="eyebrow">Runs</div>
-                <h2>Recent Runs</h2>
-              </div>
-            </div>
-            <div class="filters">
-              <label class="field">
-                <span>Project Filter</span>
-                <select id="projectFilter">
-                  <option value="">All projects</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Status Filter</span>
-                <select id="statusFilter">
-                  <option value="">All statuses</option>
-                  <option value="created">created</option>
-                  <option value="awaiting_confirmation">awaiting_confirmation</option>
-                  <option value="queued">queued</option>
-                  <option value="running">running</option>
-                  <option value="done">done</option>
-                  <option value="failed">failed</option>
-                  <option value="rejected">rejected</option>
-                  <option value="needs_manual_review">needs_manual_review</option>
-                </select>
-              </label>
-            </div>
-            <div class="actions">
-              <button type="button" id="applyFiltersBtn">Apply Filters</button>
-              <button type="button" id="clearFiltersBtn">Clear Filters</button>
-            </div>
-            <div id="runList" class="run-list"></div>
           </section>
         </aside>
 
@@ -1149,6 +1681,18 @@ High-risk leverage</textarea>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="clusterDetailModal" class="modal-backdrop" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="clusterDetailModalTitle">
+        <div class="section-head">
+          <div class="stack">
+            <div class="eyebrow">Cluster</div>
+            <h2 id="clusterDetailModalTitle">Cluster Details</h2>
+          </div>
+          <button type="button" id="clusterDetailModalClose">Close</button>
+        </div>
+        <div id="clusterDetailModalBody"></div>
+      </div>
+    </div>
 
     <script>
       const initialState = ${initialState};
@@ -1166,6 +1710,7 @@ High-risk leverage</textarea>
         serpDerivedCandidatesLoading: false,
         rankedKeywordsLoading: false,
         competitorMatchingLoading: false,
+        competitorMatchingMode: 'algorithmic',
         dirtyKeywordPoolLoading: false,
         candidateScoringLoading: false,
         keywordClusteringLoading: false,
@@ -1174,29 +1719,256 @@ High-risk leverage</textarea>
         onPageLoading: false,
         onPageSynthesisLoading: false,
         finalBriefLoading: false,
+        finalBriefEditLoading: false,
+        longreadDraftLoading: false,
+        longreadCleanupLoading: false,
+        longreadPackageLoading: false,
+        longreadAdaptationsLoading: false,
+        longreadPublicationLoadingId: null,
+        autoFlowLoading: false,
+        autoFlowTitle: null,
+        autoFlowDescription: null,
+        autoFlowCurrentLabel: null,
+        autoFlowCurrentIndex: 0,
+        autoFlowTotal: 0,
       };
       let launchPanelNode = null;
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
+      const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const SEO_STEP_TABS = [
-        { id: 'input', label: 'Input' },
-        { id: 'keywords', label: 'Keywords' },
-        { id: 'serp', label: 'SERP Snapshots' },
-        { id: 'candidates', label: 'SERP Candidates' },
-        { id: 'rankedKeywords', label: 'Competitor Keywords' },
-        { id: 'competitorMatching', label: 'Matching' },
-        { id: 'dirtyPool', label: 'Dirty Pool' },
-        { id: 'candidateScoring', label: 'Filtering' },
-        { id: 'clusters', label: 'Clusters' },
-        { id: 'productFit', label: 'Product Fit' },
-        { id: 'selection', label: 'Selection' },
-        { id: 'onPage', label: 'OnPage' },
-        { id: 'onPageSynthesis', label: 'OnPage Synthesis' },
-        { id: 'finalBrief', label: 'Final Brief' },
+        { id: 'input', label: 'Input', number: '0' },
+        { id: 'keywords', label: 'Keywords', number: '1' },
+        { id: 'serpGroup', label: 'SERP', number: '2' },
+        { id: 'competitionGroup', label: 'Competition', number: '3' },
+        { id: 'clusterGroup', label: 'Clusters', number: '4' },
+        { id: 'onPageGroup', label: 'OnPage', number: '5' },
+        { id: 'finalBrief', label: 'Final Brief', number: '6' },
+        { id: 'articleGroup', label: 'Article', number: '7', kind: 'article' },
+        { id: 'audit', label: 'Audit', number: 'Log', kind: 'audit' },
+      ];
+      const SEO_STEP_GROUPS = {
+        input: ['input'],
+        keywords: ['keywords'],
+        serpGroup: ['serp', 'candidates'],
+        competitionGroup: ['rankedKeywords', 'competitorMatching', 'dirtyPool', 'candidateScoring'],
+        clusterGroup: ['clusters', 'productFit', 'selection'],
+        onPageGroup: ['onPage', 'onPageSynthesis'],
+        finalBrief: ['finalBrief'],
+        articleGroup: ['longreadDraft', 'longreadCleanup', 'longreadPackage', 'longreadAdaptations'],
+        audit: ['audit'],
+      };
+      const SEO_STEP_TO_GROUP = Object.entries(SEO_STEP_GROUPS).reduce((acc, entry) => {
+        const groupId = entry[0];
+        entry[1].forEach((stepId) => {
+          acc[stepId] = groupId;
+        });
+        return acc;
+      }, {});
+      const AI_PROMPT_INVENTORY = [
+        {
+          group: 'Main SEO brief flow',
+          prompts: [
+            {
+              step: 'Step 0 · Input extraction',
+              operation: 'extractContext',
+              version: 'seo-brief.extract-context.v1',
+              why: 'Used only when the marketer pastes one big brief text or uploads a file. AI extracts fields into the normal form.',
+              input: 'Raw marketer text/file content.',
+              output: 'Topic hint, market, audience, product facts, manual pains/scenarios, constraints, competitors, missing fields.',
+            },
+            {
+              step: 'Step 1 · Search hypotheses',
+              operation: 'expandKeywords',
+              version: 'seo-brief.expand-keywords.v6',
+              why: 'Turns marketer context, manual pains, scenarios, product facts, and Brand Memory into Google-like keyword hypotheses.',
+              input: 'Topic hint, audience, manual pains/scenarios, product context, constraints, optional operator prompt.',
+              output: 'Initial keyword hypotheses grouped by search intent / scenario.',
+            },
+            {
+              step: 'Step 5 · AI competitor matching',
+              operation: 'groupCompetitorKeywordEvidence',
+              version: 'seo-brief.group-competitor-keyword-evidence.v1',
+              why: 'First AI pass for AI Evidence Matching. AI groups competitor ranked keywords into market themes.',
+              input: 'Ranked keywords from competitor domains with DataForSEO metrics.',
+              output: 'Competitor evidence buckets with evidence IDs.',
+            },
+            {
+              step: 'Step 5 · AI competitor matching',
+              operation: 'groupCandidateKeywords',
+              version: 'seo-brief.group-candidate-keywords.v1',
+              why: 'Second AI pass for AI Evidence Matching. AI groups our candidate keywords by meaning.',
+              input: 'Our hypotheses and SERP-derived candidates.',
+              output: 'Candidate buckets with candidate IDs.',
+            },
+            {
+              step: 'Step 5 · AI competitor matching',
+              operation: 'matchKeywordGroups',
+              version: 'seo-brief.match-keyword-groups.v1',
+              why: 'Third AI pass for AI Evidence Matching. AI links our candidate groups to competitor evidence groups.',
+              input: 'Candidate buckets and competitor evidence buckets.',
+              output: 'Group-to-group matches and match strength.',
+            },
+            {
+              step: 'Step 5 · AI competitor matching',
+              operation: 'scoreCompetitorKeywordCandidateGroup',
+              version: 'seo-brief.score-competitor-keyword-candidate-group.v1',
+              why: 'Fourth AI pass for AI Evidence Matching. AI scores candidate keywords only against provided competitor evidence.',
+              input: 'One candidate bucket plus relevant competitor evidence rows.',
+              output: 'Proxy demand score, match type, matched evidence IDs, risk label, reason.',
+            },
+            {
+              step: 'Step 7 · AI filtering',
+              operation: 'scoreDirtyKeywordCandidates',
+              version: 'seo-brief.score-dirty-keyword-candidates.v1',
+              why: 'Used three times: eligibility, fit scoring, and final calibration of the dirty keyword pool.',
+              input: 'Dirty-pool candidates with SERP evidence, competitor match signals, metrics, product context, Brand Memory.',
+              output: 'Accepted / maybe / rejected candidates with topic/product/audience/intent/risk/evidence scores.',
+            },
+            {
+              step: 'Step 8 · Clusters',
+              operation: 'clusterKeywords',
+              version: 'seo-brief.cluster-keywords.v2',
+              why: 'AI groups accepted/maybe keywords into article-level SEO clusters.',
+              input: 'Scored accepted/maybe candidates, rejected keywords, market, product, Brand Memory.',
+              output: 'Clusters with primary keyword, secondary keywords, questions, intent, competitor URLs, rationale.',
+            },
+            {
+              step: 'Step 9 · Product Fit',
+              operation: 'reviewClusterProductFit',
+              version: 'seo-brief.review-cluster-product-fit.v1',
+              why: 'AI checks which clusters can honestly connect to the product and which should be rejected or supporting only.',
+              input: 'Clusters, supporting keywords, product facts, audience, Brand Memory, constraints.',
+              output: 'Cluster decisions, product fit score/type, insertion angle, what not to claim.',
+            },
+            {
+              step: 'Step 10 · Selection',
+              operation: 'explainClusterSelection',
+              version: 'seo-brief.cluster-selection.v1',
+              why: 'AI explains why the selected main cluster won and why others were rejected/supporting.',
+              input: 'Cluster candidates with SEO/product/total scores.',
+              output: 'Human-readable selection summary and rejected cluster reasons.',
+            },
+            {
+              step: 'Step 12 · OnPage synthesis',
+              operation: 'synthesizeOnPage',
+              version: 'seo-brief.synthesize-onpage.v1',
+              why: 'AI summarizes competitor on-page structure for the selected cluster.',
+              input: 'Fetched competitor pages, headings, text blocks, links, selected cluster, product context.',
+              output: 'Common content blocks, H2 patterns, FAQ, content gaps, recommended structure.',
+            },
+            {
+              step: 'Step 13 · Final SEO brief',
+              operation: 'generateSeoBrief',
+              version: 'seo-brief.generate-brief.v1',
+              why: 'AI creates the production-ready SEO brief from all approved evidence.',
+              input: 'Selected cluster, keyword evidence, product fit, on-page synthesis, Brand Memory, constraints.',
+              output: 'Final SEO brief: title/H1, meta, outline, FAQs, SERP insights, product placement, compliance notes.',
+            },
+          ],
+        },
+        {
+          group: 'Article generation extension',
+          prompts: [
+            {
+              step: 'Step 14 · Draft Article',
+              operation: 'draftLongreadArticle',
+              version: 'article-generation.draft.v1',
+              why: 'AI writes the first longread draft from the final SEO brief.',
+              input: 'Final SEO brief, selected cluster, product context, audience, constraints.',
+              output: 'Draft longread article with sections, intro, body, conclusion, FAQ/product mentions.',
+            },
+            {
+              step: 'Step 15 · Safety Cleanup',
+              operation: 'cleanupLongreadArticle',
+              version: 'article-generation.cleanup.v1',
+              why: 'AI edits the draft for clarity, compliance, brand safety, and unsupported claims.',
+              input: 'Draft article plus final SEO brief and claims/brand constraints.',
+              output: 'Cleaned article, warnings, removed/changed claims, editorial notes.',
+            },
+            {
+              step: 'Step 16 · Final Package',
+              operation: 'packageLongreadArticle',
+              version: 'article-generation.package.v1',
+              why: 'AI packages the reviewed article into a CMS-ready object.',
+              input: 'Cleaned article, SEO brief, safety notes, product placement plan.',
+              output: 'Final article package with SEO fields, article body, metadata, checklist.',
+            },
+          ],
+        },
+        {
+          group: 'Auxiliary / legacy AI tools',
+          prompts: [
+            {
+              step: 'Optional · Related queries',
+              operation: 'selectRelatedKeywords',
+              version: 'seo-brief.select-related-keywords.v1',
+              why: 'Selects the best related queries from SERP People Also Ask / related searches. Not part of the current main 13-step flow.',
+              input: 'Seed keyword and SERP-derived related query candidates.',
+              output: 'Selected and rejected related queries with reasons.',
+            },
+            {
+              step: 'Optional · SERP domain classification',
+              operation: 'classifySerpDomains',
+              version: 'seo-brief.classify-serp-domains.v1',
+              why: 'Classifies aggregated SERP domains into ranked-keyword targets, on-page targets, pain signals, or ignored domains. Not part of the simplified current flow.',
+              input: 'Aggregated SERP domains and URL examples.',
+              output: 'Domain classes and priorities.',
+            },
+            {
+              step: 'Legacy · User pain generation',
+              operation: 'extractUserPainScenarios',
+              version: 'seo-brief.extract-user-pain-scenarios.v1',
+              why: 'Older flow generated user pains from topic hint. Current flow expects marketer-provided pains in Step 0.',
+              input: 'Topic hint, market, audience, product context, Brand Memory.',
+              output: 'Generated user pains and scenarios.',
+            },
+            {
+              step: 'Legacy · Keyword triage',
+              operation: 'triageKeywords',
+              version: 'seo-brief.triage-keywords.v1',
+              why: 'Older flow triaged keyword suggestions. Current flow uses dirty pool, competitor matching, and Step 7 filtering.',
+              input: 'Keyword suggestions with volume/competition.',
+              output: 'Accepted/rejected keyword candidates.',
+            },
+            {
+              step: 'Legacy · Product bridge',
+              operation: 'buildProductBridge',
+              version: 'seo-brief.product-bridge.v1',
+              why: 'Older helper for explaining product connection to one cluster. Current Step 9 product fit covers this more completely.',
+              input: 'Cluster label, primary keyword, product context, Brand Memory.',
+              output: 'Fit, positioning angle, CTA, talking points, risks.',
+            },
+            {
+              step: 'Legacy · One-shot competitor matching',
+              operation: 'evaluateCompetitorKeywordMatches',
+              version: 'seo-brief.evaluate-competitor-keyword-matches.v1',
+              why: 'Older one-shot AI competitor matching prompt. Current Step 5 uses the safer four-pass AI matching flow.',
+              input: 'Candidate keywords and competitor ranked keyword evidence.',
+              output: 'Candidate scores, buckets, matched evidence IDs.',
+            },
+          ],
+        },
       ];
 
       function qs(id) {
         return document.getElementById(id);
+      }
+
+      function openClusterDetailModal(templateId) {
+        const template = qs(templateId);
+        const modal = qs('clusterDetailModal');
+        const body = qs('clusterDetailModalBody');
+        if (!template || !modal || !body) return;
+        body.innerHTML = template.innerHTML;
+        modal.hidden = false;
+      }
+
+      function closeClusterDetailModal() {
+        const modal = qs('clusterDetailModal');
+        const body = qs('clusterDetailModalBody');
+        if (body) body.innerHTML = '';
+        if (modal) modal.hidden = true;
       }
 
       function escapeHtmlClient(value) {
@@ -1212,6 +1984,43 @@ High-risk leverage</textarea>
         if (!value) return '—';
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+      }
+
+      function toDateTimeLocalValue(value) {
+        const date = value ? new Date(value) : new Date(Date.now() + 60 * 60 * 1000);
+        if (Number.isNaN(date.getTime())) return '';
+        const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+      }
+
+      function defaultAdaptationPublishAt(index) {
+        const date = new Date(Date.now() + (index + 1) * 60 * 60 * 1000);
+        date.setMinutes(0, 0, 0);
+        return toDateTimeLocalValue(date);
+      }
+
+      function normalizePublicationChannelId(channelId) {
+        const normalized = String(channelId || '').trim().toLowerCase();
+        const known = {
+          telegram: 'channel_telegram',
+          channel_telegram: 'channel_telegram',
+          x: 'channel_x',
+          twitter: 'channel_x',
+          channel_x: 'channel_x',
+          discord: 'channel_discord',
+          channel_discord: 'channel_discord',
+          blog: 'channel_blog',
+          channel_blog: 'channel_blog',
+        };
+        return known[normalized] || normalized;
+      }
+
+      function publishingScheduleEndpoint(channelId) {
+        const normalized = normalizePublicationChannelId(channelId);
+        if (normalized === 'channel_discord') return '/publishing/discord/schedule';
+        if (normalized === 'channel_x') return '/publishing/x/schedule';
+        if (normalized === 'channel_blog') return '/publishing/blog/schedule';
+        return '/publishing/telegram/schedule';
       }
 
       function readHiddenUiLogRunIds() {
@@ -1237,12 +2046,72 @@ High-risk leverage</textarea>
         localStorage.setItem(UI_LOGS_HIDDEN_STORAGE_KEY, JSON.stringify([...ids]));
       }
 
+      function readAutoFlowRunIds() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(AUTO_FLOW_RUN_IDS_STORAGE_KEY) || '[]');
+          return Array.isArray(parsed) ? new Set(parsed.filter((item) => typeof item === 'string')) : new Set();
+        } catch (_error) {
+          return new Set();
+        }
+      }
+
+      function setAutoFlowRun(runId, enabled) {
+        if (!runId) return;
+        const ids = readAutoFlowRunIds();
+        if (enabled) {
+          ids.add(runId);
+        } else {
+          ids.delete(runId);
+        }
+        localStorage.setItem(AUTO_FLOW_RUN_IDS_STORAGE_KEY, JSON.stringify([...ids]));
+      }
+
+      function isAutoFlowRun(runId) {
+        return Boolean(runId) && readAutoFlowRunIds().has(runId);
+      }
+
       function statusClass(status) {
         return 'status-' + String(status || 'created');
       }
 
       function prettyJson(value) {
         return JSON.stringify(value, null, 2);
+      }
+
+      function renderAiPromptInventory() {
+        return (
+          '<details class="prompt-inventory">' +
+            '<summary>AI prompts used in this flow</summary>' +
+            '<div class="prompt-inventory-body">' +
+              '<p>Prompt map: where AI is called, what each prompt receives, and why it exists. DataForSEO-only and pure algorithm steps do not have prompts.</p>' +
+              AI_PROMPT_INVENTORY.map((group) => (
+                '<section class="prompt-group">' +
+                  '<h4>' + escapeHtmlClient(group.group) + '</h4>' +
+                  group.prompts.map((prompt) => (
+                    '<article class="prompt-card">' +
+                      '<div class="prompt-card-head">' +
+                        '<strong>' + escapeHtmlClient(prompt.step) + '</strong>' +
+                        '<code>' + escapeHtmlClient(prompt.version) + '</code>' +
+                      '</div>' +
+                      '<p><strong>' + escapeHtmlClient(prompt.operation) + '</strong> — ' + escapeHtmlClient(prompt.why) + '</p>' +
+                      '<div class="prompt-meta">' +
+                        '<span><strong>Input:</strong> ' + escapeHtmlClient(prompt.input) + '</span>' +
+                        '<span><strong>Output:</strong> ' + escapeHtmlClient(prompt.output) + '</span>' +
+                      '</div>' +
+                    '</article>'
+                  )).join('') +
+                '</section>'
+              )).join('') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderLaunchPromptInventory() {
+        const target = qs('launchPromptInventory');
+        if (target) {
+          target.innerHTML = renderAiPromptInventory();
+        }
       }
 
       function syncBalanceSlider() {
@@ -1264,6 +2133,32 @@ High-risk leverage</textarea>
         const mode = getInputMode();
         qs('briefTextPanel').hidden = mode !== 'brief_text';
         qs('filePanel').hidden = mode !== 'file';
+      }
+
+      function syncAiModelMode() {
+        const selected = document.querySelector('input[name="aiModelModeChoice"]:checked');
+        const value = selected?.value === 'flash' || selected?.value === 'pro_thinking'
+          ? selected.value
+          : 'pro';
+        qs('aiModelMode').value = value;
+        document.querySelectorAll('[data-model-option]').forEach((option) => {
+          option.classList.toggle('is-selected', option.getAttribute('data-model-option') === value);
+        });
+      }
+
+      function getWorkflowMode() {
+        return document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual';
+      }
+
+      function syncWorkflowMode() {
+        const value = getWorkflowMode() === 'auto_until_selection' ? 'auto_until_selection' : 'manual';
+        qs('workflowMode').value = value;
+        document.querySelectorAll('[data-workflow-mode-option]').forEach((option) => {
+          option.classList.toggle(
+            'is-selected',
+            option.getAttribute('data-workflow-mode-option') === value,
+          );
+        });
       }
 
       function readTextFile(file) {
@@ -1309,7 +2204,6 @@ High-risk leverage</textarea>
         setIfPresent('audienceBefore', result.audienceBefore);
         setIfPresent('audienceAfter', result.audienceAfter);
         setIfPresent('cta', result.cta);
-        setListIfPresent('knownCompetitorsMustInclude', result.knownCompetitors);
         setListIfPresent('brandConstraints', result.brandConstraints);
         setListIfPresent('claimsConstraints', result.claimsConstraints);
         setIfPresent('preferredAngle', result.preferredAngle);
@@ -1350,6 +2244,7 @@ High-risk leverage</textarea>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             aiModelMode: qs('aiModelMode').value,
+            requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
             contextText: trimmed,
           }),
         });
@@ -1488,6 +2383,20 @@ High-risk leverage</textarea>
         return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
       }
 
+      function readRunWorkflowMode(run) {
+        const artifact = findArtifact(run, 'normalized_input');
+        const value = artifact?.payload?.workflowMode;
+        return value === 'auto_until_selection' ? 'auto_until_selection' : 'manual';
+      }
+
+      function shouldAutoContinueAfterClusterSelection(run) {
+        return (
+          readRunWorkflowMode(run) === 'auto_until_selection' ||
+          isAutoFlowRun(run.id) ||
+          qs('workflowMode')?.value === 'auto_until_selection'
+        );
+      }
+
       function aiModelModeLabel(value) {
         if (value === 'flash') return 'Flash';
         if (value === 'pro_thinking') return 'Pro Thinking';
@@ -1591,9 +2500,6 @@ High-risk leverage</textarea>
                   '<dt>CTA</dt><dd>' + escapeHtmlClient(researchFrame.cta || run.cta || '—') + '</dd>' +
                 '</dl>' +
               '</div>' +
-              '<div class="brand-memory-block"><h4>Competitors: Must Include</h4>' + renderMemoryList(competitorContext.mustInclude, 'No must-include competitors.') + '</div>' +
-              '<div class="brand-memory-block"><h4>Competitors: Optional</h4>' + renderMemoryList(competitorContext.optional, 'No optional competitors.') + '</div>' +
-              '<div class="brand-memory-block"><h4>Competitors / Sources To Exclude</h4>' + renderMemoryList(competitorContext.exclude, 'No excluded competitors.') + '</div>' +
               '<div class="brand-memory-block"><h4>Excluded Topics</h4>' + renderMemoryList(marketerConstraints.excludedTopics, 'No excluded topics.') + '</div>' +
               '<div class="brand-memory-block"><h4>Brand Constraints</h4>' + renderMemoryList(marketerConstraints.brandConstraints, 'No run-specific brand constraints.') + '</div>' +
               '<div class="brand-memory-block"><h4>Claims Constraints</h4>' + renderMemoryList(marketerConstraints.claimsConstraints, 'No run-specific claims constraints.') + '</div>' +
@@ -2154,7 +3060,7 @@ High-risk leverage</textarea>
                   '<div class="stage-output-item"><div class="inline-meta"><strong>' + escapeHtmlClient(item?.raw || 'unknown') + '</strong><span>' + escapeHtmlClient(item?.source || '—') + '</span></div><p>' + escapeHtmlClient(item?.reason || 'Skipped') + '</p></div>'
                 )).join('') + '</div>'
               : '') +
-            '<div class="section-subhead"><h4>Target domains</h4><p>These came from manual competitors in Step 0 input.</p></div>' +
+            '<div class="section-subhead"><h4>Target domains</h4><p>These came from Project Brand Memory. Step 4 does not call DataForSEO directly.</p></div>' +
             targetCards +
             '<div class="section-subhead"><h4>Top normalized keyword evidence</h4><p>Sorted by search volume, then competitor rank. Product-fit filtering is a later step.</p></div>' +
             renderRankedKeywordCards(topItems) +
@@ -2203,6 +3109,7 @@ High-risk leverage</textarea>
         }
 
         const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+        const matchingMode = payload?.matchingMode === 'ai' ? 'AI' : 'Algorithmic';
         const topCandidates = candidates
           .slice()
           .sort((left, right) =>
@@ -2213,8 +3120,8 @@ High-risk leverage</textarea>
 
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 5</div><h3>Competitor Keyword Matching</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'competitor_keyword_matches') + '</span></div>' +
-            '<p>Primary output: candidate queries matched to competitor ranked keywords. Competitor volume is used only as proxy evidence, not copied onto candidate queries.</p>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(matchingMode + ' Step 5') + '</div><h3>Competitor Keyword Matching</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'competitor_keyword_matches') + '</span></div>' +
+            '<p>' + escapeHtmlClient(payload?.matchingMode === 'ai' ? 'Primary output: AI evaluates candidate queries only against provided competitor ranked keyword evidence. Competitor volume is used only as proxy evidence.' : 'Primary output: candidate queries matched to competitor ranked keywords. Competitor volume is used only as proxy evidence, not copied onto candidate queries.') + '</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(payload?.candidateCount ?? candidates.length) + '</strong><span>Candidates checked</span></div>' +
               '<div><strong>' + escapeHtmlClient(payload?.matchedCandidateCount ?? 0) + '</strong><span>Matched candidates</span></div>' +
@@ -2224,6 +3131,74 @@ High-risk leverage</textarea>
             renderCompetitorMatchCards(topCandidates) +
             '<details><summary>Raw competitor keyword matches</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
           '</section>'
+        );
+      }
+
+      function renderCompetitorMatchingProgress(run, mode) {
+        if (mode !== 'ai') {
+          return '<div class="inline-progress"><p>Matching candidate queries to competitor ranked keywords without copying competitor volume.</p><div class="progress-track"><div class="progress-bar"></div></div></div>';
+        }
+
+        const artifact = findArtifact(run, 'competitor_keyword_matching_progress');
+        const payload = artifact?.payload || {};
+        const steps = [
+          { id: 'group_competitor_keywords', label: 'Competitor groups' },
+          { id: 'group_candidate_keywords', label: 'Candidate groups' },
+          { id: 'match_groups', label: 'Group matching' },
+          { id: 'score_candidates_by_group', label: 'Group scoring' },
+        ];
+        const currentStep = typeof payload.currentStep === 'string'
+          ? payload.currentStep
+          : 'group_competitor_keywords';
+        const currentStepIndex = Number.isFinite(Number(payload.currentStepIndex))
+          ? Math.max(1, Math.min(4, Number(payload.currentStepIndex)))
+          : 1;
+        const totalSteps = Number.isFinite(Number(payload.totalSteps))
+          ? Math.max(1, Number(payload.totalSteps))
+          : 4;
+        const scoreGroupIndex = Number.isFinite(Number(payload.scoreGroupIndex))
+          ? Math.max(0, Number(payload.scoreGroupIndex))
+          : 0;
+        const scoreGroupTotal = Number.isFinite(Number(payload.scoreGroupTotal))
+          ? Math.max(0, Number(payload.scoreGroupTotal))
+          : 0;
+        const stepProgress =
+          currentStep === 'score_candidates_by_group' && scoreGroupTotal > 0
+            ? (currentStepIndex - 1 + Math.min(scoreGroupIndex, scoreGroupTotal) / scoreGroupTotal) / totalSteps
+            : (currentStepIndex - 1) / totalSteps;
+        const progressWidth = Math.max(8, Math.min(100, Math.round(stepProgress * 100)));
+        const message = typeof payload.message === 'string' && payload.message.trim()
+          ? payload.message
+          : 'AI is evaluating candidates only against provided competitor ranked keyword evidence.';
+        const meta = [
+          ['Candidates', payload.aiCandidateCount ?? payload.candidateCount ?? '—'],
+          ['Competitor evidence', payload.aiCompetitorEvidenceCount ?? payload.competitorKeywordCount ?? '—'],
+          ['Competitor buckets', payload.competitorBucketCount ?? '—'],
+          ['Candidate buckets', payload.candidateBucketCount ?? '—'],
+          ['Score groups', scoreGroupTotal > 0 ? String(scoreGroupIndex) + '/' + String(scoreGroupTotal) : '—'],
+          ['AI scored', payload.aiEvaluatedCandidateCount ?? '—'],
+          ['Fallback', payload.algorithmicFallbackCandidateCount ?? '—'],
+        ];
+
+        return (
+          '<div class="inline-progress">' +
+            '<p>' + escapeHtmlClient(message) + '</p>' +
+            '<div class="progress-track"><div class="progress-bar is-determinate" style="width: ' + escapeHtmlClient(progressWidth) + '%"></div></div>' +
+            '<div class="ai-progress-steps">' +
+              steps.map((step, index) => {
+                const className = [
+                  'ai-progress-step',
+                  index + 1 < currentStepIndex || currentStep === 'completed' ? 'is-done' : '',
+                  index + 1 === currentStepIndex && currentStep !== 'completed' ? 'is-active' : '',
+                ].filter(Boolean).join(' ');
+                return '<div class="' + escapeHtmlClient(className) + '">' + escapeHtmlClient(String(index + 1) + '. ' + step.label) + '</div>';
+              }).join('') +
+            '</div>' +
+            '<div class="ai-progress-meta">' +
+              meta.map(([label, value]) => '<span>' + escapeHtmlClient(label + ': ' + String(value)) + '</span>').join('') +
+            '</div>' +
+            (payload.lastWarning ? '<p>Last fallback: ' + escapeHtmlClient(payload.lastWarning) + '</p>' : '') +
+          '</div>'
         );
       }
 
@@ -2369,15 +3344,15 @@ High-risk leverage</textarea>
 
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 7</div><h3>Staged Candidate Filtering</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'keyword_candidate_scoring') + '</span></div>' +
-            '<p>Primary output: dirty-pool candidates split into accepted, maybe, and rejected through noise filtering, semantic buckets, product-fit scoring, and per-bucket shortlist caps.</p>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(payload?.filteringMode === 'ai_staged_filtering' ? 'AI Step 7' : 'Algorithm Step 7') + '</div><h3>Candidate Filtering</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'keyword_candidate_scoring') + '</span></div>' +
+            '<p>Primary output: dirty-pool candidates split into accepted, maybe, and rejected. In AI mode this uses eligibility, fit scoring, and final calibration passes.</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(payload?.acceptedCount ?? accepted.length) + '</strong><span>Accepted</span></div>' +
               '<div><strong>' + escapeHtmlClient(payload?.maybeCount ?? maybe.length) + '</strong><span>Maybe</span></div>' +
               '<div><strong>' + escapeHtmlClient(payload?.rejectedCount ?? rejected.length) + '</strong><span>Rejected</span></div>' +
-              '<div><strong>' + escapeHtmlClient(payload?.keptAfterNoiseCount ?? 0) + '</strong><span>After noise</span></div>' +
-              '<div><strong>' + escapeHtmlClient(payload?.hardExcludedCandidateCount ?? 0) + '</strong><span>Hard excluded</span></div>' +
-              '<div><strong>' + escapeHtmlClient(payload?.llmScoredCandidateCount ?? payload?.aiScoredCandidateCount ?? 0) + '</strong><span>LLM calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.keptAfterNoiseCount ?? 0) + '</strong><span>AI eligible</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.hardExcludedCandidateCount ?? 0) + '</strong><span>AI rejected early</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.llmScoredCandidateCount ?? payload?.aiScoredCandidateCount ?? 0) + '</strong><span>AI calls</span></div>' +
             '</div>' +
             renderStagedFilteringSummary(payload?.stagedFiltering) +
             (notes.length ? '<div class="section-subhead"><h4>Filtering notes</h4><p>' + escapeHtmlClient(notes.join(' ')) + '</p></div>' : '') +
@@ -2643,26 +3618,28 @@ High-risk leverage</textarea>
         const artifact = findArtifact(run, 'cluster_selection_snapshot');
         const payload = artifact?.payload || null;
         if (!artifact) {
-          return '<section class="card full"><div class="empty">No main/supporting cluster selection saved yet.</div></section>';
+          return '<section class="card full"><div class="empty">No ranked cluster choices prepared yet.</div></section>';
         }
 
         const main = payload?.mainCluster || null;
         const supporting = Array.isArray(payload?.supportingClusters) ? payload.supportingClusters : [];
         const rejected = Array.isArray(payload?.rejectedClusters) ? payload.rejectedClusters : [];
         const ranked = Array.isArray(payload?.rankedClusters) ? payload.rankedClusters : [];
+        const selectedClusterName = String(payload?.selectedClusterName || main?.clusterName || '');
 
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 10</div><h3>Main Cluster Selection</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
-            '<p>Primary output: one main cluster for the SEO brief plus supporting clusters for internal links or adjacent articles.</p>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Manual Step 10</div><h3>Topic Choice From Ranked Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
+            '<p>Primary output: ranked cluster choices. Choose one topic manually; OnPage and the final brief will use that selected cluster.</p>' +
             '<div class="metric-grid compact">' +
-              '<div><strong>' + escapeHtmlClient(main ? '1' : '0') + '</strong><span>Main</span></div>' +
+              '<div><strong>' + escapeHtmlClient(main ? 'Yes' : 'No') + '</strong><span>Main selected</span></div>' +
               '<div><strong>' + escapeHtmlClient(supporting.length) + '</strong><span>Supporting</span></div>' +
               '<div><strong>' + escapeHtmlClient(rejected.length) + '</strong><span>Rejected</span></div>' +
               '<div><strong>' + escapeHtmlClient(payload?.inputClusterCount ?? ranked.length) + '</strong><span>Input clusters</span></div>' +
             '</div>' +
-            (main ? renderSelectedClusterCard('Main cluster', main, true) : '<div class="empty">No eligible approved main cluster selected.</div>') +
-            renderSelectedClusterList('Supporting clusters', supporting, true) +
+            (main ? renderSelectedClusterCard('Selected topic', main, true, selectedClusterName) : '<div class="empty">No topic selected yet. Pick one of the ranked approved/supporting clusters below.</div>') +
+            renderSelectedClusterList('Ranked selectable clusters', ranked.filter((item) => item?.decision !== 'rejected'), true, selectedClusterName) +
+            renderSelectedClusterList('Supporting clusters', supporting, false, selectedClusterName) +
             renderSelectedClusterList('Rejected clusters', rejected, false) +
             '<details><summary>Ranked clusters and raw selection</summary><div>' +
               renderSelectedClusterList('All ranked clusters', ranked, false) +
@@ -2672,31 +3649,38 @@ High-risk leverage</textarea>
         );
       }
 
-      function renderSelectedClusterList(label, items, openByDefault) {
+      function renderSelectedClusterList(label, items, openByDefault, selectedClusterName) {
         return (
           '<details class="keyword-serp-item" ' + (openByDefault ? 'open' : '') + '>' +
             '<summary>' + escapeHtmlClient(label + ' · ' + items.length) + '</summary>' +
             '<div class="keyword-serp-body">' +
               (items.length
-                ? '<div class="stage-output-list">' + items.map((item, index) => renderSelectedClusterCard(String(index + 1).padStart(2, '0'), item, false)).join('') + '</div>'
+                ? '<div class="stage-output-list">' + items.map((item, index) => renderSelectedClusterCard(String(index + 1).padStart(2, '0'), item, false, selectedClusterName)).join('') + '</div>'
                 : '<div class="empty">No clusters in this bucket.</div>') +
             '</div>' +
           '</details>'
         );
       }
 
-      function renderSelectedClusterCard(label, item, prominent) {
+      function renderSelectedClusterCard(label, item, prominent, selectedClusterName) {
         const breakdown = item?.scoreBreakdown || {};
         const cluster = item?.sourceCluster || {};
         const keywords = Array.isArray(cluster?.keywords) ? cluster.keywords : [];
+        const clusterName = String(item?.clusterName || '');
+        const isRejected = item?.decision === 'rejected';
+        const isSelected = selectedClusterName && clusterName === selectedClusterName;
+        const chooseButton = isRejected
+          ? ''
+          : '<button type="button" class="primary select-cluster-topic-btn" data-cluster-name="' + escapeHtmlClient(clusterName) + '" ' + (isSelected || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(isSelected ? 'Selected topic' : 'Use this topic') + '</button>';
         return (
           '<div class="stage-output-item ' + (prominent ? 'is-prominent' : '') + '">' +
-            '<div class="inline-meta"><strong>' + escapeHtmlClient(label + '. ' + (item?.clusterName || 'Cluster')) + '</strong><span>' + escapeHtmlClient((item?.priorityScore ?? '—') + '/100') + '</span></div>' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(label + '. ' + (clusterName || 'Cluster')) + '</strong><span>' + escapeHtmlClient((item?.priorityScore ?? '—') + '/100') + '</span></div>' +
             '<p><strong>' + escapeHtmlClient(item?.primaryKeyword || 'No primary keyword') + '</strong></p>' +
             '<p>' + escapeHtmlClient(item?.reason || 'No reason saved.') + '</p>' +
             '<p class="muted">Product Fit: ' + escapeHtmlClient(item?.productFitType || '—') + ' · decision: ' + escapeHtmlClient(item?.productFitDecision || '—') + (item?.role ? ' · role: ' + escapeHtmlClient(item.role) : '') + '</p>' +
             renderSelectionScoreBreakdown(breakdown) +
             renderCompactStringList('Cluster keywords', keywords.slice(0, 6)) +
+            chooseButton +
           '</div>'
         );
       }
@@ -2710,6 +3694,187 @@ High-risk leverage</textarea>
             '<div><strong>' + escapeHtmlClient(breakdown.serpEnrichmentSupport ?? '—') + '</strong><span>SERP</span></div>' +
             '<div><strong>' + escapeHtmlClient(breakdown.sourceDiversityConfidence ?? '—') + '</strong><span>Sources</span></div>' +
             '<div><strong>' + escapeHtmlClient(breakdown.riskPenalty ?? '—') + '</strong><span>Risk penalty</span></div>' +
+          '</div>'
+        );
+      }
+
+      function clusterKey(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function putClusterMapEntry(map, name, value) {
+        const key = clusterKey(name);
+        if (key) map.set(key, value);
+      }
+
+      function clusterPillClass(value) {
+        const normalized = String(value || '').toLowerCase();
+        if (['approve', 'approved', 'main', 'selected', 'high'].includes(normalized)) return ' is-good';
+        if (['reject', 'rejected', 'low'].includes(normalized)) return ' is-bad';
+        if (['supporting_only', 'supporting', 'medium', 'maybe'].includes(normalized)) return ' is-warn';
+        return '';
+      }
+
+      function renderClusterDecisionTable(run) {
+        const clusterArtifact = findArtifact(run, 'cluster_snapshot');
+        const clusterPayload = clusterArtifact?.payload || null;
+        const productFitArtifact = findArtifact(run, 'cluster_product_fit_review');
+        const productFitPayload = productFitArtifact?.payload || null;
+        const selectionArtifact = findArtifact(run, 'cluster_selection_snapshot');
+        const selectionPayload = selectionArtifact?.payload || null;
+
+        if (!clusterArtifact) {
+          return '<section class="card full"><div class="empty">No intent clusters built yet.</div></section>';
+        }
+
+        const clusters = Array.isArray(clusterPayload?.clusters) ? clusterPayload.clusters : [];
+        const reviews = Array.isArray(productFitPayload?.clusterProductFit) ? productFitPayload.clusterProductFit : [];
+        const ranked = Array.isArray(selectionPayload?.rankedClusters) ? selectionPayload.rankedClusters : [];
+        const supporting = Array.isArray(selectionPayload?.supportingClusters) ? selectionPayload.supportingClusters : [];
+        const rejected = Array.isArray(selectionPayload?.rejectedClusters) ? selectionPayload.rejectedClusters : [];
+        const main = selectionPayload?.mainCluster || null;
+        const selectedClusterName = String(selectionPayload?.selectedClusterName || main?.clusterName || '');
+
+        const productByCluster = new Map();
+        reviews.forEach((item) => putClusterMapEntry(productByCluster, item?.clusterName, item));
+
+        const selectionByCluster = new Map();
+        ranked.forEach((item) => putClusterMapEntry(selectionByCluster, item?.clusterName, { ...item, selectionBucket: item?.decision || item?.role || 'ranked' }));
+        supporting.forEach((item) => putClusterMapEntry(selectionByCluster, item?.clusterName, { ...item, selectionBucket: 'supporting' }));
+        rejected.forEach((item) => putClusterMapEntry(selectionByCluster, item?.clusterName, { ...item, selectionBucket: 'rejected' }));
+        if (main?.clusterName) {
+          putClusterMapEntry(selectionByCluster, main.clusterName, { ...main, selectionBucket: 'main' });
+        }
+
+        const rows = clusters.map((cluster, index) => {
+          const clusterName = String(cluster?.clusterName || cluster?.label || 'Intent cluster');
+          const productFit = productByCluster.get(clusterKey(clusterName)) || null;
+          const selection = selectionByCluster.get(clusterKey(clusterName)) || null;
+          return { cluster, clusterName, index, productFit, selection };
+        });
+
+        const approvedCount = reviews.filter((item) => item?.decision === 'approve').length;
+        const supportingOnlyCount = reviews.filter((item) => item?.decision === 'supporting_only').length;
+        const rejectedCount = reviews.filter((item) => item?.decision === 'reject').length;
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Cluster Decision Table</div><h3>Clusters</h3></div><span class="badge">' + escapeHtmlClient(selectedClusterName ? 'topic_selected' : selectionArtifact ? 'ready_for_topic_choice' : productFitArtifact ? 'product_fit_ready' : 'intent_clusters_ready') + '</span></div>' +
+            '<p>One table combines Intent Clusters, Product Fit Review, and manual topic selection. Click a cluster row to inspect all saved details.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(clusters.length) + '</strong><span>Intent clusters</span></div>' +
+              '<div><strong>' + escapeHtmlClient(productFitArtifact ? approvedCount + '/' + supportingOnlyCount + '/' + rejectedCount : '—') + '</strong><span>Product approve/support/reject</span></div>' +
+              '<div><strong>' + escapeHtmlClient(selectionArtifact ? ranked.length : '—') + '</strong><span>Ranked choices</span></div>' +
+              '<div><strong>' + escapeHtmlClient(selectedClusterName || '—') + '</strong><span>Selected topic</span></div>' +
+            '</div>' +
+            (rows.length
+              ? '<div class="cluster-table-wrap"><table class="cluster-table">' +
+                  '<thead><tr>' +
+                    '<th>Cluster</th>' +
+                    '<th>Intent cluster</th>' +
+                    '<th>Product fit review</th>' +
+                    '<th>Selection</th>' +
+                    '<th>Priority</th>' +
+                    '<th></th>' +
+                  '</tr></thead>' +
+                  '<tbody>' + rows.map((row) => renderClusterDecisionRow(row, selectedClusterName, Boolean(selectionArtifact))).join('') + '</tbody>' +
+                '</table></div>' +
+                rows.map((row) => renderClusterDecisionTemplate(row)).join('')
+              : '<div class="empty">No clusters saved.</div>') +
+            '<details><summary>Raw cluster artifacts</summary><div>' +
+              '<h4>Intent clusters</h4><pre>' + escapeHtmlClient(prettyJson(clusterPayload)) + '</pre>' +
+              '<h4>Product Fit review</h4><pre>' + escapeHtmlClient(prettyJson(productFitPayload || {})) + '</pre>' +
+              '<h4>Selection</h4><pre>' + escapeHtmlClient(prettyJson(selectionPayload || {})) + '</pre>' +
+            '</div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderClusterDecisionRow(row, selectedClusterName, hasSelection) {
+        const cluster = row.cluster || {};
+        const productFit = row.productFit || {};
+        const selection = row.selection || {};
+        const detailId = 'clusterDetailTemplate-' + row.index;
+        const clusterName = row.clusterName;
+        const isSelected = selectedClusterName && clusterName === selectedClusterName;
+        const hasSelectionEntry = Boolean(selection && Object.keys(selection).length);
+        const isRejected = selection?.selectionBucket === 'rejected' || selection?.decision === 'rejected' || productFit?.decision === 'reject';
+        const canSelect = hasSelection && hasSelectionEntry && !isRejected;
+        const productLabel = productFit?.decision
+          ? productFit.decision + (productFit?.productFitScore !== undefined ? ' · ' + productFit.productFitScore + '/100' : '')
+          : 'not reviewed';
+        const selectionLabel = isSelected
+          ? 'selected'
+          : selection?.selectionBucket || selection?.decision || (hasSelection ? 'not ranked' : 'not prepared');
+        const priorityLabel = selection?.priorityScore !== undefined ? selection.priorityScore + '/100' : '—';
+
+        return (
+          '<tr class="cluster-summary-row" data-cluster-detail-id="' + escapeHtmlClient(detailId) + '">' +
+            '<td><div class="cluster-name-cell"><strong>' + escapeHtmlClient(String(row.index + 1).padStart(2, '0') + '. ' + clusterName) + '</strong><span>' + escapeHtmlClient(cluster?.primaryKeywordCandidate || cluster?.primaryKeyword || 'No primary keyword') + '</span></div></td>' +
+            '<td><span class="cluster-pill' + clusterPillClass(cluster?.sourceConfidence) + '">' + escapeHtmlClient((cluster?.intent || 'intent n/a') + ' · ' + (cluster?.sourceConfidence || 'confidence n/a')) + '</span></td>' +
+            '<td><span class="cluster-pill' + clusterPillClass(productFit?.decision) + '">' + escapeHtmlClient(productLabel) + '</span></td>' +
+            '<td><span class="cluster-pill' + clusterPillClass(selectionLabel) + '">' + escapeHtmlClient(selectionLabel) + '</span></td>' +
+            '<td>' + escapeHtmlClient(priorityLabel) + '</td>' +
+            '<td><div class="cluster-row-actions">' +
+              '<button type="button" data-cluster-detail-id="' + escapeHtmlClient(detailId) + '">Details</button>' +
+              (hasSelection
+                ? '<button type="button" class="primary select-cluster-topic-btn" data-cluster-name="' + escapeHtmlClient(clusterName) + '" ' + (!canSelect || isSelected || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(isSelected ? 'Selected' : isRejected ? 'Rejected' : hasSelectionEntry ? 'Use' : 'Not ranked') + '</button>'
+                : '') +
+            '</div></td>' +
+          '</tr>'
+        );
+      }
+
+      function renderClusterDecisionTemplate(row) {
+        return (
+          '<template id="clusterDetailTemplate-' + row.index + '">' +
+            renderClusterDecisionDetail(row) +
+          '</template>'
+        );
+      }
+
+      function renderClusterDecisionDetail(row) {
+        const cluster = row.cluster || {};
+        const productFit = row.productFit || {};
+        const selection = row.selection || {};
+        const secondary = Array.isArray(cluster?.secondaryKeywords) ? cluster.secondaryKeywords : [];
+        const questions = Array.isArray(cluster?.questions) ? cluster.questions : [];
+        const supporting = Array.isArray(cluster?.supportingItems) ? cluster.supportingItems : [];
+        const supportingDetails = Array.isArray(cluster?.supportingItemDetails) ? cluster.supportingItemDetails : [];
+        const competitorUrls = Array.isArray(cluster?.competitorUrls) ? cluster.competitorUrls : [];
+        const keywords = Array.isArray(cluster?.keywords) ? cluster.keywords : [];
+        const whatNotToClaim = Array.isArray(productFit?.whatNotToClaim) ? productFit.whatNotToClaim : [];
+        const breakdown = selection?.scoreBreakdown || {};
+        return (
+          '<div class="stack">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Cluster details</div><h3>' + escapeHtmlClient(row.clusterName) + '</h3></div><span class="badge">' + escapeHtmlClient(selection?.selectionBucket || selection?.decision || productFit?.decision || cluster?.sourceConfidence || 'cluster') + '</span></div>' +
+            '<dl class="definition-list">' +
+              '<dt>Primary keyword</dt><dd>' + escapeHtmlClient(cluster?.primaryKeywordCandidate || cluster?.primaryKeyword || selection?.primaryKeyword || '—') + '</dd>' +
+              '<dt>Intent</dt><dd>' + escapeHtmlClient(cluster?.intent || '—') + '</dd>' +
+              '<dt>User intent</dt><dd>' + escapeHtmlClient(cluster?.userIntent || '—') + '</dd>' +
+              '<dt>Evidence summary</dt><dd>' + escapeHtmlClient(cluster?.evidenceSummary || cluster?.rationale || '—') + '</dd>' +
+              '<dt>Product Fit</dt><dd>' + escapeHtmlClient([productFit?.decision, productFit?.productFitType, productFit?.productFitScore !== undefined ? productFit.productFitScore + '/100' : null].filter(Boolean).join(' · ') || '—') + '</dd>' +
+              '<dt>Product Fit reason</dt><dd>' + escapeHtmlClient(productFit?.reason || '—') + '</dd>' +
+              '<dt>Product insertion angle</dt><dd>' + escapeHtmlClient(productFit?.productInsertionAngle || '—') + '</dd>' +
+              '<dt>Where to insert</dt><dd>' + escapeHtmlClient(productFit?.whereToInsert || '—') + '</dd>' +
+              '<dt>Selection priority</dt><dd>' + escapeHtmlClient(selection?.priorityScore !== undefined ? selection.priorityScore + '/100' : '—') + '</dd>' +
+              '<dt>Selection reason</dt><dd>' + escapeHtmlClient(selection?.reason || '—') + '</dd>' +
+            '</dl>' +
+            (Object.keys(breakdown).length ? renderSelectionScoreBreakdown(breakdown) : '') +
+            renderCompactStringList('Cluster keywords', keywords.length ? keywords : secondary) +
+            renderCompactStringList('Questions', questions) +
+            renderCompactStringList('Supporting items', supporting) +
+            renderCompactStringList('What not to claim', whatNotToClaim) +
+            renderSupportingItemDetails(supportingDetails) +
+            (competitorUrls.length
+              ? '<div class="section-subhead"><h4>Competitor URLs</h4></div><div class="stage-output-list">' + competitorUrls.slice(0, 8).map((url) => (
+                  '<div class="stage-output-item">' +
+                    '<div class="inline-meta"><strong>' + escapeHtmlClient(url?.domain || 'domain') + '</strong><span>' + escapeHtmlClient(url?.rankAbsolute ?? '—') + '</span></div>' +
+                    '<p>' + escapeHtmlClient(url?.title || url?.url || 'Untitled') + '</p>' +
+                    '<p class="mono">' + escapeHtmlClient(url?.url || '—') + '</p>' +
+                  '</div>'
+                )).join('') + '</div>'
+              : '') +
           '</div>'
         );
       }
@@ -2891,9 +4056,199 @@ High-risk leverage</textarea>
             renderCompactStringList('Internal links', Array.isArray(brief.internalLinks) ? brief.internalLinks : []) +
             renderCompactStringList('External sources needed', Array.isArray(brief.externalSourcesNeeded) ? brief.externalSourcesNeeded : []) +
             '<div class="section-subhead"><h4>CTA</h4><p>' + escapeHtmlClient(brief.cta || '—') + '</p></div>' +
+            '<details open><summary>Manual edit final brief JSON</summary>' +
+              '<div class="field-block">' +
+                '<p class="muted">Edit this JSON and save it. Article generation will use the saved manual version.</p>' +
+                '<textarea id="finalBriefEditPayload" class="json-editor" spellcheck="false">' + escapeHtmlClient(prettyJson(brief)) + '</textarea>' +
+                '<button type="button" class="primary ' + escapeHtmlClient(appState.finalBriefEditLoading ? 'is-loading' : '') + '" id="saveFinalBriefEditBtn" ' + (appState.finalBriefEditLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.finalBriefEditLoading ? 'Saving edit...' : 'Save Manual Brief Edit') + '</button>' +
+              '</div>' +
+            '</details>' +
             '<details><summary>Raw final brief</summary><div><pre>' + escapeHtmlClient(prettyJson(brief)) + '</pre></div></details>' +
           '</section>'
         );
+      }
+
+      function renderLongreadDraft(run) {
+        const artifact = findArtifact(run, 'longread_draft_article');
+        const payload = artifact?.payload || null;
+        const markdown = typeof payload?.draftArticleMarkdown === 'string' ? payload.draftArticleMarkdown : '';
+        if (!artifact || !markdown) {
+          return '<section class="card full article-generation-card"><div class="empty">No longread draft generated yet.</div></section>';
+        }
+
+        return (
+          '<section class="card full article-generation-card">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 1</div><h3>Draft Article</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'longread_draft_article_v1') + '</span></div>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(String(markdown.length)) + '</strong><span>Markdown chars</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.targetLength || '1800-2500 words') + '</strong><span>Target length</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.publishingFormat || 'website_blog') + '</strong><span>Format</span></div>' +
+            '</div>' +
+            '<details open><summary>Draft Markdown</summary><div><pre>' + escapeHtmlClient(markdown) + '</pre></div></details>' +
+            '<details><summary>Raw draft artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderLongreadCleanup(run) {
+        const artifact = findArtifact(run, 'longread_cleanup');
+        const payload = artifact?.payload || null;
+        const markdown = typeof payload?.articleMarkdown === 'string' ? payload.articleMarkdown : '';
+        const warnings = Array.isArray(payload?.warnings) ? payload.warnings : [];
+        const changesMade = Array.isArray(payload?.changesMade) ? payload.changesMade : [];
+        if (!artifact || !markdown) {
+          return '<section class="card full article-generation-card"><div class="empty">No longread cleanup saved yet.</div></section>';
+        }
+
+        return (
+          '<section class="card full article-generation-card">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 2</div><h3>Safety + SEO Cleanup</h3></div><span class="badge">' + escapeHtmlClient(payload?.status || '—') + '</span></div>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload?.status || '—') + '</strong><span>Status</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(warnings.length)) + '</strong><span>Warnings</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(changesMade.length)) + '</strong><span>Changes</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(markdown.length)) + '</strong><span>Markdown chars</span></div>' +
+            '</div>' +
+            renderCleanupWarnings(warnings) +
+            renderCompactStringList('Changes made', changesMade) +
+            '<details open><summary>Reviewed Markdown</summary><div><pre>' + escapeHtmlClient(markdown) + '</pre></div></details>' +
+            '<details><summary>Raw cleanup artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderCleanupWarnings(warnings) {
+        return warnings.length
+          ? '<div class="stage-output-list">' + warnings.map((warning, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (warning?.type || 'warning')) + '</strong><span>warning</span></div>' +
+                '<p>' + escapeHtmlClient(warning?.message || 'No warning message saved.') + '</p>' +
+              '</div>'
+            )).join('') + '</div>'
+          : '<div class="empty">No cleanup warnings.</div>';
+      }
+
+      function renderLongreadPackage(run) {
+        const artifact = findArtifact(run, 'longread_final_package');
+        const payload = artifact?.payload || null;
+        const article = payload?.article || {};
+        const seo = payload?.seo || {};
+        const productInsertion = payload?.productInsertion || {};
+        const claimsReview = payload?.claimsReview || {};
+        const checklist = payload?.publishingChecklist || {};
+        if (!artifact || !article?.bodyMarkdown) {
+          return '<section class="card full article-generation-card"><div class="empty">No final article package saved yet.</div></section>';
+        }
+
+        return (
+          '<section class="card full article-generation-card">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 3</div><h3>Final Article Package</h3></div><span class="badge">' + escapeHtmlClient(checklist?.readyToPublish ? 'ready' : 'review_needed') + '</span></div>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(checklist?.readyToPublish ? 'Yes' : 'No') + '</strong><span>Ready</span></div>' +
+              '<div><strong>' + escapeHtmlClient(claimsReview?.status || '—') + '</strong><span>Claims</span></div>' +
+              '<div><strong>' + escapeHtmlClient(seo?.primaryKeyword || '—') + '</strong><span>Primary keyword</span></div>' +
+              '<div><strong>' + escapeHtmlClient(article?.slug || '—') + '</strong><span>Slug</span></div>' +
+            '</div>' +
+            '<dl class="definition-list">' +
+              '<dt>Title</dt><dd>' + escapeHtmlClient(article?.title || '—') + '</dd>' +
+              '<dt>H1</dt><dd>' + escapeHtmlClient(article?.h1 || '—') + '</dd>' +
+              '<dt>Meta title</dt><dd>' + escapeHtmlClient(article?.metaTitle || '—') + '</dd>' +
+              '<dt>Meta description</dt><dd>' + escapeHtmlClient(article?.metaDescription || '—') + '</dd>' +
+              '<dt>Product insertion</dt><dd>' + escapeHtmlClient((productInsertion?.whereInserted || '—') + ' · ' + (productInsertion?.angleUsed || '—')) + '</dd>' +
+            '</dl>' +
+            renderCompactStringList('Secondary keywords used', Array.isArray(seo?.secondaryKeywordsUsed) ? seo.secondaryKeywordsUsed : []) +
+            renderCompactStringList('Internal links', Array.isArray(seo?.internalLinks) ? seo.internalLinks : []) +
+            renderCompactStringList('External sources needed', Array.isArray(seo?.externalSourcesNeeded) ? seo.externalSourcesNeeded : []) +
+            renderCompactStringList('Claims warnings', Array.isArray(claimsReview?.warnings) ? claimsReview.warnings : []) +
+            renderCompactStringList('Publishing notes', Array.isArray(checklist?.notes) ? checklist.notes : []) +
+            '<details open><summary>Body Markdown</summary><div><pre>' + escapeHtmlClient(article.bodyMarkdown) + '</pre></div></details>' +
+            '<details><summary>Raw final package</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderLongreadAdaptations(run) {
+        const artifact = findArtifact(run, 'longread_adaptations_export');
+        const payload = artifact?.payload || null;
+        const adaptations = Array.isArray(payload?.adaptations) ? payload.adaptations : [];
+        if (!artifact || !payload?.articleId) {
+          return '<section class="card full article-generation-card"><div class="empty">No dashboard adaptations created yet.</div></section>';
+        }
+
+        const dashboardUrl = payload.dashboardUrl || (run.projectId ? '/test-ui/project?projectId=' + encodeURIComponent(run.projectId) : null);
+        return (
+          '<section class="card full article-generation-card">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 4</div><h3>Dashboard Adaptations</h3></div><span class="badge">exported</span></div>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(payload.articleId || '—') + '</strong><span>Article</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(adaptations.length)) + '</strong><span>Adaptations</span></div>' +
+              '<div><strong>' + escapeHtmlClient(prettyDate(artifact.createdAt)) + '</strong><span>Created</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload.sourceArtifactType || '—') + '</strong><span>Source</span></div>' +
+            '</div>' +
+            (dashboardUrl ? '<div class="actions"><a class="button secondary" href="' + escapeHtmlClient(dashboardUrl) + '">Open Project Dashboard</a></div>' : '') +
+            renderAdaptationExportList(adaptations, payload.articleId, run.market?.language) +
+            '<details><summary>Raw adaptations export</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+          '</section>'
+        );
+      }
+
+      function renderAdaptationExportList(adaptations, articleId, defaultLanguage) {
+        return adaptations.length
+          ? '<div class="stage-output-list">' + adaptations.map((adaptation, index) => (
+              '<div class="stage-output-item">' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (adaptation?.displayName || adaptation?.channelId || 'Adaptation')) + '</strong><span>' + escapeHtmlClient(adaptation?.channelId || 'channel') + '</span></div>' +
+                '<p>' + escapeHtmlClient(adaptation?.preview || 'No preview saved.') + '</p>' +
+                '<p class="muted mono">' + escapeHtmlClient(adaptation?.adaptationId || '—') + '</p>' +
+                renderAdaptationScheduleControls(adaptation, articleId, defaultLanguage, index) +
+              '</div>'
+            )).join('') + '</div>'
+          : '<div class="empty">No adaptations saved in this export.</div>';
+      }
+
+      function renderAdaptationScheduleControls(adaptation, articleId, defaultLanguage, index) {
+        const adaptationId = adaptation?.adaptationId || '';
+        const channelId = adaptation?.channelId || '';
+        const isLoading = appState.longreadPublicationLoadingId === adaptationId;
+        const disabled = !articleId || !adaptationId || isLoading;
+        return (
+          '<div class="adaptation-schedule-grid" data-adaptation-schedule-row data-article-id="' + escapeHtmlClient(articleId || '') + '" data-adaptation-id="' + escapeHtmlClient(adaptationId) + '" data-channel-id="' + escapeHtmlClient(channelId) + '">' +
+            '<label>Language' +
+              '<select data-adaptation-language ' + (disabled ? 'disabled' : '') + '>' +
+                renderLanguageOption('en', defaultLanguage) +
+                renderLanguageOption('ru', defaultLanguage) +
+                renderLanguageOption('es', defaultLanguage) +
+                renderLanguageOption('fr', defaultLanguage) +
+                renderLanguageOption('pt', defaultLanguage) +
+              '</select>' +
+            '</label>' +
+            '<label>Publish at' +
+              '<input type="datetime-local" data-adaptation-publish-at value="' + escapeHtmlClient(defaultAdaptationPublishAt(index)) + '" ' + (disabled ? 'disabled' : '') + ' />' +
+            '</label>' +
+            '<button type="button" class="' + escapeHtmlClient(isLoading ? 'is-loading' : '') + '" data-schedule-longread-adaptation ' + (disabled ? 'disabled' : '') + '>' + escapeHtmlClient(isLoading ? 'Scheduling...' : 'Schedule') + '</button>' +
+          '</div>'
+        );
+      }
+
+      function renderLanguageOption(language, defaultLanguage) {
+        const normalizedDefault = normalizeTargetLanguage(defaultLanguage || 'en');
+        return '<option value="' + escapeHtmlClient(language) + '" ' + (normalizedDefault === language ? 'selected' : '') + '>' + escapeHtmlClient(language.toUpperCase()) + '</option>';
+      }
+
+      function normalizeTargetLanguage(language) {
+        const normalized = String(language || '').trim().toLowerCase();
+        const known = {
+          english: 'en',
+          en: 'en',
+          russian: 'ru',
+          ru: 'ru',
+          spanish: 'es',
+          es: 'es',
+          french: 'fr',
+          fr: 'fr',
+          portuguese: 'pt',
+          pt: 'pt',
+        };
+        return known[normalized] || normalized || 'en';
       }
 
       function renderFinalBriefOutline(outline) {
@@ -2985,6 +4340,39 @@ High-risk leverage</textarea>
         }, 1800);
       }
 
+      function startCompetitorMatchingProgressPolling(runId) {
+        stopCompetitorMatchingProgressPolling();
+        startCompetitorMatchingProgressPolling.timer = setInterval(async () => {
+          if (!appState.competitorMatchingLoading || appState.selectedRunId !== runId) {
+            stopCompetitorMatchingProgressPolling();
+            return;
+          }
+          if (startCompetitorMatchingProgressPolling.busy) {
+            return;
+          }
+
+          startCompetitorMatchingProgressPolling.busy = true;
+          try {
+            const latestRun = await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId));
+            if (appState.selectedRunId !== runId || !appState.competitorMatchingLoading) {
+              return;
+            }
+            appState.selectedRun = latestRun;
+            renderDetail(latestRun);
+          } catch {
+            // Keep the primary request in control; polling is only for progress visibility.
+          } finally {
+            startCompetitorMatchingProgressPolling.busy = false;
+          }
+        }, 1400);
+      }
+
+      function stopCompetitorMatchingProgressPolling() {
+        clearInterval(startCompetitorMatchingProgressPolling.timer);
+        startCompetitorMatchingProgressPolling.timer = null;
+        startCompetitorMatchingProgressPolling.busy = false;
+      }
+
       function getProjectName(projectId) {
         if (!projectId) return 'No project';
         const project = appState.projects.find((item) => item.id === projectId);
@@ -3037,10 +4425,11 @@ High-risk leverage</textarea>
         }
       }
 
-      async function fillFromBrandMemory() {
+      async function fillFromBrandMemory(options = {}) {
+        const silent = Boolean(options.silent);
         const projectId = qs('projectId').value;
         if (!projectId) {
-          showToast('Select a project first');
+          if (!silent) showToast('Select a project first');
           return;
         }
 
@@ -3049,7 +4438,19 @@ High-risk leverage</textarea>
         if (brandMemory.brandName) qs('productName').value = brandMemory.brandName;
         if (brandMemory.productDescription) qs('productDescription').value = brandMemory.productDescription;
         if (brandMemory.targetAudience) qs('audience').value = brandMemory.targetAudience;
-        showToast('Brand memory loaded');
+        if (brandMemory.keyMessage) qs('keyMessage').value = brandMemory.keyMessage;
+        if (brandMemory.defaultCta) qs('cta').value = brandMemory.defaultCta;
+        if (Array.isArray(brandMemory.brandConstraints) && brandMemory.brandConstraints.length > 0) {
+          qs('brandConstraints').value = brandMemory.brandConstraints.join('\\n');
+        }
+        const claimDefaults =
+          Array.isArray(brandMemory.claimsConstraints) && brandMemory.claimsConstraints.length > 0
+            ? brandMemory.claimsConstraints
+            : brandMemory.forbiddenClaims;
+        if (Array.isArray(claimDefaults) && claimDefaults.length > 0) {
+          qs('claimsConstraints').value = claimDefaults.join('\\n');
+        }
+        if (!silent) showToast('Brand memory loaded');
       }
 
       function buildListUrl() {
@@ -3090,6 +4491,14 @@ High-risk leverage</textarea>
         }
       }
 
+      function setRunLibraryOpen(open) {
+        const panel = qs('runLibraryPanel');
+        const button = qs('runLibraryBtn');
+        if (!panel) return;
+        panel.hidden = !open;
+        button?.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
       function renderRunList() {
         const container = qs('runList');
         if (appState.runs.length === 0) {
@@ -3122,7 +4531,10 @@ High-risk leverage</textarea>
         }).join('');
 
         container.querySelectorAll('[data-run-id]').forEach((node) => {
-          node.addEventListener('click', () => selectRun(node.getAttribute('data-run-id')));
+          node.addEventListener('click', () => {
+            setRunLibraryOpen(false);
+            selectRun(node.getAttribute('data-run-id'));
+          });
         });
       }
 
@@ -3138,6 +4550,8 @@ High-risk leverage</textarea>
       }
 
       function getManualStepFlags(run) {
+        const clusterSelection = findArtifact(run, 'cluster_selection_snapshot');
+        const clusterSelectionPayload = clusterSelection?.payload || null;
         return {
           input: true,
           keywords: Boolean(findArtifact(run, 'keyword_hypotheses')),
@@ -3158,14 +4572,24 @@ High-risk leverage</textarea>
           candidateScoring: Boolean(findArtifact(run, 'keyword_candidate_scoring')),
           clusters: Boolean(findArtifact(run, 'cluster_snapshot')),
           productFit: Boolean(findArtifact(run, 'cluster_product_fit_review')),
-          selection: Boolean(findArtifact(run, 'cluster_selection_snapshot')),
+          clusterSelectionPrepared: Boolean(clusterSelection),
+          selection: Boolean(clusterSelectionPayload?.mainCluster),
           onPage: Boolean(findArtifact(run, 'onpage_research_snapshot')),
           onPageSynthesis: Boolean(findArtifact(run, 'onpage_synthesis_snapshot')),
           finalBrief: Boolean(findArtifact(run, 'final_brief_snapshot') || run.finalBrief),
+          longreadDraft: Boolean(findArtifact(run, 'longread_draft_article')),
+          longreadCleanup: Boolean(findArtifact(run, 'longread_cleanup')),
+          longreadPackage: Boolean(findArtifact(run, 'longread_final_package')),
+          longreadAdaptations: Boolean(findArtifact(run, 'longread_adaptations_export')),
+          audit: true,
         };
       }
 
       function getStepLoading(step) {
+        const groupedSteps = SEO_STEP_GROUPS[step];
+        if (Array.isArray(groupedSteps) && groupedSteps.length > 1) {
+          return groupedSteps.some((groupedStep) => getStepLoading(groupedStep));
+        }
         return (
           (step === 'keywords' && appState.keywordHypothesesLoading) ||
           (step === 'serp' && appState.serpPreviewLoading) ||
@@ -3179,11 +4603,18 @@ High-risk leverage</textarea>
           (step === 'selection' && appState.clusterSelectionLoading) ||
           (step === 'onPage' && appState.onPageLoading) ||
           (step === 'onPageSynthesis' && appState.onPageSynthesisLoading) ||
-          (step === 'finalBrief' && appState.finalBriefLoading)
+          (step === 'finalBrief' && appState.finalBriefLoading) ||
+          (step === 'longreadDraft' && appState.longreadDraftLoading) ||
+          (step === 'longreadCleanup' && appState.longreadCleanupLoading) ||
+          (step === 'longreadPackage' && appState.longreadPackageLoading) ||
+          (step === 'longreadAdaptations' && appState.longreadAdaptationsLoading)
         );
       }
 
       function normalizeActiveSeoStep() {
+        if (SEO_STEP_TO_GROUP[appState.activeSeoStep]) {
+          appState.activeSeoStep = SEO_STEP_TO_GROUP[appState.activeSeoStep];
+        }
         if (!SEO_STEP_TABS.some((step) => step.id === appState.activeSeoStep)) {
           appState.activeSeoStep = 'input';
         }
@@ -3195,20 +4626,23 @@ High-risk leverage</textarea>
           '<section class="card full">' +
             '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>Manual SEO Brief Flow</h3></div></div>' +
             '<div class="seo-step-tabs">' +
-              SEO_STEP_TABS.map((step, index) => {
+              SEO_STEP_TABS.map((step) => {
                 const active = step.id === appState.activeSeoStep;
-                const ready = Boolean(flags[step.id]);
+                const groupedSteps = SEO_STEP_GROUPS[step.id] || [step.id];
+                const ready = groupedSteps.some((stepId) => Boolean(flags[stepId]));
                 const loading = getStepLoading(step.id);
                 const className = [
                   'seo-step-tab',
                   active ? 'is-active' : '',
                   ready ? 'is-ready' : '',
                   loading ? 'is-loading' : '',
+                  step.kind === 'article' ? 'is-article' : '',
+                  step.kind === 'audit' ? 'is-audit' : '',
                 ].filter(Boolean).join(' ');
                 return (
                   '<button type="button" class="' + escapeHtmlClient(className) + '" data-seo-step="' + escapeHtmlClient(step.id) + '">' +
                     '<span class="seo-step-dot"></span>' +
-                    '<span>' + escapeHtmlClient(String(index) + ' ' + step.label) + '</span>' +
+                    '<span>' + escapeHtmlClient(String(step.number) + ' ' + step.label) + '</span>' +
                   '</button>'
                 );
               }).join('') +
@@ -3223,6 +4657,12 @@ High-risk leverage</textarea>
           input: {
             title: 'Input',
             message: 'This is the source context for the current run.',
+            button: '',
+            progress: '',
+          },
+          audit: {
+            title: 'Run Audit Log',
+            message: 'Inspect every saved attempt, artifact snapshot, AI call, DataForSEO call, and score log for this run.',
             button: '',
             progress: '',
           },
@@ -3259,22 +4699,40 @@ High-risk leverage</textarea>
           },
           rankedKeywords: {
             title: 'Competitor Keyword Map',
-            message: 'Build reusable DataForSEO Ranked Keywords map from manual competitor domains in Step 0 input.',
+            message: 'Load the pre-fetched competitor Ranked Keywords map from Project Brand Memory.',
             button:
               '<button type="button" class="' + escapeHtmlClient('primary ' + (appState.rankedKeywordsLoading ? 'is-loading' : '')) + '" id="buildCompetitorKeywordMapBtn" ' + (appState.rankedKeywordsLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.rankedKeywordsLoading ? 'Building competitor map...' : flags.rankedKeywords ? 'Refresh Competitor Keyword Map' : 'Build Competitor Keyword Map') + '</button>',
             progress: appState.rankedKeywordsLoading
-              ? '<div class="inline-progress"><p>Fetching Ranked Keywords from manual competitor domains and saving competitor_keywords_json_id.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              ? '<div class="inline-progress"><p>Reading competitor ranked keywords from Project Brand Memory.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
           },
           competitorMatching: {
             title: 'Competitor Keyword Matching',
             message: flags.rankedKeywords && flags.keywords && flags.candidates
-              ? 'Match AI/SERP candidate queries against competitor ranked keywords and calculate proxy demand evidence.'
+              ? 'Choose algorithmic matching or AI evidence evaluation against competitor ranked keywords.'
               : 'Generate keywords, extract SERP candidates, and build Competitor Keyword Map first.',
+            details:
+              '<div class="mode-guide">' +
+                '<div class="mode-card">' +
+                  '<strong>Algorithmic matching</strong>' +
+                  '<p>1. Compares our candidates with competitor keywords by rules.</p>' +
+                  '<p>2. Uses text similarity, rank, volume, and traffic signals.</p>' +
+                  '<p>3. Fast and cheap, but less nuanced.</p>' +
+                '</div>' +
+                '<div class="mode-card">' +
+                  '<strong>AI evidence evaluation</strong>' +
+                  '<p>1. Sends our candidates and competitor keyword evidence to the selected AI model.</p>' +
+                  '<p>2. AI groups the market and matches candidates only to provided evidence.</p>' +
+                  '<p>3. Slower and costs more, but understands meaning better.</p>' +
+                '</div>' +
+              '</div>',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading ? 'Matching competitor keywords...' : flags.competitorMatching ? 'Refresh Competitor Matching' : 'Match Competitor Keywords') + '</button>',
+              '<div class="actions">' +
+                '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading && appState.competitorMatchingMode === 'algorithmic' ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsAlgorithmicBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading && appState.competitorMatchingMode === 'algorithmic' ? 'Running algorithmic matching...' : flags.competitorMatching ? 'Refresh Algorithmic Matching' : 'Run Algorithmic Matching') + '</button>' +
+                '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading && appState.competitorMatchingMode === 'ai' ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsAiBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading && appState.competitorMatchingMode === 'ai' ? 'Running AI evidence matching...' : flags.competitorMatching ? 'Refresh AI Evidence Matching' : 'Run AI Evidence Matching') + '</button>' +
+              '</div>',
             progress: appState.competitorMatchingLoading
-              ? '<div class="inline-progress"><p>Matching candidate queries to competitor ranked keywords without copying competitor volume.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              ? renderCompetitorMatchingProgress(run, appState.competitorMatchingMode)
               : '',
           },
           dirtyPool: {
@@ -3289,14 +4747,14 @@ High-risk leverage</textarea>
               : '',
           },
           candidateScoring: {
-            title: 'Staged Candidate Filtering',
+            title: 'AI Candidate Filtering',
             message: flags.dirtyPool
-              ? 'Filter dirty-pool candidates through noise removal, semantic buckets, product fit, and per-bucket shortlist caps.'
+              ? 'Filter dirty-pool candidates with three AI passes: eligibility, fit scoring, and final calibration.'
               : 'Build the dirty keyword pool first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.candidateScoringLoading ? 'is-loading' : '')) + '" id="scoreKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.candidateScoringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.candidateScoringLoading ? 'Filtering candidates...' : flags.candidateScoring ? 'Refresh Staged Filtering' : 'Run Staged Filtering') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.candidateScoringLoading ? 'is-loading' : '')) + '" id="scoreKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.candidateScoringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.candidateScoringLoading ? 'AI filtering candidates...' : flags.candidateScoring ? 'Refresh AI Filtering' : 'Run AI Filtering') + '</button>',
             progress: appState.candidateScoringLoading
-              ? '<div class="inline-progress"><p>Running deterministic staged filtering without an LLM scoring call.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              ? '<div class="inline-progress"><p>Running AI eligibility, fit scoring, and final calibration passes.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
           },
           clusters: {
@@ -3322,12 +4780,16 @@ High-risk leverage</textarea>
               : '',
           },
           selection: {
-            title: 'Main & Supporting Cluster Selection',
+            title: 'Manual Topic Selection',
             message: flags.productFit
-              ? 'Select 1 main cluster and 2-3 supporting clusters using Product Fit, proxy demand evidence, intent, SERP support, source confidence, and risk penalty.'
+              ? flags.selection
+                ? 'Main topic is selected. You can choose another ranked cluster below if needed.'
+                : flags.clusterSelectionPrepared
+                  ? 'Ranked cluster choices are ready. Choose one topic below before OnPage.'
+                  : 'Prepare ranked cluster choices, then choose one topic manually.'
               : 'Review Product Fit first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.productFit ? 'primary ' : '') + (appState.clusterSelectionLoading ? 'is-loading' : '')) + '" id="selectSeoBriefClustersBtn" ' + (!flags.productFit || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterSelectionLoading ? 'Selecting clusters...' : flags.selection ? 'Refresh Cluster Selection' : 'Select Main Cluster') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((flags.productFit ? 'primary ' : '') + (appState.clusterSelectionLoading ? 'is-loading' : '')) + '" id="selectSeoBriefClustersBtn" ' + (!flags.productFit || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterSelectionLoading ? 'Preparing choices...' : flags.clusterSelectionPrepared ? 'Refresh Cluster Choices' : 'Prepare Cluster Choices') + '</button>',
             progress: appState.clusterSelectionLoading
               ? '<div class="inline-progress"><p>Scoring clusters by Product Fit, proxy demand evidence, intent relevance, SERP support, source diversity, and risk penalty.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
@@ -3336,7 +4798,9 @@ High-risk leverage</textarea>
             title: 'Selected Cluster OnPage Evidence',
             message: flags.selection
               ? 'Fetch content parsing and instant page metadata for 3-5 selected SERP URLs from the chosen cluster.'
-              : 'Select the main cluster first.',
+              : flags.clusterSelectionPrepared
+                ? 'Choose the main topic first.'
+                : 'Prepare cluster choices and choose the main topic first.',
             button:
               '<button type="button" class="' + escapeHtmlClient((flags.selection ? 'primary ' : '') + (appState.onPageLoading ? 'is-loading' : '')) + '" id="fetchSelectedClusterOnPageBtn" ' + (!flags.selection || appState.onPageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.onPageLoading ? 'Fetching OnPage evidence...' : flags.onPage ? 'Refresh OnPage Evidence' : 'Fetch OnPage Evidence') + '</button>',
             progress: appState.onPageLoading
@@ -3365,16 +4829,64 @@ High-risk leverage</textarea>
               ? '<div class="inline-progress"><p>AI is assembling title, metadata, outline, FAQ, product insertion, gaps, risks, CTA, and source requirements.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
           },
+          longreadDraft: {
+            title: 'Longread Draft',
+            message: flags.finalBrief
+              ? 'AI writes the first full Markdown longread from the final SEO brief, product profile, claims policy, and brand voice.'
+              : 'Generate the final SEO brief first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.finalBrief ? 'primary ' : '') + (appState.longreadDraftLoading ? 'is-loading' : '')) + '" id="generateLongreadDraftBtn" ' + (!flags.finalBrief || appState.longreadDraftLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadDraftLoading ? 'Writing draft...' : flags.longreadDraft ? 'Refresh Draft Article' : 'Generate Draft Article') + '</button>',
+            progress: appState.longreadDraftLoading
+              ? '<div class="inline-progress"><p>AI is writing the full Markdown article from the approved brief.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          longreadCleanup: {
+            title: 'Safety + SEO Cleanup',
+            message: flags.longreadDraft
+              ? 'AI reviews and revises the draft for claims safety, SEO structure, tone, product insertion, and factual-check warnings.'
+              : 'Generate the draft article first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.longreadDraft ? 'primary ' : '') + (appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="cleanupLongreadArticleBtn" ' + (!flags.longreadDraft || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Cleaning article...' : flags.longreadCleanup ? 'Refresh Safety Cleanup' : 'Run Safety Cleanup') + '</button>',
+            progress: appState.longreadCleanupLoading
+              ? '<div class="inline-progress"><p>AI is revising the draft and checking compliance-sensitive claims.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          longreadPackage: {
+            title: 'Final Article Package',
+            message: flags.longreadCleanup
+              ? 'AI packages the reviewed article into CMS-ready JSON: article fields, SEO fields, product insertion, claims review, and checklist.'
+              : 'Run safety cleanup first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.longreadCleanup ? 'primary ' : '') + (appState.longreadPackageLoading ? 'is-loading' : '')) + '" id="packageLongreadArticleBtn" ' + (!flags.longreadCleanup || appState.longreadPackageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadPackageLoading ? 'Packaging article...' : flags.longreadPackage ? 'Refresh Final Package' : 'Create Final Package') + '</button>',
+            progress: appState.longreadPackageLoading
+              ? '<div class="inline-progress"><p>AI is creating the CMS-ready article package.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
+          longreadAdaptations: {
+            title: 'Dashboard Adaptations',
+            message: flags.longreadPackage
+              ? 'Create a normal dashboard article from the final longread package and generate channel adaptations using both the longread and SEO brief context.'
+              : 'Create the final article package first.',
+            button:
+              '<button type="button" class="' + escapeHtmlClient((flags.longreadPackage ? 'primary ' : '') + (appState.longreadAdaptationsLoading ? 'is-loading' : '')) + '" id="createLongreadAdaptationsBtn" ' + (!flags.longreadPackage || appState.longreadAdaptationsLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadAdaptationsLoading ? 'Creating adaptations...' : flags.longreadAdaptations ? 'Create Another Adaptation Set' : 'Create Dashboard Adaptations') + '</button>',
+            progress: appState.longreadAdaptationsLoading
+              ? '<div class="inline-progress"><p>Creating an editorial article and generating Telegram, X, Discord, and Blog adaptations from the longread plus SEO brief.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              : '',
+          },
         };
-        const current = actionByStep[step] || actionByStep.input;
-        return (
-          '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Step Action</div><h3>' + escapeHtmlClient(current.title) + '</h3></div><span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span></div>' +
-            '<p>' + escapeHtmlClient(current.message) + '</p>' +
-            (current.button ? '<div class="actions">' + current.button + '</div>' : '') +
-            current.progress +
-          '</section>'
-        );
+        const steps = SEO_STEP_GROUPS[step] || [step];
+        return steps.map((stepId, index) => {
+          const current = actionByStep[stepId] || actionByStep.input;
+          return (
+            '<section class="card full">' +
+              '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(steps.length > 1 ? 'Grouped Step Action' : 'Step Action') + '</div><h3>' + escapeHtmlClient(current.title) + '</h3></div>' + (index === 0 ? '<span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span>' : '') + '</div>' +
+              '<p>' + escapeHtmlClient(current.message) + '</p>' +
+              (current.details ? current.details : '') +
+              (current.button ? '<div class="actions">' + current.button + '</div>' : '') +
+              current.progress +
+            '</section>'
+          );
+        }).join('');
       }
 
       function renderInputStep(run) {
@@ -3391,7 +4903,7 @@ High-risk leverage</textarea>
               '<dt>Market</dt><dd>' + escapeHtmlClient(run.market.country + ' · ' + run.market.language) + '</dd>' +
               '<dt>AI Model</dt><dd>' + escapeHtmlClient(aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
               '<dt>Hypotheses / SERP Enrichment</dt><dd>' + escapeHtmlClient(String(inputPayload.hypothesesCount ?? '—') + ' / ' + String(inputPayload.serpEnrichmentCount ?? '—')) + '</dd>' +
-              '<dt>Competitor Keyword Map</dt><dd>' + escapeHtmlClient(inputPayload.competitorKeywordsJsonId || '—') + '</dd>' +
+              '<dt>Request Timeout</dt><dd>' + escapeHtmlClient(String(Math.round(Number(inputPayload.requestTimeoutMs ?? 300000) / 1000)) + ' sec') + '</dd>' +
               '<dt>Audience</dt><dd>' + escapeHtmlClient(run.audience || '—') + '</dd>' +
               '<dt>Product</dt><dd>' + escapeHtmlClient(run.product.name) + '</dd>' +
             '</dl>' +
@@ -3399,6 +4911,7 @@ High-risk leverage</textarea>
               '<div class="brand-memory-block"><h4>Manual User Pains</h4>' + renderMemoryList(manualPains, 'No manual user pains saved.') + '</div>' +
               '<div class="brand-memory-block"><h4>Manual User Scenarios</h4>' + renderMemoryList(manualScenarios, 'No manual user scenarios saved.') + '</div>' +
             '</div>' +
+            renderAiPromptInventory() +
           '</section>'
         );
       }
@@ -3409,6 +4922,10 @@ High-risk leverage</textarea>
             return flags.keywords
               ? '<section class="card full"><div class="section-head"><div class="stack"><div class="eyebrow">Output</div><h3>Search Hypotheses From Manual Input</h3></div></div>' + renderKeywordHypotheses(run) + '</section>'
               : '<section class="card full"><div class="empty">No keyword hypotheses generated yet.</div></section>';
+          case 'serpGroup':
+            return (flags.serp || flags.candidates)
+              ? renderFirstKeywordSerpPreview(run)
+              : '<section class="card full"><div class="empty">No SERP snapshots or SERP candidates saved yet.</div></section>';
           case 'serp':
             return flags.serp
               ? renderFirstKeywordSerpPreview(run)
@@ -3417,6 +4934,13 @@ High-risk leverage</textarea>
             return flags.candidates
               ? renderFirstKeywordSerpPreview(run)
               : '<section class="card full"><div class="empty">No SERP candidates extracted yet.</div></section>';
+          case 'competitionGroup':
+            return [
+              renderRankedKeywordsUniverse(run),
+              renderCompetitorKeywordMatches(run),
+              renderDirtyKeywordPool(run),
+              renderKeywordCandidateScoring(run),
+            ].join('');
           case 'rankedKeywords':
             return renderRankedKeywordsUniverse(run);
           case 'competitorMatching':
@@ -3425,18 +4949,42 @@ High-risk leverage</textarea>
             return renderDirtyKeywordPool(run);
           case 'candidateScoring':
             return renderKeywordCandidateScoring(run);
+          case 'clusterGroup':
+            return renderClusterDecisionTable(run);
           case 'clusters':
             return renderIntentClusters(run);
           case 'productFit':
             return renderClusterProductFitReview(run);
           case 'selection':
             return renderClusterSelection(run);
+          case 'onPageGroup':
+            return [
+              renderSelectedClusterOnPage(run),
+              renderOnPageSynthesis(run),
+            ].join('');
           case 'onPage':
             return renderSelectedClusterOnPage(run);
           case 'onPageSynthesis':
             return renderOnPageSynthesis(run);
           case 'finalBrief':
             return renderFinalSeoBrief(run);
+          case 'articleGroup':
+            return [
+              renderLongreadDraft(run),
+              renderLongreadCleanup(run),
+              renderLongreadPackage(run),
+              renderLongreadAdaptations(run),
+            ].join('');
+          case 'audit':
+            return renderRunAuditLog(run);
+          case 'longreadDraft':
+            return renderLongreadDraft(run);
+          case 'longreadCleanup':
+            return renderLongreadCleanup(run);
+          case 'longreadPackage':
+            return renderLongreadPackage(run);
+          case 'longreadAdaptations':
+            return renderLongreadAdaptations(run);
           default:
             return renderInputStep(run);
         }
@@ -3451,6 +4999,437 @@ High-risk leverage</textarea>
         showToast(successMessage);
         await loadRuns();
         await selectRun(runId, false);
+      }
+
+      const AUTO_FLOW_STEPS = [
+        {
+          label: 'Generating search hypotheses',
+          step: 'keywords',
+          loadingKey: 'keywordHypothesesLoading',
+          path: '/generate-keyword-hypotheses',
+          payload: {},
+        },
+        {
+          label: 'Fetching selected SERP snapshots',
+          step: 'serpGroup',
+          loadingKey: 'serpPreviewLoading',
+          path: '/preview-keyword-serps',
+          payload: {},
+        },
+        {
+          label: 'Extracting SERP candidates',
+          step: 'serpGroup',
+          loadingKey: 'serpDerivedCandidatesLoading',
+          path: '/extract-serp-derived-candidates',
+          payload: {},
+        },
+        {
+          label: 'Loading competitor keyword map from Brand Memory',
+          step: 'competitionGroup',
+          loadingKey: 'rankedKeywordsLoading',
+          path: '/build-competitor-keyword-map',
+          payload: {},
+        },
+        {
+          label: 'Matching candidates to competitor keyword evidence',
+          step: 'competitionGroup',
+          loadingKey: 'competitorMatchingLoading',
+          path: '/match-competitor-keywords',
+          payload: () => ({ mode: 'algorithmic' }),
+        },
+        {
+          label: 'Building dirty keyword pool',
+          step: 'competitionGroup',
+          loadingKey: 'dirtyKeywordPoolLoading',
+          path: '/build-dirty-keyword-pool',
+          payload: {},
+        },
+        {
+          label: 'Filtering and scoring candidates',
+          step: 'competitionGroup',
+          loadingKey: 'candidateScoringLoading',
+          path: '/score-keyword-candidates',
+          payload: {},
+        },
+        {
+          label: 'Building intent clusters',
+          step: 'clusterGroup',
+          loadingKey: 'keywordClusteringLoading',
+          path: '/cluster-keyword-candidates',
+          payload: {},
+        },
+        {
+          label: 'Reviewing cluster Product Fit',
+          step: 'clusterGroup',
+          loadingKey: 'clusterProductFitLoading',
+          path: '/review-cluster-product-fit',
+          payload: {},
+        },
+        {
+          label: 'Preparing ranked cluster choices',
+          step: 'clusterGroup',
+          loadingKey: 'clusterSelectionLoading',
+          path: '/select-seo-brief-clusters',
+          payload: {},
+        },
+      ];
+      const AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS = [
+        {
+          label: 'Fetching selected cluster OnPage evidence',
+          step: 'onPageGroup',
+          loadingKey: 'onPageLoading',
+          path: '/fetch-selected-cluster-onpage',
+          payload: {},
+        },
+        {
+          label: 'Synthesizing OnPage requirements',
+          step: 'onPageGroup',
+          loadingKey: 'onPageSynthesisLoading',
+          path: '/synthesize-onpage',
+          payload: {},
+        },
+        {
+          label: 'Generating final SEO brief',
+          step: 'finalBrief',
+          loadingKey: 'finalBriefLoading',
+          path: '/generate-final-brief',
+          payload: {},
+        },
+      ];
+
+      function getAutoFlowPayload(stepConfig) {
+        return typeof stepConfig.payload === 'function' ? stepConfig.payload() : stepConfig.payload || {};
+      }
+
+      function clearAutoFlowStepLoading() {
+        [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS].forEach((stepConfig) => {
+          appState[stepConfig.loadingKey] = false;
+        });
+      }
+
+      function renderAutoFlowProgress() {
+        if (!appState.autoFlowLoading) {
+          return '';
+        }
+        const total = appState.autoFlowTotal || AUTO_FLOW_STEPS.length;
+        const index = Math.min(total, Math.max(1, appState.autoFlowCurrentIndex || 1));
+        return (
+          '<section class="card full auto-flow-progress">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Auto Workflow</div><h3>' + escapeHtmlClient(appState.autoFlowTitle || 'Running workflow') + '</h3></div><span class="badge">' +
+              escapeHtmlClient(String(index) + ' / ' + String(total)) +
+            '</span></div>' +
+            '<strong>' + escapeHtmlClient(appState.autoFlowCurrentLabel || 'Preparing next step') + '</strong>' +
+            '<p>' + escapeHtmlClient(appState.autoFlowDescription || 'The UI is calling the same step endpoints automatically.') + '</p>' +
+            '<div class="progress-track"><div class="progress-bar"></div></div>' +
+          '</section>'
+        );
+      }
+
+      async function runAutoFlowSequence(runId, steps, config) {
+        appState.autoFlowLoading = true;
+        appState.autoFlowTitle = config.title;
+        appState.autoFlowDescription = config.description;
+        appState.autoFlowTotal = steps.length;
+        clearAutoFlowStepLoading();
+        showToast(config.startedToast || 'Auto workflow started');
+
+        try {
+          for (let index = 0; index < steps.length; index += 1) {
+            const stepConfig = steps[index];
+            clearAutoFlowStepLoading();
+            appState.autoFlowCurrentIndex = index + 1;
+            appState.autoFlowCurrentLabel = stepConfig.label;
+            appState.activeSeoStep = stepConfig.step;
+            appState[stepConfig.loadingKey] = true;
+            updateUrl(runId);
+            if (stepConfig.path === '/match-competitor-keywords') {
+              appState.competitorMatchingMode = 'algorithmic';
+            }
+            if (appState.selectedRun) {
+              renderDetail(appState.selectedRun);
+            }
+
+            await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(getAutoFlowPayload(stepConfig)),
+            });
+
+            appState[stepConfig.loadingKey] = false;
+            await loadRuns();
+            await selectRun(runId, false);
+          }
+
+          clearAutoFlowStepLoading();
+          appState.autoFlowLoading = false;
+          appState.autoFlowTitle = null;
+          appState.autoFlowDescription = null;
+          appState.autoFlowCurrentLabel = null;
+          appState.autoFlowCurrentIndex = 0;
+          appState.activeSeoStep = config.finalStep;
+          updateUrl(runId);
+          await loadRuns();
+          await selectRun(runId, false);
+          showToast(config.finishedToast || 'Auto workflow finished');
+        } catch (error) {
+          clearAutoFlowStepLoading();
+          appState.autoFlowLoading = false;
+          appState.autoFlowTitle = null;
+          appState.autoFlowDescription = null;
+          appState.autoFlowCurrentLabel = null;
+          appState.autoFlowCurrentIndex = 0;
+          try {
+            await loadRuns();
+            await selectRun(runId, false);
+          } catch (_refreshError) {
+            if (appState.selectedRun) {
+              renderDetail(appState.selectedRun);
+            }
+          }
+          showToast(error instanceof Error ? error.message : 'Auto workflow failed');
+        }
+      }
+
+      async function runAutoFlowUntilClusterSelection(runId) {
+        await runAutoFlowSequence(runId, AUTO_FLOW_STEPS, {
+          title: 'Running until manual topic choice',
+          description: 'The UI is calling the same step endpoints automatically. It will stop before OnPage, when you need to choose the cluster/topic manually.',
+          finalStep: 'clusterGroup',
+          startedToast: 'Auto workflow started',
+          finishedToast: 'Auto workflow stopped at manual topic selection',
+        });
+      }
+
+      async function runAutoFlowToFinalBrief(runId) {
+        await runAutoFlowSequence(runId, AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS, {
+          title: 'Running from selected topic to final brief',
+          description: 'The UI will fetch selected-cluster OnPage evidence, synthesize requirements, and generate the final SEO brief.',
+          finalStep: 'finalBrief',
+          startedToast: 'Auto workflow resumed after topic selection',
+          finishedToast: 'Final SEO brief generated automatically',
+        });
+      }
+
+      function renderCostReceipt(run) {
+        const metrics = run.metrics || {};
+        const rows = Array.isArray(metrics.costBreakdownByStep)
+          ? metrics.costBreakdownByStep
+          : [];
+        const totalLlmCost = Number(metrics.totalLlmCost || 0);
+        const totalExternalCost = Number(metrics.totalExternalCost || 0);
+        const totalCost = Number(metrics.totalCost || 0);
+        const hasAnyCostData = rows.length > 0 || metrics.llmCallCount || metrics.externalCallCount;
+
+        if (!hasAnyCostData) {
+          return (
+            '<details class="card full cost-receipt">' +
+              '<summary><div class="section-head"><div class="stack"><div class="eyebrow">Cost Receipt</div><h3>Run Cost</h3></div><span class="badge">No calls yet</span></div></summary>' +
+              '<div class="empty">No DeepSeek or DataForSEO calls have been logged for this run yet.</div>' +
+            '</details>'
+          );
+        }
+
+        return (
+          '<details class="card full cost-receipt" open>' +
+            '<summary><div class="section-head"><div class="stack"><div class="eyebrow">Cost Receipt</div><h3>DeepSeek + DataForSEO Check</h3></div><span class="badge">' + escapeHtmlClient(formatMoney(totalCost)) + '</span></div></summary>' +
+            '<div class="cost-summary-grid">' +
+              '<article><strong>' + escapeHtmlClient(formatMoney(totalLlmCost)) + '</strong><span>DeepSeek total</span></article>' +
+              '<article><strong>' + escapeHtmlClient(formatMoney(totalExternalCost)) + '</strong><span>DataForSEO total</span></article>' +
+              '<article><strong>' + escapeHtmlClient(formatMoney(totalCost)) + '</strong><span>Total</span></article>' +
+              '<article><strong>' + escapeHtmlClient(String((metrics.llmCallCount || 0) + (metrics.externalCallCount || 0))) + '</strong><span>Logged calls</span></article>' +
+            '</div>' +
+            '<div class="cost-rows">' +
+              rows.map((row, index) => renderCostReceiptRow(row, index)).join('') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderCostReceiptRow(row, index) {
+        const operationText = [
+          ...(Array.isArray(row.llmOperations) ? row.llmOperations.map((item) => 'AI: ' + item) : []),
+          ...(Array.isArray(row.externalEndpoints) ? row.externalEndpoints.map((item) => 'DFSEO: ' + item) : []),
+        ].join(' · ') || 'No operation metadata';
+        const callsText =
+          String(row.llmCallCount || 0) + ' AI' +
+          ' / ' +
+          String(row.externalCallCount || 0) + ' DFSEO' +
+          (row.cacheHitCount ? ' · ' + String(row.cacheHitCount) + ' cache hits' : '');
+
+        return (
+          '<div class="cost-row">' +
+            '<div><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + getStageLabel(row.stage)) + '</strong><small>' + escapeHtmlClient(callsText) + '</small></div>' +
+            '<div><strong>' + escapeHtmlClient(formatMoney(row.llmCost || 0)) + '</strong><small>DeepSeek</small></div>' +
+            '<div><strong>' + escapeHtmlClient(formatMoney(row.externalCost || 0)) + '</strong><small>DataForSEO</small></div>' +
+            '<div><strong>' + escapeHtmlClient(formatMoney(row.totalCost || 0)) + '</strong><small>Total</small></div>' +
+            '<div><code>' + escapeHtmlClient(operationText) + '</code></div>' +
+          '</div>'
+        );
+      }
+
+      function getStageLabel(stage) {
+        const labels = {
+          created: 'Input',
+          keyword_expansion: 'Keywords / SERP candidates',
+          keyword_research: 'Competitor keywords / Matching / Dirty pool',
+          related_keyword_research: 'Related queries',
+          serp_research: 'SERP domains',
+          domain_metrics_research: 'Domain metrics',
+          onpage_research: 'OnPage evidence',
+          keyword_triage: 'Filtering',
+          clustering: 'Clusters',
+          cluster_scoring: 'Product Fit',
+          cluster_selection: 'Selection',
+          brief_generation: 'Brief / Article generation',
+        };
+        return labels[stage] || 'Run-level call';
+      }
+
+      function formatMoney(value) {
+        const numberValue = Number(value || 0);
+        if (!Number.isFinite(numberValue)) return '$0.000000';
+        return '$' + numberValue.toFixed(6);
+      }
+
+      function formatDurationMs(startedAt, finishedAt) {
+        if (!startedAt) return '—';
+        const started = new Date(startedAt).getTime();
+        const finished = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+        if (!Number.isFinite(started) || !Number.isFinite(finished)) return '—';
+        const ms = Math.max(0, finished - started);
+        if (ms < 1000) return String(ms) + 'ms';
+        if (ms < 60000) return String((ms / 1000).toFixed(1)) + 's';
+        return String((ms / 60000).toFixed(1)) + 'm';
+      }
+
+      function renderRunAuditLog(run) {
+        const steps = Array.isArray(run.steps) ? run.steps : [];
+        const artifacts = Array.isArray(run.artifacts) ? run.artifacts : [];
+        const llmCalls = Array.isArray(run.llmCalls) ? run.llmCalls : [];
+        const externalCalls = Array.isArray(run.externalCalls) ? run.externalCalls : [];
+        const scoreLogs = Array.isArray(run.scoreLogs) ? run.scoreLogs : [];
+        const failedSteps = steps.filter((step) => step.status === 'failed').length;
+        const failedLlmCalls = llmCalls.filter((call) => call.status === 'failed').length;
+        const failedExternalCalls = externalCalls.filter((call) => call.status === 'failed').length;
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Audit Store</div><h3>Run Attempts & Snapshots</h3></div><span class="badge">' + escapeHtmlClient(String(steps.length) + ' attempts') + '</span></div>' +
+            '<p>Saved history for this run: successful and failed step attempts, artifacts, AI calls, DataForSEO calls, and score snapshots.</p>' +
+            '<div class="metric-grid compact">' +
+              '<div><strong>' + escapeHtmlClient(String(steps.length)) + '</strong><span>Step attempts</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(artifacts.length)) + '</strong><span>Artifacts</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(llmCalls.length)) + '</strong><span>DeepSeek calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(externalCalls.length)) + '</strong><span>DataForSEO calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(scoreLogs.length)) + '</strong><span>Score logs</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(failedSteps + failedLlmCalls + failedExternalCalls)) + '</strong><span>Failures</span></div>' +
+            '</div>' +
+            '<div class="audit-grid">' +
+              renderAuditStepAttempts(steps) +
+              renderAuditArtifacts(artifacts) +
+              renderAuditLlmCalls(llmCalls) +
+              renderAuditExternalCalls(externalCalls) +
+              renderAuditScoreLogs(scoreLogs) +
+            '</div>' +
+          '</section>'
+        );
+      }
+
+      function renderAuditSection(title, count, rows, open) {
+        return (
+          '<details class="audit-section" ' + (open ? 'open' : '') + '>' +
+            '<summary>' + escapeHtmlClient(title + ' · ' + String(count)) + '</summary>' +
+            '<div class="audit-section-body">' +
+              (rows || '<div class="empty">No records saved.</div>') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function renderAuditStepAttempts(steps) {
+        const rows = steps.map((step, index) => {
+          const failed = step.status === 'failed';
+          return (
+            '<article class="audit-row ' + escapeHtmlClient(failed ? 'is-failed' : '') + '">' +
+              '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + getStageLabel(step.stage)) + '</strong><span class="badge ' + statusClass(step.status) + '">' + escapeHtmlClient(step.status) + '</span></div>' +
+              '<div class="inline-meta">' +
+                '<span>attempt ' + escapeHtmlClient(step.attemptNumber) + '</span>' +
+                '<span>' + escapeHtmlClient(prettyDate(step.startedAt)) + '</span>' +
+                '<span>' + escapeHtmlClient(formatDurationMs(step.startedAt, step.finishedAt)) + '</span>' +
+                '<span class="mono">' + escapeHtmlClient(step.id) + '</span>' +
+              '</div>' +
+              (step.errorMessage ? '<p class="muted">Error: ' + escapeHtmlClient(step.errorMessage) + '</p>' : '') +
+            '</article>'
+          );
+        }).join('');
+        return renderAuditSection('Step attempts', steps.length, rows, true);
+      }
+
+      function renderAuditArtifacts(artifacts) {
+        const rows = artifacts.map((artifact, index) => (
+          '<article class="audit-row">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + artifact.artifactType) + '</strong><span>' + escapeHtmlClient(getStageLabel(artifact.stage)) + '</span></div>' +
+            '<div class="inline-meta">' +
+              '<span>attempt ' + escapeHtmlClient(artifact.attempt) + '</span>' +
+              '<span>' + escapeHtmlClient(prettyDate(artifact.createdAt)) + '</span>' +
+              '<span class="mono">' + escapeHtmlClient(artifact.id) + '</span>' +
+            '</div>' +
+            '<details><summary>Payload</summary><pre>' + escapeHtmlClient(prettyJson(artifact.payload)) + '</pre></details>' +
+          '</article>'
+        )).join('');
+        return renderAuditSection('Artifact snapshots', artifacts.length, rows, false);
+      }
+
+      function renderAuditLlmCalls(calls) {
+        const rows = calls.map((call, index) => {
+          const failed = call.status === 'failed';
+          return (
+            '<article class="audit-row ' + escapeHtmlClient(failed ? 'is-failed' : '') + '">' +
+              '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + call.operation) + '</strong><span class="badge ' + statusClass(call.status) + '">' + escapeHtmlClient(call.status) + '</span></div>' +
+              '<div class="inline-meta">' +
+                '<span>' + escapeHtmlClient(call.model) + '</span>' +
+                '<span>' + escapeHtmlClient(call.promptVersion) + '</span>' +
+                '<span>' + escapeHtmlClient(formatMoney(call.estimatedCost || 0)) + '</span>' +
+                '<span>tokens ' + escapeHtmlClient(String(call.tokenUsageInput ?? '—') + ' / ' + String(call.tokenUsageOutput ?? '—')) + '</span>' +
+                '<span>' + escapeHtmlClient(formatDurationMs(call.startedAt, call.finishedAt)) + '</span>' +
+              '</div>' +
+              (call.errorMessage ? '<p class="muted">Error: ' + escapeHtmlClient(call.errorMessage) + '</p>' : '') +
+              '<details><summary>Request / response</summary><pre>' + escapeHtmlClient(prettyJson({ request: call.requestPayload, response: call.responsePayload })) + '</pre></details>' +
+            '</article>'
+          );
+        }).join('');
+        return renderAuditSection('DeepSeek calls', calls.length, rows, calls.some((call) => call.status === 'failed'));
+      }
+
+      function renderAuditExternalCalls(calls) {
+        const rows = calls.map((call, index) => {
+          const failed = call.status === 'failed';
+          return (
+            '<article class="audit-row ' + escapeHtmlClient(failed ? 'is-failed' : '') + '">' +
+              '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + call.provider) + '</strong><span class="badge ' + statusClass(call.status) + '">' + escapeHtmlClient(call.status) + '</span></div>' +
+              '<div class="inline-meta">' +
+                '<span class="mono">' + escapeHtmlClient(call.endpoint) + '</span>' +
+                '<span>' + escapeHtmlClient(formatMoney(call.estimatedCost || 0)) + '</span>' +
+                '<span>' + escapeHtmlClient(call.cacheHit ? 'cache hit' : 'live') + '</span>' +
+                '<span>' + escapeHtmlClient(formatDurationMs(call.startedAt, call.finishedAt)) + '</span>' +
+              '</div>' +
+              (call.errorMessage ? '<p class="muted">Error: ' + escapeHtmlClient(call.errorMessage) + '</p>' : '') +
+              '<details><summary>Request / response</summary><pre>' + escapeHtmlClient(prettyJson({ request: call.requestPayload, response: call.responsePayload })) + '</pre></details>' +
+            '</article>'
+          );
+        }).join('');
+        return renderAuditSection('DataForSEO / external calls', calls.length, rows, calls.some((call) => call.status === 'failed'));
+      }
+
+      function renderAuditScoreLogs(logs) {
+        const rows = logs.map((log, index) => (
+          '<article class="audit-row">' +
+            '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + log.formulaName) + '</strong><span>' + escapeHtmlClient(prettyDate(log.createdAt)) + '</span></div>' +
+            '<div class="inline-meta"><span class="mono">' + escapeHtmlClient(log.id) + '</span>' + (log.stepId ? '<span class="mono">' + escapeHtmlClient(log.stepId) + '</span>' : '') + '</div>' +
+            '<details><summary>Input / result</summary><pre>' + escapeHtmlClient(prettyJson({ input: log.inputPayload, result: log.resultPayload })) + '</pre></details>' +
+          '</article>'
+        )).join('');
+        return renderAuditSection('Score logs', logs.length, rows, false);
       }
 
       function renderDetail(run) {
@@ -3473,13 +5452,29 @@ High-risk leverage</textarea>
           '</section>' +
 
           renderStepTabs(manualStepFlags) +
+          renderAutoFlowProgress() +
           renderStepActionCard(run, manualStepFlags) +
-          renderActiveStepContent(run, manualStepFlags);
+          renderActiveStepContent(run, manualStepFlags) +
+          renderCostReceipt(run);
 
         bindDetailActions(run);
       }
 
       function bindDetailActions(run) {
+        document.querySelectorAll('[data-cluster-detail-id]').forEach((node) => {
+          node.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target instanceof HTMLElement && target.closest('.select-cluster-topic-btn')) return;
+            const templateId = node.getAttribute('data-cluster-detail-id');
+            if (templateId) openClusterDetailModal(templateId);
+          });
+        });
+        qs('clusterDetailModalClose')?.addEventListener('click', closeClusterDetailModal);
+        qs('clusterDetailModal')?.addEventListener('click', (event) => {
+          if (event.target === qs('clusterDetailModal')) {
+            closeClusterDetailModal();
+          }
+        });
         document.querySelectorAll('[data-seo-step]').forEach((node) => {
           node.addEventListener('click', () => {
             const nextStep = node.getAttribute('data-seo-step');
@@ -3506,9 +5501,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Keyword hypotheses generated from user pains');
-            await loadRuns();
             appState.keywordHypothesesLoading = false;
             appState.activeSeoStep = 'keywords';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.keywordHypothesesLoading = false;
@@ -3535,9 +5530,9 @@ High-risk leverage</textarea>
               body: JSON.stringify({}),
             });
             showToast('SERP snapshots saved for selected hypotheses');
-            await loadRuns();
             appState.serpPreviewLoading = false;
             appState.activeSeoStep = 'serp';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.serpPreviewLoading = false;
@@ -3561,9 +5556,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('SERP-derived candidates extracted');
-            await loadRuns();
             appState.serpDerivedCandidatesLoading = false;
             appState.activeSeoStep = 'candidates';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.serpDerivedCandidatesLoading = false;
@@ -3589,9 +5584,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Competitor keyword map built');
-            await loadRuns();
             appState.rankedKeywordsLoading = false;
             appState.activeSeoStep = 'rankedKeywords';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.rankedKeywordsLoading = false;
@@ -3601,10 +5596,15 @@ High-risk leverage</textarea>
             );
           }
         });
-        qs('matchCompetitorKeywordsBtn')?.addEventListener('click', async () => {
+        const runCompetitorKeywordMatching = async (mode) => {
           if (appState.competitorMatchingLoading) return;
+          const normalizedMode = mode === 'ai' ? 'ai' : 'algorithmic';
+          appState.competitorMatchingMode = normalizedMode;
           appState.competitorMatchingLoading = true;
           renderDetail(run);
+          if (normalizedMode === 'ai') {
+            startCompetitorMatchingProgressPolling(run.id);
+          }
           try {
             await fetchJson(
               '/seo-briefing/runs/' +
@@ -3613,21 +5613,35 @@ High-risk leverage</textarea>
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ mode: normalizedMode }),
               },
             );
-            showToast('Competitor keyword matching saved');
-            await loadRuns();
+            showToast(normalizedMode === 'ai' ? 'AI competitor keyword evaluation saved' : 'Competitor keyword matching saved');
             appState.competitorMatchingLoading = false;
+            stopCompetitorMatchingProgressPolling();
             appState.activeSeoStep = 'competitorMatching';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.competitorMatchingLoading = false;
-            renderDetail(run);
+            stopCompetitorMatchingProgressPolling();
+            try {
+              const latestRun = await fetchJson('/seo-briefing/runs/' + encodeURIComponent(run.id));
+              appState.selectedRun = latestRun;
+              renderDetail(latestRun);
+            } catch {
+              renderDetail(run);
+            }
             showToast(
               error instanceof Error ? error.message : 'Failed to match competitor keywords',
             );
           }
+        };
+        qs('matchCompetitorKeywordsAlgorithmicBtn')?.addEventListener('click', () => {
+          void runCompetitorKeywordMatching('algorithmic');
+        });
+        qs('matchCompetitorKeywordsAiBtn')?.addEventListener('click', () => {
+          void runCompetitorKeywordMatching('ai');
         });
         qs('buildDirtyKeywordPoolBtn')?.addEventListener('click', async () => {
           if (appState.dirtyKeywordPoolLoading) return;
@@ -3645,9 +5659,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Dirty keyword pool built');
-            await loadRuns();
             appState.dirtyKeywordPoolLoading = false;
             appState.activeSeoStep = 'dirtyPool';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.dirtyKeywordPoolLoading = false;
@@ -3673,9 +5687,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Keyword candidates filtered and scored');
-            await loadRuns();
             appState.candidateScoringLoading = false;
             appState.activeSeoStep = 'candidateScoring';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.candidateScoringLoading = false;
@@ -3701,9 +5715,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Intent clusters built');
-            await loadRuns();
             appState.keywordClusteringLoading = false;
             appState.activeSeoStep = 'clusters';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.keywordClusteringLoading = false;
@@ -3729,9 +5743,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Cluster Product Fit review saved');
-            await loadRuns();
             appState.clusterProductFitLoading = false;
             appState.activeSeoStep = 'productFit';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.clusterProductFitLoading = false;
@@ -3756,10 +5770,10 @@ High-risk leverage</textarea>
                 body: JSON.stringify({}),
               },
             );
-            showToast('Main and supporting clusters selected');
-            await loadRuns();
+            showToast('Ranked cluster choices prepared');
             appState.clusterSelectionLoading = false;
             appState.activeSeoStep = 'selection';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.clusterSelectionLoading = false;
@@ -3768,6 +5782,41 @@ High-risk leverage</textarea>
               error instanceof Error ? error.message : 'Failed to select SEO brief clusters',
             );
           }
+        });
+        document.querySelectorAll('.select-cluster-topic-btn').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            if (appState.clusterSelectionLoading) return;
+            const selectedClusterName = button.getAttribute('data-cluster-name');
+            if (!selectedClusterName) return;
+            const shouldContinueAutomatically = shouldAutoContinueAfterClusterSelection(run);
+            appState.clusterSelectionLoading = true;
+            renderDetail(run);
+            try {
+              await fetchJson(
+                '/seo-briefing/runs/' +
+                  encodeURIComponent(run.id) +
+                  '/select-seo-brief-clusters',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ selectedClusterName }),
+                },
+              );
+              showToast('Main topic selected');
+              appState.clusterSelectionLoading = false;
+              appState.activeSeoStep = shouldContinueAutomatically ? 'onPageGroup' : 'selection';
+              await loadRuns();
+              await selectRun(run.id, false);
+              if (shouldContinueAutomatically) {
+                void runAutoFlowToFinalBrief(run.id);
+              }
+            } catch (error) {
+              appState.clusterSelectionLoading = false;
+              renderDetail(run);
+              showToast(error instanceof Error ? error.message : 'Failed to select main topic');
+            }
+          });
         });
         qs('fetchSelectedClusterOnPageBtn')?.addEventListener('click', async () => {
           if (appState.onPageLoading) return;
@@ -3785,9 +5834,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Selected cluster OnPage evidence saved');
-            await loadRuns();
             appState.onPageLoading = false;
             appState.activeSeoStep = 'onPage';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.onPageLoading = false;
@@ -3813,9 +5862,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('OnPage synthesis saved');
-            await loadRuns();
             appState.onPageSynthesisLoading = false;
             appState.activeSeoStep = 'onPageSynthesis';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.onPageSynthesisLoading = false;
@@ -3841,9 +5890,9 @@ High-risk leverage</textarea>
               },
             );
             showToast('Final SEO brief generated');
-            await loadRuns();
             appState.finalBriefLoading = false;
             appState.activeSeoStep = 'finalBrief';
+            await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.finalBriefLoading = false;
@@ -3852,6 +5901,218 @@ High-risk leverage</textarea>
               error instanceof Error ? error.message : 'Failed to generate final SEO brief',
             );
           }
+        });
+        qs('saveFinalBriefEditBtn')?.addEventListener('click', async () => {
+          if (appState.finalBriefEditLoading) return;
+          const textarea = qs('finalBriefEditPayload');
+          let briefPayload;
+          try {
+            briefPayload = JSON.parse(textarea?.value || '');
+          } catch (error) {
+            showToast('Final brief JSON is invalid');
+            return;
+          }
+
+          appState.finalBriefEditLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/final-brief/manual-edit',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ briefPayload }),
+              },
+            );
+            showToast('Manual final brief edit saved');
+            appState.finalBriefEditLoading = false;
+            appState.activeSeoStep = 'finalBrief';
+            await loadRuns();
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.finalBriefEditLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to save final brief edit',
+            );
+          }
+        });
+        qs('generateLongreadDraftBtn')?.addEventListener('click', async () => {
+          if (appState.longreadDraftLoading) return;
+          appState.longreadDraftLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/generate-longread-draft',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Longread draft generated');
+            appState.longreadDraftLoading = false;
+            appState.activeSeoStep = 'longreadDraft';
+            await loadRuns();
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.longreadDraftLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to generate longread draft',
+            );
+          }
+        });
+        qs('cleanupLongreadArticleBtn')?.addEventListener('click', async () => {
+          if (appState.longreadCleanupLoading) return;
+          appState.longreadCleanupLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/cleanup-longread-article',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Longread safety cleanup saved');
+            appState.longreadCleanupLoading = false;
+            appState.activeSeoStep = 'longreadCleanup';
+            await loadRuns();
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.longreadCleanupLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to cleanup longread article',
+            );
+          }
+        });
+        qs('packageLongreadArticleBtn')?.addEventListener('click', async () => {
+          if (appState.longreadPackageLoading) return;
+          appState.longreadPackageLoading = true;
+          renderDetail(run);
+          try {
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/package-longread-article',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Final article package created');
+            appState.longreadPackageLoading = false;
+            appState.activeSeoStep = 'longreadPackage';
+            await loadRuns();
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.longreadPackageLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to package longread article',
+            );
+          }
+        });
+        qs('createLongreadAdaptationsBtn')?.addEventListener('click', async () => {
+          if (appState.longreadAdaptationsLoading) return;
+          appState.longreadAdaptationsLoading = true;
+          renderDetail(run);
+          try {
+            const result = await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/create-longread-adaptations',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Dashboard adaptations created for article ' + (result.articleId || ''));
+            appState.longreadAdaptationsLoading = false;
+            appState.activeSeoStep = 'articleGroup';
+            await loadRuns();
+            await selectRun(run.id, false);
+          } catch (error) {
+            appState.longreadAdaptationsLoading = false;
+            renderDetail(run);
+            showToast(
+              error instanceof Error ? error.message : 'Failed to create dashboard adaptations',
+            );
+          }
+        });
+        document.querySelectorAll('[data-schedule-longread-adaptation]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const row = button.closest('[data-adaptation-schedule-row]');
+            if (!row || appState.longreadPublicationLoadingId) return;
+            const articleId = row.getAttribute('data-article-id') || '';
+            const adaptationId = row.getAttribute('data-adaptation-id') || '';
+            const channelId = row.getAttribute('data-channel-id') || '';
+            const language = row.querySelector('[data-adaptation-language]')?.value?.trim() || 'en';
+            const publishAtValue = row.querySelector('[data-adaptation-publish-at]')?.value || '';
+            const publishAt = new Date(publishAtValue);
+
+            if (!articleId || !adaptationId || !channelId) {
+              showToast('Missing article, adaptation, or channel id');
+              return;
+            }
+            if (Number.isNaN(publishAt.getTime())) {
+              showToast('Choose a valid publication date and time');
+              return;
+            }
+            if (publishAt.getTime() <= Date.now()) {
+              showToast('Publication time must be in the future');
+              return;
+            }
+
+            appState.longreadPublicationLoadingId = adaptationId;
+            renderDetail(run);
+            try {
+              const normalizedChannelId = normalizePublicationChannelId(channelId);
+              const payload = {
+                articleId,
+                adaptationId,
+                targetLanguage: normalizeTargetLanguage(language),
+                publishAt: publishAt.toISOString(),
+              };
+
+              await fetchJson('/publishing/plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  articleId,
+                  channelId: normalizedChannelId,
+                  targetLanguage: payload.targetLanguage,
+                  publishAt: payload.publishAt,
+                }),
+              });
+
+              await fetchJson(publishingScheduleEndpoint(normalizedChannelId), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+
+              showToast('Adaptation scheduled and sent to dashboard');
+              appState.longreadPublicationLoadingId = null;
+              await loadRuns();
+              await selectRun(run.id, false);
+            } catch (error) {
+              appState.longreadPublicationLoadingId = null;
+              renderDetail(run);
+              showToast(error instanceof Error ? error.message : 'Failed to schedule adaptation');
+            }
+          });
         });
       }
 
@@ -3874,10 +6135,27 @@ High-risk leverage</textarea>
         appState.serpDerivedCandidatesLoading = false;
         appState.rankedKeywordsLoading = false;
         appState.competitorMatchingLoading = false;
+        stopCompetitorMatchingProgressPolling();
         appState.dirtyKeywordPoolLoading = false;
         appState.candidateScoringLoading = false;
         appState.keywordClusteringLoading = false;
         appState.clusterProductFitLoading = false;
+        appState.clusterSelectionLoading = false;
+        appState.onPageLoading = false;
+        appState.onPageSynthesisLoading = false;
+        appState.finalBriefLoading = false;
+        appState.finalBriefEditLoading = false;
+        appState.longreadDraftLoading = false;
+        appState.longreadCleanupLoading = false;
+        appState.longreadPackageLoading = false;
+        appState.longreadAdaptationsLoading = false;
+        appState.autoFlowLoading = false;
+        appState.autoFlowTitle = null;
+        appState.autoFlowDescription = null;
+        appState.autoFlowCurrentLabel = null;
+        appState.autoFlowCurrentIndex = 0;
+        appState.autoFlowTotal = 0;
+        clearAutoFlowStepLoading();
         appState.activeSeoStep = 'input';
         syncRunPolling(null);
         updateUrl(null);
@@ -3892,13 +6170,17 @@ High-risk leverage</textarea>
         const launchBtn = qs('launchBtn');
         launchBtn.disabled = true;
         try {
+          const workflowMode = qs('workflowMode')?.value === 'auto_until_selection'
+            ? 'auto_until_selection'
+            : 'manual';
           const payload = {
             projectId: qs('projectId').value || null,
             aiModelMode: qs('aiModelMode').value,
+            workflowMode,
             topicHint: qs('topicHint').value,
             hypothesesCount: Number(qs('hypothesesCount').value || '10'),
             serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
-            competitorKeywordsJsonId: qs('competitorKeywordsJsonId').value || null,
+            requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
             market: {
               country: qs('country').value,
               language: qs('language').value,
@@ -3912,11 +6194,6 @@ High-risk leverage</textarea>
               description: qs('productDescription').value,
             },
             keyMessage: qs('keyMessage').value || null,
-            knownCompetitors: {
-              mustInclude: parseListInput('knownCompetitorsMustInclude'),
-              optional: parseListInput('knownCompetitorsOptional'),
-              exclude: parseListInput('knownCompetitorsExclude'),
-            },
             brandConstraints: parseListInput('brandConstraints'),
             claimsConstraints: parseListInput('claimsConstraints'),
             preferredAngle: qs('preferredAngle').value || null,
@@ -3938,9 +6215,19 @@ High-risk leverage</textarea>
           });
           appState.selectedRunId = result.runId;
           appState.activeSeoStep = 'keywords';
-          showToast(result.deduplicated ? 'Reused recent run: ' + result.runId : 'Run created. Generate search hypotheses next.');
+          setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
+          showToast(
+            workflowMode === 'auto_until_selection'
+              ? 'Run created. Auto workflow will start now.'
+              : result.deduplicated
+                ? 'Reused recent run: ' + result.runId
+                : 'Run created. Generate search hypotheses next.',
+          );
           await loadRuns();
           await selectRun(result.runId);
+          if (workflowMode === 'auto_until_selection') {
+            void runAutoFlowUntilClusterSelection(result.runId);
+          }
         } catch (error) {
           showToast(error instanceof Error ? error.message : 'Failed to create run');
         } finally {
@@ -3958,6 +6245,24 @@ High-risk leverage</textarea>
         qs('balanceSlider')?.addEventListener('input', syncBalanceSlider);
         document.querySelectorAll('input[name="inputMode"]').forEach((input) => {
           input.addEventListener('change', syncInputMode);
+        });
+        document.querySelectorAll('input[name="aiModelModeChoice"]').forEach((input) => {
+          input.addEventListener('change', syncAiModelMode);
+        });
+        document.querySelectorAll('[data-workflow-mode-option]').forEach((option) => {
+          option.addEventListener('click', () => {
+            const value = option.getAttribute('data-workflow-mode-option') === 'auto_until_selection'
+              ? 'auto_until_selection'
+              : 'manual';
+            const input = document.querySelector('input[name="workflowModeChoice"][value="' + value + '"]');
+            if (input) {
+              input.checked = true;
+            }
+            syncWorkflowMode();
+          });
+        });
+        document.querySelectorAll('input[name="workflowModeChoice"]').forEach((input) => {
+          input.addEventListener('change', syncWorkflowMode);
         });
         qs('extractBriefTextBtn')?.addEventListener('click', async () => {
           try {
@@ -3979,14 +6284,27 @@ High-risk leverage</textarea>
             showToast(error instanceof Error ? error.message : 'Failed to extract file context');
           }
         });
-        qs('fillFromBrandMemoryBtn')?.addEventListener('click', fillFromBrandMemory);
+        qs('projectId')?.addEventListener('change', () => {
+          fillFromBrandMemory({ silent: true }).catch(() => undefined);
+        });
+        qs('fillFromBrandMemoryBtn')?.addEventListener('click', () => {
+          fillFromBrandMemory().catch((error) => {
+            showToast(error instanceof Error ? error.message : 'Failed to load Brand Memory');
+          });
+        });
       }
 
       async function boot() {
         bindLaunchFormActions();
+        renderLaunchPromptInventory();
         qs('startNewRunBtn').addEventListener('click', startNewRun);
+        qs('runLibraryBtn')?.addEventListener('click', () => {
+          setRunLibraryOpen(Boolean(qs('runLibraryPanel')?.hidden));
+        });
         syncBalanceSlider();
         syncInputMode();
+        syncAiModelMode();
+        syncWorkflowMode();
         qs('refreshAllBtn').addEventListener('click', async () => {
           await loadRuns();
           if (appState.selectedRunId) {

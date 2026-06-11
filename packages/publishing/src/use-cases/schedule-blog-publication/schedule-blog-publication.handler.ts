@@ -28,7 +28,8 @@ export class ScheduleBlogPublicationHandler
       throw new Error(`Adaptation ${command.adaptationId} not found in article ${command.articleId}`);
     }
 
-    if (adaptation.channelId !== 'channel_blog') {
+    const channelId = normalizeScheduledChannelId(adaptation.channelId);
+    if (channelId !== 'channel_blog') {
       throw new Error(
         `Adaptation ${adaptation.id} belongs to ${adaptation.channelId} and cannot be scheduled for Blog`,
       );
@@ -39,7 +40,7 @@ export class ScheduleBlogPublicationHandler
     const existing = await this.publicationRepository.findByLogicalKey(
       command.articleId,
       adaptation.id,
-      adaptation.channelId,
+      channelId,
       targetLanguage,
     );
 
@@ -53,7 +54,7 @@ export class ScheduleBlogPublicationHandler
     const publication = Publication.create({
       articleId: command.articleId,
       adaptationId: adaptation.id,
-      channelId: adaptation.channelId,
+      channelId,
       displayName: adaptation.displayName,
       targetLanguage,
       publishAt: command.publishAt,
@@ -76,4 +77,8 @@ export class ScheduleBlogPublicationHandler
       errorMessage: publication.errorMessage,
     });
   }
+}
+
+function normalizeScheduledChannelId(channelId: string): 'channel_blog' | string {
+  return channelId === 'blog' ? 'channel_blog' : channelId;
 }
