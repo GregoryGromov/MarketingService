@@ -1,16 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type GetDomainMetricsParams,
-  type GetKeywordSuggestionsParams,
-  type GetOnPageParseParams,
-  type GetOrganicSerpParams,
-  type GetOrganicSerpSnapshotParams,
-  type GetRankedKeywordsParams,
-  type GetSearchVolumeParams,
-  SeoBriefArtifact,
-  SeoBriefRun,
-  SeoResearchPort,
-} from '../../index.js';
+import { SeoBriefRun } from '../../index.js';
 import {
   InMemorySeoBriefArtifactRepository,
   InMemorySeoBriefRunRepository,
@@ -18,83 +7,7 @@ import {
 import { BuildCompetitorKeywordMapCommand } from './build-competitor-keyword-map.command.js';
 import { BuildCompetitorKeywordMapHandler } from './build-competitor-keyword-map.handler.js';
 
-class FakeSeoResearchPort extends SeoResearchPort {
-  rankedKeywordCalls: GetRankedKeywordsParams[] = [];
-
-  getDomainMetrics(_params: GetDomainMetricsParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-
-  getKeywordSuggestions(_params: GetKeywordSuggestionsParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-
-  getOnPageParse(_params: GetOnPageParseParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-
-  getOrganicSerp(_params: GetOrganicSerpParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-
-  getOrganicSerpSnapshot(_params: GetOrganicSerpSnapshotParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-
-  async getRankedKeywords(params: GetRankedKeywordsParams) {
-    this.rankedKeywordCalls.push(params);
-
-    return {
-      provider: 'dataforseo' as const,
-      target: params.target,
-      market: params.market,
-      totalCount: 100,
-      itemsCount: 1,
-      metrics: {
-        organicPos1: 1,
-        organicPos2To3: 4,
-        organicPos4To10: 9,
-        organicEtv: 42,
-      },
-      rawResponse: {
-        target: params.target,
-      },
-      items: [
-        {
-          text: `earn usdt with ${params.target}`,
-          type: 'keyword' as const,
-          source: 'ranked_keywords' as const,
-          sourceDomain: params.target,
-          metrics: {
-            searchVolume: params.target === 'binance.com' ? 500 : 180,
-            searchVolumeSource: 'ranked_keywords' as const,
-            keywordDifficulty: 12,
-            cpc: 1.2,
-            competitionLevel: 'LOW',
-            intent: 'commercial',
-            monthlySearches: [],
-          },
-          competitorEvidence: {
-            domain: params.target,
-            rankingUrl: `https://${params.target}/earn`,
-            rankingTitle: `${params.target} earn`,
-            rankAbsolute: params.target === 'binance.com' ? 2 : 5,
-            estimatedTraffic: 33.1,
-          },
-          serpEvidence: {
-            serpFeatures: ['organic', 'people_also_ask'],
-          },
-        },
-      ],
-    };
-  }
-
-  getSearchVolume(_params: GetSearchVolumeParams): Promise<never> {
-    throw new Error('Not implemented in test');
-  }
-}
-
-function createRun(): SeoBriefRun {
+function createRunWithBrandMemoryKeywordMap(): SeoBriefRun {
   return SeoBriefRun.create({
     topicSeed: 'idle USDT yield',
     country: 'Nigeria',
@@ -113,37 +26,153 @@ function createRun(): SeoBriefRun {
       requiredPhrases: [],
       brandDocs: [],
       adaptationPromptRules: null,
+      seoCompetitors: {
+        mustInclude: ['binance.com'],
+        optional: ['trustwallet.com'],
+        exclude: ['youtube.com'],
+      },
+      seoCompetitorKeywordMap: {
+        generatedAt: '2026-06-09T10:00:00.000Z',
+        competitorKeywordsJsonId: 'nigeria_usdt_competitors',
+        market: {
+          country: 'Nigeria',
+          language: 'English',
+          locationName: 'Nigeria',
+        },
+        targets: ['binance.com', 'trustwallet.com'],
+        targetCount: 2,
+        itemCount: 2,
+        deduplicatedKeywordCount: 2,
+        targetResults: [
+          {
+            target: 'binance.com',
+            itemsCount: 1,
+          },
+          {
+            target: 'trustwallet.com',
+            itemsCount: 1,
+          },
+        ],
+        items: [
+          {
+            text: 'binance earn usdt',
+            type: 'keyword',
+            source: 'ranked_keywords',
+            sourceDomain: 'binance.com',
+            metrics: {
+              searchVolume: 500,
+              searchVolumeSource: 'ranked_keywords',
+              keywordDifficulty: 12,
+              cpc: 1.2,
+              competitionLevel: 'LOW',
+              intent: 'commercial',
+              monthlySearches: [],
+            },
+            competitorEvidence: {
+              domain: 'binance.com',
+              rankingUrl: 'https://binance.com/earn',
+              rankingTitle: 'Binance Earn',
+              rankAbsolute: 2,
+              estimatedTraffic: 33.1,
+            },
+            serpEvidence: {
+              serpFeatures: ['organic'],
+            },
+          },
+          {
+            text: 'trust wallet usdt earn',
+            type: 'keyword',
+            source: 'ranked_keywords',
+            sourceDomain: 'trustwallet.com',
+            metrics: {
+              searchVolume: 180,
+              searchVolumeSource: 'ranked_keywords',
+              keywordDifficulty: 18,
+              cpc: 0.9,
+              competitionLevel: 'LOW',
+              intent: 'informational',
+              monthlySearches: [],
+            },
+            competitorEvidence: {
+              domain: 'trustwallet.com',
+              rankingUrl: 'https://trustwallet.com/stablecoin-earn/usdt',
+              rankingTitle: 'Earn USDT Rewards',
+              rankAbsolute: 4,
+              estimatedTraffic: 18.5,
+            },
+            serpEvidence: {
+              serpFeatures: ['organic', 'people_also_ask'],
+            },
+          },
+        ],
+        allKeywordsFlat: [
+          {
+            keyword: 'binance earn usdt',
+            source: 'ranked_keywords',
+            searchVolume: 500,
+            keywordDifficulty: 12,
+            intent: 'commercial',
+            bestRankAbsolute: 2,
+            estimatedTrafficMax: 33.1,
+            evidenceCount: 1,
+            competitorDomains: ['binance.com'],
+          },
+          {
+            keyword: 'trust wallet usdt earn',
+            source: 'ranked_keywords',
+            searchVolume: 180,
+            keywordDifficulty: 18,
+            intent: 'informational',
+            bestRankAbsolute: 4,
+            estimatedTrafficMax: 18.5,
+            evidenceCount: 1,
+            competitorDomains: ['trustwallet.com'],
+          },
+        ],
+      },
+    },
+  });
+}
+
+function createRunWithoutBrandMemoryKeywordMap(): SeoBriefRun {
+  return SeoBriefRun.create({
+    topicSeed: 'idle USDT yield',
+    country: 'Nigeria',
+    language: 'English',
+    audience: 'USDT holders',
+    productName: 'Reinforce',
+    productDescription: 'Helps users make idle USDT productive',
+    brandMemorySnapshot: {
+      brandName: 'Reinforce',
+      productDescription: 'Helps users make idle USDT productive',
+      targetAudience: 'USDT holders',
+      approvedFacts: [],
+      forbiddenClaims: [],
+      glossary: {},
+      bannedPhrases: [],
+      requiredPhrases: [],
+      brandDocs: [],
+      adaptationPromptRules: null,
+      seoCompetitors: {
+        mustInclude: ['binance.com'],
+        optional: [],
+        exclude: [],
+      },
+      seoCompetitorKeywordMap: null,
     },
   });
 }
 
 describe('BuildCompetitorKeywordMapHandler', () => {
-  it('builds a competitor keyword map from manual competitor domains', async () => {
+  it('builds SEO brief competitor artifacts from Brand Memory ranked keywords', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
-    const seoResearch = new FakeSeoResearchPort();
-    const run = createRun();
+    const run = createRunWithBrandMemoryKeywordMap();
     await runRepository.save(run);
-    await artifactRepository.save(
-      SeoBriefArtifact.create({
-        runId: run.id,
-        stage: 'created',
-        artifactType: 'normalized_input',
-        payload: {
-          competitorKeywordsJsonId: 'Nigeria USDT Competitors V1',
-          knownCompetitors: {
-            mustInclude: ['https://www.binance.com/en/earn/USDT', 'nexo.com'],
-            optional: ['trustwallet.com', 'youtube'],
-            exclude: ['nexo.com'],
-          },
-        },
-      }),
-    );
 
     const handler = new BuildCompetitorKeywordMapHandler(
       runRepository,
       artifactRepository,
-      seoResearch,
     );
 
     const result = await handler.execute(new BuildCompetitorKeywordMapCommand(run.id));
@@ -151,17 +180,14 @@ describe('BuildCompetitorKeywordMapHandler', () => {
     const competitorMap = artifacts.find((item) => item.artifactType === 'competitor_keyword_map');
     const rankedUniverse = artifacts.find((item) => item.artifactType === 'ranked_keywords_universe');
     const competitorPayload = competitorMap?.payload as {
-      allKeywordsFlat: Array<{ sourceDomains: string[]; text: string }>;
       competitorKeywordsJsonId: string;
       itemCount: number;
-      manualCompetitors: { skipped: Array<{ raw: string }> };
+      sourceArtifactType: string;
       targetCount: number;
       targets: string[];
     };
     const rankedPayload = rankedUniverse?.payload as {
-      competitorKeywordsJsonId: string;
       itemCount: number;
-      items: Array<{ sourceDomain: string; text: string }>;
       sourceArtifactId: string;
       sourceArtifactType: string;
       targets: string[];
@@ -169,32 +195,36 @@ describe('BuildCompetitorKeywordMapHandler', () => {
 
     expect(result).toMatchObject({
       artifactType: 'competitor_keyword_map',
-      competitorKeywordsJsonId: 'nigeria_usdt_competitors_v1',
+      competitorKeywordsJsonId: 'nigeria_usdt_competitors',
       targetCount: 2,
       targets: ['binance.com', 'trustwallet.com'],
       itemCount: 2,
-      skippedCompetitorCount: 2,
+      skippedCompetitorCount: 0,
     });
-    expect(seoResearch.rankedKeywordCalls.map((call) => call.target)).toEqual([
-      'binance.com',
-      'trustwallet.com',
-    ]);
-    expect(seoResearch.rankedKeywordCalls.map((call) => call.limit)).toEqual([100, 100]);
+    expect(competitorPayload.sourceArtifactType).toBe('brand_memory_snapshot');
+    expect(competitorPayload.competitorKeywordsJsonId).toBe('nigeria_usdt_competitors');
     expect(competitorPayload.targets).toEqual(['binance.com', 'trustwallet.com']);
     expect(competitorPayload.targetCount).toBe(2);
     expect(competitorPayload.itemCount).toBe(2);
-    expect(competitorPayload.manualCompetitors.skipped.map((item) => item.raw)).toEqual([
-      'nexo.com',
-      'youtube',
-    ]);
-    expect(competitorPayload.allKeywordsFlat).toHaveLength(2);
     expect(rankedPayload.sourceArtifactType).toBe('competitor_keyword_map');
     expect(rankedPayload.sourceArtifactId).toBe(competitorMap?.id);
-    expect(rankedPayload.competitorKeywordsJsonId).toBe('nigeria_usdt_competitors_v1');
     expect(rankedPayload.targets).toEqual(['binance.com', 'trustwallet.com']);
-    expect(rankedPayload.items.map((item) => item.sourceDomain)).toEqual([
-      'binance.com',
-      'trustwallet.com',
-    ]);
+    expect(rankedPayload.itemCount).toBe(2);
+  });
+
+  it('fails clearly when Brand Memory competitor ranked keywords are missing', async () => {
+    const runRepository = new InMemorySeoBriefRunRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
+    const run = createRunWithoutBrandMemoryKeywordMap();
+    await runRepository.save(run);
+
+    const handler = new BuildCompetitorKeywordMapHandler(
+      runRepository,
+      artifactRepository,
+    );
+
+    await expect(
+      handler.execute(new BuildCompetitorKeywordMapCommand(run.id)),
+    ).rejects.toThrow('No Brand Memory competitor keyword map found');
   });
 });

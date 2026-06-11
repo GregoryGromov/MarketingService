@@ -8,6 +8,11 @@ import {
   InMemorySeoBriefRunRepository,
   InMemorySeoBriefRunStepRepository,
 } from '../../testing/run-test-harness.js';
+import type {
+  ScoreDirtyKeywordCandidatesResult,
+  ScoreDirtyKeywordCandidateInput,
+  SeoBriefAiPort,
+} from '../../ports/seo-brief-ai.port.js';
 import { ScoreKeywordCandidatesCommand } from './score-keyword-candidates.command.js';
 import { ScoreKeywordCandidatesHandler } from './score-keyword-candidates.handler.js';
 
@@ -33,6 +38,70 @@ function createRun(): SeoBriefRun {
       adaptationPromptRules: null,
     },
   });
+}
+
+function createAiPort(callLog: number[] = []): SeoBriefAiPort {
+  return {
+    scoreDirtyKeywordCandidates: async ({ candidates }: { candidates: ScoreDirtyKeywordCandidateInput[] }) => {
+      callLog.push(candidates.length);
+      const result: ScoreDirtyKeywordCandidatesResult = {
+        accepted: [],
+        maybe: [],
+        rejected: [],
+        summary: {
+          acceptedCount: 0,
+          maybeCount: 0,
+          rejectedCount: 0,
+          notes: ['AI test stub scored provided candidates only.'],
+        },
+      };
+
+      for (const candidate of candidates) {
+        const normalized = candidate.keyword.toLowerCase();
+        const rejected =
+          normalized.includes('free usdt') ||
+          normalized.includes('generator') ||
+          normalized.includes('logo download');
+        const scored = {
+          keyword: candidate.keyword,
+          status: rejected ? 'rejected' as const : 'accepted' as const,
+          totalScore: rejected ? 5 : 82,
+          scores: {
+            topicFit: rejected ? 5 : 85,
+            productFit: rejected ? 5 : 82,
+            audienceFit: rejected ? 5 : 78,
+            intentFit: rejected ? 5 : 80,
+            riskCompliance: rejected ? 0 : 88,
+            evidence: rejected ? 20 : 75,
+          },
+          fit: {
+            topicFit: rejected ? 'none' as const : 'strong' as const,
+            productFit: rejected ? 'none' as const : 'strong' as const,
+            audienceFit: rejected ? 'none' as const : 'strong' as const,
+            intentFit: rejected ? 'none' as const : 'strong' as const,
+            riskCompliance: rejected ? 'none' as const : 'strong' as const,
+            evidence: rejected ? 'weak' as const : 'strong' as const,
+          },
+          intent: rejected ? 'navigational' as const : 'informational' as const,
+          stage: rejected ? 'awareness' as const : 'consideration' as const,
+          reasons: [rejected ? 'Rejected by AI test stub as noise.' : 'Accepted by AI test stub as relevant.'],
+          riskFlags: rejected ? ['test_noise'] : [],
+          evidenceNotes: candidate.evidenceSummary.slice(0, 2),
+        };
+
+        if (rejected) {
+          result.rejected.push(scored);
+        } else {
+          result.accepted.push(scored);
+        }
+      }
+
+      result.summary.acceptedCount = result.accepted.length;
+      result.summary.rejectedCount = result.rejected.length;
+
+      return result;
+    },
+  } as unknown as SeoBriefAiPort;
 }
 
 describe('ScoreKeywordCandidatesHandler', () => {
@@ -173,7 +242,12 @@ describe('ScoreKeywordCandidatesHandler', () => {
         },
       }),
     );
-    const handler = new ScoreKeywordCandidatesHandler(runRepository, stepRepository, artifactRepository);
+    const handler = new ScoreKeywordCandidatesHandler(
+      runRepository,
+      stepRepository,
+      artifactRepository,
+      createAiPort(),
+    );
 
     const result = await handler.execute(new ScoreKeywordCandidatesCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
@@ -193,7 +267,7 @@ describe('ScoreKeywordCandidatesHandler', () => {
         llmCallCount: number;
       };
       filteringMode: string;
-      stagedFiltering: { buckets: Array<{ bucket: string; acceptedCount: number }> };
+      stagedFiltering: { stages: Array<{ stage: string; acceptedCount?: number; keptCount?: number }> };
     };
     const steps = await stepRepository.findByRunId(run.id);
 
@@ -204,7 +278,7 @@ describe('ScoreKeywordCandidatesHandler', () => {
       rejectedCount: 2,
     });
     expect(saved).toMatchObject({
-      filteringMode: 'deterministic_staged_filtering',
+      filteringMode: 'ai_staged_filtering',
       acceptedCount: 2,
       maybeCount: 0,
       rejectedCount: 2,
@@ -227,25 +301,28 @@ describe('ScoreKeywordCandidatesHandler', () => {
       summary: {
         hardExcludedCandidateCount: 2,
         keptAfterNoiseCount: 2,
-        llmCallCount: 0,
+        llmCallCount: 3,
       },
     });
     expect(saved.accepted).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           keyword: 'is it safe to earn interest on USDT',
-          bucket: 'wallet_safety',
-          productFitLabel: 'high',
+          aiStage: 'ai_final_calibration',
         }),
         expect.objectContaining({
           keyword: 'USDT savings account',
-          bucket: 'stablecoin_yield',
-          productFitLabel: 'high',
+          aiStage: 'ai_final_calibration',
         }),
       ]),
     );
-    expect(saved.stagedFiltering.buckets.some((bucket) => bucket.bucket === 'stablecoin_yield')).toBe(
-      true,
+    expect(saved.stagedFiltering.stages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: 'ai_noise_and_eligibility',
+          keptCount: 2,
+        }),
+      ]),
     );
     expect(steps[0]).toMatchObject({
       stage: 'keyword_triage',
@@ -254,7 +331,7 @@ describe('ScoreKeywordCandidatesHandler', () => {
     expect((await runRepository.findById(run.id))?.status).toBe('awaiting_confirmation');
   });
 
-  it('filters large dirty pools without calling an LLM scoring batch', async () => {
+  it('filters large dirty pools through compact AI batches', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const stepRepository = new InMemorySeoBriefRunStepRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
@@ -308,7 +385,13 @@ describe('ScoreKeywordCandidatesHandler', () => {
         },
       }),
     );
-    const handler = new ScoreKeywordCandidatesHandler(runRepository, stepRepository, artifactRepository);
+    const callLog: number[] = [];
+    const handler = new ScoreKeywordCandidatesHandler(
+      runRepository,
+      stepRepository,
+      artifactRepository,
+      createAiPort(callLog),
+    );
 
     const result = await handler.execute(new ScoreKeywordCandidatesCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
@@ -321,27 +404,29 @@ describe('ScoreKeywordCandidatesHandler', () => {
       maybe: Array<{ keyword: string }>;
       maybePerBucketLimit: number;
       rejected: Array<{ keyword: string }>;
-      stagedFiltering: { buckets: Array<{ bucket: string; acceptedCount: number; maybeCount: number }> };
+      summary: { llmCallCount: number };
+      stagedFiltering: { stages: Array<{ stage: string; aiCallCount: number }> };
     };
 
-    expect(saved.aiScoredCandidateCount).toBe(0);
-    expect(saved.accepted.length).toBeLessThanOrEqual(saved.acceptedPerBucketLimit);
-    expect(saved.maybe.length).toBeLessThanOrEqual(saved.maybePerBucketLimit);
-    expect(saved.rejected.length).toBeGreaterThan(0);
-    expect(saved.stagedFiltering.buckets).toEqual(
+    expect(saved.aiScoredCandidateCount).toBe(candidates.length);
+    expect(saved.accepted.length).toBe(candidates.length);
+    expect(saved.maybe.length).toBe(0);
+    expect(saved.rejected.length).toBe(0);
+    expect(saved.summary.llmCallCount).toBe(6);
+    expect(callLog).toEqual([50, 6, 40, 16, 40, 16]);
+    expect(saved.stagedFiltering.stages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          bucket: 'stablecoin_yield',
-          acceptedCount: saved.acceptedPerBucketLimit,
-          maybeCount: saved.maybePerBucketLimit,
+          stage: 'ai_fit_scoring',
+          aiCallCount: 2,
         }),
       ]),
     );
     expect(result).toMatchObject({
       artifactType: 'keyword_candidate_scoring',
-      acceptedCount: saved.acceptedPerBucketLimit,
-      maybeCount: saved.maybePerBucketLimit,
-      rejectedCount: 40,
+      acceptedCount: candidates.length,
+      maybeCount: 0,
+      rejectedCount: 0,
     });
   });
 });

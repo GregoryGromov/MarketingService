@@ -1,11 +1,17 @@
 import {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
+  type CleanupLongreadArticleParams,
+  type CleanupLongreadArticleResult,
   type ClassifySerpDomainsParams,
   type ClassifySerpDomainsResult,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type CompleteSeoBriefLlmCallLogParams,
+  type DraftLongreadArticleParams,
+  type DraftLongreadArticleResult,
+  type EvaluateCompetitorKeywordMatchesParams,
+  type EvaluateCompetitorKeywordMatchesResult,
   type ExpandKeywordsParams,
   type ExpandKeywordsResult,
   type ExplainClusterSelectionParams,
@@ -17,8 +23,18 @@ import {
   type FailSeoBriefLlmCallLogParams,
   type GenerateSeoBriefParams,
   type GenerateSeoBriefResult,
+  type GroupCandidateKeywordsParams,
+  type GroupCandidateKeywordsResult,
+  type GroupCompetitorKeywordEvidenceParams,
+  type GroupCompetitorKeywordEvidenceResult,
+  type MatchKeywordGroupsParams,
+  type MatchKeywordGroupsResult,
+  type PackageLongreadArticleParams,
+  type PackageLongreadArticleResult,
   type ReviewClusterProductFitParams,
   type ReviewClusterProductFitResult,
+  type ScoreCompetitorKeywordCandidateGroupParams,
+  type ScoreCompetitorKeywordCandidateGroupResult,
   type ScoreDirtyKeywordCandidatesParams,
   type ScoreDirtyKeywordCandidatesResult,
   type SelectRelatedKeywordsParams,
@@ -40,13 +56,21 @@ import { ConfigService } from '@nestjs/config';
 import {
   buildClusterKeywordsPrompt,
   buildClassifySerpDomainsPrompt,
+  buildCleanupLongreadArticlePrompt,
+  buildDraftLongreadArticlePrompt,
+  buildEvaluateCompetitorKeywordMatchesPrompt,
   buildExpandKeywordsPrompt,
   buildExplainClusterSelectionPrompt,
   buildExtractContextPrompt,
   buildExtractUserPainScenariosPrompt,
   buildGenerateSeoBriefPrompt,
+  buildGroupCandidateKeywordsPrompt,
+  buildGroupCompetitorKeywordEvidencePrompt,
+  buildMatchKeywordGroupsPrompt,
+  buildPackageLongreadArticlePrompt,
   buildProductBridgePrompt,
   buildReviewClusterProductFitPrompt,
+  buildScoreCompetitorKeywordCandidateGroupPrompt,
   buildScoreDirtyKeywordCandidatesPrompt,
   buildSelectRelatedKeywordsPrompt,
   buildSynthesizeOnPagePrompt,
@@ -55,13 +79,21 @@ import {
 import {
   validateBuildProductBridgeResult,
   validateClassifySerpDomainsResult,
+  validateCleanupLongreadArticleResult,
   validateClusterKeywordsResult,
+  validateDraftLongreadArticleResult,
+  validateEvaluateCompetitorKeywordMatchesResult,
   validateExpandKeywordsResult,
   validateExplainClusterSelectionResult,
   validateExtractContextResult,
   validateExtractUserPainScenariosResult,
   validateGenerateSeoBriefResult,
+  validateGroupCandidateKeywordsResult,
+  validateGroupCompetitorKeywordEvidenceResult,
+  validateMatchKeywordGroupsResult,
+  validatePackageLongreadArticleResult,
   validateReviewClusterProductFitResult,
+  validateScoreCompetitorKeywordCandidateGroupResult,
   validateScoreDirtyKeywordCandidatesResult,
   validateSelectRelatedKeywordsResult,
   validateSynthesizeOnPageResult,
@@ -104,6 +136,7 @@ export class DeepSeekSeoBriefAiAdapter {
       modelMode,
       prompt,
       prompt.userPrompt,
+      params.timeoutMs,
     );
     const response = await this.executeWithRetry(prompt.operation, () =>
       this.httpClient.requestCompletion(completionRequest),
@@ -180,6 +213,54 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
+  async evaluateCompetitorKeywordMatches(
+    params: EvaluateCompetitorKeywordMatchesParams,
+  ): Promise<EvaluateCompetitorKeywordMatchesResult> {
+    return this.runStructuredOperation(
+      buildEvaluateCompetitorKeywordMatchesPrompt(params),
+      params,
+      validateEvaluateCompetitorKeywordMatchesResult,
+    );
+  }
+
+  async groupCompetitorKeywordEvidence(
+    params: GroupCompetitorKeywordEvidenceParams,
+  ): Promise<GroupCompetitorKeywordEvidenceResult> {
+    return this.runStructuredOperation(
+      buildGroupCompetitorKeywordEvidencePrompt(params),
+      params,
+      validateGroupCompetitorKeywordEvidenceResult,
+    );
+  }
+
+  async groupCandidateKeywords(
+    params: GroupCandidateKeywordsParams,
+  ): Promise<GroupCandidateKeywordsResult> {
+    return this.runStructuredOperation(
+      buildGroupCandidateKeywordsPrompt(params),
+      params,
+      validateGroupCandidateKeywordsResult,
+    );
+  }
+
+  async matchKeywordGroups(params: MatchKeywordGroupsParams): Promise<MatchKeywordGroupsResult> {
+    return this.runStructuredOperation(
+      buildMatchKeywordGroupsPrompt(params),
+      params,
+      validateMatchKeywordGroupsResult,
+    );
+  }
+
+  async scoreCompetitorKeywordCandidateGroup(
+    params: ScoreCompetitorKeywordCandidateGroupParams,
+  ): Promise<ScoreCompetitorKeywordCandidateGroupResult> {
+    return this.runStructuredOperation(
+      buildScoreCompetitorKeywordCandidateGroupPrompt(params),
+      params,
+      validateScoreCompetitorKeywordCandidateGroupResult,
+    );
+  }
+
   async buildProductBridge(params: BuildProductBridgeParams): Promise<BuildProductBridgeResult> {
     return this.runStructuredOperation(
       buildProductBridgePrompt(params),
@@ -224,11 +305,42 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
+  async draftLongreadArticle(
+    params: DraftLongreadArticleParams,
+  ): Promise<DraftLongreadArticleResult> {
+    return this.runStructuredOperation(
+      buildDraftLongreadArticlePrompt(params),
+      params,
+      validateDraftLongreadArticleResult,
+    );
+  }
+
+  async cleanupLongreadArticle(
+    params: CleanupLongreadArticleParams,
+  ): Promise<CleanupLongreadArticleResult> {
+    return this.runStructuredOperation(
+      buildCleanupLongreadArticlePrompt(params),
+      params,
+      validateCleanupLongreadArticleResult,
+    );
+  }
+
+  async packageLongreadArticle(
+    params: PackageLongreadArticleParams,
+  ): Promise<PackageLongreadArticleResult> {
+    return this.runStructuredOperation(
+      buildPackageLongreadArticlePrompt(params),
+      params,
+      validatePackageLongreadArticleResult,
+    );
+  }
+
   private async runStructuredOperation<
     TParams extends {
       runId: string;
       stepId?: string | null;
       modelMode?: SeoBriefAiModelMode | null;
+      timeoutMs?: number | null;
     },
     TResult,
   >(
@@ -243,7 +355,13 @@ export class DeepSeekSeoBriefAiAdapter {
     let userPrompt = prompt.userPrompt;
 
     while (repairAttempt <= maxRepairAttempts) {
-      const completionRequest = this.createCompletionRequest(model, modelMode, prompt, userPrompt);
+      const completionRequest = this.createCompletionRequest(
+        model,
+        modelMode,
+        prompt,
+        userPrompt,
+        params.timeoutMs,
+      );
       const requestPayload = this.createRequestLogPayload(
         prompt,
         completionRequest,
@@ -328,6 +446,7 @@ export class DeepSeekSeoBriefAiAdapter {
     modelMode: SeoBriefAiModelMode | null,
     prompt: SeoBriefStructuredPrompt,
     userPrompt: string,
+    timeoutMs?: number | null,
   ): SeoBriefAiCompletionRequest {
     const thinkingType = this.getThinkingType(modelMode);
 
@@ -335,7 +454,7 @@ export class DeepSeekSeoBriefAiAdapter {
       model,
       systemPrompt: prompt.systemPrompt,
       userPrompt,
-      timeoutMs: this.getTimeoutMs(),
+      timeoutMs: this.getTimeoutMs(timeoutMs),
       thinkingType,
       reasoningEffort: thinkingType === 'enabled' ? this.getReasoningEffort() : undefined,
       temperature: thinkingType === 'disabled' ? prompt.temperature : undefined,
@@ -484,7 +603,11 @@ export class DeepSeekSeoBriefAiAdapter {
     return rawValue === 'max' ? 'max' : 'high';
   }
 
-  private getTimeoutMs(): number {
+  private getTimeoutMs(timeoutMs?: number | null): number {
+    if (timeoutMs != null && Number.isFinite(timeoutMs)) {
+      return Math.max(1000, Math.trunc(timeoutMs));
+    }
+
     return this.getPositiveIntegerConfig('SEO_BRIEF_AI_TIMEOUT_MS', 300_000);
   }
 

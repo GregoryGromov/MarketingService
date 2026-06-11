@@ -8,6 +8,7 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import { SeoBriefAiPort, type SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateUserPainScenariosCommand } from './generate-user-pain-scenarios.command.js';
 
 type SeoBriefArtifactList = SeoBriefArtifact[];
@@ -56,6 +57,7 @@ export class GenerateUserPainScenariosHandler
         runId: run.id,
         stepId: step.id,
         modelMode: aiModelMode,
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

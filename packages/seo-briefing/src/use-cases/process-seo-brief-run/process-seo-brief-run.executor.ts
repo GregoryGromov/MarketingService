@@ -29,6 +29,7 @@ import { FinalClusterScoreService } from '../../services/final-cluster-score.ser
 import { ProductScoreService } from '../../services/product-score.service.js';
 import { SeoBriefScoreLoggerService } from '../../services/seo-brief-score-logger.service.js';
 import { SeoScoreService } from '../../services/seo-score.service.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 
 const RELATED_KEYWORD_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.relatedKeywordLimit;
 const RELATED_KEYWORD_SEED_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.relatedKeywordSeedLimit;
@@ -237,6 +238,7 @@ export class ProcessSeoBriefRunExecutor {
     const campaignContext = readCampaignContext(priorArtifacts);
     const seoProductContext = readSeoProductContext(priorArtifacts);
     const hypothesesCount = readHypothesesCount(priorArtifacts);
+    const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(priorArtifacts);
 
     run.start();
     await this.runRepository.save(run);
@@ -251,6 +253,7 @@ export class ProcessSeoBriefRunExecutor {
                 runId: run.id,
                 stepId: step.id,
                 modelMode: aiModelMode,
+                timeoutMs: requestTimeoutMs,
                 topicSeed: run.topicSeed,
                 market: {
                   country: run.country,
@@ -288,6 +291,7 @@ export class ProcessSeoBriefRunExecutor {
               runId: run.id,
               stepId: step.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               topicSeed: run.topicSeed,
               market: {
                 country: run.country,
@@ -349,6 +353,7 @@ export class ProcessSeoBriefRunExecutor {
             const volume = await this.seoResearch.getSearchVolume({
               runId: run.id,
               stepId: step.id,
+              timeoutMs: requestTimeoutMs,
               keywords: researchKeywords,
               market: {
                 country: run.country,
@@ -408,6 +413,7 @@ export class ProcessSeoBriefRunExecutor {
               const suggestions = await this.seoResearch.getKeywordSuggestions({
                 runId: run.id,
                 stepId: step.id,
+                timeoutMs: requestTimeoutMs,
                 keyword: seedKeyword,
                 includeSeedKeyword: false,
                 limit: RELATED_KEYWORD_LIMIT,
@@ -483,6 +489,7 @@ export class ProcessSeoBriefRunExecutor {
               const serp = await this.seoResearch.getOrganicSerp({
                 runId: run.id,
                 stepId: step.id,
+                timeoutMs: requestTimeoutMs,
                 keyword,
                 depth: SERP_RESULT_DEPTH,
                 market: {
@@ -554,6 +561,7 @@ export class ProcessSeoBriefRunExecutor {
               const result = await this.seoResearch.getDomainMetrics({
                 runId: run.id,
                 stepId: step.id,
+                timeoutMs: requestTimeoutMs,
                 target,
                 market: {
                   country: run.country,
@@ -608,6 +616,7 @@ export class ProcessSeoBriefRunExecutor {
               const result = await this.seoResearch.getOnPageParse({
                 runId: run.id,
                 stepId: step.id,
+                timeoutMs: requestTimeoutMs,
                 target,
                 maxCrawlPages: 1,
                 enableJavascript: true,
@@ -685,6 +694,7 @@ export class ProcessSeoBriefRunExecutor {
               runId: run.id,
               stepId: step.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               topicSeed: run.topicSeed,
               audience: run.audience,
               productName: run.productName,
@@ -769,6 +779,7 @@ export class ProcessSeoBriefRunExecutor {
               runId: run.id,
               stepId: step.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               topicSeed: run.topicSeed,
               keywords: triage.accepted.map((item) => item.keyword),
             });
@@ -851,6 +862,7 @@ export class ProcessSeoBriefRunExecutor {
                 runId: run.id,
                 stepId: step.id,
                 modelMode: aiModelMode,
+                timeoutMs: requestTimeoutMs,
                 clusterLabel: cluster.label,
                 primaryKeyword: cluster.representativeKeyword,
                 intent: cluster.intent,
@@ -1060,6 +1072,7 @@ export class ProcessSeoBriefRunExecutor {
               runId: run.id,
               stepId: step.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               selectedClusterLabel: selectedCluster.label,
               candidates: rankedClusters.map((cluster) => ({
                 label: cluster.label,
@@ -1172,6 +1185,7 @@ export class ProcessSeoBriefRunExecutor {
               runId: run.id,
               stepId: step.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               primaryKeyword: selectedCluster.representativeKeyword,
               clusterLabel: selectedCluster.label,
               intent: selectedCluster.intent,

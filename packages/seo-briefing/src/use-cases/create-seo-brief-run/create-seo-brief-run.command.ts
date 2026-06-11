@@ -28,6 +28,7 @@ export interface CreateSeoBriefRunKnownCompetitorsInput {
 export interface CreateSeoBriefRunInput {
   projectId?: string | null;
   aiModelMode?: 'flash' | 'pro' | 'pro_thinking' | null;
+  workflowMode?: 'manual' | 'auto_until_selection' | null;
   topicHint?: string | null;
   /**
    * Compatibility field for the first SEO brief iteration.
@@ -36,6 +37,7 @@ export interface CreateSeoBriefRunInput {
   topicSeed?: string | null;
   hypothesesCount?: number | null;
   serpEnrichmentCount?: number | null;
+  requestTimeoutMs?: number | null;
   competitorKeywordsJsonId?: string | null;
   market: CreateSeoBriefRunMarketInput;
   audience: string;

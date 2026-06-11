@@ -20,11 +20,13 @@ export interface SeoBriefAiRequestContext {
   runId: SeoBriefRunId;
   stepId?: SeoBriefRunStepId | null;
   modelMode?: SeoBriefAiModelMode | null;
+  timeoutMs?: number | null;
 }
 
 export interface ExtractSeoBriefContextParams {
   contextText: string;
   modelMode?: SeoBriefAiModelMode | null;
+  timeoutMs?: number | null;
 }
 
 export interface ExtractedSeoBriefContext {
@@ -405,6 +407,172 @@ export interface ScoreDirtyKeywordCandidatesResult {
   };
 }
 
+export type AiCompetitorKeywordMatchType =
+  | 'exact_match'
+  | 'near_match'
+  | 'same_intent'
+  | 'semantic_related'
+  | 'no_match';
+
+export interface AiCompetitorKeywordCandidateInput {
+  candidateId: string;
+  intent?: string | null;
+  keyword: string;
+  originType: string;
+  productFitHypothesis?: string | null;
+  reason?: string | null;
+  riskFlags: string[];
+  sourceKeyword?: string | null;
+  sourceText?: string | null;
+}
+
+export interface AiCompetitorKeywordEvidenceInput {
+  competitorEvidence?: SeoBriefJsonObject | null;
+  evidenceId: string;
+  keyword: string;
+  metrics?: SeoBriefJsonObject | null;
+  serpEvidence?: SeoBriefJsonObject | null;
+  sourceDomain?: string | null;
+}
+
+export interface EvaluateCompetitorKeywordMatchesParams extends SeoBriefAiRequestContext {
+  audience?: string | null;
+  candidates: AiCompetitorKeywordCandidateInput[];
+  competitorEvidence: AiCompetitorKeywordEvidenceInput[];
+  market?: SeoResearchMarket | null;
+  productDescription?: string | null;
+  productName?: string | null;
+  topicSeed: string;
+}
+
+export interface AiCompetitorKeywordMarketBucket {
+  bucketId: string;
+  description: string;
+  evidenceIds: string[];
+  name: string;
+  representativeKeywords: string[];
+}
+
+export interface AiCompetitorKeywordSemanticMatch {
+  competitorKeyword: string;
+  evidenceId: string;
+  evidenceStrength: number;
+  matchConfidence: number;
+  matchScore: number;
+  matchType: AiCompetitorKeywordMatchType;
+  sourceDomain?: string | null;
+  why: string;
+}
+
+export interface AiCompetitorKeywordMatchedCandidate {
+  bestMatchType: AiCompetitorKeywordMatchType;
+  bucketId?: string | null;
+  candidateId: string;
+  candidateScore: number;
+  keyword: string;
+  matchedEvidenceIds: string[];
+  matchingDomains: string[];
+  proxyDemandScore: number;
+  reason: string;
+  riskLabel: 'exclude' | 'risky_requires_review' | 'safe';
+  semanticMatches: AiCompetitorKeywordSemanticMatch[];
+}
+
+export interface EvaluateCompetitorKeywordMatchesResult {
+  buckets: AiCompetitorKeywordMarketBucket[];
+  candidates: AiCompetitorKeywordMatchedCandidate[];
+  summary: {
+    notes: string[];
+  };
+}
+
+export interface GroupCompetitorKeywordEvidenceParams extends SeoBriefAiRequestContext {
+  audience?: string | null;
+  competitorEvidence: AiCompetitorKeywordEvidenceInput[];
+  market?: SeoResearchMarket | null;
+  maxBuckets?: number;
+  productDescription?: string | null;
+  productName?: string | null;
+  topicSeed: string;
+}
+
+export interface GroupCompetitorKeywordEvidenceResult {
+  buckets: AiCompetitorKeywordMarketBucket[];
+  summary: {
+    notes: string[];
+  };
+}
+
+export interface AiCandidateKeywordBucket {
+  bucketId: string;
+  candidateIds: string[];
+  description: string;
+  name: string;
+  representativeKeywords: string[];
+}
+
+export interface GroupCandidateKeywordsParams extends SeoBriefAiRequestContext {
+  audience?: string | null;
+  candidates: AiCompetitorKeywordCandidateInput[];
+  market?: SeoResearchMarket | null;
+  maxBuckets?: number;
+  productDescription?: string | null;
+  productName?: string | null;
+  topicSeed: string;
+}
+
+export interface GroupCandidateKeywordsResult {
+  buckets: AiCandidateKeywordBucket[];
+  summary: {
+    notes: string[];
+  };
+}
+
+export type AiKeywordGroupMatchType = 'direct' | 'adjacent' | 'weak' | 'none';
+
+export interface AiKeywordGroupMatch {
+  candidateBucketId: string;
+  competitorBucketIds: string[];
+  matchStrength: number;
+  matchType: AiKeywordGroupMatchType;
+  reason: string;
+}
+
+export interface MatchKeywordGroupsParams extends SeoBriefAiRequestContext {
+  candidateBuckets: AiCandidateKeywordBucket[];
+  competitorBuckets: AiCompetitorKeywordMarketBucket[];
+  market?: SeoResearchMarket | null;
+  productDescription?: string | null;
+  productName?: string | null;
+  topicSeed: string;
+}
+
+export interface MatchKeywordGroupsResult {
+  matches: AiKeywordGroupMatch[];
+  summary: {
+    notes: string[];
+  };
+}
+
+export interface ScoreCompetitorKeywordCandidateGroupParams extends SeoBriefAiRequestContext {
+  audience?: string | null;
+  candidateBucket: AiCandidateKeywordBucket;
+  candidates: AiCompetitorKeywordCandidateInput[];
+  competitorBuckets: AiCompetitorKeywordMarketBucket[];
+  competitorEvidence: AiCompetitorKeywordEvidenceInput[];
+  market?: SeoResearchMarket | null;
+  productDescription?: string | null;
+  productName?: string | null;
+  topicSeed: string;
+}
+
+export interface ScoreCompetitorKeywordCandidateGroupResult {
+  candidates: AiCompetitorKeywordMatchedCandidate[];
+  summary: {
+    notes: string[];
+  };
+}
+
 export interface BuildProductBridgeParams extends SeoBriefAiRequestContext {
   clusterLabel: string;
   primaryKeyword: string;
@@ -667,6 +835,88 @@ export interface GenerateSeoBriefResult {
   topicHint?: string;
 }
 
+export interface DraftLongreadArticleParams extends SeoBriefAiRequestContext {
+  finalSeoBrief: SeoBriefJsonObject;
+  productProfile: SeoBriefJsonObject;
+  claimsPolicy: SeoBriefJsonObject;
+  brandVoice: SeoBriefJsonObject;
+  targetLength: string;
+  publishingFormat: string;
+}
+
+export interface DraftLongreadArticleResult {
+  draftArticleMarkdown: string;
+}
+
+export type ArticleCleanupStatus = 'passed' | 'revised' | 'needs_human_review';
+export type ArticleCleanupWarningType =
+  | 'claims'
+  | 'seo'
+  | 'product_insertion'
+  | 'factual_check'
+  | 'tone'
+  | 'structure';
+
+export interface CleanupLongreadArticleParams extends SeoBriefAiRequestContext {
+  draftArticleMarkdown: string;
+  finalSeoBrief: SeoBriefJsonObject;
+  productProfile: SeoBriefJsonObject;
+  claimsPolicy: SeoBriefJsonObject;
+  brandVoice: SeoBriefJsonObject;
+}
+
+export interface CleanupLongreadArticleResult {
+  status: ArticleCleanupStatus;
+  warnings: Array<{
+    type: ArticleCleanupWarningType;
+    message: string;
+  }>;
+  changesMade: string[];
+  articleMarkdown: string;
+}
+
+export interface PackageLongreadArticleParams extends SeoBriefAiRequestContext {
+  reviewedArticleMarkdown: string;
+  finalSeoBrief: SeoBriefJsonObject;
+  cleanupWarnings: CleanupLongreadArticleResult['warnings'];
+  productProfile: SeoBriefJsonObject;
+}
+
+export interface PackageLongreadArticleResult {
+  article: {
+    title: string;
+    slug: string;
+    metaTitle: string;
+    metaDescription: string;
+    h1: string;
+    bodyMarkdown: string;
+  };
+  seo: {
+    primaryKeyword: string;
+    secondaryKeywordsUsed: string[];
+    searchIntent: string;
+    contentType: string;
+    faqIncluded: boolean;
+    internalLinks: string[];
+    externalSourcesNeeded: string[];
+  };
+  productInsertion: {
+    whereInserted: string;
+    angleUsed: string;
+    forced: boolean;
+  };
+  claimsReview: {
+    status: ArticleCleanupStatus;
+    warnings: string[];
+  };
+  publishingChecklist: {
+    readyToPublish: boolean;
+    needsExternalFactCheck: boolean;
+    needsComplianceReview: boolean;
+    notes: string[];
+  };
+}
+
 export abstract class SeoBriefAiPort {
   abstract extractContext(params: ExtractSeoBriefContextParams): Promise<ExtractedSeoBriefContext>;
   abstract extractUserPainScenarios(
@@ -684,6 +934,29 @@ export abstract class SeoBriefAiPort {
   abstract scoreDirtyKeywordCandidates(
     params: ScoreDirtyKeywordCandidatesParams,
   ): Promise<ScoreDirtyKeywordCandidatesResult>;
+  evaluateCompetitorKeywordMatches(
+    _params: EvaluateCompetitorKeywordMatchesParams,
+  ): Promise<EvaluateCompetitorKeywordMatchesResult> {
+    throw new Error('Not implemented');
+  }
+  groupCompetitorKeywordEvidence(
+    _params: GroupCompetitorKeywordEvidenceParams,
+  ): Promise<GroupCompetitorKeywordEvidenceResult> {
+    throw new Error('Not implemented');
+  }
+  groupCandidateKeywords(
+    _params: GroupCandidateKeywordsParams,
+  ): Promise<GroupCandidateKeywordsResult> {
+    throw new Error('Not implemented');
+  }
+  matchKeywordGroups(_params: MatchKeywordGroupsParams): Promise<MatchKeywordGroupsResult> {
+    throw new Error('Not implemented');
+  }
+  scoreCompetitorKeywordCandidateGroup(
+    _params: ScoreCompetitorKeywordCandidateGroupParams,
+  ): Promise<ScoreCompetitorKeywordCandidateGroupResult> {
+    throw new Error('Not implemented');
+  }
   reviewClusterProductFit(
     _params: ReviewClusterProductFitParams,
   ): Promise<ReviewClusterProductFitResult> {
@@ -697,4 +970,17 @@ export abstract class SeoBriefAiPort {
     throw new Error('Not implemented');
   }
   abstract generateSeoBrief(params: GenerateSeoBriefParams): Promise<GenerateSeoBriefResult>;
+  draftLongreadArticle(_params: DraftLongreadArticleParams): Promise<DraftLongreadArticleResult> {
+    throw new Error('Not implemented');
+  }
+  cleanupLongreadArticle(
+    _params: CleanupLongreadArticleParams,
+  ): Promise<CleanupLongreadArticleResult> {
+    throw new Error('Not implemented');
+  }
+  packageLongreadArticle(
+    _params: PackageLongreadArticleParams,
+  ): Promise<PackageLongreadArticleResult> {
+    throw new Error('Not implemented');
+  }
 }

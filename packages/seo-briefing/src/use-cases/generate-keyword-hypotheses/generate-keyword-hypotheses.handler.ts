@@ -13,6 +13,7 @@ import type {
   SeoBriefAiModelMode,
 } from '../../ports/seo-brief-ai.port.js';
 import { SeoBriefAiPort } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateKeywordHypothesesCommand } from './generate-keyword-hypotheses.command.js';
 
 type SeoBriefArtifactList = SeoBriefArtifact[];
@@ -66,10 +67,12 @@ export class GenerateKeywordHypothesesHandler
       const keywordExpansionPrompt = readKeywordExpansionPrompt(artifacts);
       const campaignContext = readCampaignContext(artifacts);
       const hypothesesCount = readHypothesesCount(artifacts);
+      const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(artifacts);
       const result = await this.ai.expandKeywords({
         runId: run.id,
         stepId: step.id,
         modelMode: aiModelMode,
+        timeoutMs: requestTimeoutMs,
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

@@ -280,7 +280,7 @@ describe('FetchSelectedClusterOnPageHandler', () => {
     expect((await runRepository.findById(run.id))?.status).toBe('awaiting_confirmation');
   });
 
-  it('uses the first supporting cluster as OnPage target when no main cluster is selected', async () => {
+  it('requires manual main cluster selection before fetching OnPage evidence', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const stepRepository = new InMemorySeoBriefRunStepRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
@@ -325,34 +325,11 @@ describe('FetchSelectedClusterOnPageHandler', () => {
       seoResearch,
     );
 
-    const result = await handler.execute(new FetchSelectedClusterOnPageCommand(run.id));
-    const artifacts = await artifactRepository.findByRunId(run.id);
-    const saved = artifacts.find((artifact) => artifact.artifactType === 'onpage_research_snapshot')
-      ?.payload as {
-      pages: Array<{ role: string; url: string }>;
-      targetCount: number;
-      targets: Array<{ role: string; url: string }>;
-    };
-
-    expect(result).toMatchObject({
-      artifactType: 'onpage_research_snapshot',
-      targetCount: 1,
-      successfulPageCount: 1,
-      failedPageCount: 0,
-    });
-    expect(seoResearch.contentCalls.map((call) => call.url)).toEqual([
-      'https://www.binance.com/en-NG/earn/USDT',
-    ]);
-    expect(saved.targets).toMatchObject([
-      {
-        role: 'closest_intent_match',
-        url: 'https://www.binance.com/en-NG/earn/USDT',
-      },
-    ]);
-    expect(saved.pages[0]).toMatchObject({
-      role: 'closest_intent_match',
-      url: 'https://www.binance.com/en-NG/earn/USDT',
-    });
+    await expect(handler.execute(new FetchSelectedClusterOnPageCommand(run.id))).rejects.toThrow(
+      'Select a main SEO brief cluster manually before fetching on-page evidence',
+    );
+    expect(seoResearch.contentCalls).toHaveLength(0);
+    expect(seoResearch.instantCalls).toHaveLength(0);
   });
 
   it('falls back to saved SERP snapshot organic URLs when selected clusters have no usable URLs', async () => {
@@ -369,7 +346,16 @@ describe('FetchSelectedClusterOnPageHandler', () => {
         artifactType: 'cluster_selection_snapshot',
         payload: {
           artifactVersion: 'cluster_selection_v2',
-          mainCluster: null,
+          mainCluster: {
+            clusterName: 'Platform comparisons',
+            primaryKeyword: 'Binance Earn vs Nexo for USDT',
+            productFitDecision: 'approve',
+            sourceCluster: {
+              clusterName: 'Platform comparisons',
+              primaryKeywordCandidate: 'Binance Earn vs Nexo for USDT',
+              competitorUrls: [],
+            },
+          },
           supportingClusters: [
             {
               clusterName: 'Platform comparisons',

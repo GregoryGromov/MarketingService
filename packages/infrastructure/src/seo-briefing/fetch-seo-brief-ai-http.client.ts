@@ -44,6 +44,11 @@ export class FetchSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
         'SEO_BRIEF_AI_API_KEY or DEEPSEEK_API_KEY must be configured',
       );
     }
+    if (!isValidHeaderToken(apiKey)) {
+      throw new SeoBriefAiConfigurationError(
+        'SEO_BRIEF_AI_API_KEY or DEEPSEEK_API_KEY must contain only ASCII characters and no whitespace',
+      );
+    }
 
     const baseUrl =
       this.config.get<string>('SEO_BRIEF_AI_BASE_URL')?.trim() ||
@@ -139,6 +144,10 @@ export class FetchSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
       estimatedCost: null,
     };
   }
+}
+
+function isValidHeaderToken(value: string): boolean {
+  return /^[!-~]+$/.test(value);
 }
 
 function normalizeNumber(value: unknown): number | null {

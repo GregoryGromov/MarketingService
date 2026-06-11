@@ -15,6 +15,8 @@ import {
   type SeoBriefAiKeywordIntent,
   type SeoBriefAiModelMode,
 } from '../../ports/seo-brief-ai.port.js';
+import { deriveTopicHintScope } from '../../services/topic-hint-scope.service.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateFinalSeoBriefCommand } from './generate-final-seo-brief.command.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -107,11 +109,13 @@ export class GenerateFinalSeoBriefHandler
       const seoProductContext = buildFinalSeoProductContext(
         readLatestObjectArtifact(artifacts, 'seo_product_context'),
       );
+      const topicHintScope = deriveTopicHintScope(run.topicSeed);
 
       const brief = await this.ai.generateSeoBrief({
         runId: run.id,
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicHint: run.topicSeed,
         primaryKeyword: mainCluster.primaryKeyword,
         clusterLabel: mainCluster.clusterName,
@@ -142,6 +146,7 @@ export class GenerateFinalSeoBriefHandler
       const briefPayload = buildFinalBriefPayload({
         brief,
         topicHint: run.topicSeed,
+        topicHintScope,
         mainCluster,
         supportingClusters,
         fallbackSecondaryKeywords: mainCluster.secondaryKeywords,
@@ -150,6 +155,7 @@ export class GenerateFinalSeoBriefHandler
       const evidencePack: SeoBriefJsonObject = {
         artifactVersion: 'final_brief_evidence_pack_v2',
         topicHint: run.topicSeed,
+        topicHintScope: topicHintScope as unknown as SeoBriefJsonValue,
         market: {
           country: run.country,
           language: run.language,
@@ -358,9 +364,11 @@ function buildFinalBriefPayload(input: {
   mainCluster: MainClusterContext;
   supportingClusters: SeoBriefJsonObject[];
   topicHint: string;
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>;
 }): SeoBriefJsonObject {
   return {
     topicHint: input.brief.topicHint ?? input.topicHint,
+    topicHintScope: input.topicHintScope as unknown as SeoBriefJsonValue,
     mainCluster: input.brief.mainCluster ?? input.mainCluster.clusterName,
     supportingClusters:
       input.brief.supportingClusters ??

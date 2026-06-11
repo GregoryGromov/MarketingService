@@ -7,10 +7,14 @@ const OptionalTextListSchema = v.optional(
 export const CreateSeoBriefRunSchema = v.object({
   projectId: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
   aiModelMode: v.optional(v.nullish(v.picklist(['flash', 'pro', 'pro_thinking']))),
+  workflowMode: v.optional(v.nullish(v.picklist(['manual', 'auto_until_selection']))),
   topicHint: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
   topicSeed: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
   hypothesesCount: v.optional(v.nullish(v.pipe(v.number(), v.minValue(1), v.maxValue(100)))),
   serpEnrichmentCount: v.optional(v.nullish(v.pipe(v.number(), v.minValue(1), v.maxValue(100)))),
+  requestTimeoutMs: v.optional(
+    v.nullish(v.pipe(v.number(), v.minValue(30_000), v.maxValue(900_000))),
+  ),
   competitorKeywordsJsonId: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240))),
   ),

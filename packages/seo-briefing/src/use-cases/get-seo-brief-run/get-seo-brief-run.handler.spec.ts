@@ -216,6 +216,21 @@ describe('GetSeoBriefRunHandler', () => {
       scoreLogCount: 1,
       cacheHitCount: 0,
     });
+    expect(result?.metrics.costBreakdownByStep).toEqual([
+      expect.objectContaining({
+        stepId: step.id,
+        stage: 'created',
+        attemptNumber: 1,
+        llmCost: 0,
+        externalCost: 0.02,
+        totalCost: 0.02,
+        llmCallCount: 1,
+        externalCallCount: 1,
+        cacheHitCount: 0,
+        llmOperations: ['expandKeywords'],
+        externalEndpoints: ['/v3/keywords_data/google/search_volume/live'],
+      }),
+    ]);
     expect(result?.finalBrief?.briefPayload).toEqual({
       title: 'How to Earn with USDT Safely',
       metaTitle: 'How to Earn with USDT Safely',

@@ -11,6 +11,7 @@ export interface SeoResearchMarket {
 export interface SeoResearchRequestContext {
   runId: SeoBriefRunId;
   stepId?: SeoBriefRunStepId | null;
+  timeoutMs?: number | null;
 }
 
 export interface GetSearchVolumeParams extends SeoResearchRequestContext {

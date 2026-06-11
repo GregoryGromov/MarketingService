@@ -5,7 +5,20 @@ import { SeoBriefArtifactRepository } from '../../domain/seo-brief-artifact.repo
 import { SeoBriefRunRepository } from '../../domain/seo-brief-run.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
-import { MatchCompetitorKeywordsCommand } from './match-competitor-keywords.command.js';
+import {
+  type AiCandidateKeywordBucket,
+  type AiCompetitorKeywordCandidateInput,
+  type AiCompetitorKeywordEvidenceInput,
+  type AiCompetitorKeywordMarketBucket,
+  type AiCompetitorKeywordMatchedCandidate,
+  type AiKeywordGroupMatch,
+  SeoBriefAiPort,
+} from '../../ports/seo-brief-ai.port.js';
+import {
+  type CompetitorKeywordMatchingMode,
+  MatchCompetitorKeywordsCommand,
+} from './match-competitor-keywords.command.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 
 type CandidateOriginType =
   | 'ai_hypothesis'
@@ -93,6 +106,30 @@ export interface MatchCompetitorKeywordsResult {
   runId: string;
 }
 
+type AiCompetitorKeywordMatchingStatus =
+  | 'not_requested'
+  | 'completed'
+  | 'partial_ai_with_algorithmic_remainder'
+  | 'failed_fallback_to_algorithmic';
+
+interface MatchCompetitorKeywordsExecutionResult {
+  aiCandidateLimit: number | null;
+  aiCompetitorEvidenceLimit: number | null;
+  aiError: string | null;
+  aiEvaluatedCandidateCount: number;
+  aiEvaluationStatus: AiCompetitorKeywordMatchingStatus;
+  algorithmicFallbackCandidateCount: number;
+  candidateBuckets: SeoBriefJsonValue | null;
+  candidates: CompetitorKeywordMatchedCandidate[];
+  competitorBuckets: SeoBriefJsonValue | null;
+  groupMatches: SeoBriefJsonValue | null;
+  scoreGroupCallCount: number;
+}
+
+type MatchCompetitorKeywordsRun = NonNullable<
+  Awaited<ReturnType<SeoBriefRunRepository['findById']>>
+>;
+
 const IMPORTANT_TOKEN_PHRASES = [
   'bank account',
   'trust wallet',
@@ -160,6 +197,12 @@ const MATCH_WEIGHT: Record<MatchType, number> = {
   semantic_related: 0.45,
   no_match: 0,
 };
+const AI_MATCHING_CANDIDATE_LIMIT = 40;
+const AI_MATCHING_COMPETITOR_EVIDENCE_LIMIT = 120;
+const AI_COMPETITOR_BUCKET_LIMIT = 8;
+const AI_CANDIDATE_BUCKET_LIMIT = 8;
+const AI_SCORE_GROUP_CANDIDATE_LIMIT = 20;
+const AI_SCORE_GROUP_EVIDENCE_LIMIT = 60;
 
 @CommandHandler(MatchCompetitorKeywordsCommand)
 export class MatchCompetitorKeywordsHandler
@@ -170,6 +213,8 @@ export class MatchCompetitorKeywordsHandler
     private readonly runRepository: SeoBriefRunRepository,
     @Inject(SeoBriefArtifactRepository)
     private readonly artifactRepository: SeoBriefArtifactRepository,
+    @Inject(SeoBriefAiPort)
+    private readonly seoBriefAi: SeoBriefAiPort,
   ) {}
 
   async execute(command: MatchCompetitorKeywordsCommand): Promise<MatchCompetitorKeywordsResult> {
@@ -193,9 +238,32 @@ export class MatchCompetitorKeywordsHandler
       throw new Error('Build competitor keyword map before matching competitor keywords');
     }
 
-    const candidates = candidateQueries.map((candidate) =>
-      matchCandidateToCompetitors(candidate, competitorKeywords),
-    );
+    const mode = normalizeMatchingMode(command.mode);
+    const matchingResult =
+      mode === 'ai'
+        ? await this.matchCandidatesWithAi(
+            run,
+            candidateQueries,
+            competitorKeywords,
+            readAiModelMode(artifacts),
+            readRequestTimeoutMsFromArtifacts(artifacts),
+          )
+        : {
+            aiCandidateLimit: null,
+            aiCompetitorEvidenceLimit: null,
+            aiError: null,
+            aiEvaluatedCandidateCount: 0,
+            aiEvaluationStatus: 'not_requested' as const,
+            algorithmicFallbackCandidateCount: 0,
+            candidateBuckets: null,
+            candidates: candidateQueries.map((candidate) =>
+              matchCandidateToCompetitors(candidate, competitorKeywords),
+            ),
+            competitorBuckets: null,
+            groupMatches: null,
+            scoreGroupCallCount: 0,
+          };
+    const candidates = matchingResult.candidates;
     const matchedCandidateCount = candidates.filter(
       (candidate) => candidate.proxyEvaluation.semanticMatches.length > 0,
     ).length;
@@ -214,6 +282,7 @@ export class MatchCompetitorKeywordsHandler
       artifactType: 'competitor_keyword_matches',
       payload: {
         artifactVersion: 'competitor_keyword_matches_v1',
+        matchingMode: mode,
         sourceArtifactTypes: [
           'keyword_hypotheses',
           'keyword_serp_derived_keywords',
@@ -222,14 +291,33 @@ export class MatchCompetitorKeywordsHandler
           'ranked_keywords_universe',
         ],
         notes: [
-          'This step matches candidate queries against competitor ranked keywords.',
+          mode === 'ai'
+            ? 'This step asks AI to evaluate candidate queries only against provided competitor ranked keyword evidence.'
+            : 'This step matches candidate queries against competitor ranked keywords.',
           'Competitor search volume is not assigned to candidate queries.',
-          'proxyDemandScore is a demand proxy based on match type, competitor volume, rank, estimated traffic, and multi-domain evidence.',
-          'Matching is deterministic in this MVP: exact, substring, important-token, and token-overlap signals.',
+          mode === 'ai'
+            ? 'proxyDemandScore is an AI demand proxy grounded in cited competitor evidence IDs.'
+            : 'proxyDemandScore is a demand proxy based on match type, competitor volume, rank, estimated traffic, and multi-domain evidence.',
+          mode === 'ai'
+            ? 'AI output is validated and positive matches must cite provided evidence rows.'
+            : 'Matching is deterministic in this MVP: exact, substring, important-token, and token-overlap signals.',
+          mode === 'ai'
+            ? 'AI evaluation is bounded; candidates outside the AI slice or failed AI responses use explicit algorithmic fallback so the workflow can continue.'
+            : 'No AI evaluation was requested for this matching run.',
         ],
+        aiCandidateLimit: matchingResult.aiCandidateLimit,
+        aiCompetitorEvidenceLimit: matchingResult.aiCompetitorEvidenceLimit,
+        aiError: matchingResult.aiError,
+        aiEvaluatedCandidateCount: matchingResult.aiEvaluatedCandidateCount,
+        aiEvaluationStatus: matchingResult.aiEvaluationStatus,
+        algorithmicFallbackCandidateCount: matchingResult.algorithmicFallbackCandidateCount,
+        candidateBuckets: matchingResult.candidateBuckets,
         candidateCount: candidates.length,
+        competitorBuckets: matchingResult.competitorBuckets,
         competitorKeywordCount: competitorKeywords.length,
+        groupMatches: matchingResult.groupMatches,
         matchedCandidateCount,
+        scoreGroupCallCount: matchingResult.scoreGroupCallCount,
         averageProxyDemandScore,
         candidates: candidates as unknown as SeoBriefJsonValue,
       },
@@ -247,6 +335,736 @@ export class MatchCompetitorKeywordsHandler
       averageProxyDemandScore,
     };
   }
+
+  private async matchCandidatesWithAi(
+    run: MatchCompetitorKeywordsRun,
+    candidateQueries: CandidateQuery[],
+    competitorKeywords: CompetitorKeyword[],
+    modelMode: 'flash' | 'pro' | 'pro_thinking' | null,
+    timeoutMs: number,
+  ): Promise<MatchCompetitorKeywordsExecutionResult> {
+    const limitedCandidates = candidateQueries.slice(0, AI_MATCHING_CANDIDATE_LIMIT);
+    const limitedCompetitors = competitorKeywords.slice(0, AI_MATCHING_COMPETITOR_EVIDENCE_LIMIT);
+    const candidateInputs = createAiCandidateInputs(limitedCandidates);
+    const competitorInputs = createAiCompetitorInputs(limitedCompetitors);
+    const candidateInputById = new Map(candidateInputs.map((input) => [input.candidateId, input]));
+    const candidateById = new Map(
+      candidateInputs.map((input, index) => [input.candidateId, limitedCandidates[index]]),
+    );
+    const competitorByEvidenceId = new Map(
+      competitorInputs.map((input, index) => [input.evidenceId, limitedCompetitors[index]]),
+    );
+    const competitorInputByEvidenceId = new Map(
+      competitorInputs.map((input) => [input.evidenceId, input]),
+    );
+    const market = {
+      country: run.country,
+      language: run.language,
+      locationName: run.country,
+    };
+
+    await this.saveAiMatchingProgress(run, {
+      status: 'running',
+      currentStep: 'group_competitor_keywords',
+      currentStepIndex: 1,
+      totalSteps: 4,
+      message: 'Grouping competitor ranked keywords into market evidence buckets.',
+      candidateCount: candidateQueries.length,
+      aiCandidateCount: limitedCandidates.length,
+      competitorKeywordCount: competitorKeywords.length,
+      aiCompetitorEvidenceCount: limitedCompetitors.length,
+    });
+
+    try {
+      const competitorBucketResult = await this.seoBriefAi.groupCompetitorKeywordEvidence({
+        runId: run.id,
+        modelMode,
+        timeoutMs,
+        topicSeed: run.topicSeed,
+        market,
+        audience: run.audience,
+        productName: run.productName,
+        productDescription: run.productDescription,
+        competitorEvidence: competitorInputs,
+        maxBuckets: AI_COMPETITOR_BUCKET_LIMIT,
+      });
+      const competitorBuckets = normalizeCompetitorBuckets(
+        competitorBucketResult.buckets,
+        competitorInputByEvidenceId,
+      );
+      if (competitorBuckets.length === 0) {
+        throw new Error('AI did not return valid competitor evidence buckets.');
+      }
+
+      await this.saveAiMatchingProgress(run, {
+        status: 'running',
+        currentStep: 'group_candidate_keywords',
+        currentStepIndex: 2,
+        totalSteps: 4,
+        message: 'Grouping our candidate keywords into search intent buckets.',
+        candidateCount: candidateQueries.length,
+        aiCandidateCount: limitedCandidates.length,
+        competitorKeywordCount: competitorKeywords.length,
+        aiCompetitorEvidenceCount: limitedCompetitors.length,
+        competitorBucketCount: competitorBuckets.length,
+      });
+
+      const candidateBucketResult = await this.seoBriefAi.groupCandidateKeywords({
+        runId: run.id,
+        modelMode,
+        timeoutMs,
+        topicSeed: run.topicSeed,
+        market,
+        audience: run.audience,
+        productName: run.productName,
+        productDescription: run.productDescription,
+        candidates: candidateInputs,
+        maxBuckets: AI_CANDIDATE_BUCKET_LIMIT,
+      });
+      const candidateBuckets = normalizeCandidateBuckets(
+        candidateBucketResult.buckets,
+        candidateInputs,
+      );
+      if (candidateBuckets.length === 0) {
+        throw new Error('AI did not return valid candidate keyword buckets.');
+      }
+
+      await this.saveAiMatchingProgress(run, {
+        status: 'running',
+        currentStep: 'match_groups',
+        currentStepIndex: 3,
+        totalSteps: 4,
+        message: 'Matching candidate buckets to relevant competitor evidence buckets.',
+        candidateCount: candidateQueries.length,
+        aiCandidateCount: limitedCandidates.length,
+        competitorKeywordCount: competitorKeywords.length,
+        aiCompetitorEvidenceCount: limitedCompetitors.length,
+        competitorBucketCount: competitorBuckets.length,
+        candidateBucketCount: candidateBuckets.length,
+      });
+
+      const groupMatchResult = await this.seoBriefAi.matchKeywordGroups({
+        runId: run.id,
+        modelMode,
+        timeoutMs,
+        topicSeed: run.topicSeed,
+        market,
+        productName: run.productName,
+        productDescription: run.productDescription,
+        candidateBuckets,
+        competitorBuckets,
+      });
+      const groupMatches = normalizeGroupMatches(
+        groupMatchResult.matches,
+        candidateBuckets,
+        competitorBuckets,
+      );
+      const groupMatchByCandidateBucketId = new Map(
+        groupMatches.map((match) => [match.candidateBucketId, match]),
+      );
+      const scoreGroupTotal = candidateBuckets.reduce(
+        (total, bucket) =>
+          total + Math.ceil(bucket.candidateIds.length / AI_SCORE_GROUP_CANDIDATE_LIMIT),
+        0,
+      );
+      const evaluatedByCandidateId = new Map<string, CompetitorKeywordMatchedCandidate>();
+      let aiEvaluatedCandidateCount = 0;
+      let algorithmicFallbackCandidateCount = 0;
+      let scoreGroupIndex = 0;
+      let scoreGroupCallCount = 0;
+      const aiErrors: string[] = [];
+
+      await this.saveAiMatchingProgress(run, {
+        status: 'running',
+        currentStep: 'score_candidates_by_group',
+        currentStepIndex: 4,
+        totalSteps: 4,
+        message: 'Scoring candidates group by group against matched competitor evidence.',
+        candidateCount: candidateQueries.length,
+        aiCandidateCount: limitedCandidates.length,
+        competitorKeywordCount: competitorKeywords.length,
+        aiCompetitorEvidenceCount: limitedCompetitors.length,
+        competitorBucketCount: competitorBuckets.length,
+        candidateBucketCount: candidateBuckets.length,
+        groupMatchCount: groupMatches.length,
+        scoreGroupIndex,
+        scoreGroupTotal,
+        aiEvaluatedCandidateCount,
+        algorithmicFallbackCandidateCount,
+      });
+
+      for (const candidateBucket of candidateBuckets) {
+        const candidateInputChunks = chunkArray(
+          candidateBucket.candidateIds
+            .map((candidateId) => candidateInputById.get(candidateId) ?? null)
+            .filter((input): input is AiCompetitorKeywordCandidateInput => input !== null),
+          AI_SCORE_GROUP_CANDIDATE_LIMIT,
+        );
+
+        for (const candidateInputChunk of candidateInputChunks) {
+          const groupMatch = groupMatchByCandidateBucketId.get(candidateBucket.bucketId) ?? null;
+          const relevantEvidenceIds = collectRelevantEvidenceIdsForGroupMatch(
+            groupMatch,
+            competitorBuckets,
+          ).slice(0, AI_SCORE_GROUP_EVIDENCE_LIMIT);
+          const relevantCompetitorEvidence = relevantEvidenceIds
+            .map((evidenceId) => competitorInputByEvidenceId.get(evidenceId) ?? null)
+            .filter((input): input is AiCompetitorKeywordEvidenceInput => input !== null);
+          const relevantCompetitorBuckets = competitorBuckets.filter((bucket) =>
+            bucket.evidenceIds.some((evidenceId) => relevantEvidenceIds.includes(evidenceId)),
+          );
+          const chunkCandidateBucket = {
+            ...candidateBucket,
+            candidateIds: candidateInputChunk.map((input) => input.candidateId),
+            representativeKeywords: candidateInputChunk.map((input) => input.keyword).slice(0, 8),
+          };
+
+          try {
+            scoreGroupIndex += 1;
+            scoreGroupCallCount += 1;
+            await this.saveAiMatchingProgress(run, {
+              status: 'running',
+              currentStep: 'score_candidates_by_group',
+              currentStepIndex: 4,
+              totalSteps: 4,
+              message: `Scoring candidate group ${scoreGroupIndex} of ${scoreGroupTotal}.`,
+              candidateCount: candidateQueries.length,
+              aiCandidateCount: limitedCandidates.length,
+              competitorKeywordCount: competitorKeywords.length,
+              aiCompetitorEvidenceCount: limitedCompetitors.length,
+              competitorBucketCount: competitorBuckets.length,
+              candidateBucketCount: candidateBuckets.length,
+              groupMatchCount: groupMatches.length,
+              scoreGroupIndex,
+              scoreGroupTotal,
+              currentCandidateBucketId: candidateBucket.bucketId,
+              currentCandidateBucketLabel: candidateBucket.name,
+              currentChunkCandidateCount: candidateInputChunk.length,
+              currentChunkEvidenceCount: relevantCompetitorEvidence.length,
+              aiEvaluatedCandidateCount,
+              algorithmicFallbackCandidateCount,
+            });
+            const groupScoreResult = await this.seoBriefAi.scoreCompetitorKeywordCandidateGroup({
+              runId: run.id,
+              modelMode,
+              timeoutMs,
+              topicSeed: run.topicSeed,
+              market,
+              audience: run.audience,
+              productName: run.productName,
+              productDescription: run.productDescription,
+              candidateBucket: chunkCandidateBucket,
+              candidates: candidateInputChunk,
+              competitorBuckets: relevantCompetitorBuckets,
+              competitorEvidence: relevantCompetitorEvidence,
+            });
+            const returnedByCandidateId = new Map(
+              groupScoreResult.candidates.map((candidate) => [candidate.candidateId, candidate]),
+            );
+
+            for (const candidateInput of candidateInputChunk) {
+              const candidate = candidateById.get(candidateInput.candidateId);
+              if (!candidate) {
+                continue;
+              }
+
+              const aiCandidate = returnedByCandidateId.get(candidateInput.candidateId);
+              if (!aiCandidate) {
+                algorithmicFallbackCandidateCount += 1;
+                evaluatedByCandidateId.set(
+                  candidateInput.candidateId,
+                  markAlgorithmicFallbackCandidate(
+                    matchCandidateToCompetitors(candidate, competitorKeywords),
+                    'AI did not return a group score for this candidate.',
+                  ),
+                );
+                continue;
+              }
+
+              aiEvaluatedCandidateCount += 1;
+              evaluatedByCandidateId.set(
+                candidateInput.candidateId,
+                createAiMatchedCandidate(candidate, aiCandidate, competitorByEvidenceId),
+              );
+            }
+
+            await this.saveAiMatchingProgress(run, {
+              status: 'running',
+              currentStep: 'score_candidates_by_group',
+              currentStepIndex: 4,
+              totalSteps: 4,
+              message: `Finished candidate group ${scoreGroupIndex} of ${scoreGroupTotal}.`,
+              candidateCount: candidateQueries.length,
+              aiCandidateCount: limitedCandidates.length,
+              competitorKeywordCount: competitorKeywords.length,
+              aiCompetitorEvidenceCount: limitedCompetitors.length,
+              competitorBucketCount: competitorBuckets.length,
+              candidateBucketCount: candidateBuckets.length,
+              groupMatchCount: groupMatches.length,
+              scoreGroupIndex,
+              scoreGroupTotal,
+              currentCandidateBucketId: candidateBucket.bucketId,
+              currentCandidateBucketLabel: candidateBucket.name,
+              currentChunkCandidateCount: candidateInputChunk.length,
+              currentChunkEvidenceCount: relevantCompetitorEvidence.length,
+              aiEvaluatedCandidateCount,
+              algorithmicFallbackCandidateCount,
+            });
+          } catch (error) {
+            aiErrors.push(
+              `score group ${candidateBucket.bucketId}: ${describeUnknownError(error)}`,
+            );
+            algorithmicFallbackCandidateCount += candidateInputChunk.length;
+            for (const candidateInput of candidateInputChunk) {
+              const candidate = candidateById.get(candidateInput.candidateId);
+              if (!candidate) {
+                continue;
+              }
+
+              evaluatedByCandidateId.set(
+                candidateInput.candidateId,
+                markAlgorithmicFallbackCandidate(
+                  matchCandidateToCompetitors(candidate, competitorKeywords),
+                  'AI group scoring failed; deterministic fallback was used for this candidate.',
+                ),
+              );
+            }
+
+            await this.saveAiMatchingProgress(run, {
+              status: 'running',
+              currentStep: 'score_candidates_by_group',
+              currentStepIndex: 4,
+              totalSteps: 4,
+              message: `Candidate group ${scoreGroupIndex} failed; deterministic fallback was used for that chunk.`,
+              candidateCount: candidateQueries.length,
+              aiCandidateCount: limitedCandidates.length,
+              competitorKeywordCount: competitorKeywords.length,
+              aiCompetitorEvidenceCount: limitedCompetitors.length,
+              competitorBucketCount: competitorBuckets.length,
+              candidateBucketCount: candidateBuckets.length,
+              groupMatchCount: groupMatches.length,
+              scoreGroupIndex,
+              scoreGroupTotal,
+              currentCandidateBucketId: candidateBucket.bucketId,
+              currentCandidateBucketLabel: candidateBucket.name,
+              currentChunkCandidateCount: candidateInputChunk.length,
+              currentChunkEvidenceCount: relevantCompetitorEvidence.length,
+              aiEvaluatedCandidateCount,
+              algorithmicFallbackCandidateCount,
+              lastWarning: describeUnknownError(error),
+            });
+          }
+        }
+      }
+
+      for (const candidateInput of candidateInputs) {
+        if (evaluatedByCandidateId.has(candidateInput.candidateId)) {
+          continue;
+        }
+
+        const candidate = candidateById.get(candidateInput.candidateId);
+        if (!candidate) {
+          continue;
+        }
+
+        algorithmicFallbackCandidateCount += 1;
+        evaluatedByCandidateId.set(
+          candidateInput.candidateId,
+          markAlgorithmicFallbackCandidate(
+            matchCandidateToCompetitors(candidate, competitorKeywords),
+            'AI staged matching did not evaluate this candidate.',
+          ),
+        );
+      }
+
+      const evaluatedCandidates = candidateInputs
+        .map((input) => evaluatedByCandidateId.get(input.candidateId) ?? null)
+        .filter((candidate): candidate is CompetitorKeywordMatchedCandidate => candidate !== null);
+      const remainderCandidates = candidateQueries
+        .slice(AI_MATCHING_CANDIDATE_LIMIT)
+        .map((candidate) =>
+          markAlgorithmicFallbackCandidate(
+            matchCandidateToCompetitors(candidate, competitorKeywords),
+            'Candidate was outside the bounded AI evaluation slice.',
+          ),
+        );
+      algorithmicFallbackCandidateCount += remainderCandidates.length;
+      const aiEvaluationStatus =
+        algorithmicFallbackCandidateCount > 0
+          ? 'partial_ai_with_algorithmic_remainder'
+          : 'completed';
+
+      await this.saveAiMatchingProgress(run, {
+        status: aiEvaluationStatus,
+        currentStep: 'completed',
+        currentStepIndex: 4,
+        totalSteps: 4,
+        message:
+          aiEvaluationStatus === 'completed'
+            ? 'AI competitor keyword evaluation completed.'
+            : 'AI evaluation completed with deterministic fallback for the remainder.',
+        candidateCount: candidateQueries.length,
+        aiCandidateCount: limitedCandidates.length,
+        competitorKeywordCount: competitorKeywords.length,
+        aiCompetitorEvidenceCount: limitedCompetitors.length,
+        competitorBucketCount: competitorBuckets.length,
+        candidateBucketCount: candidateBuckets.length,
+        groupMatchCount: groupMatches.length,
+        scoreGroupIndex,
+        scoreGroupTotal,
+        aiEvaluatedCandidateCount,
+        algorithmicFallbackCandidateCount,
+      });
+
+      return {
+        aiCandidateLimit: AI_MATCHING_CANDIDATE_LIMIT,
+        aiCompetitorEvidenceLimit: AI_MATCHING_COMPETITOR_EVIDENCE_LIMIT,
+        aiError: aiErrors.length ? truncateText(aiErrors.join(' | '), 800) : null,
+        aiEvaluatedCandidateCount,
+        aiEvaluationStatus,
+        algorithmicFallbackCandidateCount,
+        candidateBuckets: candidateBuckets as unknown as SeoBriefJsonValue,
+        candidates: [...evaluatedCandidates, ...remainderCandidates],
+        competitorBuckets: competitorBuckets as unknown as SeoBriefJsonValue,
+        groupMatches: groupMatches as unknown as SeoBriefJsonValue,
+        scoreGroupCallCount,
+      };
+    } catch (error) {
+      await this.saveAiMatchingProgress(run, {
+        status: 'failed_fallback_to_algorithmic',
+        currentStep: 'fallback',
+        currentStepIndex: 4,
+        totalSteps: 4,
+        message: 'AI matching failed before completion; deterministic fallback will be used.',
+        candidateCount: candidateQueries.length,
+        aiCandidateCount: limitedCandidates.length,
+        competitorKeywordCount: competitorKeywords.length,
+        aiCompetitorEvidenceCount: limitedCompetitors.length,
+        aiEvaluatedCandidateCount: 0,
+        algorithmicFallbackCandidateCount: candidateQueries.length,
+        error: describeUnknownError(error),
+      });
+      return {
+        aiCandidateLimit: AI_MATCHING_CANDIDATE_LIMIT,
+        aiCompetitorEvidenceLimit: AI_MATCHING_COMPETITOR_EVIDENCE_LIMIT,
+        aiError: describeUnknownError(error),
+        aiEvaluatedCandidateCount: 0,
+        aiEvaluationStatus: 'failed_fallback_to_algorithmic',
+        algorithmicFallbackCandidateCount: candidateQueries.length,
+        candidateBuckets: null,
+        candidates: candidateQueries.map((candidate) =>
+          markAlgorithmicFallbackCandidate(
+            matchCandidateToCompetitors(candidate, competitorKeywords),
+            'AI matching failed; deterministic fallback was used.',
+          ),
+        ),
+        competitorBuckets: null,
+        groupMatches: null,
+        scoreGroupCallCount: 0,
+      };
+    }
+  }
+
+  private async saveAiMatchingProgress(
+    run: MatchCompetitorKeywordsRun,
+    payload: SeoBriefJsonObject,
+  ): Promise<void> {
+    try {
+      await this.artifactRepository.save(
+        SeoBriefArtifact.create({
+          runId: run.id,
+          stage: 'keyword_research',
+          artifactType: 'competitor_keyword_matching_progress',
+          payload: {
+            artifactVersion: 'competitor_keyword_matching_progress_v1',
+            updatedAt: new Date().toISOString(),
+            ...payload,
+          },
+        }),
+      );
+    } catch {
+      // Progress visibility must not make the matching workflow fail.
+    }
+  }
+}
+
+function createAiCandidateInputs(
+  candidates: CandidateQuery[],
+): AiCompetitorKeywordCandidateInput[] {
+  return candidates.map((candidate, index) => ({
+    candidateId: `cand_${String(index + 1).padStart(3, '0')}`,
+    keyword: candidate.text,
+    originType: candidate.originType,
+    sourceKeyword: candidate.sourceKeyword,
+    sourceText: candidate.sourceText,
+    intent: candidate.intent,
+    productFitHypothesis: candidate.productFitHypothesis,
+    reason: candidate.reason,
+    riskFlags: candidate.riskFlags,
+  }));
+}
+
+function createAiCompetitorInputs(
+  keywords: CompetitorKeyword[],
+): AiCompetitorKeywordEvidenceInput[] {
+  return keywords.map((keyword, index) => ({
+    evidenceId: `rk_${String(index + 1).padStart(4, '0')}`,
+    keyword: keyword.text,
+    sourceDomain: keyword.sourceDomain,
+    metrics: keyword.metrics,
+    competitorEvidence: keyword.competitorEvidence,
+    serpEvidence: keyword.serpEvidence,
+  }));
+}
+
+function normalizeCompetitorBuckets(
+  buckets: AiCompetitorKeywordMarketBucket[],
+  evidenceById: Map<string, AiCompetitorKeywordEvidenceInput>,
+): AiCompetitorKeywordMarketBucket[] {
+  const usedEvidenceIds = new Set<string>();
+  const result: AiCompetitorKeywordMarketBucket[] = [];
+
+  for (const bucket of buckets.slice(0, AI_COMPETITOR_BUCKET_LIMIT)) {
+    const evidenceIds = uniqueStrings(bucket.evidenceIds).filter(
+      (evidenceId) => evidenceById.has(evidenceId) && !usedEvidenceIds.has(evidenceId),
+    );
+    if (evidenceIds.length === 0) {
+      continue;
+    }
+
+    for (const evidenceId of evidenceIds) {
+      usedEvidenceIds.add(evidenceId);
+    }
+
+    result.push({
+      bucketId: normalizeBucketId(bucket.bucketId, `competitor_bucket_${result.length + 1}`),
+      name: bucket.name,
+      description: bucket.description,
+      evidenceIds,
+      representativeKeywords: uniqueStrings(bucket.representativeKeywords).slice(0, 8),
+    });
+  }
+
+  const missingEvidenceIds = [...evidenceById.keys()].filter(
+    (evidenceId) => !usedEvidenceIds.has(evidenceId),
+  );
+  if (missingEvidenceIds.length > 0 && result.length < AI_COMPETITOR_BUCKET_LIMIT) {
+    result.push({
+      bucketId: 'competitor_bucket_other',
+      name: 'Other competitor evidence',
+      description: 'Competitor ranked keywords that did not fit the primary AI buckets.',
+      evidenceIds: missingEvidenceIds,
+      representativeKeywords: missingEvidenceIds
+        .map((evidenceId) => evidenceById.get(evidenceId)?.keyword ?? null)
+        .filter((keyword): keyword is string => Boolean(keyword))
+        .slice(0, 8),
+    });
+  }
+
+  return result;
+}
+
+function normalizeCandidateBuckets(
+  buckets: AiCandidateKeywordBucket[],
+  candidateInputs: AiCompetitorKeywordCandidateInput[],
+): AiCandidateKeywordBucket[] {
+  const candidateById = new Map(candidateInputs.map((candidate) => [candidate.candidateId, candidate]));
+  const assignedCandidateIds = new Set<string>();
+  const result: AiCandidateKeywordBucket[] = [];
+
+  for (const bucket of buckets.slice(0, AI_CANDIDATE_BUCKET_LIMIT)) {
+    const candidateIds = uniqueStrings(bucket.candidateIds).filter(
+      (candidateId) => candidateById.has(candidateId) && !assignedCandidateIds.has(candidateId),
+    );
+    if (candidateIds.length === 0) {
+      continue;
+    }
+
+    for (const candidateId of candidateIds) {
+      assignedCandidateIds.add(candidateId);
+    }
+
+    result.push({
+      bucketId: normalizeBucketId(bucket.bucketId, `candidate_bucket_${result.length + 1}`),
+      name: bucket.name,
+      description: bucket.description,
+      candidateIds,
+      representativeKeywords: uniqueStrings(bucket.representativeKeywords).slice(0, 8),
+    });
+  }
+
+  const missingCandidateIds = candidateInputs
+    .map((candidate) => candidate.candidateId)
+    .filter((candidateId) => !assignedCandidateIds.has(candidateId));
+  if (missingCandidateIds.length > 0) {
+    result.push({
+      bucketId: 'candidate_bucket_other',
+      name: 'Other candidate queries',
+      description: 'Candidate keywords that were not assigned to a primary AI bucket.',
+      candidateIds: missingCandidateIds,
+      representativeKeywords: missingCandidateIds
+        .map((candidateId) => candidateById.get(candidateId)?.keyword ?? null)
+        .filter((keyword): keyword is string => Boolean(keyword))
+        .slice(0, 8),
+    });
+  }
+
+  return result;
+}
+
+function normalizeGroupMatches(
+  matches: AiKeywordGroupMatch[],
+  candidateBuckets: AiCandidateKeywordBucket[],
+  competitorBuckets: AiCompetitorKeywordMarketBucket[],
+): AiKeywordGroupMatch[] {
+  const competitorBucketIds = new Set(competitorBuckets.map((bucket) => bucket.bucketId));
+  const matchByCandidateBucketId = new Map(
+    matches.map((match) => [match.candidateBucketId, match]),
+  );
+
+  return candidateBuckets.map((candidateBucket) => {
+    const match = matchByCandidateBucketId.get(candidateBucket.bucketId);
+    if (!match) {
+      return {
+        candidateBucketId: candidateBucket.bucketId,
+        competitorBucketIds: [],
+        matchType: 'none',
+        matchStrength: 0,
+        reason: 'AI did not return a group match for this candidate bucket.',
+      };
+    }
+
+    const validCompetitorBucketIds = uniqueStrings(match.competitorBucketIds).filter((bucketId) =>
+      competitorBucketIds.has(bucketId),
+    );
+
+    return {
+      candidateBucketId: candidateBucket.bucketId,
+      competitorBucketIds: validCompetitorBucketIds,
+      matchType: validCompetitorBucketIds.length ? match.matchType : 'none',
+      matchStrength: validCompetitorBucketIds.length ? match.matchStrength : 0,
+      reason: match.reason,
+    };
+  });
+}
+
+function collectRelevantEvidenceIdsForGroupMatch(
+  match: AiKeywordGroupMatch | null,
+  competitorBuckets: AiCompetitorKeywordMarketBucket[],
+): string[] {
+  if (!match || match.matchType === 'none') {
+    return [];
+  }
+
+  const bucketById = new Map(competitorBuckets.map((bucket) => [bucket.bucketId, bucket]));
+  const evidenceIds: string[] = [];
+  for (const bucketId of match.competitorBucketIds) {
+    const bucket = bucketById.get(bucketId);
+    if (!bucket) {
+      continue;
+    }
+
+    evidenceIds.push(...bucket.evidenceIds);
+  }
+
+  return uniqueStrings(evidenceIds);
+}
+
+function createAiMatchedCandidate(
+  candidate: CandidateQuery,
+  aiCandidate: AiCompetitorKeywordMatchedCandidate,
+  competitorByEvidenceId: Map<string, CompetitorKeyword>,
+): CompetitorKeywordMatchedCandidate {
+  const semanticMatches = aiCandidate.semanticMatches
+    .filter((match) => competitorByEvidenceId.has(match.evidenceId))
+    .slice(0, 10)
+    .map((match) => {
+      const evidence = competitorByEvidenceId.get(match.evidenceId) ?? null;
+      return {
+        competitorKeyword: evidence?.text ?? match.competitorKeyword,
+        sourceDomain: evidence?.sourceDomain ?? match.sourceDomain ?? null,
+        matchType: match.matchType,
+        matchConfidence: match.matchConfidence,
+        matchScore: match.matchScore,
+        why: match.why,
+        useAsProxy: match.matchType !== 'no_match',
+        competitorKeywordScore: match.evidenceStrength,
+        proxyContribution: roundScore(match.evidenceStrength * MATCH_WEIGHT[match.matchType]),
+        metrics: evidence?.metrics as SeoBriefJsonValue | null,
+        competitorEvidence: evidence?.competitorEvidence as SeoBriefJsonValue | null,
+        serpEvidence: evidence?.serpEvidence as SeoBriefJsonValue | null,
+        evidenceId: match.evidenceId,
+      };
+    }) as unknown as KeywordMatch[];
+  const matchingDomains = [
+    ...new Set(
+      semanticMatches
+        .map((match) => match.sourceDomain)
+        .filter((domain): domain is string => Boolean(domain)),
+    ),
+  ];
+
+  return {
+    text: candidate.text,
+    normalizedText: candidate.normalizedText,
+    originType: candidate.originType,
+    sourceKeyword: candidate.sourceKeyword,
+    sourceText: candidate.sourceText,
+    intent: candidate.intent,
+    productFitHypothesis: candidate.productFitHypothesis,
+    riskFlags: candidate.riskFlags,
+    reason: aiCandidate.reason,
+    proxyEvaluation: {
+      semanticMatches,
+      proxyDemandScore: aiCandidate.proxyDemandScore,
+      competitorMatchScore: semanticMatches[0]?.matchScore ?? 0,
+      bestMatchType: aiCandidate.bestMatchType,
+      matchingDomainCount: matchingDomains.length,
+      matchingDomains,
+      multiCompetitorBoost: 0,
+      baseProxyScore: aiCandidate.proxyDemandScore,
+    },
+    candidateScoreComponents: {
+      proxyDemandScore: aiCandidate.proxyDemandScore,
+      aiCandidateScore: aiCandidate.candidateScore,
+      matchedEvidenceCount: aiCandidate.matchedEvidenceIds.filter((id) =>
+        competitorByEvidenceId.has(id),
+      ).length,
+      matchingMode: 'ai_staged',
+      bucketId: aiCandidate.bucketId ?? null,
+    } as unknown as SeoBriefJsonValue,
+    candidateScore: aiCandidate.candidateScore,
+    riskLabel: aiCandidate.riskLabel,
+  };
+}
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim()).map((value) => value.trim()))];
+}
+
+function normalizeBucketId(value: string, fallback: string): string {
+  return value.trim() || fallback;
+}
+
+function normalizeMatchingMode(mode: CompetitorKeywordMatchingMode): CompetitorKeywordMatchingMode {
+  return mode === 'ai' ? 'ai' : 'algorithmic';
+}
+
+function readAiModelMode(
+  artifacts: SeoBriefArtifact[],
+): 'flash' | 'pro' | 'pro_thinking' | null {
+  const normalizedInput = readLatestObjectArtifact(artifacts, 'normalized_input');
+  const mode = readString(normalizedInput?.aiModelMode);
+  return mode === 'flash' || mode === 'pro' || mode === 'pro_thinking' ? mode : null;
 }
 
 function hasLatestObjectArtifact(artifacts: SeoBriefArtifact[], artifactType: string): boolean {
@@ -490,6 +1308,21 @@ function matchCandidateToCompetitors(
     candidateScoreComponents: candidateScoreComponents as unknown as SeoBriefJsonValue,
     candidateScore,
     riskLabel: riskPenalty >= 100 ? 'exclude' : riskPenalty > 0 ? 'risky_requires_review' : 'safe',
+  };
+}
+
+function markAlgorithmicFallbackCandidate(
+  candidate: CompetitorKeywordMatchedCandidate,
+  fallbackReason: string,
+): CompetitorKeywordMatchedCandidate {
+  return {
+    ...candidate,
+    reason: candidate.reason ?? fallbackReason,
+    candidateScoreComponents: {
+      matchingMode: 'algorithmic_fallback',
+      fallbackReason,
+      algorithmicScoreComponents: candidate.candidateScoreComponents,
+    } as unknown as SeoBriefJsonValue,
   };
 }
 
@@ -817,4 +1650,20 @@ function roundScore(value: number): number {
 
 function roundConfidence(value: number): number {
   return Math.round(Math.max(0, Math.min(1, value)) * 100) / 100;
+}
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return truncateText(error.message, 800);
+  }
+
+  if (typeof error === 'string') {
+    return truncateText(error, 800);
+  }
+
+  return 'Unknown AI matching error.';
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }

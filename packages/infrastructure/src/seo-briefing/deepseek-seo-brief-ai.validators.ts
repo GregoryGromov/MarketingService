@@ -1,15 +1,23 @@
 import {
   type BuildProductBridgeResult,
+  type CleanupLongreadArticleResult,
   type ClassifySerpDomainsResult,
   type ClusterKeywordsResult,
   type ClusterKeywordCompetitorUrl,
+  type DraftLongreadArticleResult,
+  type EvaluateCompetitorKeywordMatchesResult,
   type SeoBriefClusterSourceConfidence,
   type ExpandKeywordsResult,
   type ExplainClusterSelectionResult,
   type ExtractedSeoBriefContext,
   type ExtractUserPainScenariosResult,
   type GenerateSeoBriefResult,
+  type GroupCandidateKeywordsResult,
+  type GroupCompetitorKeywordEvidenceResult,
+  type MatchKeywordGroupsResult,
+  type PackageLongreadArticleResult,
   type ReviewClusterProductFitResult,
+  type ScoreCompetitorKeywordCandidateGroupResult,
   type KeywordCandidateFitBreakdown,
   type KeywordCandidateScoreBreakdown,
   type KeywordCandidateScoringStatus,
@@ -58,6 +66,19 @@ const PAIN_SIGNAL_DOMAIN_TYPES = ['forum', 'community', 'social'] as const;
 const DOMAIN_PRIORITIES = ['high', 'medium', 'low'] as const;
 const KEYWORD_CANDIDATE_STATUSES = ['accepted', 'maybe', 'rejected'] as const;
 const KEYWORD_CANDIDATE_FITS = ['strong', 'moderate', 'weak', 'none'] as const;
+const COMPETITOR_KEYWORD_MATCH_TYPES = [
+  'exact_match',
+  'near_match',
+  'same_intent',
+  'semantic_related',
+  'no_match',
+] as const;
+const COMPETITOR_KEYWORD_RISK_LABELS = [
+  'safe',
+  'risky_requires_review',
+  'exclude',
+] as const;
+const KEYWORD_GROUP_MATCH_TYPES = ['direct', 'adjacent', 'weak', 'none'] as const;
 const CLUSTER_SOURCE_CONFIDENCE = ['low', 'medium', 'high'] as const;
 const CLUSTER_PRODUCT_FIT_TYPES = [
   'direct_solution',
@@ -72,6 +93,15 @@ const SEO_BRIEF_CONTENT_TYPES = [
   'comparison',
   'how-to',
   'educational guide',
+] as const;
+const ARTICLE_CLEANUP_STATUSES = ['passed', 'revised', 'needs_human_review'] as const;
+const ARTICLE_CLEANUP_WARNING_TYPES = [
+  'claims',
+  'seo',
+  'product_insertion',
+  'factual_check',
+  'tone',
+  'structure',
 ] as const;
 
 type JsonRecord = Record<string, unknown>;
@@ -730,6 +760,385 @@ function validateKeywordCandidateFit(
   };
 }
 
+export function validateEvaluateCompetitorKeywordMatchesResult(
+  payload: unknown,
+  operation: string,
+): EvaluateCompetitorKeywordMatchesResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const buckets = ensureArray(record.buckets, operation, 'buckets').map((item, index) => {
+    const bucket = ensureObject(item, operation, `buckets[${index}]`);
+    return {
+      bucketId: ensureText(bucket.bucket_id ?? bucket.bucketId, operation, `buckets[${index}].bucket_id`),
+      name: ensureText(bucket.name, operation, `buckets[${index}].name`),
+      description: ensureText(bucket.description, operation, `buckets[${index}].description`),
+      evidenceIds: ensureStringArray(
+        bucket.evidence_ids ?? bucket.evidenceIds,
+        operation,
+        `buckets[${index}].evidence_ids`,
+      ),
+      representativeKeywords: ensureStringArray(
+        bucket.representative_keywords ?? bucket.representativeKeywords,
+        operation,
+        `buckets[${index}].representative_keywords`,
+      ),
+    };
+  });
+  const candidates = ensureArray(record.candidates, operation, 'candidates').map((item, index) => {
+    const candidate = ensureObject(item, operation, `candidates[${index}]`);
+    const semanticMatches = ensureArray(
+      candidate.semantic_matches ?? candidate.semanticMatches,
+      operation,
+      `candidates[${index}].semantic_matches`,
+    ).map((matchItem, matchIndex) => {
+      const match = ensureObject(
+        matchItem,
+        operation,
+        `candidates[${index}].semantic_matches[${matchIndex}]`,
+      );
+      return {
+        evidenceId: ensureText(
+          match.evidence_id ?? match.evidenceId,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].evidence_id`,
+        ),
+        competitorKeyword: ensureText(
+          match.competitor_keyword ?? match.competitorKeyword,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].competitor_keyword`,
+        ),
+        sourceDomain: ensureNullableText(
+          match.source_domain ?? match.sourceDomain,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].source_domain`,
+        ),
+        matchType: ensureEnum(
+          match.match_type ?? match.matchType,
+          COMPETITOR_KEYWORD_MATCH_TYPES,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].match_type`,
+        ),
+        matchConfidence: ensureConfidenceNumber(
+          match.match_confidence ?? match.matchConfidence,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].match_confidence`,
+        ),
+        matchScore: ensureScoreNumber(
+          match.match_score ?? match.matchScore,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].match_score`,
+        ),
+        evidenceStrength: ensureScoreNumber(
+          match.evidence_strength ?? match.evidenceStrength,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].evidence_strength`,
+        ),
+        why: ensureText(
+          match.why,
+          operation,
+          `candidates[${index}].semantic_matches[${matchIndex}].why`,
+        ),
+      };
+    });
+
+    return {
+      candidateId: ensureText(
+        candidate.candidate_id ?? candidate.candidateId,
+        operation,
+        `candidates[${index}].candidate_id`,
+      ),
+      keyword: ensureText(candidate.keyword, operation, `candidates[${index}].keyword`),
+      bucketId: ensureNullableText(
+        candidate.bucket_id ?? candidate.bucketId,
+        operation,
+        `candidates[${index}].bucket_id`,
+      ),
+      proxyDemandScore: ensureScoreNumber(
+        candidate.proxy_demand_score ?? candidate.proxyDemandScore,
+        operation,
+        `candidates[${index}].proxy_demand_score`,
+      ),
+      candidateScore: ensureScoreNumber(
+        candidate.candidate_score ?? candidate.candidateScore,
+        operation,
+        `candidates[${index}].candidate_score`,
+      ),
+      bestMatchType: ensureEnum(
+        candidate.best_match_type ?? candidate.bestMatchType,
+        COMPETITOR_KEYWORD_MATCH_TYPES,
+        operation,
+        `candidates[${index}].best_match_type`,
+      ),
+      matchingDomains: ensureStringArray(
+        candidate.matching_domains ?? candidate.matchingDomains,
+        operation,
+        `candidates[${index}].matching_domains`,
+      ),
+      matchedEvidenceIds: ensureStringArray(
+        candidate.matched_evidence_ids ?? candidate.matchedEvidenceIds,
+        operation,
+        `candidates[${index}].matched_evidence_ids`,
+      ),
+      riskLabel: ensureEnum(
+        candidate.risk_label ?? candidate.riskLabel,
+        COMPETITOR_KEYWORD_RISK_LABELS,
+        operation,
+        `candidates[${index}].risk_label`,
+      ),
+      reason: ensureText(candidate.reason, operation, `candidates[${index}].reason`),
+      semanticMatches,
+    };
+  });
+  const summary = ensureObject(record.summary, operation, 'summary');
+
+  return {
+    buckets,
+    candidates,
+    summary: {
+      notes: ensureStringArray(summary.notes, operation, 'summary.notes'),
+    },
+  };
+}
+
+export function validateGroupCompetitorKeywordEvidenceResult(
+  payload: unknown,
+  operation: string,
+): GroupCompetitorKeywordEvidenceResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const buckets = ensureArray(record.buckets, operation, 'buckets').map((item, index) =>
+    validateCompetitorKeywordMarketBucket(item, operation, `buckets[${index}]`),
+  );
+  const summary = ensureObject(record.summary, operation, 'summary');
+
+  return {
+    buckets,
+    summary: {
+      notes: ensureStringArray(summary.notes, operation, 'summary.notes'),
+    },
+  };
+}
+
+export function validateGroupCandidateKeywordsResult(
+  payload: unknown,
+  operation: string,
+): GroupCandidateKeywordsResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const buckets = ensureArray(record.buckets, operation, 'buckets').map((item, index) => {
+    const bucket = ensureObject(item, operation, `buckets[${index}]`);
+    return {
+      bucketId: ensureText(
+        bucket.bucket_id ?? bucket.bucketId,
+        operation,
+        `buckets[${index}].bucket_id`,
+      ),
+      name: ensureText(bucket.name, operation, `buckets[${index}].name`),
+      description: ensureText(bucket.description, operation, `buckets[${index}].description`),
+      candidateIds: ensureStringArray(
+        bucket.candidate_ids ?? bucket.candidateIds,
+        operation,
+        `buckets[${index}].candidate_ids`,
+      ),
+      representativeKeywords: ensureStringArray(
+        bucket.representative_keywords ?? bucket.representativeKeywords,
+        operation,
+        `buckets[${index}].representative_keywords`,
+      ),
+    };
+  });
+  const summary = ensureObject(record.summary, operation, 'summary');
+
+  return {
+    buckets,
+    summary: {
+      notes: ensureStringArray(summary.notes, operation, 'summary.notes'),
+    },
+  };
+}
+
+export function validateMatchKeywordGroupsResult(
+  payload: unknown,
+  operation: string,
+): MatchKeywordGroupsResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const matches = ensureArray(record.matches, operation, 'matches').map((item, index) => {
+    const match = ensureObject(item, operation, `matches[${index}]`);
+    return {
+      candidateBucketId: ensureText(
+        match.candidate_bucket_id ?? match.candidateBucketId,
+        operation,
+        `matches[${index}].candidate_bucket_id`,
+      ),
+      competitorBucketIds: ensureStringArray(
+        match.competitor_bucket_ids ?? match.competitorBucketIds,
+        operation,
+        `matches[${index}].competitor_bucket_ids`,
+      ),
+      matchType: ensureEnum(
+        match.match_type ?? match.matchType,
+        KEYWORD_GROUP_MATCH_TYPES,
+        operation,
+        `matches[${index}].match_type`,
+      ),
+      matchStrength: ensureScoreNumber(
+        match.match_strength ?? match.matchStrength,
+        operation,
+        `matches[${index}].match_strength`,
+      ),
+      reason: ensureText(match.reason, operation, `matches[${index}].reason`),
+    };
+  });
+  const summary = ensureObject(record.summary, operation, 'summary');
+
+  return {
+    matches,
+    summary: {
+      notes: ensureStringArray(summary.notes, operation, 'summary.notes'),
+    },
+  };
+}
+
+export function validateScoreCompetitorKeywordCandidateGroupResult(
+  payload: unknown,
+  operation: string,
+): ScoreCompetitorKeywordCandidateGroupResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const candidates = ensureArray(record.candidates, operation, 'candidates').map(
+    (item, index) => validateAiCompetitorKeywordMatchedCandidate(item, operation, `candidates[${index}]`),
+  );
+  const summary = ensureObject(record.summary, operation, 'summary');
+
+  return {
+    candidates,
+    summary: {
+      notes: ensureStringArray(summary.notes, operation, 'summary.notes'),
+    },
+  };
+}
+
+function validateCompetitorKeywordMarketBucket(
+  value: unknown,
+  operation: string,
+  path: string,
+): GroupCompetitorKeywordEvidenceResult['buckets'][number] {
+  const bucket = ensureObject(value, operation, path);
+  return {
+    bucketId: ensureText(bucket.bucket_id ?? bucket.bucketId, operation, `${path}.bucket_id`),
+    name: ensureText(bucket.name, operation, `${path}.name`),
+    description: ensureText(bucket.description, operation, `${path}.description`),
+    evidenceIds: ensureStringArray(
+      bucket.evidence_ids ?? bucket.evidenceIds,
+      operation,
+      `${path}.evidence_ids`,
+    ),
+    representativeKeywords: ensureStringArray(
+      bucket.representative_keywords ?? bucket.representativeKeywords,
+      operation,
+      `${path}.representative_keywords`,
+    ),
+  };
+}
+
+function validateAiCompetitorKeywordMatchedCandidate(
+  value: unknown,
+  operation: string,
+  path: string,
+): ScoreCompetitorKeywordCandidateGroupResult['candidates'][number] {
+  const candidate = ensureObject(value, operation, path);
+  const semanticMatches = ensureArray(
+    candidate.semantic_matches ?? candidate.semanticMatches,
+    operation,
+    `${path}.semantic_matches`,
+  ).map((matchItem, matchIndex) => {
+    const match = ensureObject(matchItem, operation, `${path}.semantic_matches[${matchIndex}]`);
+    return {
+      evidenceId: ensureText(
+        match.evidence_id ?? match.evidenceId,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].evidence_id`,
+      ),
+      competitorKeyword: ensureText(
+        match.competitor_keyword ?? match.competitorKeyword,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].competitor_keyword`,
+      ),
+      sourceDomain: ensureNullableText(
+        match.source_domain ?? match.sourceDomain,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].source_domain`,
+      ),
+      matchType: ensureEnum(
+        match.match_type ?? match.matchType,
+        COMPETITOR_KEYWORD_MATCH_TYPES,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].match_type`,
+      ),
+      matchConfidence: ensureConfidenceNumber(
+        match.match_confidence ?? match.matchConfidence,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].match_confidence`,
+      ),
+      matchScore: ensureScoreNumber(
+        match.match_score ?? match.matchScore,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].match_score`,
+      ),
+      evidenceStrength: ensureScoreNumber(
+        match.evidence_strength ?? match.evidenceStrength,
+        operation,
+        `${path}.semantic_matches[${matchIndex}].evidence_strength`,
+      ),
+      why: ensureText(match.why, operation, `${path}.semantic_matches[${matchIndex}].why`),
+    };
+  });
+
+  return {
+    candidateId: ensureText(
+      candidate.candidate_id ?? candidate.candidateId,
+      operation,
+      `${path}.candidate_id`,
+    ),
+    keyword: ensureText(candidate.keyword, operation, `${path}.keyword`),
+    bucketId: ensureNullableText(
+      candidate.bucket_id ?? candidate.bucketId,
+      operation,
+      `${path}.bucket_id`,
+    ),
+    proxyDemandScore: ensureScoreNumber(
+      candidate.proxy_demand_score ?? candidate.proxyDemandScore,
+      operation,
+      `${path}.proxy_demand_score`,
+    ),
+    candidateScore: ensureScoreNumber(
+      candidate.candidate_score ?? candidate.candidateScore,
+      operation,
+      `${path}.candidate_score`,
+    ),
+    bestMatchType: ensureEnum(
+      candidate.best_match_type ?? candidate.bestMatchType,
+      COMPETITOR_KEYWORD_MATCH_TYPES,
+      operation,
+      `${path}.best_match_type`,
+    ),
+    matchingDomains: ensureStringArray(
+      candidate.matching_domains ?? candidate.matchingDomains,
+      operation,
+      `${path}.matching_domains`,
+    ),
+    matchedEvidenceIds: ensureStringArray(
+      candidate.matched_evidence_ids ?? candidate.matchedEvidenceIds,
+      operation,
+      `${path}.matched_evidence_ids`,
+    ),
+    riskLabel: ensureEnum(
+      candidate.risk_label ?? candidate.riskLabel,
+      COMPETITOR_KEYWORD_RISK_LABELS,
+      operation,
+      `${path}.risk_label`,
+    ),
+    reason: ensureText(candidate.reason, operation, `${path}.reason`),
+    semanticMatches,
+  };
+}
+
 export function validateBuildProductBridgeResult(
   payload: unknown,
   operation: string,
@@ -962,6 +1371,141 @@ export function validateGenerateSeoBriefResult(
         operation,
         'productPlacement.sections',
       ),
+    },
+  };
+}
+
+export function validateDraftLongreadArticleResult(
+  payload: unknown,
+  operation: string,
+): DraftLongreadArticleResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const draftArticleMarkdown = ensureText(
+    record.draftArticleMarkdown ?? record.draft_article_markdown,
+    operation,
+    'draftArticleMarkdown',
+  );
+
+  if (!draftArticleMarkdown.startsWith('# ')) {
+    throw validationError(
+      'draftArticleMarkdown must start with an H1 markdown heading',
+      operation,
+      payload,
+    );
+  }
+
+  return { draftArticleMarkdown };
+}
+
+export function validateCleanupLongreadArticleResult(
+  payload: unknown,
+  operation: string,
+): CleanupLongreadArticleResult {
+  const record = ensureObject(payload, operation, 'payload');
+
+  return {
+    status: ensureEnum(record.status, ARTICLE_CLEANUP_STATUSES, operation, 'status'),
+    warnings: ensureArray(record.warnings, operation, 'warnings').map((item, index) => {
+      const warning = ensureObject(item, operation, `warnings[${index}]`);
+      return {
+        type: ensureEnum(
+          warning.type,
+          ARTICLE_CLEANUP_WARNING_TYPES,
+          operation,
+          `warnings[${index}].type`,
+        ),
+        message: ensureText(warning.message, operation, `warnings[${index}].message`),
+      };
+    }),
+    changesMade: ensureStringArray(record.changesMade, operation, 'changesMade'),
+    articleMarkdown: ensureText(record.articleMarkdown, operation, 'articleMarkdown'),
+  };
+}
+
+export function validatePackageLongreadArticleResult(
+  payload: unknown,
+  operation: string,
+): PackageLongreadArticleResult {
+  const record = ensureObject(payload, operation, 'payload');
+  const article = ensureObject(record.article, operation, 'article');
+  const seo = ensureObject(record.seo, operation, 'seo');
+  const productInsertion = ensureObject(
+    record.productInsertion,
+    operation,
+    'productInsertion',
+  );
+  const claimsReview = ensureObject(record.claimsReview, operation, 'claimsReview');
+  const publishingChecklist = ensureObject(
+    record.publishingChecklist,
+    operation,
+    'publishingChecklist',
+  );
+
+  return {
+    article: {
+      title: ensureText(article.title, operation, 'article.title'),
+      slug: ensureText(article.slug, operation, 'article.slug'),
+      metaTitle: ensureText(article.metaTitle, operation, 'article.metaTitle'),
+      metaDescription: ensureText(
+        article.metaDescription,
+        operation,
+        'article.metaDescription',
+      ),
+      h1: ensureText(article.h1, operation, 'article.h1'),
+      bodyMarkdown: ensureText(article.bodyMarkdown, operation, 'article.bodyMarkdown'),
+    },
+    seo: {
+      primaryKeyword: ensureText(seo.primaryKeyword, operation, 'seo.primaryKeyword'),
+      secondaryKeywordsUsed: ensureStringArray(
+        seo.secondaryKeywordsUsed,
+        operation,
+        'seo.secondaryKeywordsUsed',
+      ),
+      searchIntent: ensureText(seo.searchIntent, operation, 'seo.searchIntent'),
+      contentType: ensureText(seo.contentType, operation, 'seo.contentType'),
+      faqIncluded: ensureBoolean(seo.faqIncluded, operation, 'seo.faqIncluded'),
+      internalLinks: ensureStringArray(seo.internalLinks, operation, 'seo.internalLinks'),
+      externalSourcesNeeded: ensureStringArray(
+        seo.externalSourcesNeeded,
+        operation,
+        'seo.externalSourcesNeeded',
+      ),
+    },
+    productInsertion: {
+      whereInserted: ensureText(
+        productInsertion.whereInserted,
+        operation,
+        'productInsertion.whereInserted',
+      ),
+      angleUsed: ensureText(productInsertion.angleUsed, operation, 'productInsertion.angleUsed'),
+      forced: ensureBoolean(productInsertion.forced, operation, 'productInsertion.forced'),
+    },
+    claimsReview: {
+      status: ensureEnum(
+        claimsReview.status,
+        ARTICLE_CLEANUP_STATUSES,
+        operation,
+        'claimsReview.status',
+      ),
+      warnings: ensureStringArray(claimsReview.warnings, operation, 'claimsReview.warnings'),
+    },
+    publishingChecklist: {
+      readyToPublish: ensureBoolean(
+        publishingChecklist.readyToPublish,
+        operation,
+        'publishingChecklist.readyToPublish',
+      ),
+      needsExternalFactCheck: ensureBoolean(
+        publishingChecklist.needsExternalFactCheck,
+        operation,
+        'publishingChecklist.needsExternalFactCheck',
+      ),
+      needsComplianceReview: ensureBoolean(
+        publishingChecklist.needsComplianceReview,
+        operation,
+        'publishingChecklist.needsComplianceReview',
+      ),
+      notes: ensureStringArray(publishingChecklist.notes, operation, 'publishingChecklist.notes'),
     },
   };
 }
@@ -1199,6 +1743,14 @@ function ensureScoreNumber(value: unknown, operation: string, path: string): num
   return value;
 }
 
+function ensureConfidenceNumber(value: unknown, operation: string, path: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+    throw validationError(`${path} must be a number from 0 to 1`, operation, value);
+  }
+
+  return value;
+}
+
 function ensureNullableNumber(value: unknown, operation: string, path: string): number | null {
   if (value == null) {
     return null;
@@ -1229,6 +1781,14 @@ function uniqueStrings(items: string[]): string[] {
 function ensureNonNegativeInteger(value: unknown, operation: string, path: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
     throw validationError(`${path} must be a non-negative integer`, operation, value);
+  }
+
+  return value;
+}
+
+function ensureBoolean(value: unknown, operation: string, path: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw validationError(`${path} must be a boolean`, operation, value);
   }
 
   return value;

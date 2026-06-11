@@ -7,6 +7,7 @@ import { SeoBriefRunStep } from '../../domain/seo-brief-run-step.entity.js';
 import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
+import { deriveRequiredTopicTerms } from '../../services/topic-hint-scope.service.js';
 import { SelectSeoBriefClustersCommand } from './select-seo-brief-clusters.command.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -19,6 +20,7 @@ interface ClusterSelectionScore {
   riskPenalty: number;
   serpEnrichmentSupport: number;
   sourceDiversityConfidence: number;
+  topicScopeAlignment: number;
   weightedScoreBeforePenalty: number;
 }
 
@@ -83,8 +85,14 @@ export class SelectSeoBriefClustersHandler
     await this.stepRepository.save(step);
 
     try {
-      const candidates = reviews.map(toSelectionCandidate).sort(compareSelectionCandidates);
-      const mainCluster = candidates.find((candidate) => candidate.decision === 'main') ?? null;
+      const requiredTopicTerms = deriveRequiredTopicTerms(run.topicSeed);
+      const candidates = reviews
+        .map((review) => toSelectionCandidate(review, requiredTopicTerms))
+        .sort(compareSelectionCandidates);
+      const selectedClusterName = normalizeClusterName(command.selectedClusterName);
+      const mainCluster = selectedClusterName
+        ? findManuallySelectedCluster(candidates, selectedClusterName)
+        : null;
       const supportingClusters = candidates
         .filter((candidate) => candidate !== mainCluster && candidate.decision !== 'rejected')
         .slice(0, 3);
@@ -94,18 +102,24 @@ export class SelectSeoBriefClustersHandler
         artifactVersion: 'cluster_selection_v2',
         sourceArtifactType: 'cluster_product_fit_review',
         inputClusterCount: candidates.length,
+        selectionMode: mainCluster ? 'manual_selected' : 'manual_required',
+        manualSelectionRequired: !mainCluster,
+        selectedClusterName: mainCluster?.clusterName ?? null,
         weights: {
-          productFit: 30,
-          competitorProxyDemandEvidence: 25,
-          intentRelevance: 20,
-          serpEnrichmentSupport: 15,
-          sourceDiversityConfidence: 10,
+          productFit: 28,
+          topicScopeAlignment: 22,
+          competitorProxyDemandEvidence: 20,
+          intentRelevance: 15,
+          serpEnrichmentSupport: 10,
+          sourceDiversityConfidence: 5,
           riskPenalty: 'subtract',
         },
+        requiredTopicTerms,
         notes: [
-          'Main cluster can only come from approved Product Fit clusters.',
-          'Supporting-only clusters cannot become the main cluster.',
+          'Main cluster is selected manually by the operator from ranked approved/supporting clusters.',
+          'Approved and supporting-only clusters can be selected manually; rejected clusters cannot.',
           'High competitor/proxy demand does not override bad Product Fit.',
+          'Concrete topic hint terms are scored separately so generic adjacent clusters do not replace the requested scope.',
           'No direct volume does not kill a cluster when SERP, proxy, and Product Fit evidence are strong.',
         ],
         mainCluster: mainCluster ? toSelectedClusterJson(mainCluster) : null,
@@ -148,6 +162,28 @@ export class SelectSeoBriefClustersHandler
   }
 }
 
+function normalizeClusterName(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return normalized || null;
+}
+
+function findManuallySelectedCluster(
+  candidates: ClusterSelectionCandidate[],
+  selectedClusterName: string,
+): ClusterSelectionCandidate {
+  const candidate = candidates.find(
+    (item) => item.clusterName.trim().toLowerCase() === selectedClusterName,
+  );
+  if (!candidate) {
+    throw new Error(`Selected cluster "${selectedClusterName}" was not found in ranked clusters`);
+  }
+  if (candidate.decision === 'rejected') {
+    throw new Error(`Selected cluster "${candidate.clusterName}" is rejected and cannot be used`);
+  }
+
+  return candidate;
+}
+
 function nextAttemptNumber(artifacts: SeoBriefArtifact[], artifactType: string): number {
   return artifacts.filter((artifact) => artifact.artifactType === artifactType).length + 1;
 }
@@ -168,12 +204,15 @@ function readProductFitReviews(payload: SeoBriefJsonObject): JsonRecord[] {
     : [];
 }
 
-function toSelectionCandidate(review: JsonRecord): ClusterSelectionCandidate {
+function toSelectionCandidate(
+  review: JsonRecord,
+  requiredTopicTerms: string[],
+): ClusterSelectionCandidate {
   const sourceCluster = asObject(review.sourceCluster) ?? {};
   const clusterName = readString(review.clusterName) ?? readString(sourceCluster.clusterName) ?? '';
   const productFitDecision = readString(review.decision) ?? 'reject';
   const productFitType = readString(review.productFitType) ?? 'no_fit';
-  const scoreBreakdown = calculateScoreBreakdown(review, sourceCluster);
+  const scoreBreakdown = calculateScoreBreakdown(review, sourceCluster, requiredTopicTerms);
   const priorityScore = clampScore(
     scoreBreakdown.weightedScoreBeforePenalty - scoreBreakdown.riskPenalty,
   );
@@ -210,22 +249,26 @@ function toSelectionCandidate(review: JsonRecord): ClusterSelectionCandidate {
 function calculateScoreBreakdown(
   review: JsonRecord,
   sourceCluster: JsonRecord,
+  requiredTopicTerms: string[],
 ): ClusterSelectionScore {
   const productFit = clampScore(readNumber(review.productFitScore) ?? 0);
+  const topicScopeAlignment = calculateTopicScopeAlignment(review, sourceCluster, requiredTopicTerms);
   const competitorProxyDemandEvidence = calculateCompetitorProxyDemandEvidence(sourceCluster);
   const intentRelevance = calculateIntentRelevance(review, sourceCluster);
   const serpEnrichmentSupport = calculateSerpEnrichmentSupport(sourceCluster);
   const sourceDiversityConfidence = calculateSourceDiversityConfidence(sourceCluster);
   const riskPenalty = calculateRiskPenalty(review);
   const weightedScoreBeforePenalty =
-    productFit * 0.3 +
-    competitorProxyDemandEvidence * 0.25 +
-    intentRelevance * 0.2 +
-    serpEnrichmentSupport * 0.15 +
-    sourceDiversityConfidence * 0.1;
+    productFit * 0.28 +
+    topicScopeAlignment * 0.22 +
+    competitorProxyDemandEvidence * 0.2 +
+    intentRelevance * 0.15 +
+    serpEnrichmentSupport * 0.1 +
+    sourceDiversityConfidence * 0.05;
 
   return {
     productFit,
+    topicScopeAlignment,
     competitorProxyDemandEvidence,
     intentRelevance,
     serpEnrichmentSupport,
@@ -233,6 +276,67 @@ function calculateScoreBreakdown(
     riskPenalty,
     weightedScoreBeforePenalty: roundScore(weightedScoreBeforePenalty),
   };
+}
+
+function calculateTopicScopeAlignment(
+  review: JsonRecord,
+  sourceCluster: JsonRecord,
+  requiredTopicTerms: string[],
+): number {
+  const anchorTerms = getConcreteAnchorTerms(requiredTopicTerms);
+  if (anchorTerms.length === 0) {
+    return 75;
+  }
+
+  const searchableText = [
+    readString(sourceCluster.clusterName),
+    readString(sourceCluster.primaryKeywordCandidate),
+    readString(sourceCluster.primaryKeyword),
+    readString(review.clusterName),
+    readString(review.reason),
+    ...readStringArray(sourceCluster.keywords),
+    ...readStringArray(sourceCluster.secondaryKeywords),
+    ...readStringArray(sourceCluster.questions),
+    ...readStringArray(sourceCluster.supportingItems),
+    ...readSupportingItemDetails(sourceCluster).flatMap((item) => [
+      readString(item.text),
+      readString(item.whyInCluster),
+    ]),
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    .toLowerCase();
+
+  if (anchorTerms.some((term) => searchableText.includes(term))) {
+    return 100;
+  }
+
+  const tokenMatches = anchorTerms.filter((term) =>
+    term.split(/\s+/).some((token) => token.length >= 4 && searchableText.includes(token)),
+  ).length;
+  if (tokenMatches > 0) {
+    return 55;
+  }
+
+  return 15;
+}
+
+function getConcreteAnchorTerms(requiredTopicTerms: string[]): string[] {
+  const genericTerms = new Set([
+    'crypto',
+    'cryptocurrency',
+    'earn',
+    'earning',
+    'interest',
+    'market',
+    'markets',
+    'money',
+    'tether',
+    'usdt',
+    'yield',
+  ]);
+  const concrete = requiredTopicTerms.filter((term) => !genericTerms.has(term));
+  return concrete.length > 0 ? concrete : requiredTopicTerms;
 }
 
 function calculateCompetitorProxyDemandEvidence(sourceCluster: JsonRecord): number {
@@ -339,6 +443,7 @@ function buildSelectionReason(
 
   const parts = [
     `Product Fit ${score.productFit}/100`,
+    `topic scope ${score.topicScopeAlignment}/100`,
     `proxy evidence ${score.competitorProxyDemandEvidence}/100`,
     `intent ${score.intentRelevance}/100`,
   ];

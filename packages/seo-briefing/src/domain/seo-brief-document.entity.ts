@@ -26,7 +26,7 @@ export class SeoBriefDocument {
     public readonly id: SeoBriefDocumentId,
     public readonly runId: SeoBriefRunId,
     public readonly selectedClusterPayload: SeoBriefJsonValue,
-    public readonly briefPayload: SeoBriefJsonValue,
+    public briefPayload: SeoBriefJsonValue,
     public readonly rejectedClustersPayload: SeoBriefJsonValue | null,
     public readonly createdAt: Date,
     public updatedAt: Date,
@@ -55,5 +55,10 @@ export class SeoBriefDocument {
       props.createdAt,
       props.updatedAt,
     );
+  }
+
+  updateBriefPayload(briefPayload: SeoBriefJsonValue): void {
+    this.briefPayload = briefPayload;
+    this.updatedAt = new Date();
   }
 }

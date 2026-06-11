@@ -6,6 +6,8 @@ export {
   Project,
   type ProjectId,
   type ProjectProps,
+  type SeoCompetitorKeywordMapMemory,
+  type SeoCompetitorsMemory,
 } from './domain/project.aggregate.js';
 export { ProjectRepository } from './domain/project.repository.js';
 export {

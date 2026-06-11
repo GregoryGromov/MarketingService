@@ -136,9 +136,15 @@ describe('CreateSeoBriefRunHandler', () => {
       projectId: 'project-1',
       aiModelMode: 'pro',
       topicHint: 'how to earn with USDT',
+      topicHintScope: {
+        requiredTopicTerms: ['earn', 'usdt'],
+        topicCoverageInstruction:
+          'Treat requiredTopicTerms as hard scope anchors extracted from topic_hint. The SEO plan must explicitly preserve at least one of: earn, usdt. Generic adjacent queries may support the brief, but they must not replace the concrete topic scope.',
+      },
       topicSeed: 'how to earn with USDT',
       hypothesesCount: 20,
       serpEnrichmentCount: 10,
+      requestTimeoutMs: 300000,
       competitorKeywordsJsonId: 'nigeria_usdt_competitors_v1',
       market: {
         country: 'Nigeria',
@@ -313,6 +319,10 @@ describe('CreateSeoBriefRunHandler', () => {
       brandName: 'Reinforce',
       productDescription: 'Helps users understand low-friction yield options',
       targetAudience: 'Retail crypto beginners',
+      keyMessage: null,
+      defaultCta: null,
+      brandConstraints: [],
+      claimsConstraints: [],
       approvedFacts: [],
       forbiddenClaims: [],
       glossary: {},
@@ -320,6 +330,12 @@ describe('CreateSeoBriefRunHandler', () => {
       requiredPhrases: [],
       brandDocs: [],
       adaptationPromptRules: null,
+      seoCompetitors: {
+        mustInclude: [],
+        optional: [],
+        exclude: [],
+      },
+      seoCompetitorKeywordMap: null,
     });
   });
 

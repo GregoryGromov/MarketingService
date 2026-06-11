@@ -20,13 +20,22 @@ import {
   type ProjectMarkerId,
 } from '@marketing-service/project-management';
 import {
+  SeoResearchPort,
+  type SeoBriefJsonValue,
+  type SeoRankedKeywordItem,
+} from '@marketing-service/seo-briefing';
+import {
   BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Inject,
+  Injectable,
+  Logger,
   NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
   Param,
   Post,
   Put,
@@ -89,6 +98,14 @@ const UpdateProjectBrandMemorySchema = v.object({
   brandName: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(120)))),
   productDescription: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
   targetAudience: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(2000)))),
+  keyMessage: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
+  defaultCta: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(1000)))),
+  brandConstraints: v.optional(
+    v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+  ),
+  claimsConstraints: v.optional(
+    v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+  ),
   approvedFacts: v.optional(
     v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
   ),
@@ -104,6 +121,21 @@ const UpdateProjectBrandMemorySchema = v.object({
   ),
   brandDocs: v.optional(v.nullish(v.array(BrandMemoryDocumentSchema))),
   adaptationPromptRules: v.optional(v.nullish(AdaptationPromptRulesSchema)),
+  seoCompetitors: v.optional(
+    v.nullish(
+      v.object({
+        mustInclude: v.optional(
+          v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+        ),
+        optional: v.optional(
+          v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+        ),
+        exclude: v.optional(
+          v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
+        ),
+      }),
+    ),
+  ),
 });
 
 const CreateCampaignSchema = v.object({
@@ -215,6 +247,14 @@ function normalizeBrandMemoryUpdate(
       ? { productDescription: dto.productDescription }
       : {}),
     ...(dto.targetAudience !== undefined ? { targetAudience: dto.targetAudience } : {}),
+    ...(dto.keyMessage !== undefined ? { keyMessage: dto.keyMessage } : {}),
+    ...(dto.defaultCta !== undefined ? { defaultCta: dto.defaultCta } : {}),
+    ...(dto.brandConstraints !== undefined
+      ? { brandConstraints: dto.brandConstraints ?? [] }
+      : {}),
+    ...(dto.claimsConstraints !== undefined
+      ? { claimsConstraints: dto.claimsConstraints ?? [] }
+      : {}),
     ...(dto.approvedFacts !== undefined
       ? { approvedFacts: dto.approvedFacts ?? [] }
       : {}),
@@ -272,7 +312,444 @@ function normalizeBrandMemoryUpdate(
               },
         }
       : {}),
+    ...(dto.seoCompetitors !== undefined
+      ? {
+          seoCompetitors: {
+            mustInclude: dto.seoCompetitors?.mustInclude ?? [],
+            optional: dto.seoCompetitors?.optional ?? [],
+            exclude: dto.seoCompetitors?.exclude ?? [],
+          },
+        }
+      : {}),
   };
+}
+
+interface SeoCompetitorTarget {
+  raw: string;
+  source: 'must_include' | 'optional';
+  target: string;
+}
+
+interface SeoCompetitorSkipped {
+  raw: string;
+  reason: string;
+  source: 'must_include' | 'optional' | 'exclude';
+}
+
+interface FlatCompetitorKeyword {
+  bestRankAbsolute: number | null;
+  competitorDomains: string[];
+  estimatedTrafficMax: number | null;
+  evidenceCount: number;
+  intent: string | null;
+  keyword: string;
+  keywordDifficulty: number | null;
+  searchVolume: number | null;
+  source: 'ranked_keywords';
+}
+
+const SEO_COMPETITOR_KEYWORD_REFRESH_INTERVAL_HOURS = 24;
+const SEO_COMPETITOR_KEYWORD_REFRESH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+function normalizeNullableText(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeRankedKeywordsLimit(value: unknown): number {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(parsed)) {
+    return 100;
+  }
+
+  return Math.min(500, Math.max(10, Math.trunc(parsed)));
+}
+
+function normalizeCompetitorTarget(value: string): string | null {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withoutProtocol = trimmed.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  const host = withoutProtocol.split(/[/?#]/)[0]?.trim();
+  if (!host || !host.includes('.')) {
+    return null;
+  }
+
+  return host;
+}
+
+function resolveSeoCompetitorTargets(competitors: BrandMemory['seoCompetitors']): {
+  skipped: SeoCompetitorSkipped[];
+  targets: SeoCompetitorTarget[];
+} {
+  const skipped: SeoCompetitorSkipped[] = [];
+  const targets = new Map<string, SeoCompetitorTarget>();
+  const excluded = new Set(
+    (competitors.exclude ?? [])
+      .map(normalizeCompetitorTarget)
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  const addTarget = (
+    raw: string,
+    source: SeoCompetitorTarget['source'],
+  ): void => {
+    const target = normalizeCompetitorTarget(raw);
+    if (!target) {
+      skipped.push({ raw, source, reason: 'not_a_domain' });
+      return;
+    }
+
+    if (excluded.has(target)) {
+      skipped.push({ raw, source, reason: 'excluded_in_brand_memory' });
+      return;
+    }
+
+    if (!targets.has(target)) {
+      targets.set(target, { raw, source, target });
+    }
+  };
+
+  for (const raw of competitors.mustInclude ?? []) {
+    addTarget(raw, 'must_include');
+  }
+
+  for (const raw of competitors.optional ?? []) {
+    addTarget(raw, 'optional');
+  }
+
+  for (const raw of competitors.exclude ?? []) {
+    if (!normalizeCompetitorTarget(raw)) {
+      skipped.push({ raw, source: 'exclude', reason: 'not_a_domain' });
+    }
+  }
+
+  return { targets: [...targets.values()], skipped };
+}
+
+function normalizeCompetitorKeywordsJsonId(value: string): string {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 120) || 'brand_memory_competitor_keywords'
+  );
+}
+
+function normalizeKeywordText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function normalizeDisplayText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function maxNullable(left: number | null, right: number | null): number | null {
+  if (left == null) return right;
+  if (right == null) return left;
+  return Math.max(left, right);
+}
+
+function minNullable(left: number | null, right: number | null): number | null {
+  if (left == null) return right;
+  if (right == null) return left;
+  return Math.min(left, right);
+}
+
+function buildFlatCompetitorKeywords(
+  items: SeoRankedKeywordItem[],
+): FlatCompetitorKeyword[] {
+  const byKeyword = new Map<
+    string,
+    FlatCompetitorKeyword & { competitorDomainSet: Set<string> }
+  >();
+
+  for (const item of items) {
+    const normalizedKeyword = normalizeKeywordText(item.text);
+    if (!normalizedKeyword) {
+      continue;
+    }
+
+    const existing = byKeyword.get(normalizedKeyword);
+    const domain =
+      item.competitorEvidence.domain ?? item.sourceDomain ?? item.competitorEvidence.rankingUrl;
+
+    if (!existing) {
+      const competitorDomainSet = new Set<string>();
+      if (domain) {
+        competitorDomainSet.add(domain);
+      }
+
+      byKeyword.set(normalizedKeyword, {
+        keyword: normalizeDisplayText(item.text),
+        source: 'ranked_keywords',
+        searchVolume: item.metrics.searchVolume,
+        keywordDifficulty: item.metrics.keywordDifficulty,
+        intent: item.metrics.intent,
+        bestRankAbsolute: item.competitorEvidence.rankAbsolute,
+        estimatedTrafficMax: item.competitorEvidence.estimatedTraffic,
+        evidenceCount: 1,
+        competitorDomains: domain ? [domain] : [],
+        competitorDomainSet,
+      });
+      continue;
+    }
+
+    existing.searchVolume = maxNullable(existing.searchVolume, item.metrics.searchVolume);
+    existing.keywordDifficulty = maxNullable(
+      existing.keywordDifficulty,
+      item.metrics.keywordDifficulty,
+    );
+    existing.bestRankAbsolute = minNullable(
+      existing.bestRankAbsolute,
+      item.competitorEvidence.rankAbsolute,
+    );
+    existing.estimatedTrafficMax = maxNullable(
+      existing.estimatedTrafficMax,
+      item.competitorEvidence.estimatedTraffic,
+    );
+    existing.intent = existing.intent ?? item.metrics.intent;
+    existing.evidenceCount += 1;
+
+    if (domain) {
+      existing.competitorDomainSet.add(domain);
+      existing.competitorDomains = [...existing.competitorDomainSet].sort();
+    }
+  }
+
+  return [...byKeyword.values()]
+    .map(({ competitorDomainSet: _competitorDomainSet, ...keyword }) => keyword)
+    .sort((left, right) => {
+      const trafficDelta =
+        (right.estimatedTrafficMax ?? 0) - (left.estimatedTrafficMax ?? 0);
+      if (trafficDelta !== 0) {
+        return trafficDelta;
+      }
+
+      return (right.searchVolume ?? 0) - (left.searchVolume ?? 0);
+    });
+}
+
+interface ProjectWithBrandMemory {
+  brandMemory: BrandMemory;
+  id: string;
+  name: string;
+}
+
+interface RefreshBrandMemoryCompetitorKeywordsParams {
+  commandBus: CommandBus;
+  country?: string | null;
+  language?: string | null;
+  limit?: number | null;
+  project: ProjectWithBrandMemory;
+  seoResearch: SeoResearchPort;
+}
+
+async function refreshBrandMemoryCompetitorKeywordsForProject({
+  commandBus,
+  country: countryInput,
+  language: languageInput,
+  limit: limitInput,
+  project,
+  seoResearch,
+}: RefreshBrandMemoryCompetitorKeywordsParams) {
+  const competitors = project.brandMemory.seoCompetitors;
+  const competitorTargets = resolveSeoCompetitorTargets(competitors);
+  if (competitorTargets.targets.length === 0) {
+    throw new BadRequestException(
+      'Add SEO competitor domains in Brand Memory before refreshing competitor ranked keywords',
+    );
+  }
+
+  const country = normalizeNullableText(countryInput) ?? 'United States';
+  const language = normalizeNullableText(languageInput) ?? 'English';
+  const limit = normalizeRankedKeywordsLimit(limitInput);
+  const targetResults = [];
+  const items: SeoRankedKeywordItem[] = [];
+
+  for (const target of competitorTargets.targets) {
+    const result = await seoResearch.getRankedKeywords({
+      runId: `brand_memory_${project.id}` as never,
+      target: target.target,
+      market: {
+        country,
+        language,
+        locationName: country,
+      },
+      limit,
+      historicalSerpMode: 'live',
+      loadRankAbsolute: false,
+      ignoreSynonyms: false,
+      includeClickstreamData: false,
+    });
+
+    targetResults.push({
+      raw: target.raw,
+      source: target.source,
+      target: result.target,
+      totalCount: result.totalCount,
+      itemsCount: result.itemsCount,
+      metrics: result.metrics,
+      items: result.items as unknown as SeoBriefJsonValue,
+    });
+    items.push(...result.items);
+  }
+
+  const allKeywordsFlat = buildFlatCompetitorKeywords(items);
+  const competitorKeywordsJsonId = normalizeCompetitorKeywordsJsonId(
+    `${project.name}_${country}_${language}_competitors`,
+  );
+  const refreshedAt = new Date();
+  const nextRefreshAt = new Date(
+    refreshedAt.getTime() +
+      SEO_COMPETITOR_KEYWORD_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000,
+  );
+  const seoCompetitorKeywordMap = {
+    generatedAt: refreshedAt.toISOString(),
+    nextRefreshAt: nextRefreshAt.toISOString(),
+    refreshIntervalHours: SEO_COMPETITOR_KEYWORD_REFRESH_INTERVAL_HOURS,
+    competitorKeywordsJsonId,
+    market: {
+      country,
+      language,
+      locationName: country,
+    },
+    targets: competitorTargets.targets.map((target) => target.target),
+    targetCount: competitorTargets.targets.length,
+    itemCount: items.length,
+    deduplicatedKeywordCount: allKeywordsFlat.length,
+    targetResults,
+    items: items as unknown[],
+    allKeywordsFlat: allKeywordsFlat as unknown[],
+  };
+
+  const updated = await commandBus.execute(
+    new UpdateProjectBrandMemoryCommand(project.id as ProjectId, {
+      seoCompetitorKeywordMap,
+    }),
+  );
+
+  return {
+    projectId: project.id,
+    brandMemory: updated.brandMemory,
+    competitorKeywordsJsonId,
+    targets: seoCompetitorKeywordMap.targets,
+    generatedAt: seoCompetitorKeywordMap.generatedAt,
+    nextRefreshAt: seoCompetitorKeywordMap.nextRefreshAt,
+    refreshIntervalHours: seoCompetitorKeywordMap.refreshIntervalHours,
+    targetCount: seoCompetitorKeywordMap.targetCount,
+    itemCount: seoCompetitorKeywordMap.itemCount,
+    deduplicatedKeywordCount: seoCompetitorKeywordMap.deduplicatedKeywordCount,
+    skipped: competitorTargets.skipped,
+  };
+}
+
+@Injectable()
+export class BrandMemorySeoCompetitorKeywordRefreshScheduler
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(
+    BrandMemorySeoCompetitorKeywordRefreshScheduler.name,
+  );
+  private timer: ReturnType<typeof setInterval> | null = null;
+
+  constructor(
+    @Inject(CommandBus)
+    private readonly commandBus: CommandBus,
+    @Inject(QueryBus)
+    private readonly queryBus: QueryBus,
+    @Inject(SeoResearchPort)
+    private readonly seoResearch: SeoResearchPort,
+  ) {}
+
+  onModuleInit(): void {
+    this.timer = setInterval(() => {
+      void this.refreshDueProjects();
+    }, SEO_COMPETITOR_KEYWORD_REFRESH_CHECK_INTERVAL_MS);
+    void this.refreshDueProjects();
+  }
+
+  onModuleDestroy(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  refreshProject(
+    project: ProjectWithBrandMemory,
+    dto: { country?: string | null; language?: string | null; limit?: number | null },
+  ) {
+    return refreshBrandMemoryCompetitorKeywordsForProject({
+      commandBus: this.commandBus,
+      country: dto?.country,
+      language: dto?.language,
+      limit: dto?.limit,
+      project,
+      seoResearch: this.seoResearch,
+    });
+  }
+
+  private async refreshDueProjects(): Promise<void> {
+    try {
+      const projectList = await this.queryBus.execute(new ListProjectsQuery());
+      const now = Date.now();
+
+      for (const projectListItem of projectList as Array<{ id: string }>) {
+        const project = await this.queryBus.execute(
+          new GetProjectQuery(projectListItem.id as ProjectId),
+        );
+
+        if (!project) {
+          continue;
+        }
+
+        const keywordMap = project.brandMemory.seoCompetitorKeywordMap;
+        if (!keywordMap?.nextRefreshAt || !Array.isArray(keywordMap.targets)) {
+          continue;
+        }
+
+        const nextRefreshTime = new Date(keywordMap.nextRefreshAt).getTime();
+        if (!Number.isFinite(nextRefreshTime) || nextRefreshTime > now) {
+          continue;
+        }
+
+        try {
+          await this.refreshProject(project, {
+            country: keywordMap.market?.country,
+            language: keywordMap.market?.language,
+          });
+          this.logger.log(
+            `Refreshed SEO competitor ranked keywords for project ${project.id}`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to auto-refresh SEO competitor ranked keywords for project ${project.id}`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        'Failed to check SEO competitor ranked keyword refresh schedule',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
 }
 
 @Controller('projects')
@@ -282,6 +759,7 @@ export class ProjectController {
     private readonly commandBus: CommandBus,
     @Inject(QueryBus)
     private readonly queryBus: QueryBus,
+    private readonly competitorKeywordRefresh: BrandMemorySeoCompetitorKeywordRefreshScheduler,
   ) {}
 
   @Post()
@@ -353,6 +831,21 @@ export class ProjectController {
     } catch (error) {
       rethrowProjectManagementHttpError(error);
     }
+  }
+
+  @Post(':id/brand-memory/refresh-competitor-keywords')
+  async refreshBrandMemoryCompetitorKeywords(
+    @Param('id') id: string,
+    @Body()
+    dto: { country?: string | null; language?: string | null; limit?: number | null },
+  ) {
+    const project = await this.queryBus.execute(new GetProjectQuery(id as ProjectId));
+
+    if (!project) {
+      throw new NotFoundException(`Project ${id} not found`);
+    }
+
+    return this.competitorKeywordRefresh.refreshProject(project, dto);
   }
 
   @Get(':id/campaigns')

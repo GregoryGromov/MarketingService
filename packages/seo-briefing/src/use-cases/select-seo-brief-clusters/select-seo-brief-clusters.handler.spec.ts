@@ -32,7 +32,7 @@ function createRun(): SeoBriefRun {
 }
 
 describe('SelectSeoBriefClustersHandler', () => {
-  it('selects one approved main cluster, supporting clusters, and rejected clusters', async () => {
+  it('saves a manually selected main cluster, supporting clusters, and rejected clusters', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const stepRepository = new InMemorySeoBriefRunStepRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
@@ -141,14 +141,18 @@ describe('SelectSeoBriefClustersHandler', () => {
       artifactRepository,
     );
 
-    const result = await handler.execute(new SelectSeoBriefClustersCommand(run.id));
+    const result = await handler.execute(
+      new SelectSeoBriefClustersCommand(run.id, 'Safe USDT earning options'),
+    );
     const artifacts = await artifactRepository.findByRunId(run.id);
     const saved = artifacts.find((artifact) => artifact.artifactType === 'cluster_selection_snapshot')
       ?.payload as {
       mainCluster: { clusterName: string; primaryKeyword: string; priorityScore: number };
+      manualSelectionRequired: boolean;
       rankedClusters: Array<{ clusterName: string; priorityScore: number }>;
       rejectedClusters: Array<{ clusterName: string; reason: string }>;
       selectedCluster: { label: string; representativeKeyword: string };
+      selectionMode: string;
       supportingClusters: Array<{ clusterName: string; role: string }>;
     };
     const steps = await stepRepository.findByRunId(run.id);
@@ -163,7 +167,9 @@ describe('SelectSeoBriefClustersHandler', () => {
       clusterName: 'Safe USDT earning options',
       primaryKeyword: 'is it safe to earn interest on USDT',
     });
-    expect(saved.mainCluster.priorityScore).toBeGreaterThan(60);
+    expect(saved.selectionMode).toBe('manual_selected');
+    expect(saved.manualSelectionRequired).toBe(false);
+    expect(saved.mainCluster.priorityScore).toBeGreaterThan(50);
     expect(saved.supportingClusters).toMatchObject([
       {
         clusterName: 'USDT cash-out workflows',

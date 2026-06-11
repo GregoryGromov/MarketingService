@@ -12,6 +12,7 @@ import {
   type ExtractUserPainScenariosResult,
   type SeoBriefAiModelMode,
 } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClassifySerpDomainsCommand } from './classify-serp-domains.command.js';
 
 type SeoBriefArtifactList = SeoBriefArtifact[];
@@ -65,6 +66,7 @@ export class ClassifySerpDomainsHandler
         runId: run.id,
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

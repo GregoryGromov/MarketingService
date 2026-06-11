@@ -1,15 +1,26 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Optional } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { SeoBriefArtifact } from '../../domain/seo-brief-artifact.entity.js';
 import { SeoBriefArtifactRepository } from '../../domain/seo-brief-artifact.repository.js';
+import type { SeoBriefRun } from '../../domain/seo-brief-run.aggregate.js';
 import { SeoBriefRunRepository } from '../../domain/seo-brief-run.repository.js';
 import { SeoBriefRunStep } from '../../domain/seo-brief-run-step.entity.js';
 import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
+import {
+  SeoBriefAiPort,
+  type ScoreDirtyKeywordCandidateInput,
+  type ScoreDirtyKeywordCandidatesResult as AiScoreDirtyKeywordCandidatesResult,
+  type ScoredDirtyKeywordCandidate,
+} from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ScoreKeywordCandidatesCommand } from './score-keyword-candidates.command.js';
 
 const MAX_SCORING_CANDIDATES = 400;
+const AI_ELIGIBILITY_BATCH_SIZE = 50;
+const AI_SCORING_BATCH_SIZE = 40;
+const AI_FINAL_CALIBRATION_LIMIT = 240;
 const MAX_ACCEPTED_PER_BUCKET = 8;
 const MAX_MAYBE_PER_BUCKET = 8;
 
@@ -44,6 +55,19 @@ interface StagedFilteringContext {
   productDescription: string;
   productName: string;
   topicSeed: string;
+}
+
+interface AiFilteringRunResult {
+  accepted: SeoBriefJsonObject[];
+  maybe: SeoBriefJsonObject[];
+  rejected: SeoBriefJsonObject[];
+  stagedFiltering: SeoBriefJsonObject;
+  summaryNotes: string[];
+  aiCallCount: number;
+  eligibilityCandidateCount: number;
+  eligibleCandidateCount: number;
+  fitScoredCandidateCount: number;
+  finalCalibrationCandidateCount: number;
 }
 
 interface ScoreBreakdown {
@@ -184,6 +208,9 @@ export class ScoreKeywordCandidatesHandler
     private readonly stepRepository: SeoBriefRunStepRepository,
     @Inject(SeoBriefArtifactRepository)
     private readonly artifactRepository: SeoBriefArtifactRepository,
+    @Optional()
+    @Inject(SeoBriefAiPort)
+    private readonly seoBriefAi?: SeoBriefAiPort,
   ) {}
 
   async execute(command: ScoreKeywordCandidatesCommand): Promise<ScoreKeywordCandidatesResult> {
@@ -212,28 +239,43 @@ export class ScoreKeywordCandidatesHandler
     await this.stepRepository.save(step);
 
     try {
-      const prefilter = prefilterDirtyCandidates(dirtyCandidates);
-      const staged = runStagedFiltering({
-        context: {
-          topicSeed: run.topicSeed,
-          country: run.country,
-          language: run.language,
-          audience: run.audience,
-          productName: run.productName,
-          productDescription: run.productDescription,
-          keyMessage: run.keyMessage,
-        },
-        deterministicRejected: prefilter.rejectedCandidates,
-        scorableCandidates: prefilter.scorableCandidates,
+      const aiStaged = await this.runAiStagedFiltering({
+        artifacts,
+        dirtyCandidates,
+        run,
+        step,
+      }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'AI staged filtering failed';
+        const fallback = runDeterministicFallback(dirtyCandidates, run);
+        return {
+          ...fallback,
+          stagedFiltering: {
+            ...fallback.stagedFiltering,
+            fallbackFromAi: true,
+            aiError: message,
+          } as unknown as SeoBriefJsonObject,
+          summaryNotes: [
+            `AI staged filtering failed, so deterministic fallback was used: ${message}`,
+            ...fallback.summaryNotes,
+          ],
+          aiCallCount: 0,
+          eligibilityCandidateCount: dirtyCandidates.length,
+          eligibleCandidateCount: fallback.keptAfterNoiseCount,
+          fitScoredCandidateCount: fallback.keptAfterNoiseCount,
+          finalCalibrationCandidateCount: fallback.accepted.length + fallback.maybe.length,
+        };
       });
 
+      const isFallback = Boolean(aiStaged.stagedFiltering.fallbackFromAi);
+
       const payload: SeoBriefJsonObject = {
-        artifactVersion: 'keyword_candidate_scoring_v2',
+        artifactVersion: 'keyword_candidate_scoring_v3',
         sourceArtifactType: 'dirty_keyword_pool',
-        filteringMode: 'deterministic_staged_filtering',
+        filteringMode: isFallback ? 'deterministic_fallback_after_ai_failure' : 'ai_staged_filtering',
         scoringCriteria: [
-          'noise_filter',
-          'semantic_bucket',
+          'ai_noise_and_eligibility',
+          'ai_fit_scoring',
+          'ai_final_shortlist_calibration',
           'topic_fit',
           'product_fit',
           'audience_fit',
@@ -242,43 +284,49 @@ export class ScoreKeywordCandidatesHandler
           'evidence',
         ],
         notes: [
-          'Dirty-pool candidates are filtered through a staged deterministic pipeline instead of one large LLM request.',
-          'Stage 1 removes obvious noise and compliance-risk queries.',
-          'Stage 2 assigns candidates to semantic buckets based on the final algorithm.',
-          'Stage 3 scores topic fit, product fit, audience fit, intent fit, risk/compliance, and evidence.',
-          'Stage 4 shortlists the strongest candidates per bucket so downstream LLM steps stay small.',
+          'Dirty-pool candidates are filtered through three compact AI passes instead of one large request.',
+          'AI pass 1 removes obvious noise and low-eligibility candidates.',
+          'AI pass 2 scores eligible candidates by topic, product, audience, intent, risk/compliance, and evidence.',
+          'AI pass 3 calibrates the final accepted/maybe/rejected shortlist.',
+          'Deterministic filtering is used only as a fallback if the AI stage fails.',
         ],
         inputCandidateCount: readNumber(dirtyPool.candidateCount) ?? dirtyCandidates.length,
         scoredCandidateCount: dirtyCandidates.length,
-        llmScoredCandidateCount: 0,
-        aiScoredCandidateCount: 0,
-        keptAfterNoiseCount: prefilter.scorableCandidates.length,
-        hardExcludedCandidateCount: prefilter.rejectedCandidates.length,
+        llmScoredCandidateCount: aiStaged.aiCallCount,
+        aiScoredCandidateCount: aiStaged.fitScoredCandidateCount,
+        keptAfterNoiseCount: aiStaged.eligibleCandidateCount,
+        hardExcludedCandidateCount: Math.max(
+          0,
+          aiStaged.eligibilityCandidateCount - aiStaged.eligibleCandidateCount,
+        ),
         scoringCandidateLimit: MAX_SCORING_CANDIDATES,
+        aiEligibilityBatchSize: AI_ELIGIBILITY_BATCH_SIZE,
+        aiScoringBatchSize: AI_SCORING_BATCH_SIZE,
+        aiFinalCalibrationLimit: AI_FINAL_CALIBRATION_LIMIT,
+        fallbackUsed: isFallback,
         acceptedPerBucketLimit: MAX_ACCEPTED_PER_BUCKET,
         maybePerBucketLimit: MAX_MAYBE_PER_BUCKET,
         hardExcludeTerms: HARD_EXCLUDE_TERMS,
         boostPatterns: BOOST_PATTERNS,
-        acceptedCount: staged.accepted.length,
-        maybeCount: staged.maybe.length,
-        rejectedCount: staged.rejected.length,
+        acceptedCount: aiStaged.accepted.length,
+        maybeCount: aiStaged.maybe.length,
+        rejectedCount: aiStaged.rejected.length,
         summary: {
-          acceptedCount: staged.accepted.length,
-          maybeCount: staged.maybe.length,
-          rejectedCount: staged.rejected.length,
-          hardExcludedCandidateCount: prefilter.rejectedCandidates.length,
-          keptAfterNoiseCount: prefilter.scorableCandidates.length,
-          llmCallCount: 0,
-          notes: [
-            `Filtered ${dirtyCandidates.length} dirty candidates without an LLM scoring call.`,
-            `Kept ${prefilter.scorableCandidates.length} after noise filtering.`,
-            `Shortlisted up to ${MAX_ACCEPTED_PER_BUCKET} accepted and ${MAX_MAYBE_PER_BUCKET} maybe candidates per semantic bucket.`,
-          ],
+          acceptedCount: aiStaged.accepted.length,
+          maybeCount: aiStaged.maybe.length,
+          rejectedCount: aiStaged.rejected.length,
+          hardExcludedCandidateCount: Math.max(
+            0,
+            aiStaged.eligibilityCandidateCount - aiStaged.eligibleCandidateCount,
+          ),
+          keptAfterNoiseCount: aiStaged.eligibleCandidateCount,
+          llmCallCount: aiStaged.aiCallCount,
+          notes: aiStaged.summaryNotes,
         } as unknown as SeoBriefJsonValue,
-        stagedFiltering: staged.stagedFiltering as unknown as SeoBriefJsonValue,
-        accepted: staged.accepted as unknown as SeoBriefJsonValue,
-        maybe: staged.maybe as unknown as SeoBriefJsonValue,
-        rejected: staged.rejected as unknown as SeoBriefJsonValue,
+        stagedFiltering: aiStaged.stagedFiltering as unknown as SeoBriefJsonValue,
+        accepted: aiStaged.accepted as unknown as SeoBriefJsonValue,
+        maybe: aiStaged.maybe as unknown as SeoBriefJsonValue,
+        rejected: aiStaged.rejected as unknown as SeoBriefJsonValue,
       };
       await this.artifactRepository.save(
         SeoBriefArtifact.create({
@@ -298,9 +346,9 @@ export class ScoreKeywordCandidatesHandler
       return {
         runId: run.id,
         artifactType: 'keyword_candidate_scoring',
-        acceptedCount: staged.accepted.length,
-        maybeCount: staged.maybe.length,
-        rejectedCount: staged.rejected.length,
+        acceptedCount: aiStaged.accepted.length,
+        maybeCount: aiStaged.maybe.length,
+        rejectedCount: aiStaged.rejected.length,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Keyword candidate scoring failed';
@@ -312,6 +360,527 @@ export class ScoreKeywordCandidatesHandler
     }
   }
 
+  private async runAiStagedFiltering(params: {
+    artifacts: SeoBriefArtifact[];
+    dirtyCandidates: CandidateRecord[];
+    run: SeoBriefRun;
+    step: SeoBriefRunStep;
+  }): Promise<AiFilteringRunResult> {
+    if (!this.seoBriefAi) {
+      throw new Error('SeoBriefAiPort is not configured for AI staged keyword filtering');
+    }
+
+    const sourceCandidateByKeyword = new Map<string, CandidateRecord>();
+    const inputByKeyword = new Map<string, ScoreDirtyKeywordCandidateInput>();
+    const rawInputs = params.dirtyCandidates.map((candidate) => ({
+      candidate,
+      input: toAiCandidateInput(candidate),
+    }));
+    const aiInputs = uniqueAiCandidateInputs(rawInputs.map((item) => item.input));
+
+    for (const { candidate, input } of rawInputs) {
+      const key = normalizeKeywordText(input.keyword);
+      if (!inputByKeyword.has(key)) {
+        inputByKeyword.set(key, input);
+        sourceCandidateByKeyword.set(key, candidate);
+      }
+    }
+
+    const baseParams = createAiScoringParams(params.run, params.artifacts, params.step);
+    const modelMode = readAiModelMode(params.artifacts);
+
+    const eligibility = await this.scoreCandidateInputBatches({
+      batchSize: AI_ELIGIBILITY_BATCH_SIZE,
+      candidates: aiInputs,
+      params: baseParams,
+      stageNote:
+        'AI pass 1 / eligibility: reject obvious noise, unsafe queries, very weak topic/product/audience fit, and fragmented keywords. Accepted or maybe means eligible for deeper scoring.',
+    });
+    const eligibilityAccepted = [...eligibility.result.accepted, ...eligibility.result.maybe];
+    const eligibilityRejected = eligibility.result.rejected;
+    const eligibleKeys = new Set(eligibilityAccepted.map((candidate) => normalizeKeywordText(candidate.keyword)));
+    const eligibleInputs = aiInputs.filter((input) => eligibleKeys.has(normalizeKeywordText(input.keyword)));
+
+    const fitScoring = await this.scoreCandidateInputBatches({
+      batchSize: AI_SCORING_BATCH_SIZE,
+      candidates: eligibleInputs,
+      params: baseParams,
+      stageNote:
+        'AI pass 2 / fit scoring: score each eligible candidate against topic, product, audience, intent, risk/compliance, and saved evidence only.',
+    });
+
+    const calibrationCandidates = [...fitScoring.result.accepted, ...fitScoring.result.maybe]
+      .sort((left, right) => right.totalScore - left.totalScore)
+      .slice(0, AI_FINAL_CALIBRATION_LIMIT);
+    const calibrationInputs = calibrationCandidates.map((candidate) =>
+      toCalibrationCandidateInput(candidate, inputByKeyword),
+    );
+
+    const calibration =
+      calibrationInputs.length > 0
+        ? await this.scoreCandidateInputBatches({
+            batchSize: AI_SCORING_BATCH_SIZE,
+            candidates: calibrationInputs,
+            params: baseParams,
+            stageNote:
+              'AI pass 3 / final calibration: dedupe, balance, and make the final accepted/maybe/rejected shortlist. Be stricter than pass 2 and keep only candidates worth sending to clustering.',
+          })
+        : {
+            aiCallCount: 0,
+            result: emptyAiScoreResult('No candidates reached final calibration.'),
+          };
+
+    const calibratedKeys = new Set(
+      [
+        ...calibration.result.accepted,
+        ...calibration.result.maybe,
+        ...calibration.result.rejected,
+      ].map((candidate) => normalizeKeywordText(candidate.keyword)),
+    );
+    const overflowRejected = [...fitScoring.result.accepted, ...fitScoring.result.maybe]
+      .filter((candidate) => !calibratedKeys.has(normalizeKeywordText(candidate.keyword)))
+      .map((candidate) => ({
+        ...candidate,
+        status: 'rejected' as const,
+        reasons: [
+          ...candidate.reasons,
+          'Rejected because final AI calibration limit kept stronger candidates for clustering.',
+        ],
+        riskFlags: [...candidate.riskFlags, 'ai_calibration_overflow'],
+        totalScore: Math.min(candidate.totalScore, 49),
+      }));
+
+    const finalAccepted = calibration.result.accepted.map((candidate) =>
+      aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+    );
+    const finalMaybe = calibration.result.maybe.map((candidate) =>
+      aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+    );
+    const finalRejected = [
+      ...eligibilityRejected.map((candidate) =>
+        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_eligibility'),
+      ),
+      ...fitScoring.result.rejected.map((candidate) =>
+        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_fit_scoring'),
+      ),
+      ...calibration.result.rejected.map((candidate) =>
+        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+      ),
+      ...overflowRejected.map((candidate) =>
+        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration_overflow'),
+      ),
+    ];
+
+    const aiCallCount = eligibility.aiCallCount + fitScoring.aiCallCount + calibration.aiCallCount;
+    const stagedFiltering: SeoBriefJsonObject = {
+      mode: 'ai_staged_filtering',
+      modelMode,
+      stages: [
+        {
+          stage: 'ai_noise_and_eligibility',
+          description:
+            'AI checks all dirty-pool candidates and rejects obvious noise, unsafe queries, fragmented keywords, and weak fit.',
+          inputCount: aiInputs.length,
+          keptCount: eligibleInputs.length,
+          rejectedCount: eligibilityRejected.length,
+          aiCallCount: eligibility.aiCallCount,
+        },
+        {
+          stage: 'ai_fit_scoring',
+          description:
+            'AI scores eligible candidates using topic fit, product fit, audience fit, intent fit, risk/compliance, and provided evidence.',
+          inputCount: eligibleInputs.length,
+          acceptedCount: fitScoring.result.accepted.length,
+          maybeCount: fitScoring.result.maybe.length,
+          rejectedCount: fitScoring.result.rejected.length,
+          aiCallCount: fitScoring.aiCallCount,
+        },
+        {
+          stage: 'ai_final_shortlist_calibration',
+          description:
+            'AI recalibrates the strongest pass-2 candidates into final accepted, maybe, and rejected buckets for clustering.',
+          inputCount: calibrationInputs.length,
+          acceptedCount: finalAccepted.length,
+          maybeCount: finalMaybe.length,
+          rejectedCount: calibration.result.rejected.length + overflowRejected.length,
+          aiCallCount: calibration.aiCallCount,
+        },
+      ],
+    };
+
+    return {
+      accepted: finalAccepted,
+      maybe: finalMaybe,
+      rejected: finalRejected,
+      stagedFiltering,
+      summaryNotes: [
+        `AI eligibility pass kept ${eligibleInputs.length} of ${aiInputs.length} dirty candidates.`,
+        `AI fit scoring accepted ${fitScoring.result.accepted.length}, kept ${fitScoring.result.maybe.length} as maybe, and rejected ${fitScoring.result.rejected.length}.`,
+        `AI final calibration returned ${finalAccepted.length} accepted and ${finalMaybe.length} maybe candidates.`,
+        ...eligibility.result.summary.notes,
+        ...fitScoring.result.summary.notes,
+        ...calibration.result.summary.notes,
+      ].slice(0, 12),
+      aiCallCount,
+      eligibilityCandidateCount: aiInputs.length,
+      eligibleCandidateCount: eligibleInputs.length,
+      fitScoredCandidateCount: eligibleInputs.length,
+      finalCalibrationCandidateCount: calibrationInputs.length,
+    };
+  }
+
+  private async scoreCandidateInputBatches(params: {
+    batchSize: number;
+    candidates: ScoreDirtyKeywordCandidateInput[];
+    params: Omit<Parameters<SeoBriefAiPort['scoreDirtyKeywordCandidates']>[0], 'candidates'>;
+    stageNote: string;
+  }): Promise<{ aiCallCount: number; result: AiScoreDirtyKeywordCandidatesResult }> {
+    const chunks = chunkArray(params.candidates, params.batchSize);
+    const merged = emptyAiScoreResult(params.stageNote);
+    let aiCallCount = 0;
+
+    for (const chunk of chunks) {
+      const result = await this.seoBriefAi!.scoreDirtyKeywordCandidates({
+        ...params.params,
+        candidates: chunk.map((candidate) => ({
+          ...candidate,
+          evidenceSummary: [params.stageNote, ...candidate.evidenceSummary].slice(0, 10),
+        })),
+      });
+      aiCallCount += 1;
+      mergeAiScoreResults(merged, ensureEveryInputCandidateIsReturned(chunk, result));
+    }
+
+    return { aiCallCount, result: merged };
+  }
+}
+
+function runDeterministicFallback(
+  dirtyCandidates: CandidateRecord[],
+  run: SeoBriefRun,
+): {
+  accepted: SeoBriefJsonObject[];
+  keptAfterNoiseCount: number;
+  maybe: SeoBriefJsonObject[];
+  rejected: SeoBriefJsonObject[];
+  stagedFiltering: SeoBriefJsonObject;
+  summaryNotes: string[];
+} {
+  const prefilter = prefilterDirtyCandidates(dirtyCandidates);
+  const staged = runStagedFiltering({
+    context: {
+      topicSeed: run.topicSeed,
+      country: run.country,
+      language: run.language,
+      audience: run.audience,
+      productName: run.productName,
+      productDescription: run.productDescription,
+      keyMessage: run.keyMessage,
+    },
+    deterministicRejected: prefilter.rejectedCandidates,
+    scorableCandidates: prefilter.scorableCandidates,
+  });
+
+  return {
+    accepted: staged.accepted,
+    keptAfterNoiseCount: prefilter.scorableCandidates.length,
+    maybe: staged.maybe,
+    rejected: staged.rejected,
+    stagedFiltering: staged.stagedFiltering,
+    summaryNotes: [
+      `Deterministic fallback filtered ${dirtyCandidates.length} dirty candidates.`,
+      `Kept ${prefilter.scorableCandidates.length} after noise filtering.`,
+      `Shortlisted up to ${MAX_ACCEPTED_PER_BUCKET} accepted and ${MAX_MAYBE_PER_BUCKET} maybe candidates per semantic bucket.`,
+    ],
+  };
+}
+
+function createAiScoringParams(
+  run: SeoBriefRun,
+  artifacts: SeoBriefArtifact[],
+  step: SeoBriefRunStep,
+): Omit<Parameters<SeoBriefAiPort['scoreDirtyKeywordCandidates']>[0], 'candidates'> {
+  return {
+    runId: run.id,
+    stepId: step.id,
+    modelMode: readAiModelMode(artifacts),
+    timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
+    topicSeed: run.topicSeed,
+    market: {
+      country: run.country,
+      language: run.language,
+      locationName: run.country,
+    },
+    audience: run.audience,
+    productName: run.productName,
+    productDescription: run.productDescription,
+    keyMessage: run.keyMessage,
+    seoProductContext: readLatestObjectArtifact(artifacts, 'seo_product_context'),
+    brandMemorySnapshot: run.brandMemorySnapshot,
+    userPainScenarios: readLatestObjectArtifact(artifacts, 'user_pain_scenarios') as never,
+  };
+}
+
+function toAiCandidateInput(candidate: CandidateRecord): ScoreDirtyKeywordCandidateInput {
+  const keyword = getCandidateKeyword(candidate);
+  const normalizedText = readString(candidate.normalizedText) ?? normalizeKeywordText(keyword);
+  const metrics = asObject(candidate.metrics);
+  const flags = asObject(candidate.flags);
+  const sources = uniqueStrings(readStringArray(candidate.sources));
+  const evidence = readEvidence(candidate);
+
+  return {
+    evidenceCount: evidence.length,
+    evidenceSummary: [
+      ...evidence.slice(0, 8).map(formatEvidenceSummary),
+      ...formatCandidateMetricSummary(candidate),
+    ].slice(0, 10),
+    flags: {
+      hasRankedKeywordEvidence:
+        readBoolean(flags?.hasRankedKeywordEvidence) || sources.includes('ranked_keywords'),
+      hasSearchVolume:
+        readBoolean(flags?.hasSearchVolume) || readNumber(metrics?.searchVolume) !== null,
+      hasSelectedRelatedQuery:
+        readBoolean(flags?.hasSelectedRelatedQuery) || sources.includes('selected_related_query'),
+      hasCompetitorKeywordMatch:
+        readBoolean(flags?.hasCompetitorKeywordMatch) ||
+        sources.includes('competitor_keyword_match') ||
+        readNumber(metrics?.competitorMatchScore) !== null,
+      isInitialHypothesis:
+        readBoolean(flags?.isInitialHypothesis) || sources.includes('keyword_hypothesis'),
+    },
+    keyword,
+    metrics: {
+      bestRankAbsolute: readNumber(metrics?.bestRankAbsolute),
+      candidateScore: readNumber(metrics?.candidateScore),
+      competitorMatchScore: readNumber(metrics?.competitorMatchScore),
+      cpc: readNumber(metrics?.cpc),
+      intent: readString(metrics?.intent),
+      keywordDifficulty: readNumber(metrics?.keywordDifficulty),
+      proxyDemandScore: readNumber(metrics?.proxyDemandScore),
+      searchVolume: readNumber(metrics?.searchVolume),
+    },
+    normalizedText,
+    sources,
+  };
+}
+
+function toCalibrationCandidateInput(
+  candidate: ScoredDirtyKeywordCandidate,
+  inputByKeyword: Map<string, ScoreDirtyKeywordCandidateInput>,
+): ScoreDirtyKeywordCandidateInput {
+  const original = inputByKeyword.get(normalizeKeywordText(candidate.keyword));
+  const stageEvidence = [
+    `pass_2_status=${candidate.status}`,
+    `pass_2_total_score=${candidate.totalScore}`,
+    `pass_2_scores=${JSON.stringify(candidate.scores)}`,
+    ...candidate.reasons.slice(0, 3).map((reason) => `pass_2_reason=${reason}`),
+    ...candidate.evidenceNotes.slice(0, 3).map((note) => `pass_2_evidence=${note}`),
+  ];
+
+  return {
+    evidenceCount: original?.evidenceCount ?? candidate.evidenceNotes.length,
+    evidenceSummary: [...stageEvidence, ...(original?.evidenceSummary ?? [])].slice(0, 10),
+    flags: original?.flags ?? {
+      hasRankedKeywordEvidence: false,
+      hasSearchVolume: false,
+      hasSelectedRelatedQuery: false,
+      hasCompetitorKeywordMatch: false,
+      isInitialHypothesis: false,
+    },
+    keyword: candidate.keyword,
+    metrics: {
+      ...(original?.metrics ?? {}),
+      candidateScore: candidate.totalScore,
+    },
+    normalizedText: original?.normalizedText ?? normalizeKeywordText(candidate.keyword),
+    sources: uniqueStrings([...(original?.sources ?? []), 'ai_fit_scoring']),
+  };
+}
+
+function aiScoredCandidateToJson(
+  candidate: ScoredDirtyKeywordCandidate,
+  inputByKeyword: Map<string, ScoreDirtyKeywordCandidateInput>,
+  sourceCandidateByKeyword: Map<string, CandidateRecord>,
+  aiStage: string,
+): SeoBriefJsonObject {
+  const key = normalizeKeywordText(candidate.keyword);
+  const input = inputByKeyword.get(key);
+  const sourceCandidate = sourceCandidateByKeyword.get(key) ?? ({ keyword: candidate.keyword } as CandidateRecord);
+
+  return {
+    keyword: candidate.keyword,
+    status: candidate.status,
+    totalScore: candidate.totalScore,
+    scores: candidate.scores as unknown as SeoBriefJsonValue,
+    fit: candidate.fit as unknown as SeoBriefJsonValue,
+    intent: candidate.intent,
+    stage: candidate.stage,
+    aiStage,
+    sourceRole: classifySourceRole(sourceCandidate),
+    reasons: candidate.reasons,
+    riskFlags: candidate.riskFlags,
+    evidenceNotes: candidate.evidenceNotes,
+    metrics: (input?.metrics ?? {}) as unknown as SeoBriefJsonValue,
+    sources: input?.sources ?? [],
+    sourceCandidate: sourceCandidate as unknown as SeoBriefJsonValue,
+  } as unknown as SeoBriefJsonObject;
+}
+
+function ensureEveryInputCandidateIsReturned(
+  inputs: ScoreDirtyKeywordCandidateInput[],
+  result: AiScoreDirtyKeywordCandidatesResult,
+): AiScoreDirtyKeywordCandidatesResult {
+  const inputKeys = new Set(inputs.map((input) => normalizeKeywordText(input.keyword)));
+  const returned = new Map<string, ScoredDirtyKeywordCandidate>();
+
+  for (const candidate of [...result.accepted, ...result.maybe, ...result.rejected]) {
+    const key = normalizeKeywordText(candidate.keyword);
+    if (inputKeys.has(key) && !returned.has(key)) {
+      returned.set(key, candidate);
+    }
+  }
+
+  const normalized = emptyAiScoreResult(...result.summary.notes);
+  for (const input of inputs) {
+    const key = normalizeKeywordText(input.keyword);
+    const candidate = returned.get(key) ?? createAiOmittedRejectedCandidate(input);
+    pushScoredCandidate(normalized, candidate);
+  }
+
+  normalized.summary.acceptedCount = normalized.accepted.length;
+  normalized.summary.maybeCount = normalized.maybe.length;
+  normalized.summary.rejectedCount = normalized.rejected.length;
+
+  return normalized;
+}
+
+function createAiOmittedRejectedCandidate(
+  input: ScoreDirtyKeywordCandidateInput,
+): ScoredDirtyKeywordCandidate {
+  return {
+    keyword: input.keyword,
+    status: 'rejected',
+    totalScore: 0,
+    scores: {
+      topicFit: 0,
+      productFit: 0,
+      audienceFit: 0,
+      intentFit: 0,
+      riskCompliance: 0,
+      evidence: 0,
+    },
+    fit: {
+      topicFit: 'none',
+      productFit: 'none',
+      audienceFit: 'none',
+      intentFit: 'none',
+      riskCompliance: 'none',
+      evidence: 'none',
+    },
+    intent: 'informational',
+    stage: 'awareness',
+    reasons: ['Rejected because the AI response omitted this input candidate.'],
+    riskFlags: ['ai_response_omitted_candidate'],
+    evidenceNotes: input.evidenceSummary.slice(0, 3),
+  };
+}
+
+function mergeAiScoreResults(
+  target: AiScoreDirtyKeywordCandidatesResult,
+  source: AiScoreDirtyKeywordCandidatesResult,
+): void {
+  target.accepted.push(...source.accepted);
+  target.maybe.push(...source.maybe);
+  target.rejected.push(...source.rejected);
+  target.summary.notes.push(...source.summary.notes);
+  target.summary.acceptedCount = target.accepted.length;
+  target.summary.maybeCount = target.maybe.length;
+  target.summary.rejectedCount = target.rejected.length;
+}
+
+function emptyAiScoreResult(...notes: string[]): AiScoreDirtyKeywordCandidatesResult {
+  return {
+    accepted: [],
+    maybe: [],
+    rejected: [],
+    summary: {
+      acceptedCount: 0,
+      maybeCount: 0,
+      rejectedCount: 0,
+      notes: notes.filter((note) => note.trim()),
+    },
+  };
+}
+
+function pushScoredCandidate(
+  target: AiScoreDirtyKeywordCandidatesResult,
+  candidate: ScoredDirtyKeywordCandidate,
+): void {
+  if (candidate.status === 'accepted') {
+    target.accepted.push(candidate);
+    return;
+  }
+  if (candidate.status === 'maybe') {
+    target.maybe.push(candidate);
+    return;
+  }
+  target.rejected.push(candidate);
+}
+
+function uniqueAiCandidateInputs(
+  inputs: ScoreDirtyKeywordCandidateInput[],
+): ScoreDirtyKeywordCandidateInput[] {
+  const seen = new Set<string>();
+  const result: ScoreDirtyKeywordCandidateInput[] = [];
+
+  for (const input of inputs) {
+    const key = normalizeKeywordText(input.keyword);
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(input);
+  }
+
+  return result;
+}
+
+function formatCandidateMetricSummary(candidate: CandidateRecord): string[] {
+  const metrics = asObject(candidate.metrics);
+  const parts = [
+    readNumber(metrics?.searchVolume) !== null ? `search_volume=${readNumber(metrics?.searchVolume)}` : null,
+    readNumber(metrics?.keywordDifficulty) !== null
+      ? `keyword_difficulty=${readNumber(metrics?.keywordDifficulty)}`
+      : null,
+    readNumber(metrics?.proxyDemandScore) !== null
+      ? `proxy_demand_score=${readNumber(metrics?.proxyDemandScore)}`
+      : null,
+    readNumber(metrics?.competitorMatchScore) !== null
+      ? `competitor_match_score=${readNumber(metrics?.competitorMatchScore)}`
+      : null,
+    readString(metrics?.bestMatchType) ? `best_match_type=${readString(metrics?.bestMatchType)}` : null,
+    readNumber(metrics?.bestRankAbsolute) !== null
+      ? `best_rank_absolute=${readNumber(metrics?.bestRankAbsolute)}`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return parts.length > 0 ? [`metrics | ${parts.join(' | ')}`] : [];
+}
+
+function readAiModelMode(artifacts: SeoBriefArtifact[]): 'flash' | 'pro' | 'pro_thinking' | null {
+  const normalizedInput = readLatestObjectArtifact(artifacts, 'normalized_input');
+  const mode = readString(normalizedInput?.aiModelMode);
+  return mode === 'flash' || mode === 'pro' || mode === 'pro_thinking' ? mode : null;
+}
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+
+  return chunks;
 }
 
 function nextAttemptNumber(artifacts: SeoBriefArtifact[], artifactType: string): number {
@@ -1084,6 +1653,10 @@ function readStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : [];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 function readNumber(value: unknown): number | null {

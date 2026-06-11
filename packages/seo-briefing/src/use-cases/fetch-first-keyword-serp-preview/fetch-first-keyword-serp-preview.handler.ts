@@ -7,6 +7,7 @@ import type { SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefKeywordHypothesesNotFoundError } from '../../errors/seo-brief-keyword-hypotheses-not-found.error.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import { SeoResearchPort } from '../../ports/seo-research.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { FetchFirstKeywordSerpPreviewCommand } from './fetch-first-keyword-serp-preview.command.js';
 
 export interface FetchFirstKeywordSerpPreviewResult {
@@ -255,6 +256,7 @@ export class FetchFirstKeywordSerpPreviewHandler
 
     const serpPreview = await this.seoResearch.getOrganicSerpSnapshot({
       runId: run.id,
+      timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
       keyword,
       market: {
         country: run.country,

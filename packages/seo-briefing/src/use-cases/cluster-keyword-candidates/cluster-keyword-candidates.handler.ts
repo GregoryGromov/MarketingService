@@ -14,6 +14,7 @@ import {
   type SeoKeywordCluster,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClusterKeywordCandidatesCommand } from './cluster-keyword-candidates.command.js';
 
 type CandidateRecord = Record<string, unknown>;
@@ -74,6 +75,7 @@ export class ClusterKeywordCandidatesHandler
         runId: run.id,
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

@@ -6,6 +6,7 @@ import { SeoBriefRunRepository } from '../../domain/seo-brief-run.repository.js'
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import { SeoResearchPort, type SeoRankedKeywordItem } from '../../ports/seo-research.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { FetchRankedKeywordsCommand } from './fetch-ranked-keywords.command.js';
 
 export interface FetchRankedKeywordsResult {
@@ -49,10 +50,12 @@ export class FetchRankedKeywordsHandler
     const targetResults = [];
     const rawResponses = [];
     const items: SeoRankedKeywordItem[] = [];
+    const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(artifacts);
 
     for (const target of targets) {
       const result = await this.seoResearch.getRankedKeywords({
         runId: run.id,
+        timeoutMs: requestTimeoutMs,
         target,
         market: {
           country: run.country,

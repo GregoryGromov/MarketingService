@@ -18,6 +18,7 @@ import {
   type SeoBriefClusterSourceConfidence,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ReviewClusterProductFitCommand } from './review-cluster-product-fit.command.js';
 
 type ClusterRecord = Record<string, unknown>;
@@ -78,6 +79,7 @@ export class ReviewClusterProductFitHandler
         runId: run.id,
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

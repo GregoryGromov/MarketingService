@@ -16,6 +16,10 @@ function toSnapshot(brandMemory: BrandMemory): SeoBriefBrandMemorySnapshot {
     brandName: brandMemory.brandName,
     productDescription: brandMemory.productDescription,
     targetAudience: brandMemory.targetAudience,
+    keyMessage: brandMemory.keyMessage,
+    defaultCta: brandMemory.defaultCta,
+    brandConstraints: brandMemory.brandConstraints,
+    claimsConstraints: brandMemory.claimsConstraints,
     approvedFacts: brandMemory.approvedFacts,
     forbiddenClaims: brandMemory.forbiddenClaims,
     glossary: brandMemory.glossary,
@@ -23,6 +27,9 @@ function toSnapshot(brandMemory: BrandMemory): SeoBriefBrandMemorySnapshot {
     requiredPhrases: brandMemory.requiredPhrases,
     brandDocs: brandMemory.brandDocs,
     adaptationPromptRules: brandMemory.adaptationPromptRules as unknown as SeoBriefJsonObject,
+    seoCompetitors: brandMemory.seoCompetitors,
+    seoCompetitorKeywordMap:
+      brandMemory.seoCompetitorKeywordMap as SeoBriefBrandMemorySnapshot['seoCompetitorKeywordMap'],
   };
 }
 

@@ -12,6 +12,7 @@ import {
   type SeoOnPageContentParsingResult,
   type SeoOnPageInstantPagesResult,
 } from '../../ports/seo-research.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { FetchSelectedClusterOnPageCommand } from './fetch-selected-cluster-onpage.command.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -80,6 +81,9 @@ export class FetchSelectedClusterOnPageHandler
     if (!selection) {
       throw new Error('Select main SEO brief cluster before fetching on-page evidence');
     }
+    if (!asObject(selection.mainCluster)) {
+      throw new Error('Select a main SEO brief cluster manually before fetching on-page evidence');
+    }
 
     const targets = selectOnPageTargets(
       selection,
@@ -101,18 +105,21 @@ export class FetchSelectedClusterOnPageHandler
 
     try {
       const pages: OnPageTargetPage[] = [];
+      const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(artifacts);
       for (const target of targets) {
         try {
           const [contentParsing, instantPage] = await Promise.all([
             this.seoResearch.getOnPageContentParsing({
               runId: run.id,
               stepId: step.id,
+              timeoutMs: requestTimeoutMs,
               url: target.url,
               markdownView: true,
             }),
             this.seoResearch.getOnPageInstantPages({
               runId: run.id,
               stepId: step.id,
+              timeoutMs: requestTimeoutMs,
               url: target.url,
             }),
           ]);
@@ -148,7 +155,7 @@ export class FetchSelectedClusterOnPageHandler
           targetRange: '3-5 URLs when enough usable SERP URLs exist',
           closestIntentMatches: '1-2 URLs from the selected main cluster',
           fallbackWhenNoMainCluster:
-            'If no approved main cluster exists, use the first supporting cluster as the OnPage target.',
+            'Disabled. A main cluster must be selected manually before OnPage evidence is fetched.',
           strongCompetitor: 'best remaining non-video competitor URL',
           localOrForumContext: 'local or forum/discussion URL only when useful and parseable',
           serpSnapshotFallback:
@@ -167,7 +174,7 @@ export class FetchSelectedClusterOnPageHandler
         notes: [
           'This step does not rerun SERP; it uses URLs already saved from SERP evidence.',
           'YouTube and social/video URLs are excluded from on-page evidence.',
-          'A supporting cluster fallback is technical only; it does not mean Product Fit approved it as a main cluster.',
+          'OnPage evidence is fetched only after a human selects the main cluster topic.',
           'Raw DataForSEO responses are preserved per page; UI shows compact normalized fields.',
         ],
         targets: targets.map(toTargetJson) as unknown as SeoBriefJsonValue,

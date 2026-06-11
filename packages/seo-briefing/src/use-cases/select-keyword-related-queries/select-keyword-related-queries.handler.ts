@@ -12,6 +12,7 @@ import {
   type SeoBriefAiModelMode,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { SelectKeywordRelatedQueriesCommand } from './select-keyword-related-queries.command.js';
 
 const MAX_SELECTED_RELATED_QUERIES = 3;
@@ -139,6 +140,7 @@ export class SelectKeywordRelatedQueriesHandler
 
     const artifacts = await this.artifactRepository.findByRunId(run.id);
     const aiModelMode = readAiModelMode(artifacts);
+    const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(artifacts);
     const derivedArtifact = [...artifacts]
       .reverse()
       .find((artifact) => artifact.artifactType === 'keyword_serp_derived_keywords');
@@ -158,6 +160,7 @@ export class SelectKeywordRelatedQueriesHandler
           ? await this.ai.selectRelatedKeywords({
               runId: run.id,
               modelMode: aiModelMode,
+              timeoutMs: requestTimeoutMs,
               seedKeyword: keyword,
               candidates,
               limit: MAX_SELECTED_RELATED_QUERIES,

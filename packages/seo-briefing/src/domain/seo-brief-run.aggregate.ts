@@ -120,10 +120,20 @@ function normalizeWeights(input: { seoWeight?: number | null; productWeight?: nu
 function normalizeBrandMemorySnapshot(
   snapshot: SeoBriefBrandMemorySnapshot,
 ): SeoBriefBrandMemorySnapshot {
+  const keywordMap = snapshot.seoCompetitorKeywordMap;
+
   return {
     brandName: normalizeText(snapshot.brandName),
     productDescription: normalizeText(snapshot.productDescription),
     targetAudience: normalizeText(snapshot.targetAudience),
+    keyMessage: normalizeText(snapshot.keyMessage),
+    defaultCta: normalizeText(snapshot.defaultCta),
+    brandConstraints: (snapshot.brandConstraints ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean),
+    claimsConstraints: (snapshot.claimsConstraints ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean),
     approvedFacts: snapshot.approvedFacts.map((item) => item.trim()).filter(Boolean),
     forbiddenClaims: snapshot.forbiddenClaims.map((item) => item.trim()).filter(Boolean),
     glossary: Object.fromEntries(
@@ -141,6 +151,42 @@ function normalizeBrandMemorySnapshot(
       }))
       .filter((doc) => doc.title.length > 0),
     adaptationPromptRules: snapshot.adaptationPromptRules ?? null,
+    seoCompetitors: {
+      mustInclude: (snapshot.seoCompetitors?.mustInclude ?? [])
+        .map((item) => item.trim())
+        .filter(Boolean),
+      optional: (snapshot.seoCompetitors?.optional ?? [])
+        .map((item) => item.trim())
+        .filter(Boolean),
+      exclude: (snapshot.seoCompetitors?.exclude ?? [])
+        .map((item) => item.trim())
+        .filter(Boolean),
+    },
+    seoCompetitorKeywordMap: keywordMap
+        ? {
+          generatedAt: normalizeText(keywordMap.generatedAt) ?? new Date(0).toISOString(),
+          nextRefreshAt: normalizeText(keywordMap.nextRefreshAt),
+          refreshIntervalHours: Number.isFinite(keywordMap.refreshIntervalHours)
+            ? Number(keywordMap.refreshIntervalHours)
+            : null,
+          competitorKeywordsJsonId:
+            normalizeText(keywordMap.competitorKeywordsJsonId) ?? 'competitor_keywords',
+          market: {
+            country: normalizeText(keywordMap.market?.country) ?? '',
+            language: normalizeText(keywordMap.market?.language) ?? '',
+            locationName: normalizeText(keywordMap.market?.locationName),
+          },
+          targets: (keywordMap.targets ?? []).map((item) => item.trim()).filter(Boolean),
+          targetCount: keywordMap.targetCount,
+          itemCount: keywordMap.itemCount,
+          deduplicatedKeywordCount: keywordMap.deduplicatedKeywordCount,
+          targetResults: Array.isArray(keywordMap.targetResults) ? keywordMap.targetResults : [],
+          items: Array.isArray(keywordMap.items) ? keywordMap.items : [],
+          allKeywordsFlat: Array.isArray(keywordMap.allKeywordsFlat)
+            ? keywordMap.allKeywordsFlat
+            : [],
+        }
+      : null,
   };
 }
 

@@ -1,13 +1,21 @@
 import type {
   BuildProductBridgeParams,
   ClassifySerpDomainsParams,
+  CleanupLongreadArticleParams,
   ClusterKeywordsParams,
+  DraftLongreadArticleParams,
+  EvaluateCompetitorKeywordMatchesParams,
   ExpandKeywordsParams,
   ExplainClusterSelectionParams,
   ExtractSeoBriefContextParams,
   ExtractUserPainScenariosParams,
   GenerateSeoBriefParams,
+  GroupCandidateKeywordsParams,
+  GroupCompetitorKeywordEvidenceParams,
+  MatchKeywordGroupsParams,
+  PackageLongreadArticleParams,
   ReviewClusterProductFitParams,
+  ScoreCompetitorKeywordCandidateGroupParams,
   ScoreDirtyKeywordCandidatesParams,
   SelectRelatedKeywordsParams,
   SynthesizeOnPageParams,
@@ -15,6 +23,7 @@ import type {
 } from '@marketing-service/seo-briefing';
 import {
   DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT,
+  deriveTopicHintScope,
   resolveSeoBriefKeywordExpansionPrompt,
 } from '@marketing-service/seo-briefing';
 
@@ -29,17 +38,28 @@ interface SeoBriefStructuredPrompt {
 export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   extractContext: 'seo-brief.extract-context.v1',
   extractUserPainScenarios: 'seo-brief.extract-user-pain-scenarios.v1',
-  expandKeywords: 'seo-brief.expand-keywords.v6',
+  expandKeywords: 'seo-brief.expand-keywords.v7-topic-scope',
   triageKeywords: 'seo-brief.triage-keywords.v1',
-  clusterKeywords: 'seo-brief.cluster-keywords.v2',
+  clusterKeywords: 'seo-brief.cluster-keywords.v3-topic-scope',
   selectRelatedKeywords: 'seo-brief.select-related-keywords.v1',
   classifySerpDomains: 'seo-brief.classify-serp-domains.v1',
-  scoreDirtyKeywordCandidates: 'seo-brief.score-dirty-keyword-candidates.v1',
-  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v1',
+  evaluateCompetitorKeywordMatches:
+    'seo-brief.evaluate-competitor-keyword-matches.v2-topic-scope',
+  groupCompetitorKeywordEvidence:
+    'seo-brief.group-competitor-keyword-evidence.v2-topic-scope',
+  groupCandidateKeywords: 'seo-brief.group-candidate-keywords.v2-topic-scope',
+  matchKeywordGroups: 'seo-brief.match-keyword-groups.v2-topic-scope',
+  scoreCompetitorKeywordCandidateGroup:
+    'seo-brief.score-competitor-keyword-candidate-group.v2-topic-scope',
+  scoreDirtyKeywordCandidates: 'seo-brief.score-dirty-keyword-candidates.v2-topic-scope',
+  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v2-topic-scope',
   buildProductBridge: 'seo-brief.product-bridge.v1',
   explainClusterSelection: 'seo-brief.cluster-selection.v1',
-  synthesizeOnPage: 'seo-brief.synthesize-onpage.v1',
-  generateSeoBrief: 'seo-brief.generate-brief.v1',
+  synthesizeOnPage: 'seo-brief.synthesize-onpage.v2-topic-scope',
+  generateSeoBrief: 'seo-brief.generate-brief.v2-topic-scope',
+  draftLongreadArticle: 'article-generation.draft.v1',
+  cleanupLongreadArticle: 'article-generation.cleanup.v1',
+  packageLongreadArticle: 'article-generation.package.v1',
 } as const;
 
 export function buildExtractContextPrompt(
@@ -54,13 +74,12 @@ export function buildExtractContextPrompt(
       'Return only valid JSON.',
       'Do not use markdown or code fences.',
       'Schema:',
-      '{"topicHint":"string|null","topicSeed":"string|null","country":"string|null","language":"string|null","audience":"string|null","userPains":["string"],"userScenarios":["string"],"productName":"string|null","productDescription":"string|null","keyMessage":"string|null","audienceBefore":"string|null","audienceAfter":"string|null","cta":"string|null","knownCompetitors":["string"],"brandConstraints":["string"],"claimsConstraints":["string"],"preferredAngle":"string|null","excludedTopics":["string"],"temporaryConstraints":["string"],"missingFields":["string"],"notes":["string"]}',
+      '{"topicHint":"string|null","topicSeed":"string|null","country":"string|null","language":"string|null","audience":"string|null","userPains":["string"],"userScenarios":["string"],"productName":"string|null","productDescription":"string|null","keyMessage":"string|null","audienceBefore":"string|null","audienceAfter":"string|null","cta":"string|null","brandConstraints":["string"],"claimsConstraints":["string"],"preferredAngle":"string|null","excludedTopics":["string"],"temporaryConstraints":["string"],"missingFields":["string"],"notes":["string"]}',
       'Extract only information clearly present in the input.',
       'Do not invent product facts, country, language, audience, CTA, or claims.',
       'Use null when a field is not present.',
       'topicHint is the SEO research direction or launch theme, not a final keyword and not an article title.',
       'topicSeed is deprecated; mirror topicHint there only for compatibility.',
-      'knownCompetitors are explicit competing products, sites, brands, or domains mentioned by the marketer.',
       'userPains are explicit user problems, fears, needs, or jobs-to-be-done mentioned by the marketer.',
       'userScenarios are explicit search, behavior, tool, ecosystem, comparison, or action scenarios mentioned by the marketer.',
       'brandConstraints are tone, positioning, wording, or brand-safety constraints explicitly mentioned in the task.',
@@ -120,6 +139,7 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
   const keywordExpansionPrompt = resolveSeoBriefKeywordExpansionPrompt(
     params.keywordExpansionPrompt,
   );
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
 
   return {
     operation: 'expandKeywords',
@@ -135,6 +155,10 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
       'Return search_hypotheses only. Do not return groups.',
       'Generate realistic Google search queries, not article titles.',
       'Use manual userPainScenarios from the marketer input as the main source.',
+      'topic_hint is a hard scope signal for concrete entities, ecosystems, chains, geographies, and product categories.',
+      'requiredTopicTerms are extracted from topic_hint and must be preserved when they are concrete.',
+      'If requiredTopicTerms contains a chain, ecosystem, protocol, product category, or named entity, at least half of the hypotheses must explicitly target that scope or a direct synonym.',
+      'Generic adjacent queries may support discovery, but they must not dominate or replace the required topic scope.',
       'Prefer seoProductContext when it is provided; use legacy fields only as fallback.',
       'seoProductContext.researchFrame defines the SEO direction and market.',
       'seoProductContext.brandMemoryContext defines product facts and claim boundaries.',
@@ -150,6 +174,7 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
       'Do not turn product name, brand name, or CTA into keyword text unless branded SEO is explicitly requested.',
       'Product and brand context should influence relevance, not force branded queries.',
       'Include queries that can reveal competitors in both crypto and non-crypto dollar-saving spaces.',
+      'When topic_hint names a blockchain or network, include realistic queries that use that network name and common network aliases.',
       'Avoid pure navigational queries.',
       'Avoid login, download, logo, support, API, APK, fake screenshot, seed phrase, private key, flasher.',
       'Avoid duplicated or near-duplicated keywords.',
@@ -160,7 +185,7 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
       'risk_flags should be empty unless the query has compliance, hype, scam, guarantee, unsupported-claim, or unsafe-user-intent risk.',
       `Default operator guidance:\n${DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT}`,
     ].join('\n'),
-    userPrompt: createExpandKeywordsUserPrompt(params, keywordExpansionPrompt),
+    userPrompt: createExpandKeywordsUserPrompt(params, keywordExpansionPrompt, topicHintScope),
   };
 }
 
@@ -298,6 +323,8 @@ export function buildClassifySerpDomainsPrompt(
 export function buildScoreDirtyKeywordCandidatesPrompt(
   params: ScoreDirtyKeywordCandidatesParams,
 ): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
   return {
     operation: 'scoreDirtyKeywordCandidates',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.scoreDirtyKeywordCandidates,
@@ -309,11 +336,13 @@ export function buildScoreDirtyKeywordCandidatesPrompt(
       'Schema:',
       '{"accepted":[{"keyword":"string","status":"accepted","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"maybe":[{"keyword":"string","status":"maybe","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"rejected":[{"keyword":"string","status":"rejected","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"summary":{"accepted_count":0,"maybe_count":0,"rejected_count":0,"notes":["string"]}}',
       'Score every input candidate exactly once into accepted, maybe, or rejected.',
-      'Hard-exclude noise terms were already removed before this AI step; still reject remaining unsafe or weak candidates.',
+      'Hard-exclude obvious noise terms if present, and reject unsafe or weak candidates.',
       'Do not invent new keywords.',
       'Do not rewrite keyword text.',
       'The output keyword must exactly match one input candidate.keyword.',
       'Use topic_fit for relevance to topic_hint and user pains.',
+      'Use requiredTopicTerms as hard topic anchors. If requiredTopicTerms are concrete and a candidate ignores them or direct synonyms, topic_fit must usually be weak or none.',
+      'Do not accept broad adjacent candidates over topic-specific candidates unless the topic-specific candidates are unsafe or unsupported.',
       'Use product_fit for honest connection to product facts and Brand Memory.',
       'Use audience_fit for the target audience and market.',
       'Use intent_fit for whether the query can support an SEO article/brief.',
@@ -334,6 +363,7 @@ export function buildScoreDirtyKeywordCandidatesPrompt(
     ].join('\n'),
     userPrompt: createUserPrompt({
       topicHint: params.topicSeed,
+      topicHintScope,
       market: params.market,
       audience: params.audience,
       productName: params.productName,
@@ -343,6 +373,220 @@ export function buildScoreDirtyKeywordCandidatesPrompt(
       userPainScenarios: params.userPainScenarios,
       brandMemorySnapshot: params.brandMemorySnapshot,
       candidates: params.candidates,
+    }),
+  };
+}
+
+export function buildEvaluateCompetitorKeywordMatchesPrompt(
+  params: EvaluateCompetitorKeywordMatchesParams,
+): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
+  return {
+    operation: 'evaluateCompetitorKeywordMatches',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.evaluateCompetitorKeywordMatches,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are an SEO market-demand analyst.',
+      'Return only valid JSON.',
+      'Do not use markdown or code fences.',
+      'Schema:',
+      '{"buckets":[{"bucket_id":"string","name":"string","description":"string","evidence_ids":["string"],"representative_keywords":["string"]}],"candidates":[{"candidate_id":"string","keyword":"string","bucket_id":"string|null","proxy_demand_score":0,"candidate_score":0,"best_match_type":"exact_match|near_match|same_intent|semantic_related|no_match","matching_domains":["string"],"matched_evidence_ids":["string"],"risk_label":"safe|risky_requires_review|exclude","reason":"string","semantic_matches":[{"evidence_id":"string","competitor_keyword":"string","source_domain":"string|null","match_type":"exact_match|near_match|same_intent|semantic_related|no_match","match_confidence":0,"match_score":0,"evidence_strength":0,"why":"string"}]}],"summary":{"notes":["string"]}}',
+      'Evaluate candidate keyword demand only against the provided competitor ranked keyword evidence.',
+      'Use requiredTopicTerms only as topic-scope anchors. Do not invent evidence for them.',
+      'If a candidate matches competitor evidence but ignores concrete requiredTopicTerms, explain that it is adjacent/generic rather than topic-specific.',
+      'Do not use general knowledge as evidence.',
+      'Do not invent keywords, evidence IDs, domains, URLs, search volume, rankings, or traffic.',
+      'Every positive match must cite provided evidence_ids.',
+      'If no relevant evidence exists for a candidate, use no_match, empty matched_evidence_ids, low proxy_demand_score, and explain the gap.',
+      'First create 6-10 market buckets from the competitor evidence. Use fewer only if evidence is narrow.',
+      'Each bucket must cite real evidence_ids from the input.',
+      'Then assign every input candidate exactly once to the best bucket or null if no bucket fits.',
+      'Then score every candidate using only evidence in or adjacent to the assigned bucket.',
+      'proxy_demand_score is a proxy, not direct candidate search volume.',
+      'Use DataForSEO metrics only from provided evidence: searchVolume, rankAbsolute, estimatedTraffic, keywordDifficulty, cpc, competitionLevel, intent.',
+      'Favor candidates with same user intent and strong competitor evidence.',
+      'Penalize candidates that are navigational, scammy, too broad, free-money, faucet/airdrop, private-key, fake-app, unsupported, or weakly connected.',
+      'Scores must be integers from 0 to 100.',
+      'match_confidence must be from 0 to 1.',
+      'candidate_id and keyword must exactly match input candidates.',
+      'Return at least one summary note.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      topicHint: params.topicSeed,
+      topicHintScope,
+      market: params.market,
+      audience: params.audience,
+      productName: params.productName,
+      productDescription: params.productDescription,
+      candidates: params.candidates,
+      competitorEvidence: params.competitorEvidence,
+    }),
+  };
+}
+
+export function buildGroupCompetitorKeywordEvidencePrompt(
+  params: GroupCompetitorKeywordEvidenceParams,
+): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
+  return {
+    operation: 'groupCompetitorKeywordEvidence',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.groupCompetitorKeywordEvidence,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are an SEO market evidence analyst.',
+      'Return only valid JSON.',
+      'Do not use markdown or code fences.',
+      'Schema:',
+      '{"buckets":[{"bucket_id":"string","name":"string","description":"string","evidence_ids":["string"],"representative_keywords":["string"]}],"summary":{"notes":["string"]}}',
+      'Group only the provided competitor ranked keyword evidence into semantic market buckets.',
+      'Do not evaluate our candidate keywords in this step.',
+      'Do not invent evidence IDs, domains, URLs, metrics, search volume, rankings, or keywords.',
+      'Every bucket must cite real evidence_ids from the input.',
+      'A bucket represents a search market / user-intent area visible in competitor ranked keywords.',
+      'If requiredTopicTerms exist in the evidence, preserve them in bucket names or descriptions.',
+      'Do not force requiredTopicTerms into buckets when the provided competitor evidence does not support them.',
+      'Use concise bucket names such as stablecoin yield, wallet safety, comparison, P2P, cashout, network education, fees/risk, if supported by evidence.',
+      'Use the input maxBuckets as a hard upper bound.',
+      'If evidence is narrow, use fewer buckets.',
+      'Every evidence_id should appear in at most one primary bucket.',
+      'Return at least one summary note about the strongest market patterns.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      topicHint: params.topicSeed,
+      topicHintScope,
+      market: params.market,
+      audience: params.audience,
+      productName: params.productName,
+      productDescription: params.productDescription,
+      maxBuckets: params.maxBuckets ?? 8,
+      competitorEvidence: params.competitorEvidence,
+    }),
+  };
+}
+
+export function buildGroupCandidateKeywordsPrompt(
+  params: GroupCandidateKeywordsParams,
+): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
+  return {
+    operation: 'groupCandidateKeywords',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.groupCandidateKeywords,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are an SEO candidate keyword analyst.',
+      'Return only valid JSON.',
+      'Do not use markdown or code fences.',
+      'Schema:',
+      '{"buckets":[{"bucket_id":"string","name":"string","description":"string","candidate_ids":["string"],"representative_keywords":["string"]}],"summary":{"notes":["string"]}}',
+      'Group only the provided candidate keywords into semantic buckets.',
+      'Do not use competitor evidence in this step.',
+      'Do not invent candidates or candidate IDs.',
+      'Every input candidate_id must appear in exactly one bucket.',
+      'A bucket represents a user search situation or intent family.',
+      'If requiredTopicTerms exist, keep candidates that include those terms or direct synonyms in clearly topic-specific buckets.',
+      'Do not merge topic-specific candidates into broad generic buckets when a more specific bucket is possible.',
+      'Use the input maxBuckets as a hard upper bound.',
+      'If candidates are narrow, use fewer buckets.',
+      'Keep names short and understandable for a marketer.',
+      'Return at least one summary note about the main candidate intent patterns.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      topicHint: params.topicSeed,
+      topicHintScope,
+      market: params.market,
+      audience: params.audience,
+      productName: params.productName,
+      productDescription: params.productDescription,
+      maxBuckets: params.maxBuckets ?? 8,
+      candidates: params.candidates,
+    }),
+  };
+}
+
+export function buildMatchKeywordGroupsPrompt(
+  params: MatchKeywordGroupsParams,
+): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
+  return {
+    operation: 'matchKeywordGroups',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.matchKeywordGroups,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are an SEO market alignment analyst.',
+      'Return only valid JSON.',
+      'Do not use markdown or code fences.',
+      'Schema:',
+      '{"matches":[{"candidate_bucket_id":"string","competitor_bucket_ids":["string"],"match_type":"direct|adjacent|weak|none","match_strength":0,"reason":"string"}],"summary":{"notes":["string"]}}',
+      'Match candidate keyword buckets to competitor evidence buckets.',
+      'Do not score individual candidates in this step.',
+      'Do not invent bucket IDs.',
+      'Every input candidate bucket must appear exactly once in matches.',
+      'competitor_bucket_ids must contain only provided competitor bucket IDs.',
+      'Use direct when user intent is the same, adjacent when closely related, weak when only lightly related, none when no competitor evidence bucket supports the candidate bucket.',
+      'If a candidate bucket contains concrete requiredTopicTerms but competitor buckets are generic, mark the relation adjacent or weak unless the evidence clearly supports the same scoped topic.',
+      'match_strength must be an integer from 0 to 100.',
+      'Use only provided bucket names, descriptions, representative keywords, and cited IDs.',
+      'Return at least one summary note about which candidate areas have the strongest competitor evidence.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      topicHint: params.topicSeed,
+      topicHintScope,
+      market: params.market,
+      productName: params.productName,
+      productDescription: params.productDescription,
+      candidateBuckets: params.candidateBuckets,
+      competitorBuckets: params.competitorBuckets,
+    }),
+  };
+}
+
+export function buildScoreCompetitorKeywordCandidateGroupPrompt(
+  params: ScoreCompetitorKeywordCandidateGroupParams,
+): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
+  return {
+    operation: 'scoreCompetitorKeywordCandidateGroup',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.scoreCompetitorKeywordCandidateGroup,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are an SEO keyword evidence scorer.',
+      'Return only valid JSON.',
+      'Do not use markdown or code fences.',
+      'Schema:',
+      '{"candidates":[{"candidate_id":"string","keyword":"string","bucket_id":"string|null","proxy_demand_score":0,"candidate_score":0,"best_match_type":"exact_match|near_match|same_intent|semantic_related|no_match","matching_domains":["string"],"matched_evidence_ids":["string"],"risk_label":"safe|risky_requires_review|exclude","reason":"string","semantic_matches":[{"evidence_id":"string","competitor_keyword":"string","source_domain":"string|null","match_type":"exact_match|near_match|same_intent|semantic_related|no_match","match_confidence":0,"match_score":0,"evidence_strength":0,"why":"string"}]}],"summary":{"notes":["string"]}}',
+      'Score every provided candidate exactly once.',
+      'Evaluate candidates only against provided competitor evidence rows and competitor buckets.',
+      'Do not use general knowledge as evidence.',
+      'Do not invent keywords, evidence IDs, domains, URLs, search volume, rankings, or traffic.',
+      'Every positive semantic match must cite a provided evidence_id.',
+      'If no relevant evidence exists for a candidate, use no_match, empty matched_evidence_ids, low proxy_demand_score, and explain the gap.',
+      'If requiredTopicTerms are concrete, distinguish topic-specific evidence from generic adjacent evidence.',
+      'Do not give a high candidate_score to a generic candidate that ignores requiredTopicTerms unless the topic-specific pool has no viable evidence.',
+      'proxy_demand_score is a proxy, not direct candidate search volume.',
+      'Use DataForSEO metrics only from provided evidence: searchVolume, rankAbsolute, estimatedTraffic, keywordDifficulty, cpc, competitionLevel, intent.',
+      'Favor same user intent and strong competitor evidence.',
+      'Penalize navigational, scammy, too broad, free-money, faucet/airdrop, private-key, fake-app, unsupported, or weakly connected candidates.',
+      'Scores must be integers from 0 to 100.',
+      'match_confidence must be from 0 to 1.',
+      'candidate_id and keyword must exactly match input candidates.',
+      'Return at least one summary note.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      topicHint: params.topicSeed,
+      topicHintScope,
+      market: params.market,
+      audience: params.audience,
+      productName: params.productName,
+      productDescription: params.productDescription,
+      candidateBucket: params.candidateBucket,
+      competitorBuckets: params.competitorBuckets,
+      candidates: params.candidates,
+      competitorEvidence: params.competitorEvidence,
     }),
   };
 }
@@ -369,6 +613,8 @@ export function buildProductBridgePrompt(
 export function buildReviewClusterProductFitPrompt(
   params: ReviewClusterProductFitParams,
 ): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
   return {
     operation: 'reviewClusterProductFit',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.reviewClusterProductFit,
@@ -383,6 +629,8 @@ export function buildReviewClusterProductFitPrompt(
       'cluster_name must exactly match an input cluster.clusterName.',
       'Do not invent clusters, keywords, product facts, claims, or competitor evidence.',
       'Product Fit is not whether the product can be mentioned; it is whether the product can naturally help answer the user intent.',
+      'Also verify topic-scope fit. If requiredTopicTerms are concrete and the cluster ignores them, do not approve it as a main-topic cluster.',
+      'A broad generic cluster can be supporting_only, but it should not displace a viable topic-specific cluster.',
       'Do not approve a cluster just because it has search volume, ranked keyword evidence, or strong competitors.',
       'Use supportingItemDetails, sourceCandidate metrics, source lists, and competitorUrls as evidence only.',
       'Do not treat proxyDemandScore, competitorMatchScore, or searchVolume as Product Fit by themselves.',
@@ -397,6 +645,7 @@ export function buildReviewClusterProductFitPrompt(
     ].join('\n'),
     userPrompt: createUserPrompt({
       topicHint: params.topicSeed,
+      topicHintScope,
       market: params.market,
       audience: params.audience,
       productName: params.productName,
@@ -432,6 +681,8 @@ export function buildExplainClusterSelectionPrompt(
 export function buildGenerateSeoBriefPrompt(
   params: GenerateSeoBriefParams,
 ): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicHint ?? params.primaryKeyword);
+
   return {
     operation: 'generateSeoBrief',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.generateSeoBrief,
@@ -449,6 +700,8 @@ export function buildGenerateSeoBriefPrompt(
       'Do not promise guaranteed yield or risk-free returns.',
       'Include H1, H2/H3 structure, FAQ, content blocks, CTA, and internal link suggestions.',
       'topic_hint should be respected as scope, but not blindly copied as title or keyword.',
+      'requiredTopicTerms are hard scope anchors. If they are present, the recommended title, H1, intro direction, and outline must explicitly cover at least one concrete required term.',
+      'Do not let generic high-volume adjacent keywords replace the topic requested in topic_hint.',
       'Use Competitor OnPage synthesis as the main structure evidence.',
       'Use Product Fit decision and Brand Memory as hard boundaries.',
       'Do not invent unsupported product facts, APY, safety guarantees, or risk-free claims.',
@@ -462,6 +715,7 @@ export function buildGenerateSeoBriefPrompt(
         seoProductContext: params.seoProductContext,
       },
       topicHint: params.topicHint ?? params.primaryKeyword,
+      topicHintScope,
       market: params.market,
       audience: params.audience,
       mainSelectedCluster: params.clusterSelection ?? {
@@ -485,6 +739,8 @@ export function buildGenerateSeoBriefPrompt(
 export function buildSynthesizeOnPagePrompt(
   params: SynthesizeOnPageParams,
 ): SeoBriefStructuredPrompt {
+  const topicHintScope = deriveTopicHintScope(params.topicSeed);
+
   return {
     operation: 'synthesizeOnPage',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.synthesizeOnPage,
@@ -503,6 +759,8 @@ export function buildSynthesizeOnPagePrompt(
       'Identify where the product can be inserted naturally without forcing it.',
       'Respect Brand Memory, product facts, marketer constraints, and claim restrictions.',
       'topic_hint is a scope boundary; final H1 and angle may be adjusted based on evidence.',
+      'requiredTopicTerms are hard scope anchors. If they are present, recommended H1/H2 and content gaps must preserve the concrete topic scope when page evidence allows it.',
+      'Do not turn a scoped topic into a generic adjacent article just because competitors cover broad terms.',
       'Do not invent unsupported product capabilities, returns, safety guarantees, APY, or risk-free claims.',
       'Do not use YouTube/social/video pages as authority unless they are present in parsed pages; even then, treat them only as format/context evidence.',
       'Keep output concise and actionable for a final SEO brief writer.',
@@ -511,6 +769,7 @@ export function buildSynthesizeOnPagePrompt(
     ].join('\n'),
     userPrompt: createUserPrompt({
       topicHint: params.topicSeed,
+      topicHintScope,
       market: params.market,
       audience: params.audience,
       productName: params.productName,
@@ -526,6 +785,117 @@ export function buildSynthesizeOnPagePrompt(
   };
 }
 
+export function buildDraftLongreadArticlePrompt(
+  params: DraftLongreadArticleParams,
+): SeoBriefStructuredPrompt {
+  return {
+    operation: 'draftLongreadArticle',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.draftLongreadArticle,
+    temperature: 0.35,
+    systemPrompt: [
+      'You are an expert SEO writer.',
+      'Return only valid JSON.',
+      'Do not use markdown fences.',
+      'Schema:',
+      '{"draftArticleMarkdown":"string"}',
+      'Write a complete publish-ready longread article in Markdown based on the SEO brief.',
+      'The SEO brief is the source of truth for structure, intent, keywords, product insertion, risks, and CTA.',
+      'Follow recommendedH1 and outline from the brief.',
+      'Answer search intent first.',
+      'Write for targetReader.',
+      'Use the primary keyword naturally in title/H1/intro.',
+      'Use secondary keywords only when relevant and natural; do not force all of them.',
+      'Include FAQ from the brief.',
+      'Insert the product only where productInsertion says it belongs.',
+      'Do not mention the product in every section.',
+      'Do not present the product as guaranteed or risk-free.',
+      'Do not promise guaranteed returns, guaranteed profit, no-risk savings, or risk-free yield.',
+      'If APY or rates are mentioned, say they vary and require current source verification.',
+      'Keep paragraphs short.',
+      'Use clear, beginner-friendly language.',
+      'Avoid hype, trader slang, and get-rich-quick language.',
+      'Include risk explanations where riskNotes require them.',
+      'Include the CTA from the brief naturally near the end.',
+      'Do not mention that the article was generated from a brief.',
+      'Markdown must start with the article title as H1, use H2/H3 headings, and include FAQ as an H2 section.',
+      'Do not include JSON inside draftArticleMarkdown.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      finalSeoBrief: params.finalSeoBrief,
+      productProfile: params.productProfile,
+      claimsPolicy: params.claimsPolicy,
+      brandVoice: params.brandVoice,
+      targetLength: params.targetLength,
+      publishingFormat: params.publishingFormat,
+    }),
+  };
+}
+
+export function buildCleanupLongreadArticlePrompt(
+  params: CleanupLongreadArticleParams,
+): SeoBriefStructuredPrompt {
+  return {
+    operation: 'cleanupLongreadArticle',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.cleanupLongreadArticle,
+    temperature: 0.15,
+    systemPrompt: [
+      'You are an SEO editor and crypto/finance claims reviewer.',
+      'Return only valid JSON.',
+      'Do not use markdown fences.',
+      'Schema:',
+      '{"status":"passed|revised|needs_human_review","warnings":[{"type":"claims|seo|product_insertion|factual_check|tone|structure","message":"string"}],"changesMade":["string"],"articleMarkdown":"string"}',
+      'Review and revise the draft article.',
+      'Return a revised article, not just comments.',
+      'Check and fix: no guaranteed returns, no risk-free yield claims, no unsupported APY promises, no direct financial advice framed as certainty.',
+      'Remove hype, get-rich-quick language, irrelevant keyword usage, and unnatural product insertion.',
+      'Ensure the article answers searchIntent before promoting the product.',
+      'Ensure primaryKeyword appears naturally in title/H1/intro.',
+      'Ensure H2/H3 structure follows the brief and FAQ is included.',
+      'Ensure risk explanations are clear and not hidden.',
+      'Use status passed for minor/no issues, revised if corrected and usable, needs_human_review if factual/legal/product uncertainty remains.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      draftArticleMarkdown: params.draftArticleMarkdown,
+      finalSeoBrief: params.finalSeoBrief,
+      productProfile: params.productProfile,
+      claimsPolicy: params.claimsPolicy,
+      brandVoice: params.brandVoice,
+    }),
+  };
+}
+
+export function buildPackageLongreadArticlePrompt(
+  params: PackageLongreadArticleParams,
+): SeoBriefStructuredPrompt {
+  return {
+    operation: 'packageLongreadArticle',
+    promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.packageLongreadArticle,
+    temperature: 0.1,
+    systemPrompt: [
+      'You are a CMS packaging assistant.',
+      'Return only valid JSON.',
+      'Do not use markdown fences.',
+      'Schema:',
+      '{"article":{"title":"string","slug":"string","metaTitle":"string","metaDescription":"string","h1":"string","bodyMarkdown":"string"},"seo":{"primaryKeyword":"string","secondaryKeywordsUsed":["string"],"searchIntent":"string","contentType":"string","faqIncluded":true,"internalLinks":["string"],"externalSourcesNeeded":["string"]},"productInsertion":{"whereInserted":"string","angleUsed":"string","forced":false},"claimsReview":{"status":"passed|revised|needs_human_review","warnings":["string"]},"publishingChecklist":{"readyToPublish":true,"needsExternalFactCheck":false,"needsComplianceReview":false,"notes":["string"]}}',
+      'Create a publish-ready article package from the reviewed article and SEO brief.',
+      'Do not rewrite heavily unless needed for formatting consistency.',
+      'Extract or create a clean slug.',
+      'Use recommendedMetaTitle and recommendedMetaDescription from the brief unless they conflict with claims safety.',
+      'Ensure H1 matches the article.',
+      'Extract FAQ items from the article.',
+      'Preserve internalLinks and externalSourcesNeeded from the brief.',
+      'Preserve claims warnings from cleanup.',
+      'If externalSourcesNeeded is non-empty or cleanup warnings require factual verification, readyToPublish must be false and needsExternalFactCheck should usually be true.',
+    ].join('\n'),
+    userPrompt: createUserPrompt({
+      reviewedArticleMarkdown: params.reviewedArticleMarkdown,
+      finalSeoBrief: params.finalSeoBrief,
+      cleanupWarnings: params.cleanupWarnings,
+      productProfile: params.productProfile,
+    }),
+  };
+}
+
 function createUserPrompt(input: unknown): string {
   return ['Input payload:', JSON.stringify(input, null, 2)].join('\n');
 }
@@ -533,6 +903,7 @@ function createUserPrompt(input: unknown): string {
 function createExpandKeywordsUserPrompt(
   params: ExpandKeywordsParams,
   keywordExpansionPrompt: string,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
 ): string {
   return [
     'Your task is to generate the requested number of search hypotheses for later validation in DataForSEO.',
@@ -545,6 +916,7 @@ function createExpandKeywordsUserPrompt(
     '',
     'Input:',
     `- topicSeed: ${params.topicSeed}`,
+    `- topicHintScope: ${JSON.stringify(topicHintScope)}`,
     `- audience: ${params.audience}`,
     `- language: ${params.market.language}`,
     `- country: ${params.market.country}`,

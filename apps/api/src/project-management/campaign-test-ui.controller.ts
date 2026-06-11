@@ -3573,9 +3573,25 @@ export class CampaignTestUiController {
                 Target audience
                 <input id="targetAudience" type="text" maxlength="2000" />
               </label>
+              <label class="field">
+                Default CTA
+                <input id="defaultCta" type="text" maxlength="1000" placeholder="Default action for SEO briefs" />
+              </label>
               <label class="field full">
                 Product description
                 <textarea id="productDescription"></textarea>
+              </label>
+              <label class="field full">
+                Key message
+                <textarea id="keyMessage" placeholder="Persistent product message for SEO briefs"></textarea>
+              </label>
+              <label class="field">
+                SEO brand constraints
+                <textarea id="brandConstraints" placeholder="One constraint per line"></textarea>
+              </label>
+              <label class="field">
+                SEO claims / compliance constraints
+                <textarea id="claimsConstraints" placeholder="One constraint per line"></textarea>
               </label>
               <label class="field">
                 Approved facts
@@ -3601,6 +3617,34 @@ export class CampaignTestUiController {
                 Brand docs
                 <textarea id="brandDocs" placeholder="One line per document: Title | URL | Notes"></textarea>
               </label>
+              <label class="field full">
+                SEO competitor domains to include
+                <textarea id="seoCompetitorsMustInclude" placeholder="One domain per line, for example binance.com"></textarea>
+              </label>
+              <label class="field">
+                Optional SEO competitor domains
+                <textarea id="seoCompetitorsOptional" placeholder="One domain per line"></textarea>
+              </label>
+              <label class="field">
+                SEO competitors / sources to exclude
+                <textarea id="seoCompetitorsExclude" placeholder="One domain or source per line"></textarea>
+              </label>
+              <label class="field">
+                Competitor keyword country
+                <input id="seoCompetitorCountry" type="text" value="Nigeria" />
+              </label>
+              <label class="field">
+                Competitor keyword language
+                <input id="seoCompetitorLanguage" type="text" value="English" />
+              </label>
+              <div class="field full stack" style="gap:10px;">
+                <label style="margin:0;">SEO competitor ranked keywords</label>
+                <p id="seoCompetitorKeywordMapSummary" style="margin:0;color:var(--muted);">No competitor ranked keywords stored yet.</p>
+                <div class="actions">
+                  <button id="refreshSeoCompetitorKeywordsBtn" type="button">Refresh Competitor Ranked Keywords</button>
+                  <p id="seoCompetitorRefreshStatus" style="margin:0;color:var(--muted);"></p>
+                </div>
+              </div>
             </div>
             <div class="actions">
               <button id="saveBrandMemoryBtn" class="primary is-pristine" type="submit" disabled>Save Brand Memory</button>
@@ -3611,6 +3655,7 @@ export class CampaignTestUiController {
       script: `
         const projectId = ${JSON.stringify(projectId)};
         let initialBrandMemoryPayload = '';
+        let seoCompetitorKeywordRefreshTimer = null;
 
         function linesToText(values) {
           return Array.isArray(values) ? values.join('\\n') : '';
@@ -3628,16 +3673,80 @@ export class CampaignTestUiController {
             : '';
         }
 
+        function renderCompetitorKeywordMapSummary(map) {
+          const summary = document.getElementById('seoCompetitorKeywordMapSummary');
+          if (!map || !Array.isArray(map.targets) || map.targets.length === 0) {
+            summary.textContent = 'No competitor ranked keywords stored yet. Add domains and refresh before SEO Brief Step 4.';
+            return;
+          }
+
+          const nextRefresh = map.nextRefreshAt
+            ? '. Next auto refresh: ' + formatDateTime(map.nextRefreshAt)
+            : '';
+          summary.textContent =
+            'Stored ' + (map.deduplicatedKeywordCount || 0) +
+            ' deduplicated keywords from ' + (map.targetCount || map.targets.length) +
+            ' competitors. Last successful refresh: ' + formatDateTime(map.generatedAt) +
+            nextRefresh +
+            '. JSON ID: ' + (map.competitorKeywordsJsonId || 'brand_memory_competitor_keywords');
+        }
+
+        function scheduleSeoCompetitorKeywordRefresh(map) {
+          if (seoCompetitorKeywordRefreshTimer) {
+            clearTimeout(seoCompetitorKeywordRefreshTimer);
+            seoCompetitorKeywordRefreshTimer = null;
+          }
+
+          if (!map || !map.nextRefreshAt) {
+            return;
+          }
+
+          const nextRefreshTime = new Date(map.nextRefreshAt).getTime();
+          if (!Number.isFinite(nextRefreshTime)) {
+            return;
+          }
+
+          const delayMs = Math.max(0, nextRefreshTime - Date.now());
+          seoCompetitorKeywordRefreshTimer = setTimeout(() => {
+            refreshSeoCompetitorKeywords({ auto: true }).catch((error) => {
+              const status = document.getElementById('seoCompetitorRefreshStatus');
+              status.textContent = 'Auto refresh failed: ' + (error instanceof Error ? error.message : String(error));
+              status.style.color = 'var(--danger)';
+            });
+          }, delayMs);
+        }
+
         function fillForm(brandMemory) {
           document.getElementById('brandName').value = brandMemory.brandName || '';
           document.getElementById('productDescription').value = brandMemory.productDescription || '';
           document.getElementById('targetAudience').value = brandMemory.targetAudience || '';
+          document.getElementById('keyMessage').value = brandMemory.keyMessage || '';
+          document.getElementById('defaultCta').value = brandMemory.defaultCta || '';
+          document.getElementById('brandConstraints').value = linesToText(brandMemory.brandConstraints);
+          document.getElementById('claimsConstraints').value = linesToText(brandMemory.claimsConstraints);
           document.getElementById('approvedFacts').value = linesToText(brandMemory.approvedFacts);
           document.getElementById('forbiddenClaims').value = linesToText(brandMemory.forbiddenClaims);
           document.getElementById('requiredPhrases').value = linesToText(brandMemory.requiredPhrases);
           document.getElementById('bannedPhrases').value = linesToText(brandMemory.bannedPhrases);
           document.getElementById('glossary').value = glossaryToText(brandMemory.glossary);
           document.getElementById('brandDocs').value = docsToText(brandMemory.brandDocs);
+          const seoCompetitors = brandMemory.seoCompetitors || {};
+          document.getElementById('seoCompetitorsMustInclude').value =
+            linesToText(seoCompetitors.mustInclude);
+          document.getElementById('seoCompetitorsOptional').value =
+            linesToText(seoCompetitors.optional);
+          document.getElementById('seoCompetitorsExclude').value =
+            linesToText(seoCompetitors.exclude);
+          if (brandMemory.seoCompetitorKeywordMap?.market?.country) {
+            document.getElementById('seoCompetitorCountry').value =
+              brandMemory.seoCompetitorKeywordMap.market.country;
+          }
+          if (brandMemory.seoCompetitorKeywordMap?.market?.language) {
+            document.getElementById('seoCompetitorLanguage').value =
+              brandMemory.seoCompetitorKeywordMap.market.language;
+          }
+          renderCompetitorKeywordMapSummary(brandMemory.seoCompetitorKeywordMap);
+          scheduleSeoCompetitorKeywordRefresh(brandMemory.seoCompetitorKeywordMap);
         }
 
         function serializePayload(payload) {
@@ -3676,13 +3785,79 @@ export class CampaignTestUiController {
             brandName: document.getElementById('brandName').value || null,
             productDescription: document.getElementById('productDescription').value || null,
             targetAudience: document.getElementById('targetAudience').value || null,
+            keyMessage: document.getElementById('keyMessage').value || null,
+            defaultCta: document.getElementById('defaultCta').value || null,
+            brandConstraints: splitLines(document.getElementById('brandConstraints').value),
+            claimsConstraints: splitLines(document.getElementById('claimsConstraints').value),
             approvedFacts: splitLines(document.getElementById('approvedFacts').value),
             forbiddenClaims: splitLines(document.getElementById('forbiddenClaims').value),
             requiredPhrases: splitLines(document.getElementById('requiredPhrases').value),
             bannedPhrases: splitLines(document.getElementById('bannedPhrases').value),
             glossary: parseGlossary(document.getElementById('glossary').value),
             brandDocs: parseBrandDocs(document.getElementById('brandDocs').value),
+            seoCompetitors: {
+              mustInclude: splitLines(document.getElementById('seoCompetitorsMustInclude').value),
+              optional: splitLines(document.getElementById('seoCompetitorsOptional').value),
+              exclude: splitLines(document.getElementById('seoCompetitorsExclude').value),
+            },
           };
+        }
+
+        async function refreshSeoCompetitorKeywords(options = {}) {
+          const auto = Boolean(options.auto);
+          const button = document.getElementById('refreshSeoCompetitorKeywordsBtn');
+          const status = document.getElementById('seoCompetitorRefreshStatus');
+          button.disabled = true;
+          status.textContent = auto
+            ? 'Auto refreshing DataForSEO ranked keywords...'
+            : 'Saving Brand Memory and fetching DataForSEO ranked keywords...';
+          status.style.color = 'var(--muted)';
+
+          try {
+            if (!auto) {
+              const payload = buildPayload();
+              await request(
+                '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
+                {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                },
+                { renderResponse: false },
+              );
+            }
+
+            const result = await request(
+              '/projects/' + encodeURIComponent(projectId) + '/brand-memory/refresh-competitor-keywords',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  country: document.getElementById('seoCompetitorCountry').value || null,
+                  language: document.getElementById('seoCompetitorLanguage').value || null,
+                }),
+              },
+            );
+
+            fillForm(result.brandMemory || {});
+            document.getElementById('updatedAt').textContent =
+              'Last update ' + formatDateTime(new Date().toISOString());
+            initialBrandMemoryPayload = serializePayload(buildPayload());
+            syncSaveButtonState();
+            status.textContent =
+              'Fetched ' + result.itemCount + ' ranked keyword rows from ' +
+              result.targetCount + ' competitors. Last successful refresh: ' +
+              formatDateTime(result.generatedAt) + '. Next auto refresh: ' +
+              formatDateTime(result.nextRefreshAt) + '.';
+            status.style.color = 'var(--success)';
+          } catch (error) {
+            status.textContent = error instanceof Error ? error.message : String(error);
+            status.style.color = 'var(--danger)';
+            setOutput(error instanceof Error ? error.message : String(error));
+            throw error;
+          } finally {
+            button.disabled = false;
+          }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -3705,6 +3880,12 @@ export class CampaignTestUiController {
             initialBrandMemoryPayload = serializePayload(payload);
             syncSaveButtonState();
           });
+
+          document
+            .getElementById('refreshSeoCompetitorKeywordsBtn')
+            .addEventListener('click', async () => {
+              await refreshSeoCompetitorKeywords({ auto: false }).catch(() => {});
+            });
         });
 
         loadPage().catch((error) => setOutput(String(error)));

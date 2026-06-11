@@ -20,10 +20,12 @@ import {
   type BrandMemoryReadResult,
 } from '../../ports/brand-memory-reader.port.js';
 import type { SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
+import { deriveTopicHintScope } from '../../services/topic-hint-scope.service.js';
 import {
   CreateSeoBriefRunCommand,
   type CreateSeoBriefRunInput,
 } from './create-seo-brief-run.command.js';
+import { normalizeSeoBriefRequestTimeoutMs } from '../seo-brief-request-timeout.js';
 
 export interface CreateSeoBriefRunResult {
   runId: string;
@@ -36,10 +38,12 @@ export interface CreateSeoBriefRunResult {
 interface NormalizedCreateSeoBriefRunInput {
   projectId: string | null;
   aiModelMode: SeoBriefAiModelMode;
+  workflowMode: 'manual' | 'auto_until_selection';
   topicHint: string;
   topicSeed: string;
   hypothesesCount: number;
   serpEnrichmentCount: number;
+  requestTimeoutMs: number;
   competitorKeywordsJsonId: string | null;
   country: string;
   language: string;
@@ -75,6 +79,12 @@ interface RunDeduplicationCandidate {
 
 function normalizeAiModelMode(value?: string | null): SeoBriefAiModelMode {
   return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
+}
+
+function normalizeWorkflowMode(
+  value?: CreateSeoBriefRunInput['workflowMode'],
+): 'manual' | 'auto_until_selection' {
+  return value === 'auto_until_selection' ? 'auto_until_selection' : 'manual';
 }
 
 function normalizeText(value?: string | null): string | null {
@@ -168,20 +178,22 @@ function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBrief
   return {
     projectId: normalizeText(input.projectId),
     aiModelMode: normalizeAiModelMode(input.aiModelMode),
+    workflowMode: normalizeWorkflowMode(input.workflowMode),
     topicHint,
     topicSeed: topicHint,
     hypothesesCount,
     serpEnrichmentCount: Math.min(requestedSerpEnrichmentCount, hypothesesCount),
+    requestTimeoutMs: normalizeSeoBriefRequestTimeoutMs(input.requestTimeoutMs),
     competitorKeywordsJsonId: normalizeText(input.competitorKeywordsJsonId),
     country: normalizeRequiredText(input.market.country),
     language: normalizeRequiredText(input.market.language),
     locationName: normalizeText(input.market.locationName),
-    audience: normalizeRequiredText(input.audience),
+    audience: normalizeText(input.audience) ?? '',
     userPains: normalizeTextList(input.userPains),
     userScenarios: normalizeTextList(input.userScenarios),
     keywordExpansionPrompt: resolveSeoBriefKeywordExpansionPrompt(input.keywordExpansionPrompt),
-    productName: normalizeRequiredText(input.product.name),
-    productDescription: normalizeRequiredText(input.product.description),
+    productName: normalizeText(input.product.name) ?? '',
+    productDescription: normalizeText(input.product.description) ?? '',
     keyMessage: normalizeText(input.keyMessage),
     knownCompetitorsMustInclude: normalizeTextList(input.knownCompetitors?.mustInclude),
     knownCompetitorsOptional: normalizeTextList(input.knownCompetitors?.optional),
@@ -206,6 +218,10 @@ function createInputBackedBrandMemorySnapshot(
     brandName: input.productName,
     productDescription: input.productDescription,
     targetAudience: input.audience,
+    keyMessage: input.keyMessage,
+    defaultCta: input.cta,
+    brandConstraints: input.brandConstraints,
+    claimsConstraints: input.claimsConstraints,
     approvedFacts: [],
     forbiddenClaims: [],
     glossary: {},
@@ -213,6 +229,12 @@ function createInputBackedBrandMemorySnapshot(
     requiredPhrases: [],
     brandDocs: [],
     adaptationPromptRules: null,
+    seoCompetitors: {
+      mustInclude: [],
+      optional: [],
+      exclude: [],
+    },
+    seoCompetitorKeywordMap: null,
   };
 }
 
@@ -230,6 +252,12 @@ function mergeBrandMemorySnapshot(
     productDescription:
       source.brandMemorySnapshot.productDescription ?? inputBackedSnapshot.productDescription,
     targetAudience: source.brandMemorySnapshot.targetAudience ?? inputBackedSnapshot.targetAudience,
+    keyMessage: source.brandMemorySnapshot.keyMessage ?? inputBackedSnapshot.keyMessage,
+    defaultCta: source.brandMemorySnapshot.defaultCta ?? inputBackedSnapshot.defaultCta,
+    brandConstraints:
+      source.brandMemorySnapshot.brandConstraints ?? inputBackedSnapshot.brandConstraints,
+    claimsConstraints:
+      source.brandMemorySnapshot.claimsConstraints ?? inputBackedSnapshot.claimsConstraints,
     approvedFacts: source.brandMemorySnapshot.approvedFacts,
     forbiddenClaims: source.brandMemorySnapshot.forbiddenClaims,
     glossary: source.brandMemorySnapshot.glossary,
@@ -237,20 +265,59 @@ function mergeBrandMemorySnapshot(
     requiredPhrases: source.brandMemorySnapshot.requiredPhrases,
     brandDocs: source.brandMemorySnapshot.brandDocs,
     adaptationPromptRules: source.brandMemorySnapshot.adaptationPromptRules,
+    seoCompetitors:
+      source.brandMemorySnapshot.seoCompetitors ?? inputBackedSnapshot.seoCompetitors,
+    seoCompetitorKeywordMap:
+      source.brandMemorySnapshot.seoCompetitorKeywordMap ??
+      inputBackedSnapshot.seoCompetitorKeywordMap,
+  };
+}
+
+function applyBrandMemoryDefaults(
+  input: NormalizedCreateSeoBriefRunInput,
+  brandMemorySnapshot: SeoBriefBrandMemorySnapshot,
+): NormalizedCreateSeoBriefRunInput {
+  const audience = input.audience || brandMemorySnapshot.targetAudience || '';
+  const productName = input.productName || brandMemorySnapshot.brandName || '';
+  const productDescription =
+    input.productDescription || brandMemorySnapshot.productDescription || '';
+
+  return {
+    ...input,
+    audience: normalizeRequiredText(audience),
+    productName: normalizeRequiredText(productName),
+    productDescription: normalizeRequiredText(productDescription),
+    keyMessage: input.keyMessage ?? brandMemorySnapshot.keyMessage ?? null,
+    cta: input.cta ?? brandMemorySnapshot.defaultCta ?? null,
+    brandConstraints:
+      input.brandConstraints.length > 0
+        ? input.brandConstraints
+        : brandMemorySnapshot.brandConstraints ?? [],
+    claimsConstraints:
+      input.claimsConstraints.length > 0
+        ? input.claimsConstraints
+        : (brandMemorySnapshot.claimsConstraints?.length ?? 0) > 0
+          ? (brandMemorySnapshot.claimsConstraints ?? [])
+          : brandMemorySnapshot.forbiddenClaims,
   };
 }
 
 function createNormalizedInputArtifactPayload(
   input: NormalizedCreateSeoBriefRunInput,
 ): SeoBriefJsonObject {
+  const topicHintScope = deriveTopicHintScope(input.topicHint);
+
   return {
     inputVersion: 'topic_hint_manual_pains_v2',
     projectId: input.projectId,
     aiModelMode: input.aiModelMode,
+    workflowMode: input.workflowMode,
     topicHint: input.topicHint,
     topicSeed: input.topicSeed,
+    topicHintScope: topicHintScope as unknown as SeoBriefJsonValue,
     hypothesesCount: input.hypothesesCount,
     serpEnrichmentCount: input.serpEnrichmentCount,
+    requestTimeoutMs: input.requestTimeoutMs,
     competitorKeywordsJsonId: input.competitorKeywordsJsonId,
     market: {
       country: input.country,
@@ -353,6 +420,8 @@ function createSeoProductContextArtifactPayload(
   brandMemorySource: BrandMemoryReadResult | null,
   brandMemorySnapshot: SeoBriefBrandMemorySnapshot,
 ): SeoBriefJsonObject {
+  const topicHintScope = deriveTopicHintScope(input.topicHint);
+
   return {
     artifactVersion: 'seo_product_context_v1',
     algorithmStep: 'seo_product_context',
@@ -365,6 +434,7 @@ function createSeoProductContextArtifactPayload(
     ],
     researchFrame: {
       topicHint: input.topicHint,
+      topicHintScope: topicHintScope as unknown as SeoBriefJsonValue,
       market: {
         country: input.country,
         language: input.language,
@@ -406,6 +476,10 @@ function createSeoProductContextArtifactPayload(
       brandName: brandMemorySnapshot.brandName,
       productDescription: brandMemorySnapshot.productDescription,
       targetAudience: brandMemorySnapshot.targetAudience,
+      keyMessage: brandMemorySnapshot.keyMessage ?? null,
+      defaultCta: brandMemorySnapshot.defaultCta ?? null,
+      brandConstraints: brandMemorySnapshot.brandConstraints ?? [],
+      claimsConstraints: brandMemorySnapshot.claimsConstraints ?? [],
       approvedFacts: brandMemorySnapshot.approvedFacts,
       forbiddenClaims: brandMemorySnapshot.forbiddenClaims,
       glossary: brandMemorySnapshot.glossary,
@@ -469,6 +543,7 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
     userScenarios: input.userScenarios.map((item) => item.trim().toLowerCase()),
     hypothesesCount: input.hypothesesCount,
     serpEnrichmentCount: input.serpEnrichmentCount,
+    requestTimeoutMs: input.requestTimeoutMs,
     competitorKeywordsJsonId: input.competitorKeywordsJsonId?.trim().toLowerCase() ?? null,
     brandConstraints: input.brandConstraints.map((item) => item.trim().toLowerCase()),
     claimsConstraints: input.claimsConstraints.map((item) => item.trim().toLowerCase()),
@@ -625,32 +700,33 @@ export class CreateSeoBriefRunHandler
     }
 
     const brandMemorySnapshot = mergeBrandMemorySnapshot(input, brandMemorySource);
-    const duplicate = await this.findDuplicateRun(input);
+    const effectiveInput = applyBrandMemoryDefaults(input, brandMemorySnapshot);
+    const duplicate = await this.findDuplicateRun(effectiveInput);
     if (duplicate) {
       return {
         runId: duplicate.runId,
         status: duplicate.status,
-        projectId: input.projectId,
+        projectId: effectiveInput.projectId,
         createdAt: duplicate.createdAt,
         deduplicated: true,
       };
     }
 
     const run = SeoBriefRun.create({
-      projectId: input.projectId,
-      topicSeed: input.topicSeed,
-      country: input.country,
-      language: input.language,
-      audience: input.audience,
-      productName: input.productName,
-      productDescription: input.productDescription,
+      projectId: effectiveInput.projectId,
+      topicSeed: effectiveInput.topicSeed,
+      country: effectiveInput.country,
+      language: effectiveInput.language,
+      audience: effectiveInput.audience,
+      productName: effectiveInput.productName,
+      productDescription: effectiveInput.productDescription,
       brandMemorySnapshot,
-      keyMessage: input.keyMessage,
-      audienceBefore: input.audienceBefore,
-      audienceAfter: input.audienceAfter,
-      cta: input.cta,
-      seoWeight: input.seoWeight,
-      productWeight: input.productWeight,
+      keyMessage: effectiveInput.keyMessage,
+      audienceBefore: effectiveInput.audienceBefore,
+      audienceAfter: effectiveInput.audienceAfter,
+      cta: effectiveInput.cta,
+      seoWeight: effectiveInput.seoWeight,
+      productWeight: effectiveInput.productWeight,
     });
 
     const createdStep = SeoBriefRunStep.create({
@@ -664,7 +740,7 @@ export class CreateSeoBriefRunHandler
       runId: run.id,
       stage: 'created',
       artifactType: 'normalized_input',
-      payload: createNormalizedInputArtifactPayload(input),
+      payload: createNormalizedInputArtifactPayload(effectiveInput),
     });
     const brandMemoryArtifact = SeoBriefArtifact.create({
       runId: run.id,
@@ -676,13 +752,17 @@ export class CreateSeoBriefRunHandler
       runId: run.id,
       stage: 'created',
       artifactType: 'user_pain_scenarios',
-      payload: createManualUserPainScenariosArtifactPayload(input),
+      payload: createManualUserPainScenariosArtifactPayload(effectiveInput),
     });
     const seoProductContextArtifact = SeoBriefArtifact.create({
       runId: run.id,
       stage: 'created',
       artifactType: 'seo_product_context',
-      payload: createSeoProductContextArtifactPayload(input, brandMemorySource, brandMemorySnapshot),
+      payload: createSeoProductContextArtifactPayload(
+        effectiveInput,
+        brandMemorySource,
+        brandMemorySnapshot,
+      ),
     });
     const operationalLimitsArtifact = SeoBriefArtifact.create({
       runId: run.id,
@@ -737,6 +817,11 @@ export class CreateSeoBriefRunHandler
           return createRunFingerprint({
             projectId: candidate.projectId,
             aiModelMode: extractAiModelModeFromArtifacts(candidateArtifacts),
+            workflowMode:
+              extractTextFromPayload(candidateInputPayload, 'workflowMode') ===
+              'auto_until_selection'
+                ? 'auto_until_selection'
+                : 'manual',
             topicHint:
               extractTextFromPayload(candidateInputPayload, 'topicHint') ?? candidate.topicSeed,
             topicSeed: candidate.topicSeed,
@@ -751,6 +836,11 @@ export class CreateSeoBriefRunHandler
               candidateInputPayload,
               'serpEnrichmentCount',
               10,
+            ),
+            requestTimeoutMs: extractNumberFromPayload(
+              candidateInputPayload,
+              'requestTimeoutMs',
+              300_000,
             ),
             competitorKeywordsJsonId: extractTextFromPayload(
               candidateInputPayload,

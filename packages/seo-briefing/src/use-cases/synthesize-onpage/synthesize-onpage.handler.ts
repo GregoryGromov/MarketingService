@@ -12,6 +12,7 @@ import {
   type SeoBriefAiModelMode,
   type SynthesizeOnPagePageInput,
 } from '../../ports/seo-brief-ai.port.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { SynthesizeOnPageCommand } from './synthesize-onpage.command.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -74,6 +75,7 @@ export class SynthesizeOnPageHandler
         runId: run.id,
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
+        timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,

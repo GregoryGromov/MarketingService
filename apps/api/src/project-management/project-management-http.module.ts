@@ -5,7 +5,10 @@ import { CampaignMediaController } from './campaign-media.controller.js';
 import { CampaignPresetController } from './campaign-preset.controller.js';
 import { CampaignSourceMediaService } from './campaign-source-media.service.js';
 import { CampaignTestUiController } from './campaign-test-ui.controller.js';
-import { ProjectController } from './project.controller.js';
+import {
+  BrandMemorySeoCompetitorKeywordRefreshScheduler,
+  ProjectController,
+} from './project.controller.js';
 
 @Module({
   imports: [CqrsModule],
@@ -16,6 +19,9 @@ import { ProjectController } from './project.controller.js';
     CampaignPresetController,
     CampaignTestUiController,
   ],
-  providers: [CampaignSourceMediaService],
+  providers: [
+    CampaignSourceMediaService,
+    BrandMemorySeoCompetitorKeywordRefreshScheduler,
+  ],
 })
 export class ProjectManagementHttpModule {}

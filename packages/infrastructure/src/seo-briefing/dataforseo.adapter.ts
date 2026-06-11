@@ -63,6 +63,7 @@ interface CachedSeoResearchResponse<TResult> {
 interface SeoResearchLogContext {
   runId: SeoBriefRunId;
   stepId?: SeoBriefRunStepId | null;
+  timeoutMs?: number | null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -552,7 +553,7 @@ export class DataForSeoAdapter {
           method: 'POST',
           path: endpoint,
           payload,
-          timeoutMs: this.getTimeoutMs(),
+          timeoutMs: this.getTimeoutMs(params.timeoutMs),
         }),
       );
       const task = this.getSingleTask(response.payload, endpoint);
@@ -601,7 +602,10 @@ export class DataForSeoAdapter {
 
   private async pollOnPageSummary(
     taskId: string,
-    params: Pick<GetOnPageParseParams, 'runId' | 'stepId' | 'pollAttempts' | 'pollDelayMs'>,
+    params: Pick<
+      GetOnPageParseParams,
+      'runId' | 'stepId' | 'pollAttempts' | 'pollDelayMs' | 'timeoutMs'
+    >,
   ): Promise<SeoBriefJsonValue> {
     const attempts = params.pollAttempts ?? this.getOnPagePollAttempts();
     const delayMs = params.pollDelayMs ?? this.getOnPagePollDelayMs();
@@ -621,7 +625,7 @@ export class DataForSeoAdapter {
           this.httpClient.request({
             method: 'GET',
             path: endpoint,
-            timeoutMs: this.getTimeoutMs(),
+            timeoutMs: this.getTimeoutMs(params.timeoutMs),
           }),
         );
         const task = this.getSingleTask(response.payload, endpoint);
@@ -1346,10 +1350,14 @@ export class DataForSeoAdapter {
     return 'Unknown error';
   }
 
-  private getTimeoutMs(): number {
+  private getTimeoutMs(timeoutMs?: number | null): number {
+    if (timeoutMs != null && Number.isFinite(timeoutMs)) {
+      return Math.max(1000, Math.trunc(timeoutMs));
+    }
+
     return Math.max(
       1000,
-      Number.parseInt(this.config.get<string>('DATAFORSEO_TIMEOUT_MS') ?? '60000', 10),
+      Number.parseInt(this.config.get<string>('DATAFORSEO_TIMEOUT_MS') ?? '300000', 10),
     );
   }
 

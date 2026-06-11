@@ -148,6 +148,21 @@ export interface GetSeoBriefRunResult {
     externalCallCount: number;
     scoreLogCount: number;
     cacheHitCount: number;
+    costBreakdownByStep: Array<{
+      stepId: string | null;
+      stage: SeoBriefRunStage | null;
+      attemptNumber: number | null;
+      llmCost: number;
+      externalCost: number;
+      totalCost: number;
+      llmCallCount: number;
+      externalCallCount: number;
+      cacheHitCount: number;
+      llmOperations: string[];
+      externalEndpoints: string[];
+      startedAt: Date | null;
+      finishedAt: Date | null;
+    }>;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -338,13 +353,23 @@ function buildRunMetrics(
   createdAt: Date,
   updatedAt: Date,
   steps: Array<{
+    id: string;
     stage: SeoBriefRunStage;
     startedAt: Date;
     finishedAt: Date | null;
     attemptNumber: number;
   }>,
-  llmCalls: Array<{ estimatedCost: number | null }>,
-  externalCalls: Array<{ estimatedCost: number | null; cacheHit: boolean }>,
+  llmCalls: Array<{
+    stepId: string | null;
+    operation: string;
+    estimatedCost: number | null;
+  }>,
+  externalCalls: Array<{
+    stepId: string | null;
+    endpoint: string;
+    estimatedCost: number | null;
+    cacheHit: boolean;
+  }>,
   scoreLogs: Array<unknown>,
 ): GetSeoBriefRunResult['metrics'] {
   const latestSteps = new Map<SeoBriefRunStage, (typeof steps)[number]>();
@@ -391,7 +416,95 @@ function buildRunMetrics(
     externalCallCount: externalCalls.length,
     scoreLogCount: scoreLogs.length,
     cacheHitCount: externalCalls.filter((log) => log.cacheHit).length,
+    costBreakdownByStep: buildCostBreakdownByStep(steps, llmCalls, externalCalls),
   };
+}
+
+function buildCostBreakdownByStep(
+  steps: Array<{
+    id: string;
+    stage: SeoBriefRunStage;
+    startedAt: Date;
+    finishedAt: Date | null;
+    attemptNumber: number;
+  }>,
+  llmCalls: Array<{
+    stepId: string | null;
+    operation: string;
+    estimatedCost: number | null;
+  }>,
+  externalCalls: Array<{
+    stepId: string | null;
+    endpoint: string;
+    estimatedCost: number | null;
+    cacheHit: boolean;
+  }>,
+): GetSeoBriefRunResult['metrics']['costBreakdownByStep'] {
+  const stepById = new Map(steps.map((step) => [step.id, step]));
+  const buckets = new Map<
+    string,
+    GetSeoBriefRunResult['metrics']['costBreakdownByStep'][number]
+  >();
+
+  const getBucket = (stepId: string | null) => {
+    const key = stepId ?? '__run_level__';
+    const existing = buckets.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const step = stepId ? stepById.get(stepId) : null;
+    const bucket: GetSeoBriefRunResult['metrics']['costBreakdownByStep'][number] = {
+      stepId,
+      stage: step?.stage ?? null,
+      attemptNumber: step?.attemptNumber ?? null,
+      llmCost: 0,
+      externalCost: 0,
+      totalCost: 0,
+      llmCallCount: 0,
+      externalCallCount: 0,
+      cacheHitCount: 0,
+      llmOperations: [],
+      externalEndpoints: [],
+      startedAt: step?.startedAt ?? null,
+      finishedAt: step?.finishedAt ?? null,
+    };
+    buckets.set(key, bucket);
+
+    return bucket;
+  };
+
+  for (const call of llmCalls) {
+    const bucket = getBucket(call.stepId);
+    bucket.llmCost = roundCurrency(bucket.llmCost + (call.estimatedCost ?? 0));
+    bucket.llmCallCount += 1;
+    bucket.llmOperations = appendUnique(bucket.llmOperations, call.operation);
+  }
+
+  for (const call of externalCalls) {
+    const bucket = getBucket(call.stepId);
+    bucket.externalCost = roundCurrency(bucket.externalCost + (call.estimatedCost ?? 0));
+    bucket.externalCallCount += 1;
+    bucket.cacheHitCount += call.cacheHit ? 1 : 0;
+    bucket.externalEndpoints = appendUnique(bucket.externalEndpoints, call.endpoint);
+  }
+
+  const stepOrder = new Map(steps.map((step, index) => [step.id, index]));
+  return [...buckets.values()]
+    .map((bucket) => ({
+      ...bucket,
+      totalCost: roundCurrency(bucket.llmCost + bucket.externalCost),
+    }))
+    .sort((left, right) => {
+      if (!left.stepId) return 1;
+      if (!right.stepId) return -1;
+      return (stepOrder.get(left.stepId) ?? Number.MAX_SAFE_INTEGER) -
+        (stepOrder.get(right.stepId) ?? Number.MAX_SAFE_INTEGER);
+    });
+}
+
+function appendUnique(values: string[], value: string): string[] {
+  return values.includes(value) ? values : [...values, value];
 }
 
 function roundCurrency(value: number): number {

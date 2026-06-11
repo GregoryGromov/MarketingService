@@ -102,13 +102,38 @@ export {
 export {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
+  type ArticleCleanupStatus,
+  type ArticleCleanupWarningType,
   type ClassifySerpDomainsParams,
   type ClassifySerpDomainsResult,
   type ClusterProductFitReview,
+  type CleanupLongreadArticleParams,
+  type CleanupLongreadArticleResult,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type ClusterKeywordCandidateInput,
   type ClusterKeywordCompetitorUrl,
+  type EvaluateCompetitorKeywordMatchesParams,
+  type EvaluateCompetitorKeywordMatchesResult,
+  type GroupCandidateKeywordsParams,
+  type GroupCandidateKeywordsResult,
+  type GroupCompetitorKeywordEvidenceParams,
+  type GroupCompetitorKeywordEvidenceResult,
+  type MatchKeywordGroupsParams,
+  type MatchKeywordGroupsResult,
+  type ScoreCompetitorKeywordCandidateGroupParams,
+  type ScoreCompetitorKeywordCandidateGroupResult,
+  type AiCandidateKeywordBucket,
+  type AiCompetitorKeywordCandidateInput,
+  type AiCompetitorKeywordEvidenceInput,
+  type AiCompetitorKeywordMarketBucket,
+  type AiCompetitorKeywordMatchedCandidate,
+  type AiCompetitorKeywordMatchType,
+  type AiCompetitorKeywordSemanticMatch,
+  type AiKeywordGroupMatch,
+  type AiKeywordGroupMatchType,
+  type DraftLongreadArticleParams,
+  type DraftLongreadArticleResult,
   type ClusterSelectionCandidateExplanation,
   type ExpandKeywordsParams,
   type ExpandKeywordsResult,
@@ -122,6 +147,8 @@ export {
   type GenerateSeoBriefResult,
   type IgnoredSerpDomain,
   type OnPageOnlyTargetDomain,
+  type PackageLongreadArticleParams,
+  type PackageLongreadArticleResult,
   type PainSignalTargetDomain,
   type RankedKeywordsTargetDomain,
   type RejectedClusterExplanation,
@@ -232,6 +259,11 @@ export {
   DemandScoreService,
 } from './services/demand-score.service.js';
 export {
+  deriveRequiredTopicTerms,
+  deriveTopicHintScope,
+  type TopicHintScope,
+} from './services/topic-hint-scope.service.js';
+export {
   type FinalClusterScoreInput,
   type FinalClusterScoreResult,
   FinalClusterScoreService,
@@ -287,6 +319,8 @@ export { GenerateKeywordHypothesesCommand } from './use-cases/generate-keyword-h
 export type { GenerateKeywordHypothesesResult } from './use-cases/generate-keyword-hypotheses/generate-keyword-hypotheses.handler.js';
 export { GenerateFinalSeoBriefCommand } from './use-cases/generate-final-seo-brief/generate-final-seo-brief.command.js';
 export type { GenerateFinalSeoBriefUseCaseResult } from './use-cases/generate-final-seo-brief/generate-final-seo-brief.handler.js';
+export { GenerateLongreadDraftCommand } from './use-cases/generate-longread-draft/generate-longread-draft.command.js';
+export type { GenerateLongreadDraftResult } from './use-cases/generate-longread-draft/generate-longread-draft.handler.js';
 export { GenerateUserPainScenariosCommand } from './use-cases/generate-user-pain-scenarios/generate-user-pain-scenarios.command.js';
 export type { GenerateUserPainScenariosResult } from './use-cases/generate-user-pain-scenarios/generate-user-pain-scenarios.handler.js';
 export type {
@@ -308,6 +342,10 @@ export {
 } from './use-cases/mark-seo-brief-run-manual-review/mark-seo-brief-run-manual-review.command.js';
 export { MatchCompetitorKeywordsCommand } from './use-cases/match-competitor-keywords/match-competitor-keywords.command.js';
 export type { MatchCompetitorKeywordsResult } from './use-cases/match-competitor-keywords/match-competitor-keywords.handler.js';
+export { CleanupLongreadArticleCommand } from './use-cases/cleanup-longread-article/cleanup-longread-article.command.js';
+export type { CleanupLongreadArticleResult as CleanupLongreadArticleUseCaseResult } from './use-cases/cleanup-longread-article/cleanup-longread-article.handler.js';
+export { PackageLongreadArticleCommand } from './use-cases/package-longread-article/package-longread-article.command.js';
+export type { PackageLongreadArticleResult as PackageLongreadArticleUseCaseResult } from './use-cases/package-longread-article/package-longread-article.handler.js';
 export type { ProcessSeoBriefRunResult } from './use-cases/process-seo-brief-run/process-seo-brief-run.executor.js';
 export {
   ProcessSeoBriefRunExecutor,
@@ -338,3 +376,5 @@ export { SelectSeoBriefClustersCommand } from './use-cases/select-seo-brief-clus
 export type { SelectSeoBriefClustersResult } from './use-cases/select-seo-brief-clusters/select-seo-brief-clusters.handler.js';
 export { SynthesizeOnPageCommand } from './use-cases/synthesize-onpage/synthesize-onpage.command.js';
 export type { SynthesizeOnPageUseCaseResult } from './use-cases/synthesize-onpage/synthesize-onpage.handler.js';
+export { UpdateFinalSeoBriefCommand } from './use-cases/update-final-seo-brief/update-final-seo-brief.command.js';
+export type { UpdateFinalSeoBriefResult } from './use-cases/update-final-seo-brief/update-final-seo-brief.handler.js';
