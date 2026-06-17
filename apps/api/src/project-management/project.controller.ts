@@ -390,14 +390,19 @@ function normalizeCompetitorTarget(value: string): string | null {
   return host;
 }
 
-function resolveSeoCompetitorTargets(competitors: BrandMemory['seoCompetitors']): {
+function resolveSeoCompetitorTargets(competitors?: BrandMemory['seoCompetitors'] | null): {
   skipped: SeoCompetitorSkipped[];
   targets: SeoCompetitorTarget[];
 } {
   const skipped: SeoCompetitorSkipped[] = [];
   const targets = new Map<string, SeoCompetitorTarget>();
+  const safeCompetitors: NonNullable<BrandMemory['seoCompetitors']> = competitors ?? {
+    mustInclude: [],
+    optional: [],
+    exclude: [],
+  };
   const excluded = new Set(
-    (competitors.exclude ?? [])
+    (safeCompetitors.exclude ?? [])
       .map(normalizeCompetitorTarget)
       .filter((value): value is string => Boolean(value)),
   );
@@ -422,15 +427,15 @@ function resolveSeoCompetitorTargets(competitors: BrandMemory['seoCompetitors'])
     }
   };
 
-  for (const raw of competitors.mustInclude ?? []) {
+  for (const raw of safeCompetitors.mustInclude ?? []) {
     addTarget(raw, 'must_include');
   }
 
-  for (const raw of competitors.optional ?? []) {
+  for (const raw of safeCompetitors.optional ?? []) {
     addTarget(raw, 'optional');
   }
 
-  for (const raw of competitors.exclude ?? []) {
+  for (const raw of safeCompetitors.exclude ?? []) {
     if (!normalizeCompetitorTarget(raw)) {
       skipped.push({ raw, source: 'exclude', reason: 'not_a_domain' });
     }
