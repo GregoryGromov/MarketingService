@@ -53,7 +53,12 @@ export interface ExtractedSeoBriefContext {
   notes: string[];
 }
 
-export type SeoBriefPainProductConnection = 'direct' | 'alternative' | 'workflow' | 'education' | 'weak';
+export type SeoBriefPainProductConnection =
+  | 'direct'
+  | 'alternative'
+  | 'workflow'
+  | 'education'
+  | 'weak';
 export type SeoBriefScenarioType = 'pain' | 'action' | 'ecosystem';
 export type SeoBriefProductFitHypothesis =
   | 'direct_solution'
@@ -848,14 +853,26 @@ export interface DraftLongreadArticleResult {
   draftArticleMarkdown: string;
 }
 
-export type ArticleCleanupStatus = 'passed' | 'revised' | 'needs_human_review';
+export type ArticleCleanupStatus =
+  | 'passed'
+  | 'passed_with_warnings'
+  | 'revised'
+  | 'needs_human_review';
 export type ArticleCleanupWarningType =
   | 'claims'
+  | 'compliance'
   | 'seo'
   | 'product_insertion'
   | 'factual_check'
   | 'tone'
   | 'structure';
+export type ArticleCleanupWarningSeverity = 'blocker' | 'warning' | 'note';
+
+export interface ArticleCleanupWarning {
+  type: ArticleCleanupWarningType;
+  severity: ArticleCleanupWarningSeverity;
+  message: string;
+}
 
 export interface CleanupLongreadArticleParams extends SeoBriefAiRequestContext {
   draftArticleMarkdown: string;
@@ -863,14 +880,13 @@ export interface CleanupLongreadArticleParams extends SeoBriefAiRequestContext {
   productProfile: SeoBriefJsonObject;
   claimsPolicy: SeoBriefJsonObject;
   brandVoice: SeoBriefJsonObject;
+  reviewAttempt?: number | null;
+  previousReviewFindings?: SeoBriefJsonObject[] | null;
 }
 
 export interface CleanupLongreadArticleResult {
   status: ArticleCleanupStatus;
-  warnings: Array<{
-    type: ArticleCleanupWarningType;
-    message: string;
-  }>;
+  warnings: ArticleCleanupWarning[];
   changesMade: string[];
   articleMarkdown: string;
 }

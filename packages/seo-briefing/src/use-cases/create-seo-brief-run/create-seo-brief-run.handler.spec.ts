@@ -135,6 +135,7 @@ describe('CreateSeoBriefRunHandler', () => {
       inputVersion: 'topic_hint_manual_pains_v2',
       projectId: 'project-1',
       aiModelMode: 'pro',
+      workflowMode: 'manual',
       topicHint: 'how to earn with USDT',
       topicHintScope: {
         requiredTopicTerms: ['earn', 'usdt'],
@@ -145,6 +146,10 @@ describe('CreateSeoBriefRunHandler', () => {
       hypothesesCount: 20,
       serpEnrichmentCount: 10,
       requestTimeoutMs: 300000,
+      deepSeekPricing: {
+        inputUsdPerMillionTokens: null,
+        outputUsdPerMillionTokens: null,
+      },
       competitorKeywordsJsonId: 'nigeria_usdt_competitors_v1',
       market: {
         country: 'Nigeria',

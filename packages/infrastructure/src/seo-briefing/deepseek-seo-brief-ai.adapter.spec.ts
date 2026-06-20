@@ -5,7 +5,9 @@ import type {
   ExpandKeywordsParams,
   ExplainClusterSelectionParams,
   GenerateSeoBriefParams,
+  ReviewClusterProductFitParams,
   SelectRelatedKeywordsParams,
+  SeoBriefArtifactRepository,
   SeoBriefLlmCallLog,
   SeoBriefLlmCallLogId,
   SeoBriefLlmLogRepository,
@@ -39,6 +41,32 @@ class InMemorySeoBriefLlmLogRepository {
   }
 }
 
+class FakeSeoBriefArtifactRepository {
+  constructor(private readonly pricing: { input: number; output: number } | null = null) {}
+
+  findByRunId(): Promise<Array<{ artifactType: string; payload: Record<string, unknown> }>> {
+    return Promise.resolve(
+      this.pricing
+        ? [
+            {
+              artifactType: 'normalized_input',
+              payload: {
+                deepSeekPricing: {
+                  inputUsdPerMillionTokens: this.pricing.input,
+                  outputUsdPerMillionTokens: this.pricing.output,
+                },
+              },
+            },
+          ]
+        : [],
+    );
+  }
+
+  save(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
 class FakeConfigService {
   constructor(private readonly values: Record<string, string>) {}
 
@@ -67,9 +95,13 @@ class FakeSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
   }
 }
 
-function createAdapter(queue: SeoBriefAiCompletionResponse[]) {
+function createAdapter(
+  queue: SeoBriefAiCompletionResponse[],
+  pricing: { input: number; output: number } | null = null,
+) {
   const client = new FakeSeoBriefAiHttpClient(queue);
   const repository = new InMemorySeoBriefLlmLogRepository();
+  const artifactRepository = new FakeSeoBriefArtifactRepository(pricing);
   const adapter = new DeepSeekSeoBriefAiAdapter(
     new FakeConfigService({
       SEO_BRIEF_AI_MAX_ATTEMPTS: '2',
@@ -80,6 +112,7 @@ function createAdapter(queue: SeoBriefAiCompletionResponse[]) {
     }) as unknown as ConfigService,
     client,
     repository as SeoBriefLlmLogRepository,
+    artifactRepository as unknown as SeoBriefArtifactRepository,
   );
 
   return { adapter, client, repository };
@@ -105,41 +138,44 @@ function createExpandParams(): ExpandKeywordsParams {
 
 describe('DeepSeekSeoBriefAiAdapter', () => {
   it('returns structured keyword expansion results and writes llm call logs', async () => {
-    const { adapter, client, repository } = createAdapter([
-      {
-        status: 200,
-        model: 'deepseek-v4-pro',
-        content: JSON.stringify({
-          search_hypotheses: [
-            {
-              query: 'is it safe to earn interest on usdt',
-              hypothesis_type: 'risk',
-              why_generated: 'Matches the manual fear around losing funds or getting scammed.',
-              product_fit_hypothesis: 'education_bridge',
-              risk_flags: [],
-            },
-            {
-              query: 'how to earn interest on usdt without locking it',
-              hypothesis_type: 'action',
-              why_generated: 'Reflects the scenario of wanting productive but accessible USDT.',
-              product_fit_hypothesis: 'workflow_bridge',
-              risk_flags: [],
-            },
-            {
-              query: 'binance earn vs nexo for usdt',
-              hypothesis_type: 'comparison',
-              why_generated: 'Uses explicit competitor ecosystem hints for validation.',
-              product_fit_hypothesis: 'alternative_solution',
-              risk_flags: [],
-            },
-          ],
-        }),
-        rawPayload: { id: 'resp-1' },
-        tokenUsageInput: 111,
-        tokenUsageOutput: 44,
-        estimatedCost: null,
-      },
-    ]);
+    const { adapter, client, repository } = createAdapter(
+      [
+        {
+          status: 200,
+          model: 'deepseek-v4-pro',
+          content: JSON.stringify({
+            search_hypotheses: [
+              {
+                query: 'is it safe to earn interest on usdt',
+                hypothesis_type: 'risk',
+                why_generated: 'Matches the manual fear around losing funds or getting scammed.',
+                product_fit_hypothesis: 'education_bridge',
+                risk_flags: [],
+              },
+              {
+                query: 'how to earn interest on usdt without locking it',
+                hypothesis_type: 'action',
+                why_generated: 'Reflects the scenario of wanting productive but accessible USDT.',
+                product_fit_hypothesis: 'workflow_bridge',
+                risk_flags: [],
+              },
+              {
+                query: 'binance earn vs nexo for usdt',
+                hypothesis_type: 'comparison',
+                why_generated: 'Uses explicit competitor ecosystem hints for validation.',
+                product_fit_hypothesis: 'alternative_solution',
+                risk_flags: [],
+              },
+            ],
+          }),
+          rawPayload: { id: 'resp-1' },
+          tokenUsageInput: 111,
+          tokenUsageOutput: 44,
+          estimatedCost: null,
+        },
+      ],
+      { input: 0.1, output: 0.2 },
+    );
 
     const params = createExpandParams();
     const result = await adapter.expandKeywords(params);
@@ -163,6 +199,7 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(client.requests[0]?.temperature).toBeUndefined();
     expect(logs[0]?.tokenUsageInput).toBe(111);
     expect(logs[0]?.tokenUsageOutput).toBe(44);
+    expect(logs[0]?.estimatedCost).toBe(0.0000199);
     expect(client.requests[0]?.systemPrompt).toContain(
       'Treat country as market context, not as a required keyword suffix.',
     );
@@ -511,5 +548,65 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
       domain: 'example-crypto-guide.com',
       domainType: 'other',
     });
+  });
+
+  it('fills empty product insertion angle during Product Fit validation', async () => {
+    const { adapter } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          cluster_product_fit: [
+            {
+              cluster_name: 'USDC on Arbitrum',
+              product_fit_score: 78,
+              product_fit_type: 'education_bridge',
+              decision: 'approve',
+              product_insertion_angle: '',
+              where_to_insert: 'After explaining bridge and network risks.',
+              what_not_to_claim: ['Do not promise guaranteed returns.'],
+              reason: 'The cluster can support careful stablecoin education.',
+            },
+          ],
+        }),
+        rawPayload: { id: 'product-fit' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: ReviewClusterProductFitParams = {
+      runId: 'seo_brief_run_ai_7' as never,
+      topicSeed: 'USDC on Arbitrum',
+      audience: 'Stablecoin users',
+      productName: 'Northstar',
+      productDescription: 'Digital asset education',
+      market: {
+        country: 'United States',
+        language: 'English',
+      },
+      clusters: [
+        {
+          clusterName: 'USDC on Arbitrum',
+          primaryKeywordCandidate: 'usdc on arbitrum',
+          intent: 'informational',
+          userIntent: 'Understand how USDC works on Arbitrum.',
+          secondaryKeywords: [],
+          questions: [],
+          supportingItems: [],
+          supportingItemDetails: [],
+          keywords: ['usdc on arbitrum'],
+          competitorUrls: [],
+          sourceConfidence: 'medium',
+          evidenceSummary: 'SERP cluster about USDC on Arbitrum.',
+        },
+      ],
+    };
+
+    const result = await adapter.reviewClusterProductFit(params);
+
+    expect(result.clusterProductFit[0]?.productInsertionAngle).toBe(
+      'No safe product insertion angle provided by AI.',
+    );
   });
 });

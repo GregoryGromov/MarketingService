@@ -30,6 +30,7 @@ import {
   WorkflowRunRepository,
 } from '@marketing-service/project-management';
 import {
+  BlogPublisherPort,
   PublicationOutcomePort,
   PublicationPlanRepository,
   PublicationRepository,
@@ -72,6 +73,7 @@ import { ProjectMarkerDrizzleRepository } from './project-management/project-mar
 import { ProjectMarkerPlacementDrizzleRepository } from './project-management/project-marker-placement.drizzle-repository.js';
 import { QualityCheckResultDrizzleRepository } from './project-management/quality-check-result.drizzle-repository.js';
 import { WorkflowRunDrizzleRepository } from './project-management/workflow-run.drizzle-repository.js';
+import { BlogAdminPublisher } from './publishing/blog-admin.publisher.js';
 import { DiscordWebhookPublisher } from './publishing/discord-webhook.publisher.js';
 import { PublicationDrizzleRepository } from './publishing/publication.drizzle-repository.js';
 import { PublicationOutcomeDrizzlePort } from './publishing/publication-outcome.drizzle-port.js';
@@ -122,6 +124,7 @@ import { SeoBriefScoreLogDrizzleRepository } from './seo-briefing/seo-brief-scor
     DataForSeoAdapter,
     DataForSeoMemoryCacheService,
     DiscordWebhookPublisher,
+    BlogAdminPublisher,
     FetchSeoBriefAiHttpClient,
     FetchDataForSeoHttpClient,
     TelegramBotApiPublisher,
@@ -168,6 +171,7 @@ import { SeoBriefScoreLogDrizzleRepository } from './seo-briefing/seo-brief-scor
     { provide: AdaptationGeneratorPort, useClass: DeepSeekAdaptationGenerator },
     { provide: TranslationGeneratorPort, useExisting: DeepSeekAdaptationGenerator },
     { provide: DiscordPublisherPort, useClass: DiscordWebhookPublisher },
+    { provide: BlogPublisherPort, useClass: BlogAdminPublisher },
     { provide: TelegramPublisherPort, useClass: TelegramBotApiPublisher },
     { provide: XPublisherPort, useClass: XApiPublisher },
     { provide: PublicationRepository, useClass: PublicationDrizzleRepository },
@@ -227,6 +231,7 @@ import { SeoBriefScoreLogDrizzleRepository } from './seo-briefing/seo-brief-scor
     CampaignRepository,
     ChannelAdaptationRepository,
     DiscordPublisherPort,
+    BlogPublisherPort,
     PlannedPublicationRepository,
     TranslationGeneratorPort,
     TelegramPublisherPort,

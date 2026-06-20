@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { type IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { SeoBriefArtifactRepository } from '../../domain/seo-brief-artifact.repository.js';
 import { SeoBriefDocumentRepository } from '../../domain/seo-brief-document.repository.js';
 import { SeoBriefExternalCallLogRepository } from '../../domain/seo-brief-external-call-log.repository.js';
 import { SeoBriefLlmLogRepository } from '../../domain/seo-brief-llm-log.repository.js';
@@ -40,6 +41,8 @@ export class ListSeoBriefRunsHandler
     private readonly runRepository: SeoBriefRunRepository,
     @Inject(SeoBriefDocumentRepository)
     private readonly documentRepository: SeoBriefDocumentRepository,
+    @Inject(SeoBriefArtifactRepository)
+    private readonly artifactRepository: SeoBriefArtifactRepository,
     @Inject(SeoBriefRunStepRepository)
     private readonly stepRepository: SeoBriefRunStepRepository,
     @Inject(SeoBriefLlmLogRepository)
@@ -59,6 +62,7 @@ export class ListSeoBriefRunsHandler
       runs.map(async (run) => ({
         runId: run.id,
         document: await this.documentRepository.findLatestByRunId(run.id),
+        artifacts: await this.artifactRepository.findByRunId(run.id),
         steps: await this.stepRepository.findByRunId(run.id),
         llmCalls: await this.llmLogRepository.findByRunId(run.id),
         externalCalls: await this.externalCallLogRepository.findByRunId(run.id),
@@ -69,6 +73,21 @@ export class ListSeoBriefRunsHandler
     return runs.map((run) => {
       const aggregate = documentMap.get(run.id) ?? null;
       const document = aggregate?.document ?? null;
+      const clusterSelection = findLatestArtifactPayload(
+        aggregate?.artifacts ?? [],
+        'cluster_selection_snapshot',
+      );
+      const finalBrief = findLatestArtifactPayload(
+        aggregate?.artifacts ?? [],
+        'final_brief_snapshot',
+      );
+      const selectedClusterPayload =
+        document?.selectedClusterPayload ??
+        readObjectField(clusterSelection, 'selectedCluster') ??
+        readObjectField(clusterSelection, 'mainCluster') ??
+        null;
+      const briefPayload =
+        document?.briefPayload ?? readObjectField(finalBrief, 'brief') ?? finalBrief;
       return {
         id: run.id,
         projectId: run.projectId,
@@ -80,9 +99,15 @@ export class ListSeoBriefRunsHandler
         },
         productName: run.productName,
         failureReason: run.failureReason,
-        selectedClusterLabel: extractStringField(document?.selectedClusterPayload ?? null, 'label'),
-        finalBriefTitle: extractStringField(document?.briefPayload ?? null, 'title'),
-        hasFinalBrief: document != null,
+        selectedClusterLabel:
+          extractStringField(selectedClusterPayload, 'label') ??
+          extractStringField(selectedClusterPayload, 'clusterName') ??
+          extractStringField(selectedClusterPayload, 'primaryKeyword'),
+        finalBriefTitle:
+          extractStringField(briefPayload, 'title') ??
+          extractStringField(briefPayload, 'recommendedTitle') ??
+          extractStringField(finalBrief, 'title'),
+        hasFinalBrief: document != null || finalBrief != null,
         metricsSummary: {
           totalCost: roundCurrency(
             (aggregate?.llmCalls ?? []).reduce((sum, log) => sum + (log.estimatedCost ?? 0), 0) +
@@ -128,6 +153,29 @@ function extractStringField(payload: SeoBriefJsonValue | null, field: string): s
 
   const value = payload[field];
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readObjectField(
+  payload: SeoBriefJsonValue | null,
+  field: string,
+): SeoBriefJsonValue | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return null;
+  }
+
+  const value = payload[field];
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+function findLatestArtifactPayload(
+  artifacts: { artifactType: string; payload: SeoBriefJsonValue; createdAt: Date }[],
+  artifactType: string,
+): SeoBriefJsonValue | null {
+  const artifact = artifacts
+    .filter((item) => item.artifactType === artifactType)
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
+
+  return artifact?.payload ?? null;
 }
 
 function deriveRunDurationMs(

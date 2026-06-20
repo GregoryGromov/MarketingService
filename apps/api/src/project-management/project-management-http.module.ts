@@ -1,5 +1,5 @@
+import { ProjectManagementModule } from '@marketing-service/project-management';
 import { Module } from '@nestjs/common';
-import { CqrsModule } from '@nestjs/cqrs';
 import { CampaignController } from './campaign.controller.js';
 import { CampaignMediaController } from './campaign-media.controller.js';
 import { CampaignPresetController } from './campaign-preset.controller.js';
@@ -11,7 +11,7 @@ import {
 } from './project.controller.js';
 
 @Module({
-  imports: [CqrsModule],
+  imports: [ProjectManagementModule],
   controllers: [
     ProjectController,
     CampaignController,
@@ -19,9 +19,6 @@ import {
     CampaignPresetController,
     CampaignTestUiController,
   ],
-  providers: [
-    CampaignSourceMediaService,
-    BrandMemorySeoCompetitorKeywordRefreshScheduler,
-  ],
+  providers: [CampaignSourceMediaService, BrandMemorySeoCompetitorKeywordRefreshScheduler],
 })
 export class ProjectManagementHttpModule {}

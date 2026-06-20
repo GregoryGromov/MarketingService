@@ -1,4 +1,4 @@
-import { SeoBriefArtifact } from '../../domain/seo-brief-artifact.entity.js';
+import type { SeoBriefArtifact } from '../../domain/seo-brief-artifact.entity.js';
 import type { SeoBriefRun } from '../../domain/seo-brief-run.aggregate.js';
 import type { SeoBriefJsonObject } from '../../domain/seo-briefing.types.js';
 import type { SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
@@ -31,7 +31,13 @@ export function buildArticleGenerationContext(
   const brandMemory = run.brandMemorySnapshot;
 
   return {
-    finalSeoBrief,
+    finalSeoBrief: {
+      ...finalSeoBrief,
+      market: {
+        country: run.country,
+        language: run.language,
+      },
+    } as SeoBriefJsonObject,
     modelMode: readAiModelMode(artifacts),
     requestTimeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
     productProfile: {
@@ -40,10 +46,7 @@ export function buildArticleGenerationContext(
       company: brandMemory.brandName ?? run.productName,
       category: 'SEO brief product',
       mainValue: run.productDescription,
-      targetUsers: uniqueStrings([
-        run.audience,
-        brandMemory.targetAudience,
-      ]),
+      targetUsers: uniqueStrings([run.audience, brandMemory.targetAudience]),
       useCases: uniqueStrings([
         run.topicSeed,
         readString(finalSeoBrief.mainCluster),
@@ -104,7 +107,9 @@ export function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -148,7 +153,11 @@ function validateFinalSeoBrief(brief: SeoBriefJsonObject): SeoBriefJsonObject {
 
   return {
     status: 'passed',
-    requiredFields: [...REQUIRED_FINAL_BRIEF_FIELDS, 'recommendedH1_or_recommendedTitle', 'outline'],
+    requiredFields: [
+      ...REQUIRED_FINAL_BRIEF_FIELDS,
+      'recommendedH1_or_recommendedTitle',
+      'outline',
+    ],
   };
 }
 

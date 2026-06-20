@@ -1,5 +1,7 @@
 import {
   AcknowledgeApprovalItemCommand,
+  type ApprovalItemId,
+  type BrandMemory,
   CreateCampaignCommand,
   type CreateCampaignPlannedPublicationOverride,
   CreateProjectCommand,
@@ -7,22 +9,22 @@ import {
   CreateProjectMarkerPlacementCommand,
   DeleteProjectCommand,
   DeleteProjectMarkerCommand,
+  DeleteProjectMarkerPlacementCommand,
   GetProjectApprovalInboxQuery,
   GetProjectMarkerPlacementsQuery,
   GetProjectQuery,
   ListProjectCampaignsQuery,
   ListProjectMarkersQuery,
   ListProjectsQuery,
-  UpdateProjectBrandMemoryCommand,
-  type BrandMemory,
-  type ApprovalItemId,
   type ProjectId,
   type ProjectMarkerId,
+  type ProjectMarkerPlacementId,
+  UpdateProjectBrandMemoryCommand,
 } from '@marketing-service/project-management';
 import {
-  SeoResearchPort,
   type SeoBriefJsonValue,
   type SeoRankedKeywordItem,
+  SeoResearchPort,
 } from '@marketing-service/seo-briefing';
 import {
   BadRequestException,
@@ -34,8 +36,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
   Param,
   Post,
   Put,
@@ -43,9 +45,9 @@ import {
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import * as v from 'valibot';
+import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
 import { rethrowProjectManagementHttpError } from './project-management-http-error';
 import { normalizePublicationTypeInput as normalizePublicationTypeInputValue } from './publication-type-input';
-import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
 
 const CreateProjectSchema = v.object({
   name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)),
@@ -75,9 +77,7 @@ const GlossarySchema = v.record(
 );
 
 const AdaptationPromptRulesSchema = v.object({
-  generalInstructions: v.optional(
-    v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000))),
-  ),
+  generalInstructions: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
   telegram: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
   x: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
   discord: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(20000)))),
@@ -142,16 +142,16 @@ const CreateCampaignSchema = v.object({
   presetId: v.pipe(v.string(), v.trim(), v.minLength(1)),
   name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(160)),
   startDate: v.pipe(v.string(), v.trim(), v.minLength(1)),
-  sourceLanguage: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)))),
+  sourceLanguage: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16))),
+  ),
   publishingTarget: v.optional(v.picklist(['test', 'production'])),
   extraInstructions: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(5000)))),
   plannedPublicationOverrides: v.optional(
     v.nullish(
       v.array(
         v.object({
-          presetPublicationId: v.optional(
-            v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1))),
-          ),
+          presetPublicationId: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
           dayOffset: v.pipe(v.string(), v.trim(), v.minLength(1)),
           localTime: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(5)),
           channel: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(64)),
@@ -192,9 +192,7 @@ function normalizeLocalTimeInput(value: string): string {
   const match = /^(\d{2}):(\d{2})$/.exec(trimmed);
 
   if (!match) {
-    throw new BadRequestException(
-      'plannedPublicationOverrides.localTime must use HH:MM format',
-    );
+    throw new BadRequestException('plannedPublicationOverrides.localTime must use HH:MM format');
   }
 
   const hours = Number.parseInt(match[1] ?? '0', 10);
@@ -230,44 +228,27 @@ function normalizePlannedPublicationOverrides(
     localTime: normalizeLocalTimeInput(override.localTime),
     channel: override.channel,
     language: override.language,
-    publicationType: normalizePublicationTypeInput(
-      override.channel,
-      override.publicationType,
-    ),
+    publicationType: normalizePublicationTypeInput(override.channel, override.publicationType),
     style: override.style,
   }));
 }
 
-function normalizeBrandMemoryUpdate(
-  dto: UpdateProjectBrandMemoryDto,
-): Partial<BrandMemory> {
+function normalizeBrandMemoryUpdate(dto: UpdateProjectBrandMemoryDto): Partial<BrandMemory> {
   return {
     ...(dto.brandName !== undefined ? { brandName: dto.brandName } : {}),
-    ...(dto.productDescription !== undefined
-      ? { productDescription: dto.productDescription }
-      : {}),
+    ...(dto.productDescription !== undefined ? { productDescription: dto.productDescription } : {}),
     ...(dto.targetAudience !== undefined ? { targetAudience: dto.targetAudience } : {}),
     ...(dto.keyMessage !== undefined ? { keyMessage: dto.keyMessage } : {}),
     ...(dto.defaultCta !== undefined ? { defaultCta: dto.defaultCta } : {}),
-    ...(dto.brandConstraints !== undefined
-      ? { brandConstraints: dto.brandConstraints ?? [] }
-      : {}),
+    ...(dto.brandConstraints !== undefined ? { brandConstraints: dto.brandConstraints ?? [] } : {}),
     ...(dto.claimsConstraints !== undefined
       ? { claimsConstraints: dto.claimsConstraints ?? [] }
       : {}),
-    ...(dto.approvedFacts !== undefined
-      ? { approvedFacts: dto.approvedFacts ?? [] }
-      : {}),
-    ...(dto.forbiddenClaims !== undefined
-      ? { forbiddenClaims: dto.forbiddenClaims ?? [] }
-      : {}),
+    ...(dto.approvedFacts !== undefined ? { approvedFacts: dto.approvedFacts ?? [] } : {}),
+    ...(dto.forbiddenClaims !== undefined ? { forbiddenClaims: dto.forbiddenClaims ?? [] } : {}),
     ...(dto.glossary !== undefined ? { glossary: dto.glossary ?? {} } : {}),
-    ...(dto.bannedPhrases !== undefined
-      ? { bannedPhrases: dto.bannedPhrases ?? [] }
-      : {}),
-    ...(dto.requiredPhrases !== undefined
-      ? { requiredPhrases: dto.requiredPhrases ?? [] }
-      : {}),
+    ...(dto.bannedPhrases !== undefined ? { bannedPhrases: dto.bannedPhrases ?? [] } : {}),
+    ...(dto.requiredPhrases !== undefined ? { requiredPhrases: dto.requiredPhrases ?? [] } : {}),
     ...(dto.brandDocs !== undefined
       ? {
           brandDocs: (dto.brandDocs ?? []).map((doc) => ({
@@ -281,20 +262,16 @@ function normalizeBrandMemoryUpdate(
       ? {
           adaptationPromptRules: dto.adaptationPromptRules
             ? {
-                generalInstructions:
-                  dto.adaptationPromptRules.generalInstructions ?? null,
+                generalInstructions: dto.adaptationPromptRules.generalInstructions ?? null,
                 telegram: dto.adaptationPromptRules.telegram ?? null,
                 x: dto.adaptationPromptRules.x ?? null,
                 discord: dto.adaptationPromptRules.discord ?? null,
                 blog: dto.adaptationPromptRules.blog ?? null,
                 mediaAspectRatios: {
-                  telegram:
-                    dto.adaptationPromptRules.mediaAspectRatios?.telegram ?? '1:1',
+                  telegram: dto.adaptationPromptRules.mediaAspectRatios?.telegram ?? '1:1',
                   x: dto.adaptationPromptRules.mediaAspectRatios?.x ?? '16:9',
-                  discord:
-                    dto.adaptationPromptRules.mediaAspectRatios?.discord ?? '16:9',
-                  blog:
-                    dto.adaptationPromptRules.mediaAspectRatios?.blog ?? '1200:630',
+                  discord: dto.adaptationPromptRules.mediaAspectRatios?.discord ?? '16:9',
+                  blog: dto.adaptationPromptRules.mediaAspectRatios?.blog ?? '1200:630',
                 },
               }
             : {
@@ -407,10 +384,7 @@ function resolveSeoCompetitorTargets(competitors?: BrandMemory['seoCompetitors']
       .filter((value): value is string => Boolean(value)),
   );
 
-  const addTarget = (
-    raw: string,
-    source: SeoCompetitorTarget['source'],
-  ): void => {
+  const addTarget = (raw: string, source: SeoCompetitorTarget['source']): void => {
     const target = normalizeCompetitorTarget(raw);
     if (!target) {
       skipped.push({ raw, source, reason: 'not_a_domain' });
@@ -475,13 +449,8 @@ function minNullable(left: number | null, right: number | null): number | null {
   return Math.min(left, right);
 }
 
-function buildFlatCompetitorKeywords(
-  items: SeoRankedKeywordItem[],
-): FlatCompetitorKeyword[] {
-  const byKeyword = new Map<
-    string,
-    FlatCompetitorKeyword & { competitorDomainSet: Set<string> }
-  >();
+function buildFlatCompetitorKeywords(items: SeoRankedKeywordItem[]): FlatCompetitorKeyword[] {
+  const byKeyword = new Map<string, FlatCompetitorKeyword & { competitorDomainSet: Set<string> }>();
 
   for (const item of items) {
     const normalizedKeyword = normalizeKeywordText(item.text);
@@ -539,8 +508,7 @@ function buildFlatCompetitorKeywords(
   return [...byKeyword.values()]
     .map(({ competitorDomainSet: _competitorDomainSet, ...keyword }) => keyword)
     .sort((left, right) => {
-      const trafficDelta =
-        (right.estimatedTrafficMax ?? 0) - (left.estimatedTrafficMax ?? 0);
+      const trafficDelta = (right.estimatedTrafficMax ?? 0) - (left.estimatedTrafficMax ?? 0);
       if (trafficDelta !== 0) {
         return trafficDelta;
       }
@@ -620,8 +588,7 @@ async function refreshBrandMemoryCompetitorKeywordsForProject({
   );
   const refreshedAt = new Date();
   const nextRefreshAt = new Date(
-    refreshedAt.getTime() +
-      SEO_COMPETITOR_KEYWORD_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000,
+    refreshedAt.getTime() + SEO_COMPETITOR_KEYWORD_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000,
   );
   const seoCompetitorKeywordMap = {
     generatedAt: refreshedAt.toISOString(),
@@ -665,11 +632,9 @@ async function refreshBrandMemoryCompetitorKeywordsForProject({
 
 @Injectable()
 export class BrandMemorySeoCompetitorKeywordRefreshScheduler
-  implements OnModuleInit, OnModuleDestroy
+  implements OnApplicationBootstrap, OnModuleDestroy
 {
-  private readonly logger = new Logger(
-    BrandMemorySeoCompetitorKeywordRefreshScheduler.name,
-  );
+  private readonly logger = new Logger(BrandMemorySeoCompetitorKeywordRefreshScheduler.name);
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -681,11 +646,13 @@ export class BrandMemorySeoCompetitorKeywordRefreshScheduler
     private readonly seoResearch: SeoResearchPort,
   ) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     this.timer = setInterval(() => {
       void this.refreshDueProjects();
     }, SEO_COMPETITOR_KEYWORD_REFRESH_CHECK_INTERVAL_MS);
-    void this.refreshDueProjects();
+    setTimeout(() => {
+      void this.refreshDueProjects();
+    }, 0);
   }
 
   onModuleDestroy(): void {
@@ -738,9 +705,7 @@ export class BrandMemorySeoCompetitorKeywordRefreshScheduler
             country: keywordMap.market?.country,
             language: keywordMap.market?.language,
           });
-          this.logger.log(
-            `Refreshed SEO competitor ranked keywords for project ${project.id}`,
-          );
+          this.logger.log(`Refreshed SEO competitor ranked keywords for project ${project.id}`);
         } catch (error) {
           this.logger.error(
             `Failed to auto-refresh SEO competitor ranked keywords for project ${project.id}`,
@@ -828,10 +793,7 @@ export class ProjectController {
   ) {
     try {
       return await this.commandBus.execute(
-        new UpdateProjectBrandMemoryCommand(
-          id as ProjectId,
-          normalizeBrandMemoryUpdate(dto),
-        ),
+        new UpdateProjectBrandMemoryCommand(id as ProjectId, normalizeBrandMemoryUpdate(dto)),
       );
     } catch (error) {
       rethrowProjectManagementHttpError(error);
@@ -855,9 +817,7 @@ export class ProjectController {
 
   @Get(':id/campaigns')
   async listCampaigns(@Param('id') id: string) {
-    const campaigns = await this.queryBus.execute(
-      new ListProjectCampaignsQuery(id as ProjectId),
-    );
+    const campaigns = await this.queryBus.execute(new ListProjectCampaignsQuery(id as ProjectId));
 
     if (!campaigns) {
       throw new NotFoundException(`Project ${id} not found`);
@@ -868,9 +828,7 @@ export class ProjectController {
 
   @Get(':id/inbox')
   async getInbox(@Param('id') id: string) {
-    const inbox = await this.queryBus.execute(
-      new GetProjectApprovalInboxQuery(id as ProjectId),
-    );
+    const inbox = await this.queryBus.execute(new GetProjectApprovalInboxQuery(id as ProjectId));
 
     if (!inbox) {
       throw new NotFoundException(`Project ${id} not found`);
@@ -886,10 +844,7 @@ export class ProjectController {
   ) {
     try {
       return await this.commandBus.execute(
-        new AcknowledgeApprovalItemCommand(
-          id as ProjectId,
-          approvalItemId as ApprovalItemId,
-        ),
+        new AcknowledgeApprovalItemCommand(id as ProjectId, approvalItemId as ApprovalItemId),
       );
     } catch (error) {
       rethrowProjectManagementHttpError(error);
@@ -977,5 +932,20 @@ export class ProjectController {
         new Date(dto.publishAt),
       ),
     );
+  }
+
+  @Delete(':id/marker-placements/:placementId')
+  async deleteMarkerPlacement(
+    @Param('id') id: string,
+    @Param('placementId') placementId: string,
+  ): Promise<{ ok: true }> {
+    await this.commandBus.execute(
+      new DeleteProjectMarkerPlacementCommand(
+        id as ProjectId,
+        placementId as ProjectMarkerPlacementId,
+      ),
+    );
+
+    return { ok: true };
   }
 }

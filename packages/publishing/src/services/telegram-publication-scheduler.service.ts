@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   type AdaptationId,
   type ArticleId,
@@ -9,10 +12,12 @@ import {
   XPublisherPort,
 } from '@marketing-service/editorial';
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { PublicationRepository } from '../domain/publication.repository.js';
 import type { Publication } from '../domain/publication.aggregate.js';
+import { PublicationRepository } from '../domain/publication.repository.js';
+import {
+  BlogPublisherPort,
+  type PublishBlogArticleTranslation,
+} from '../ports/blog-publisher.port.js';
 import { PublicationOutcomePort } from '../ports/publication-outcome.port.js';
 
 @Injectable()
@@ -35,6 +40,8 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
     private readonly telegramPublisher: TelegramPublisherPort,
     @Inject(XPublisherPort)
     private readonly xPublisher: XPublisherPort,
+    @Inject(BlogPublisherPort)
+    private readonly blogPublisher: BlogPublisherPort,
     @Inject(PublicationOutcomePort)
     private readonly publicationOutcomePort: PublicationOutcomePort,
   ) {}
@@ -63,8 +70,40 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
 
     try {
       const duePublications = await this.publicationRepository.findDue(new Date(), 20);
+      const processedPublicationIds = new Set<string>();
+
+      for (const blogGroup of this.groupBlogPublications(duePublications)) {
+        for (const publication of blogGroup) {
+          processedPublicationIds.add(publication.id);
+        }
+
+        try {
+          for (const publication of blogGroup) {
+            publication.markPublishing();
+            await this.publicationRepository.save(publication);
+            await this.syncPublicationOutcome(publication);
+          }
+
+          await this.publishBlogGroup(blogGroup);
+
+          for (const publication of blogGroup) {
+            await this.publicationRepository.save(publication);
+            await this.syncPublicationOutcome(publication);
+          }
+        } catch (error) {
+          for (const publication of blogGroup) {
+            publication.markFailed(error instanceof Error ? error.message : String(error));
+            await this.publicationRepository.save(publication);
+            await this.syncPublicationOutcome(publication);
+          }
+        }
+      }
 
       for (const publication of duePublications) {
+        if (processedPublicationIds.has(publication.id)) {
+          continue;
+        }
+
         try {
           publication.markPublishing();
           await this.publicationRepository.save(publication);
@@ -97,7 +136,10 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       publication.targetLanguage,
       publication.channelId,
     );
-    const imagePath = await this.resolvePublishableImagePath(publication.articleId, publication.channelId);
+    const imagePath = await this.resolvePublishableImagePath(
+      publication.articleId,
+      publication.channelId,
+    );
 
     if (publication.channelId === 'channel_telegram') {
       const published = await this.telegramPublisher.publishMessage({
@@ -123,7 +165,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       const discordAccountRef =
         published.guildId && published.channelId
           ? `${published.guildId}/${published.channelId}`
-          : published.channelId ?? 'discord-webhook';
+          : (published.channelId ?? 'discord-webhook');
 
       publication.markPublished({
         telegramChatId: discordAccountRef,
@@ -146,15 +188,90 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       return;
     }
 
-    if (publication.channelId === 'channel_blog') {
-      publication.markPublished({
-        telegramChatId: 'blog',
-        telegramMessageId: `blog-${publication.adaptationId}-${publication.targetLanguage}`,
-      });
+    throw new Error(`Channel ${publication.channelId} is not supported for scheduled publishing`);
+  }
+
+  private groupBlogPublications(publications: Publication[]): Publication[][] {
+    const groups = new Map<string, Publication[]>();
+    for (const publication of publications) {
+      if (publication.channelId !== 'channel_blog') {
+        continue;
+      }
+      const group = groups.get(publication.articleId) ?? [];
+      group.push(publication);
+      groups.set(publication.articleId, group);
+    }
+    return [...groups.values()];
+  }
+
+  private async publishBlogGroup(publications: Publication[]): Promise<void> {
+    const firstPublication = publications[0];
+    if (!firstPublication) {
       return;
     }
 
-    throw new Error(`Channel ${publication.channelId} is not supported for scheduled publishing`);
+    const article = await this.articleRepository.findById(firstPublication.articleId);
+    if (!article) {
+      throw new Error(`Article ${firstPublication.articleId} not found`);
+    }
+
+    const coverImageUrl = this.resolveBlogCoverImageUrl(article.defaultCoverUrl);
+    const fallbackTitle = extractMarkdownTitle(article.original.content) ?? 'Blog article';
+    const translationsByLocale = new Map<string, PublishBlogArticleTranslation>();
+
+    for (const publication of publications) {
+      const bodyMd = await this.resolvePublishableText(
+        publication.adaptationId,
+        publication.targetLanguage,
+        publication.channelId,
+      );
+      const locale = normalizeBlogLocale(publication.targetLanguage);
+      translationsByLocale.set(locale, {
+        locale,
+        title: extractMarkdownTitle(bodyMd) ?? fallbackTitle,
+        excerpt: extractExcerpt(bodyMd),
+        bodyMd,
+      });
+    }
+
+    const translations = [...translationsByLocale.values()];
+    if (translations.length === 0) {
+      throw new Error('Blog publishing requires at least one translation');
+    }
+
+    const result = await this.blogPublisher.publishArticle({
+      articleId: deterministicUuid(`editorial-blog:${article.id}`),
+      status: 'published',
+      coverImageUrl,
+      translations,
+    });
+
+    for (const publication of publications) {
+      const locale = normalizeBlogLocale(publication.targetLanguage);
+      publication.markPublished({
+        telegramChatId: 'blog',
+        telegramMessageId:
+          result.localizedUrls[locale] ??
+          result.url ??
+          `blog-${result.articleId}-${publication.targetLanguage}`,
+      });
+    }
+  }
+
+  private resolveBlogCoverImageUrl(defaultCoverUrl: string | null): string {
+    const value = defaultCoverUrl?.trim();
+    if (value?.startsWith('https://')) {
+      return value;
+    }
+
+    const fallback = process.env.BLOG_DEFAULT_COVER_IMAGE_URL?.trim();
+    if (fallback?.startsWith('https://')) {
+      return fallback;
+    }
+
+    throw new Error(
+      'Blog publishing requires an HTTPS cover image URL. Set article.defaultCoverUrl or BLOG_DEFAULT_COVER_IMAGE_URL.',
+    );
   }
 
   private async resolvePublishableImagePath(
@@ -230,4 +347,94 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
       errorMessage: publication.errorMessage,
     });
   }
+}
+
+function deterministicUuid(input: string): string {
+  const hex = createHash('sha256').update(input).digest('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    ((Number.parseInt(hex.slice(16, 18), 16) & 0x3f) | 0x80).toString(16) + hex.slice(18, 20),
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+function normalizeBlogLocale(value: string): string {
+  const normalized = value.trim().toLowerCase().replace('_', '-');
+  const aliases: Record<string, string> = {
+    english: 'en',
+    filipino: 'tl',
+    indonesian: 'id',
+    japanese: 'ja',
+    javanese: 'jv',
+    pidgin: 'pcm',
+    portuguese: 'pt',
+    punjabi: 'pa',
+    tagalog: 'tl',
+    yoruba: 'yo',
+  };
+  const locale = aliases[normalized] ?? normalized;
+  const supported = new Set([
+    'en',
+    'pt',
+    'id',
+    'es',
+    'vi',
+    'ur',
+    'tl',
+    'pcm',
+    'ha',
+    'pa',
+    'yo',
+    'jv',
+    'ps',
+    'zu',
+    'tr',
+    'ar',
+    'ru',
+    'hi',
+    'ja',
+    'ko',
+    'fr',
+    'de',
+    'it',
+    'nl',
+    'ms',
+    'th',
+    'af',
+    'xh',
+    'ig',
+    'pl',
+    'ro',
+  ]);
+  if (!supported.has(locale)) {
+    throw new Error(`Unsupported Blog locale: ${value}`);
+  }
+  return locale;
+}
+
+function extractMarkdownTitle(markdown: string): string | null {
+  const lines = markdown.split(/\r?\n/);
+  for (const line of lines) {
+    const cleaned = line
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/[*_`[\]()]/g, '')
+      .trim();
+    if (cleaned) {
+      return cleaned.slice(0, 200);
+    }
+  }
+  return null;
+}
+
+function extractExcerpt(markdown: string): string | null {
+  const text = markdown
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/!\[[^\]]*]\([^)]*\)/g, '')
+    .replace(/\[[^\]]*]\([^)]*\)/g, '')
+    .replace(/[*_`>#-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text ? text.slice(0, 500) : null;
 }

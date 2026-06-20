@@ -1,12 +1,11 @@
 import {
   type BuildProductBridgeResult,
-  type CleanupLongreadArticleResult,
   type ClassifySerpDomainsResult,
-  type ClusterKeywordsResult,
+  type CleanupLongreadArticleResult,
   type ClusterKeywordCompetitorUrl,
+  type ClusterKeywordsResult,
   type DraftLongreadArticleResult,
   type EvaluateCompetitorKeywordMatchesResult,
-  type SeoBriefClusterSourceConfidence,
   type ExpandKeywordsResult,
   type ExplainClusterSelectionResult,
   type ExtractedSeoBriefContext,
@@ -14,29 +13,36 @@ import {
   type GenerateSeoBriefResult,
   type GroupCandidateKeywordsResult,
   type GroupCompetitorKeywordEvidenceResult,
+  type KeywordCandidateFitBreakdown,
+  type KeywordCandidateScoreBreakdown,
+  type KeywordCandidateScoringStatus,
   type MatchKeywordGroupsResult,
   type PackageLongreadArticleResult,
   type ReviewClusterProductFitResult,
   type ScoreCompetitorKeywordCandidateGroupResult,
-  type KeywordCandidateFitBreakdown,
-  type KeywordCandidateScoreBreakdown,
-  type KeywordCandidateScoringStatus,
   type ScoreDirtyKeywordCandidatesResult,
   type SelectRelatedKeywordsResult,
   type SeoBriefAiJourneyStage,
   type SeoBriefAiKeywordIntent,
   type SeoBriefAiProductFit,
+  SeoBriefAiValidationError,
+  type SeoBriefClusterSourceConfidence,
   type SeoBriefProductFitHypothesis,
   type SeoBriefSearchHypothesisType,
   type SynthesizeOnPageResult,
-  SeoBriefAiValidationError,
   type TriageKeywordsResult,
 } from '@marketing-service/seo-briefing';
 
 const KEYWORD_INTENTS = ['informational', 'commercial', 'transactional', 'navigational'] as const;
 const JOURNEY_STAGES = ['awareness', 'consideration', 'decision'] as const;
 const PRODUCT_FITS = ['strong', 'moderate', 'weak'] as const;
-const PAIN_PRODUCT_CONNECTIONS = ['direct', 'alternative', 'workflow', 'education', 'weak'] as const;
+const PAIN_PRODUCT_CONNECTIONS = [
+  'direct',
+  'alternative',
+  'workflow',
+  'education',
+  'weak',
+] as const;
 const SCENARIO_TYPES = ['pain', 'action', 'ecosystem'] as const;
 const PRODUCT_FIT_HYPOTHESES = [
   'direct_solution',
@@ -73,11 +79,7 @@ const COMPETITOR_KEYWORD_MATCH_TYPES = [
   'semantic_related',
   'no_match',
 ] as const;
-const COMPETITOR_KEYWORD_RISK_LABELS = [
-  'safe',
-  'risky_requires_review',
-  'exclude',
-] as const;
+const COMPETITOR_KEYWORD_RISK_LABELS = ['safe', 'risky_requires_review', 'exclude'] as const;
 const KEYWORD_GROUP_MATCH_TYPES = ['direct', 'adjacent', 'weak', 'none'] as const;
 const CLUSTER_SOURCE_CONFIDENCE = ['low', 'medium', 'high'] as const;
 const CLUSTER_PRODUCT_FIT_TYPES = [
@@ -94,15 +96,22 @@ const SEO_BRIEF_CONTENT_TYPES = [
   'how-to',
   'educational guide',
 ] as const;
-const ARTICLE_CLEANUP_STATUSES = ['passed', 'revised', 'needs_human_review'] as const;
+const ARTICLE_CLEANUP_STATUSES = [
+  'passed',
+  'passed_with_warnings',
+  'revised',
+  'needs_human_review',
+] as const;
 const ARTICLE_CLEANUP_WARNING_TYPES = [
   'claims',
+  'compliance',
   'seo',
   'product_insertion',
   'factual_check',
   'tone',
   'structure',
 ] as const;
+const ARTICLE_CLEANUP_WARNING_SEVERITIES = ['blocker', 'warning', 'note'] as const;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -112,12 +121,8 @@ export function validateExpandKeywordsResult(
 ): ExpandKeywordsResult {
   const record = ensureObject(payload, operation, 'payload');
   if ('search_hypotheses' in record) {
-    const hypotheses = ensureArray(
-      record.search_hypotheses,
-      operation,
-      'search_hypotheses',
-    ).map((item, index) =>
-      validateSearchHypothesis(item, operation, `search_hypotheses[${index}]`),
+    const hypotheses = ensureArray(record.search_hypotheses, operation, 'search_hypotheses').map(
+      (item, index) => validateSearchHypothesis(item, operation, `search_hypotheses[${index}]`),
     );
 
     if (hypotheses.length === 0) {
@@ -203,14 +208,12 @@ function groupSearchHypothesesByType(
     groups.set(type, [...(groups.get(type) ?? []), hypothesis]);
   }
 
-  return SEARCH_HYPOTHESIS_TYPES
-    .filter((type) => groups.has(type))
-    .map((type) => ({
-      groupId: type,
-      label: searchHypothesisTypeLabel(type),
-      purpose: searchHypothesisTypePurpose(type),
-      hypotheses: groups.get(type) ?? [],
-    }));
+  return SEARCH_HYPOTHESIS_TYPES.filter((type) => groups.has(type)).map((type) => ({
+    groupId: type,
+    label: searchHypothesisTypeLabel(type),
+    purpose: searchHypothesisTypePurpose(type),
+    hypotheses: groups.get(type) ?? [],
+  }));
 }
 
 function inferKeywordIntentFromHypothesisType(
@@ -259,7 +262,8 @@ function validateKeywordHypothesis(
     intent: ensureKeywordIntent(hypothesis.intent, operation, `${path}.intent`),
     rationale: ensureText(hypothesis.rationale, operation, `${path}.rationale`),
     audienceFit: ensureText(hypothesis.audienceFit, operation, `${path}.audienceFit`),
-    groupId: ensureNullableText(hypothesis.groupId, operation, `${path}.groupId`) ?? defaults.groupId,
+    groupId:
+      ensureNullableText(hypothesis.groupId, operation, `${path}.groupId`) ?? defaults.groupId,
     groupLabel:
       ensureNullableText(hypothesis.groupLabel, operation, `${path}.groupLabel`) ??
       defaults.groupLabel,
@@ -286,11 +290,7 @@ export function validateExtractUserPainScenariosResult(
     const pain = ensureObject(item, operation, `user_pains[${index}]`);
     return {
       pain: ensureText(pain.pain, operation, `user_pains[${index}].pain`),
-      whyRelevant: ensureText(
-        pain.why_relevant,
-        operation,
-        `user_pains[${index}].why_relevant`,
-      ),
+      whyRelevant: ensureText(pain.why_relevant, operation, `user_pains[${index}].why_relevant`),
       productConnection: ensurePainProductConnection(
         pain.product_connection,
         operation,
@@ -304,11 +304,7 @@ export function validateExtractUserPainScenariosResult(
       return {
         scenario: ensureText(scenario.scenario, operation, `user_scenarios[${index}].scenario`),
         type: ensureScenarioType(scenario.type, operation, `user_scenarios[${index}].type`),
-        whyCheck: ensureText(
-          scenario.why_check,
-          operation,
-          `user_scenarios[${index}].why_check`,
-        ),
+        whyCheck: ensureText(scenario.why_check, operation, `user_scenarios[${index}].why_check`),
         productFitHypothesis: ensureProductFitHypothesis(
           scenario.product_fit_hypothesis,
           operation,
@@ -471,11 +467,7 @@ export function validateClusterKeywordsResult(
       keywords,
       rationale:
         ensureNullableText(cluster.rationale, operation, `clusters[${index}].rationale`) ??
-        ensureText(
-          cluster.evidence_summary,
-          operation,
-          `clusters[${index}].evidence_summary`,
-        ),
+        ensureText(cluster.evidence_summary, operation, `clusters[${index}].evidence_summary`),
       userIntent: ensureNullableText(
         cluster.user_intent,
         operation,
@@ -633,17 +625,15 @@ export function validateClassifySerpDomainsResult(
       reason: ensureText(target.reason, operation, `pain_signal_targets[${index}].reason`),
     };
   });
-  const ignoredTargets = ensureArray(
-    record.ignored_targets,
-    operation,
-    'ignored_targets',
-  ).map((item, index) => {
-    const target = ensureObject(item, operation, `ignored_targets[${index}]`);
-    return {
-      domain: ensureText(target.domain, operation, `ignored_targets[${index}].domain`),
-      reason: ensureText(target.reason, operation, `ignored_targets[${index}].reason`),
-    };
-  });
+  const ignoredTargets = ensureArray(record.ignored_targets, operation, 'ignored_targets').map(
+    (item, index) => {
+      const target = ensureObject(item, operation, `ignored_targets[${index}]`);
+      return {
+        domain: ensureText(target.domain, operation, `ignored_targets[${index}].domain`),
+        reason: ensureText(target.reason, operation, `ignored_targets[${index}].reason`),
+      };
+    },
+  );
 
   return {
     ignoredTargets,
@@ -679,11 +669,7 @@ export function validateScoreDirtyKeywordCandidatesResult(
         operation,
         'summary.accepted_count',
       ),
-      maybeCount: ensureNonNegativeInteger(
-        summary.maybe_count,
-        operation,
-        'summary.maybe_count',
-      ),
+      maybeCount: ensureNonNegativeInteger(summary.maybe_count, operation, 'summary.maybe_count'),
       rejectedCount: ensureNonNegativeInteger(
         summary.rejected_count,
         operation,
@@ -731,11 +717,7 @@ function validateKeywordCandidateScores(
     productFit: ensureScoreNumber(scores.product_fit, operation, `${path}.product_fit`),
     audienceFit: ensureScoreNumber(scores.audience_fit, operation, `${path}.audience_fit`),
     intentFit: ensureScoreNumber(scores.intent_fit, operation, `${path}.intent_fit`),
-    riskCompliance: ensureScoreNumber(
-      scores.risk_compliance,
-      operation,
-      `${path}.risk_compliance`,
-    ),
+    riskCompliance: ensureScoreNumber(scores.risk_compliance, operation, `${path}.risk_compliance`),
     evidence: ensureScoreNumber(scores.evidence, operation, `${path}.evidence`),
   };
 }
@@ -768,7 +750,11 @@ export function validateEvaluateCompetitorKeywordMatchesResult(
   const buckets = ensureArray(record.buckets, operation, 'buckets').map((item, index) => {
     const bucket = ensureObject(item, operation, `buckets[${index}]`);
     return {
-      bucketId: ensureText(bucket.bucket_id ?? bucket.bucketId, operation, `buckets[${index}].bucket_id`),
+      bucketId: ensureText(
+        bucket.bucket_id ?? bucket.bucketId,
+        operation,
+        `buckets[${index}].bucket_id`,
+      ),
       name: ensureText(bucket.name, operation, `buckets[${index}].name`),
       description: ensureText(bucket.description, operation, `buckets[${index}].description`),
       evidenceIds: ensureStringArray(
@@ -1001,8 +987,8 @@ export function validateScoreCompetitorKeywordCandidateGroupResult(
   operation: string,
 ): ScoreCompetitorKeywordCandidateGroupResult {
   const record = ensureObject(payload, operation, 'payload');
-  const candidates = ensureArray(record.candidates, operation, 'candidates').map(
-    (item, index) => validateAiCompetitorKeywordMatchedCandidate(item, operation, `candidates[${index}]`),
+  const candidates = ensureArray(record.candidates, operation, 'candidates').map((item, index) =>
+    validateAiCompetitorKeywordMatchedCandidate(item, operation, `candidates[${index}]`),
   );
   const summary = ensureObject(record.summary, operation, 'summary');
 
@@ -1186,15 +1172,17 @@ export function validateReviewClusterProductFitResult(
         operation,
         `cluster_product_fit[${index}].decision`,
       ),
-      productInsertionAngle: ensureText(
+      productInsertionAngle: ensureTextWithFallback(
         review.product_insertion_angle,
         operation,
         `cluster_product_fit[${index}].product_insertion_angle`,
+        'No safe product insertion angle provided by AI.',
       ),
-      whereToInsert: ensureText(
+      whereToInsert: ensureTextWithFallback(
         review.where_to_insert,
         operation,
         `cluster_product_fit[${index}].where_to_insert`,
+        'Do not insert the product without additional editorial review.',
       ),
       whatNotToClaim: ensureStringArray(
         review.what_not_to_claim,
@@ -1255,8 +1243,16 @@ export function validateSynthesizeOnPageResult(
     (item, index) => {
       const section = ensureObject(item, operation, `recommended_article_structure.h2[${index}]`);
       return {
-        heading: ensureText(section.heading, operation, `recommended_article_structure.h2[${index}].heading`),
-        purpose: ensureText(section.purpose, operation, `recommended_article_structure.h2[${index}].purpose`),
+        heading: ensureText(
+          section.heading,
+          operation,
+          `recommended_article_structure.h2[${index}].heading`,
+        ),
+        purpose: ensureText(
+          section.purpose,
+          operation,
+          `recommended_article_structure.h2[${index}].purpose`,
+        ),
         subpoints: ensureStringArray(
           section.subpoints,
           operation,
@@ -1414,6 +1410,13 @@ export function validateCleanupLongreadArticleResult(
           operation,
           `warnings[${index}].type`,
         ),
+        severity: ensureEnumOrDefault(
+          warning.severity,
+          ARTICLE_CLEANUP_WARNING_SEVERITIES,
+          'warning',
+          operation,
+          `warnings[${index}].severity`,
+        ),
         message: ensureText(warning.message, operation, `warnings[${index}].message`),
       };
     }),
@@ -1429,11 +1432,7 @@ export function validatePackageLongreadArticleResult(
   const record = ensureObject(payload, operation, 'payload');
   const article = ensureObject(record.article, operation, 'article');
   const seo = ensureObject(record.seo, operation, 'seo');
-  const productInsertion = ensureObject(
-    record.productInsertion,
-    operation,
-    'productInsertion',
-  );
+  const productInsertion = ensureObject(record.productInsertion, operation, 'productInsertion');
   const claimsReview = ensureObject(record.claimsReview, operation, 'claimsReview');
   const publishingChecklist = ensureObject(
     record.publishingChecklist,
@@ -1446,11 +1445,7 @@ export function validatePackageLongreadArticleResult(
       title: ensureText(article.title, operation, 'article.title'),
       slug: ensureText(article.slug, operation, 'article.slug'),
       metaTitle: ensureText(article.metaTitle, operation, 'article.metaTitle'),
-      metaDescription: ensureText(
-        article.metaDescription,
-        operation,
-        'article.metaDescription',
-      ),
+      metaDescription: ensureText(article.metaDescription, operation, 'article.metaDescription'),
       h1: ensureText(article.h1, operation, 'article.h1'),
       bodyMarkdown: ensureText(article.bodyMarkdown, operation, 'article.bodyMarkdown'),
     },
@@ -1654,6 +1649,24 @@ function ensureText(value: unknown, operation: string, path: string): string {
   }
 
   return value.trim();
+}
+
+function ensureTextWithFallback(
+  value: unknown,
+  operation: string,
+  path: string,
+  fallback: string,
+): string {
+  if (value == null) {
+    return fallback;
+  }
+
+  if (typeof value !== 'string') {
+    throw validationError(`${path} must be a string`, operation, value);
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
 }
 
 function ensureNullableText(value: unknown, operation: string, path: string): string | null {

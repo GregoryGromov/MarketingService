@@ -17,11 +17,13 @@ export class SeoBriefTestUiController {
   getSeoBriefUi(
     @Query('runId') runId?: string,
     @Query('projectId') projectId?: string,
+    @Query('markerId') markerId?: string,
     @Query('step') step?: string,
   ): string {
     const initialState = JSON.stringify({
       runId: runId?.trim() || null,
       projectId: projectId?.trim() || null,
+      markerId: markerId?.trim() || null,
       step: step?.trim() || null,
     }).replace(/</g, '\\u003c');
     const defaultKeywordExpansionPrompt = escapeHtmlServer(
@@ -1056,6 +1058,74 @@ export class SeoBriefTestUiController {
         border-color: rgba(17, 122, 67, 0.34);
         background: rgba(17, 122, 67, 0.08);
       }
+      .batch-progress {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.66);
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .batch-progress[hidden] {
+        display: none;
+      }
+      .batch-progress-list {
+        display: grid;
+        gap: 12px;
+      }
+      .batch-workflow-card {
+        display: grid;
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+      .batch-workflow-card.is-failed {
+        border-color: rgba(180, 35, 24, 0.3);
+        background: rgba(180, 35, 24, 0.06);
+      }
+      .batch-workflow-card.is-done {
+        border-color: rgba(17, 122, 67, 0.28);
+        background: rgba(17, 122, 67, 0.06);
+      }
+      .batch-workflow-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .batch-workflow-head h4 {
+        margin: 2px 0 0;
+        font-size: 20px;
+      }
+      .batch-workflow-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        color: var(--muted);
+      }
+      .batch-step-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .batch-step-tabs .seo-step-tab {
+        padding: 8px 11px;
+        font-size: 13px;
+        pointer-events: none;
+      }
+      .batch-diagnostics {
+        border-radius: 16px;
+        background: rgba(18, 18, 18, 0.035);
+      }
+      .batch-diagnostics summary {
+        padding: 10px 12px;
+      }
+      .batch-diagnostics ul {
+        margin: 0;
+        padding: 0 16px 12px 28px;
+      }
       .seo-step-tab.is-ready:not(.is-active) .seo-step-dot {
         background: #117a43;
         opacity: 1;
@@ -1465,8 +1535,9 @@ export class SeoBriefTestUiController {
               </div>
               <button class="primary" type="submit" id="launchBtn" form="launchForm">Create SEO Brief Run</button>
             </div>
+            <div id="launchStatus" class="context-result full" hidden></div>
             <div id="launchPromptInventory"></div>
-            <form id="launchForm" class="launch-grid">
+            <form id="launchForm" class="launch-grid" novalidate>
               <label class="field full">
                 <span>Project</span>
                 <select id="projectId">
@@ -1498,6 +1569,20 @@ export class SeoBriefTestUiController {
                 </div>
               </div>
               <div class="field full">
+                <span>DeepSeek Pricing</span>
+                <em>USD per 1M tokens. Used only for Log Audit cost estimates; marketers can override before launch.</em>
+                <div class="filters">
+                  <label class="field">
+                    <span>Input / 1M tokens</span>
+                    <input id="deepSeekInputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.435" />
+                  </label>
+                  <label class="field">
+                    <span>Output / 1M tokens</span>
+                    <input id="deepSeekOutputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.87" />
+                  </label>
+                </div>
+              </div>
+              <div class="field full">
                 <span>Workflow Mode</span>
                 <input id="workflowMode" type="hidden" value="manual" />
                 <div class="model-picker workflow-mode-picker" role="radiogroup" aria-label="Workflow Mode">
@@ -1510,8 +1595,8 @@ export class SeoBriefTestUiController {
                   <label class="model-option" data-workflow-mode-option="auto_until_selection">
                     <input type="radio" name="workflowModeChoice" value="auto_until_selection" />
                     <span>Auto</span>
-                    <strong>Auto until topic choice</strong>
-                    <p>Runs the workflow automatically until ranked cluster choices are ready.</p>
+                    <strong>Auto to final brief</strong>
+                    <p>Runs the workflow automatically, selects the best cluster, and generates the final brief.</p>
                   </label>
                 </div>
               </div>
@@ -1542,20 +1627,57 @@ export class SeoBriefTestUiController {
                 </div>
               </section>
               <div id="contextExtractionResult" class="context-result full" hidden></div>
+              <div id="markerPlanContext" class="context-result full" hidden></div>
               <textarea id="campaignContext" hidden></textarea>
               <label class="field full">
                 <span>Topic Hint</span>
                 <em>Research direction from the marketer. This is not a final keyword and not an article title.</em>
                 <textarea id="topicHint" required>How people in emerging markets can make idle USDT productive</textarea>
               </label>
-              <label class="field">
-                <span>Country</span>
-                <input id="country" required value="Nigeria" />
+              <input id="country" type="hidden" value="United States" />
+              <label class="field full">
+                <span>Languages</span>
+                <em>Select one or more languages. Hold Cmd/Ctrl to select multiple; the UI will create one SEO brief run per language.</em>
+                <select id="language" required multiple size="8">
+                  <option value="English" selected>English (en)</option>
+                  <option value="Portuguese">Português (pt)</option>
+                  <option value="Indonesian">Bahasa Indonesia (id)</option>
+                  <option value="Spanish">Español (es)</option>
+                  <option value="Vietnamese">Tiếng Việt (vi)</option>
+                  <option value="Urdu">اردو (ur)</option>
+                  <option value="Tagalog">Tagalog (tl)</option>
+                  <option value="Pidgin">Naijá / Pidgin (pcm)</option>
+                  <option value="Hausa">Hausa (ha)</option>
+                  <option value="Punjabi">ਪੰਜਾਬੀ (pa)</option>
+                  <option value="Yoruba">Yorùbá (yo)</option>
+                  <option value="Pashto">پښتو (ps)</option>
+                  <option value="Zulu">isiZulu (zu)</option>
+                  <option value="Turkish">Türkçe (tr)</option>
+                  <option value="Arabic">العربية (ar)</option>
+                  <option value="Russian">Русский (ru)</option>
+                  <option value="Hindi">हिन्दी (hi)</option>
+                  <option value="Japanese">日本語 (ja)</option>
+                  <option value="Korean">한국어 (ko)</option>
+                  <option value="French">Français (fr)</option>
+                  <option value="German">Deutsch (de)</option>
+                  <option value="Italian">Italiano (it)</option>
+                  <option value="Dutch">Nederlands (nl)</option>
+                  <option value="Malay">Bahasa Melayu (ms)</option>
+                  <option value="Thai">ไทย (th)</option>
+                  <option value="Afrikaans">Afrikaans (af)</option>
+                  <option value="Xhosa">isiXhosa (xh)</option>
+                  <option value="Igbo">Igbo (ig)</option>
+                  <option value="Polish">Polski (pl)</option>
+                  <option value="Romanian">Română (ro)</option>
+                </select>
               </label>
-              <label class="field">
-                <span>Language</span>
-                <input id="language" required value="English" />
+              <div id="marketCountryPreview" class="context-result full"></div>
+              <label class="field full">
+                <span>Blog cover image URL</span>
+                <em>Optional. If this SEO run is published to Blog, this HTTPS image will be sent as the article cover.</em>
+                <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
               </label>
+              <div id="languageBatchProgress" class="batch-progress full" hidden></div>
               <label class="field full">
                 <span>User Pains</span>
                 <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
@@ -1703,6 +1825,7 @@ High-risk leverage</textarea>
         selectedRunId: null,
         filterProjectId: null,
         filterStatus: null,
+        markerPlan: null,
         initialRunSelectionDone: false,
         activeSeoStep: initialState.step || 'input',
         keywordHypothesesLoading: false,
@@ -1725,6 +1848,10 @@ High-risk leverage</textarea>
         longreadPackageLoading: false,
         longreadAdaptationsLoading: false,
         longreadPublicationLoadingId: null,
+        blogPublishLoading: false,
+        languageBatchItems: [],
+        languageBatchWorkflowMode: 'manual',
+        languageBatchFinalizing: false,
         autoFlowLoading: false,
         autoFlowTitle: null,
         autoFlowDescription: null,
@@ -1734,6 +1861,38 @@ High-risk leverage</textarea>
       };
       let launchPanelNode = null;
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
+      const SEO_BRIEF_LANGUAGE_PRESETS = [
+        { code: 'en', name: 'English', label: 'English', country: 'United States' },
+        { code: 'pt', name: 'Portuguese', label: 'Português', country: 'Brazil' },
+        { code: 'id', name: 'Indonesian', label: 'Bahasa Indonesia', country: 'Indonesia' },
+        { code: 'es', name: 'Spanish', label: 'Español', country: 'Mexico' },
+        { code: 'vi', name: 'Vietnamese', label: 'Tiếng Việt', country: 'Vietnam' },
+        { code: 'ur', name: 'Urdu', label: 'اردو', country: 'Pakistan' },
+        { code: 'tl', name: 'Tagalog', label: 'Tagalog', country: 'Philippines' },
+        { code: 'pcm', name: 'Pidgin', label: 'Naijá / Pidgin', country: 'Nigeria' },
+        { code: 'ha', name: 'Hausa', label: 'Hausa', country: 'Nigeria' },
+        { code: 'pa', name: 'Punjabi', label: 'ਪੰਜਾਬੀ', country: 'India' },
+        { code: 'yo', name: 'Yoruba', label: 'Yorùbá', country: 'Nigeria' },
+        { code: 'ps', name: 'Pashto', label: 'پښتو', country: 'Afghanistan' },
+        { code: 'zu', name: 'Zulu', label: 'isiZulu', country: 'South Africa' },
+        { code: 'tr', name: 'Turkish', label: 'Türkçe', country: 'Turkiye' },
+        { code: 'ar', name: 'Arabic', label: 'العربية', country: 'Saudi Arabia' },
+        { code: 'ru', name: 'Russian', label: 'Русский', country: 'Kazakhstan' },
+        { code: 'hi', name: 'Hindi', label: 'हिन्दी', country: 'India' },
+        { code: 'ja', name: 'Japanese', label: '日本語', country: 'Japan' },
+        { code: 'ko', name: 'Korean', label: '한국어', country: 'South Korea' },
+        { code: 'fr', name: 'French', label: 'Français', country: 'France' },
+        { code: 'de', name: 'German', label: 'Deutsch', country: 'Germany' },
+        { code: 'it', name: 'Italian', label: 'Italiano', country: 'Italy' },
+        { code: 'nl', name: 'Dutch', label: 'Nederlands', country: 'Netherlands' },
+        { code: 'ms', name: 'Malay', label: 'Bahasa Melayu', country: 'Malaysia' },
+        { code: 'th', name: 'Thai', label: 'ไทย', country: 'Thailand' },
+        { code: 'af', name: 'Afrikaans', label: 'Afrikaans', country: 'South Africa' },
+        { code: 'xh', name: 'Xhosa', label: 'isiXhosa', country: 'South Africa' },
+        { code: 'ig', name: 'Igbo', label: 'Igbo', country: 'Nigeria' },
+        { code: 'pl', name: 'Polish', label: 'Polski', country: 'Poland' },
+        { code: 'ro', name: 'Romanian', label: 'Română', country: 'Romania' },
+      ];
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const SEO_STEP_TABS = [
@@ -2141,6 +2300,11 @@ High-risk leverage</textarea>
           ? selected.value
           : 'pro';
         qs('aiModelMode').value = value;
+        const pricing = value === 'flash'
+          ? { input: '0.14', output: '0.28' }
+          : { input: '0.435', output: '0.87' };
+        qs('deepSeekInputUsdPerMillionTokens').value = pricing.input;
+        qs('deepSeekOutputUsdPerMillionTokens').value = pricing.output;
         document.querySelectorAll('[data-model-option]').forEach((option) => {
           option.classList.toggle('is-selected', option.getAttribute('data-model-option') === value);
         });
@@ -2175,6 +2339,50 @@ High-risk leverage</textarea>
         qs(id).value = value.trim();
       }
 
+      function setLanguageIfPresent(value) {
+        if (typeof value !== 'string' || !value.trim()) return;
+        const preset = resolveLanguagePreset(value);
+        const languageSelect = qs('language');
+        const targetValue = preset?.name || value.trim();
+        [...languageSelect.options].forEach((option) => {
+          option.selected = option.value === targetValue;
+        });
+        syncCountryFromSelectedLanguages();
+      }
+
+      function resolveLanguagePreset(value) {
+        const normalized = normalizeLanguageLookup(value);
+        const candidatesByLanguage = SEO_BRIEF_LANGUAGE_PRESETS.map((language) => ({
+          language,
+          candidates: [
+            language.code,
+            language.name,
+            language.label,
+            language.name.toLowerCase(),
+            language.label.toLowerCase(),
+          ].map(normalizeLanguageLookup),
+        }));
+        const exactMatch = candidatesByLanguage.find((entry) => entry.candidates.includes(normalized));
+        if (exactMatch) return exactMatch.language;
+        if (normalized.length > 2) {
+          return candidatesByLanguage.find((entry) =>
+            entry.candidates.some((candidate) => candidate.length > 2 && (candidate.includes(normalized) || normalized.includes(candidate)))
+          )?.language || null;
+        }
+        return null;
+      }
+
+      function normalizeLanguageLookup(value) {
+        return String(value || '')
+          .trim()
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[()]/g, ' ')
+          .replace(/[_-]/g, ' ')
+          .replace(/\\s+/g, ' ');
+      }
+
       function setListIfPresent(id, value) {
         if (!Array.isArray(value) || value.length === 0) return;
         const nextValue = value
@@ -2191,10 +2399,86 @@ High-risk leverage</textarea>
           .filter(Boolean);
       }
 
+      function getSelectedLanguagePresets() {
+        const selectedValues = [...qs('language').selectedOptions].map((option) => option.value);
+        const selected = selectedValues
+          .map((value) => resolveLanguagePreset(value) || {
+            code: value.toLowerCase(),
+            country: qs('country').value || 'United States',
+            name: value,
+            label: value,
+          })
+          .filter((language) => language.name);
+        return selected.length > 0 ? selected : [SEO_BRIEF_LANGUAGE_PRESETS[0]];
+      }
+
+      function resolveRunLanguagePreset(language) {
+        if (language && typeof language === 'object') {
+          return language;
+        }
+        const value = String(language || 'English');
+        return resolveLanguagePreset(value) || {
+          code: value.toLowerCase(),
+          country: qs('country').value || 'United States',
+          name: value,
+          label: value,
+        };
+      }
+
+      function syncCountryFromSelectedLanguages() {
+        const countryInput = qs('country');
+        if (!countryInput) return;
+        const selectedLanguages = getSelectedLanguagePresets();
+        const selectedLanguage = selectedLanguages[0];
+        if (selectedLanguage?.country) {
+          countryInput.value = selectedLanguage.country;
+        }
+        renderMarketCountryPreview(selectedLanguages);
+      }
+
+      function renderMarketCountryPreview(languages = getSelectedLanguagePresets()) {
+        const node = qs('marketCountryPreview');
+        if (!node) return;
+        node.hidden = false;
+        node.innerHTML =
+          '<strong>DataForSEO markets</strong>' +
+          '<p>Each selected language creates its own SEO brief run with its own supported Google SERP country.</p>' +
+          '<ul>' + languages.map((language) =>
+            '<li>' + escapeHtmlClient(language.label + ' (' + language.code + ') → ' + language.country) + '</li>'
+          ).join('') + '</ul>';
+      }
+
+      function validateLaunchForm() {
+        const requiredFields = [
+          { id: 'topicHint', label: 'Topic Hint' },
+          { id: 'userPains', label: 'User Pains' },
+          { id: 'productName', label: 'Product Name Override' },
+        ];
+        const invalidField = requiredFields.find((field) => !String(qs(field.id)?.value || '').trim());
+        if (invalidField) {
+          const element = qs(invalidField.id);
+          const details = element?.closest('details');
+          if (details) {
+            details.open = true;
+          }
+          element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element?.focus();
+          showToast('Fill required field: ' + invalidField.label);
+          return false;
+        }
+        if (getSelectedLanguagePresets().length === 0) {
+          qs('language')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          qs('language')?.focus();
+          showToast('Select at least one language');
+          return false;
+        }
+        return true;
+      }
+
       function applyExtractedContext(result) {
         setIfPresent('topicHint', result.topicHint || result.topicSeed);
         setIfPresent('country', result.country);
-        setIfPresent('language', result.language);
+        setLanguageIfPresent(result.language);
         setIfPresent('audience', result.audience);
         setListIfPresent('userPains', result.userPains);
         setListIfPresent('userScenarios', result.userScenarios);
@@ -2861,6 +3145,15 @@ High-risk leverage</textarea>
         toast.classList.add('is-visible');
         clearTimeout(showToast.timer);
         showToast.timer = setTimeout(() => toast.classList.remove('is-visible'), 2500);
+      }
+
+      function setLaunchStatus(message, tone = 'info') {
+        const node = qs('launchStatus');
+        if (!node) return;
+        node.hidden = false;
+        node.innerHTML =
+          '<strong>' + escapeHtmlClient(tone === 'error' ? 'Launch error' : 'Launch status') + '</strong>' +
+          '<p>' + escapeHtmlClient(message) + '</p>';
       }
 
       function renderSerpDomainAggregation(run) {
@@ -3626,11 +3919,12 @@ High-risk leverage</textarea>
         const rejected = Array.isArray(payload?.rejectedClusters) ? payload.rejectedClusters : [];
         const ranked = Array.isArray(payload?.rankedClusters) ? payload.rankedClusters : [];
         const selectedClusterName = String(payload?.selectedClusterName || main?.clusterName || '');
+        const autoSelected = payload?.selectionMode === 'auto_selected';
 
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Manual Step 10</div><h3>Topic Choice From Ranked Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
-            '<p>Primary output: ranked cluster choices. Choose one topic manually; OnPage and the final brief will use that selected cluster.</p>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(autoSelected ? 'Auto Step 10' : 'Manual Step 10') + '</div><h3>Topic Choice From Ranked Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
+            '<p>' + escapeHtmlClient(autoSelected ? 'Primary output: the highest-ranked approved/supporting cluster was selected automatically for OnPage and final brief generation.' : 'Primary output: ranked cluster choices. Choose one topic manually; OnPage and the final brief will use that selected cluster.') + '</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(main ? 'Yes' : 'No') + '</strong><span>Main selected</span></div>' +
               '<div><strong>' + escapeHtmlClient(supporting.length) + '</strong><span>Supporting</span></div>' +
@@ -4096,19 +4390,24 @@ High-risk leverage</textarea>
         const markdown = typeof payload?.articleMarkdown === 'string' ? payload.articleMarkdown : '';
         const warnings = Array.isArray(payload?.warnings) ? payload.warnings : [];
         const changesMade = Array.isArray(payload?.changesMade) ? payload.changesMade : [];
+        const reviewAttempts = Array.isArray(payload?.reviewAttempts) ? payload.reviewAttempts : [];
+        const blockerCount = Number(payload?.blockerCount ?? warnings.filter((warning) => warning?.severity === 'blocker').length);
         if (!artifact || !markdown) {
-          return '<section class="card full article-generation-card"><div class="empty">No longread cleanup saved yet.</div></section>';
+          return '<section class="card full article-generation-card"><div class="empty">No longread review loop saved yet.</div></section>';
         }
 
         return (
           '<section class="card full article-generation-card">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 2</div><h3>Safety + SEO Cleanup</h3></div><span class="badge">' + escapeHtmlClient(payload?.status || '—') + '</span></div>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 2</div><h3>AI Review Loop</h3></div><span class="badge">' + escapeHtmlClient(payload?.status || '—') + '</span></div>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(payload?.status || '—') + '</strong><span>Status</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(reviewAttempts.length || 1)) + '/' + escapeHtmlClient(String(payload?.maxReviewAttempts || 5)) + '</strong><span>Review attempts</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(blockerCount)) + '</strong><span>Blockers</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(warnings.length)) + '</strong><span>Warnings</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(changesMade.length)) + '</strong><span>Changes</span></div>' +
-              '<div><strong>' + escapeHtmlClient(String(markdown.length)) + '</strong><span>Markdown chars</span></div>' +
+              '<div><strong>' + escapeHtmlClient(payload?.modelStatus || payload?.status || '—') + '</strong><span>Model status</span></div>' +
             '</div>' +
+            renderCleanupAttempts(reviewAttempts) +
             renderCleanupWarnings(warnings) +
             renderCompactStringList('Changes made', changesMade) +
             '<details open><summary>Reviewed Markdown</summary><div><pre>' + escapeHtmlClient(markdown) + '</pre></div></details>' +
@@ -4117,11 +4416,27 @@ High-risk leverage</textarea>
         );
       }
 
+      function renderCleanupAttempts(attempts) {
+        return attempts.length
+          ? '<details open><summary>AI review attempts</summary><div class="stage-output-list">' + attempts.map((attempt) => {
+              const warnings = Array.isArray(attempt?.warnings) ? attempt.warnings : [];
+              const changes = Array.isArray(attempt?.changesMade) ? attempt.changesMade : [];
+              return (
+                '<div class="stage-output-item">' +
+                  '<div class="inline-meta"><strong>Attempt ' + escapeHtmlClient(attempt?.attempt || '—') + '</strong><span>' + escapeHtmlClient(attempt?.status || '—') + '</span></div>' +
+                  '<p>Warnings: ' + escapeHtmlClient(String(warnings.length)) + ' · Changes: ' + escapeHtmlClient(String(changes.length)) + ' · Markdown chars: ' + escapeHtmlClient(String(attempt?.markdownLength || '—')) + '</p>' +
+                  renderCleanupWarnings(warnings) +
+                '</div>'
+              );
+            }).join('') + '</div></details>'
+          : '';
+      }
+
       function renderCleanupWarnings(warnings) {
         return warnings.length
           ? '<div class="stage-output-list">' + warnings.map((warning, index) => (
               '<div class="stage-output-item">' +
-                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (warning?.type || 'warning')) + '</strong><span>warning</span></div>' +
+                '<div class="inline-meta"><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + (warning?.type || 'warning')) + '</strong><span>' + escapeHtmlClient(warning?.severity || 'warning') + '</span></div>' +
                 '<p>' + escapeHtmlClient(warning?.message || 'No warning message saved.') + '</p>' +
               '</div>'
             )).join('') + '</div>'
@@ -4161,9 +4476,41 @@ High-risk leverage</textarea>
             renderCompactStringList('External sources needed', Array.isArray(seo?.externalSourcesNeeded) ? seo.externalSourcesNeeded : []) +
             renderCompactStringList('Claims warnings', Array.isArray(claimsReview?.warnings) ? claimsReview.warnings : []) +
             renderCompactStringList('Publishing notes', Array.isArray(checklist?.notes) ? checklist.notes : []) +
+            renderBlogPublishPanel(run) +
             '<details open><summary>Body Markdown</summary><div><pre>' + escapeHtmlClient(article.bodyMarkdown) + '</pre></div></details>' +
             '<details><summary>Raw final package</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
           '</section>'
+        );
+      }
+
+      function renderBlogPublishPanel(run) {
+        const blogPlacements = markerPlanBlogPlacementsForRun(run);
+        const publishArtifact = findArtifact(run, 'blog_publish_result');
+        const inputArtifact = findArtifact(run, 'normalized_input');
+        const payload = publishArtifact?.payload || null;
+        const inputPayload = inputArtifact?.payload || null;
+        const shouldShow = blogPlacements.length > 0 || Boolean(payload?.url);
+        if (!shouldShow) {
+          return '';
+        }
+        const locale = blogPlacements[0]?.targetLanguage || normalizeTargetLanguage(run?.market?.language || 'en');
+        const plannedAt = blogPlacements[0]?.publishAt || null;
+        const publishedUrl = typeof payload?.url === 'string' ? payload.url : '';
+        const savedCoverImageUrl = typeof inputPayload?.coverImageUrl === 'string' ? inputPayload.coverImageUrl : '';
+        return (
+          '<div class="stage-output-item">' +
+            '<div class="inline-meta"><strong>Blog publication</strong><span>' + escapeHtmlClient(locale) + '</span></div>' +
+            '<p>' + escapeHtmlClient(plannedAt ? 'Marker placement: ' + new Date(plannedAt).toLocaleString() : 'Publish the final longread package to Blog admin API.') + '</p>' +
+            (publishedUrl
+              ? '<p><a href="' + escapeHtmlClient(publishedUrl) + '" target="_blank" rel="noreferrer">Open published blog article</a></p>'
+              : '') +
+            '<div class="adaptation-schedule-grid" data-blog-publish-row data-locale="' + escapeHtmlClient(locale) + '">' +
+              '<label>Cover image URL' +
+                '<input type="url" data-blog-cover-image-url placeholder="https://cdn.example.com/cover.webp" value="' + escapeHtmlClient(savedCoverImageUrl) + '" />' +
+              '</label>' +
+              '<button type="button" class="' + escapeHtmlClient(appState.blogPublishLoading ? 'is-loading' : '') + '" data-publish-blog-article ' + (appState.blogPublishLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.blogPublishLoading ? 'Publishing...' : publishedUrl ? 'Publish Blog Again' : 'Publish to Blog') + '</button>' +
+            '</div>' +
+          '</div>'
         );
       }
 
@@ -4214,11 +4561,7 @@ High-risk leverage</textarea>
           '<div class="adaptation-schedule-grid" data-adaptation-schedule-row data-article-id="' + escapeHtmlClient(articleId || '') + '" data-adaptation-id="' + escapeHtmlClient(adaptationId) + '" data-channel-id="' + escapeHtmlClient(channelId) + '">' +
             '<label>Language' +
               '<select data-adaptation-language ' + (disabled ? 'disabled' : '') + '>' +
-                renderLanguageOption('en', defaultLanguage) +
-                renderLanguageOption('ru', defaultLanguage) +
-                renderLanguageOption('es', defaultLanguage) +
-                renderLanguageOption('fr', defaultLanguage) +
-                renderLanguageOption('pt', defaultLanguage) +
+                SEO_BRIEF_LANGUAGE_PRESETS.map((language) => renderLanguageOption(language, defaultLanguage)).join('') +
               '</select>' +
             '</label>' +
             '<label>Publish at' +
@@ -4231,24 +4574,345 @@ High-risk leverage</textarea>
 
       function renderLanguageOption(language, defaultLanguage) {
         const normalizedDefault = normalizeTargetLanguage(defaultLanguage || 'en');
-        return '<option value="' + escapeHtmlClient(language) + '" ' + (normalizedDefault === language ? 'selected' : '') + '>' + escapeHtmlClient(language.toUpperCase()) + '</option>';
+        return '<option value="' + escapeHtmlClient(language.code) + '" ' + (normalizedDefault === language.code ? 'selected' : '') + '>' + escapeHtmlClient(language.label + ' (' + language.code + ')') + '</option>';
       }
 
       function normalizeTargetLanguage(language) {
         const normalized = String(language || '').trim().toLowerCase();
-        const known = {
-          english: 'en',
-          en: 'en',
-          russian: 'ru',
-          ru: 'ru',
-          spanish: 'es',
-          es: 'es',
-          french: 'fr',
-          fr: 'fr',
-          portuguese: 'pt',
-          pt: 'pt',
+        const preset = resolveLanguagePreset(normalized);
+        return preset?.code || normalized || 'en';
+      }
+
+      function setLanguagesIfPresent(values) {
+        const languageSelect = qs('language');
+        const codes = new Set(
+          values
+            .map((value) => resolveLanguagePreset(value)?.code || normalizeTargetLanguage(value))
+            .filter(Boolean),
+        );
+        if (codes.size === 0) return;
+        [...languageSelect.options].forEach((option) => {
+          const optionCode = resolveLanguagePreset(option.value)?.code || normalizeTargetLanguage(option.value);
+          option.selected = codes.has(optionCode);
+        });
+        syncCountryFromSelectedLanguages();
+      }
+
+      function channelDisplayName(channelId) {
+        const normalized = normalizePublicationChannelId(channelId);
+        if (normalized === 'channel_telegram') return 'Telegram';
+        if (normalized === 'channel_x') return 'X';
+        if (normalized === 'channel_discord') return 'Discord';
+        if (normalized === 'channel_blog') return 'Blog';
+        return channelId || 'Channel';
+      }
+
+      function normalizeMarkerPlacement(placement) {
+        const publishAt = placement?.publishAt || placement?.publish_at || placement?.date || null;
+        const publishAtDate = publishAt ? new Date(publishAt) : null;
+        const channelId = normalizePublicationChannelId(placement?.channelId || placement?.channel_id || '');
+        const targetLanguage = normalizeTargetLanguage(placement?.targetLanguage || placement?.target_language || '');
+        return {
+          id: String(placement?.id || ''),
+          markerId: String(placement?.markerId || placement?.marker_id || ''),
+          channelId,
+          targetLanguage,
+          publishAt:
+            publishAtDate && !Number.isNaN(publishAtDate.getTime())
+              ? publishAtDate.toISOString()
+              : null,
         };
-        return known[normalized] || normalized || 'en';
+      }
+
+      function renderMarkerPlanContext() {
+        const node = qs('markerPlanContext');
+        if (!node) return;
+        const markerPlan = appState.markerPlan;
+        if (!markerPlan) {
+          node.hidden = true;
+          node.innerHTML = '';
+          return;
+        }
+        const languages = [...new Set(markerPlan.placements.map((placement) => placement.targetLanguage))];
+        const channels = [...new Set(markerPlan.placements.map((placement) => channelDisplayName(placement.channelId)))];
+        node.hidden = false;
+        node.innerHTML =
+          '<strong>Marker plan loaded: ' + escapeHtmlClient(markerPlan.markerTitle) + '</strong>' +
+          '<p>' + escapeHtmlClient(String(markerPlan.placements.length) + ' placement(s), ' + languages.join(', ') + ', channels: ' + channels.join(', ')) + '</p>' +
+          '<ul>' + markerPlan.placements.map((placement) =>
+            '<li>' +
+              escapeHtmlClient(new Date(placement.publishAt).toLocaleString() + ' · ' + channelDisplayName(placement.channelId) + ' · ' + placement.targetLanguage) +
+            '</li>'
+          ).join('') + '</ul>';
+      }
+
+      function buildMarkerPlanCampaignContext(markerPlan) {
+        const lines = [
+          'SEO brief was created from a dashboard draft marker.',
+          'Marker: ' + markerPlan.markerTitle,
+        ];
+        if (markerPlan.markerNotes) {
+          lines.push('Marker notes: ' + markerPlan.markerNotes);
+        }
+        lines.push('Use the selected language for SEO research, SEO brief, longread, and adaptations.');
+        lines.push('Final dashboard adaptations must follow this publication plan:');
+        markerPlan.placements.forEach((placement) => {
+          lines.push(
+            '- ' +
+              placement.publishAt +
+              ' | ' +
+              channelDisplayName(placement.channelId) +
+              ' | ' +
+              placement.channelId +
+              ' | ' +
+              placement.targetLanguage,
+          );
+        });
+        return lines.join('\\n').slice(0, 8000);
+      }
+
+      async function applyMarkerPlanFromInitialState() {
+        if (!initialState.projectId || !initialState.markerId) {
+          renderMarkerPlanContext();
+          return;
+        }
+
+        const [markers, rawPlacements] = await Promise.all([
+          fetchJson('/projects/' + encodeURIComponent(initialState.projectId) + '/markers').catch(() => []),
+          fetchJson('/projects/' + encodeURIComponent(initialState.projectId) + '/marker-placements').catch(() => []),
+        ]);
+        const marker = Array.isArray(markers)
+          ? markers.find((item) => String(item?.id || '') === initialState.markerId)
+          : null;
+        const placements = (Array.isArray(rawPlacements) ? rawPlacements : [])
+          .map(normalizeMarkerPlacement)
+          .filter((placement) => placement.markerId === initialState.markerId && placement.channelId && placement.targetLanguage && placement.publishAt)
+          .sort((left, right) => new Date(left.publishAt).getTime() - new Date(right.publishAt).getTime());
+
+        if (!marker) {
+          showToast('Marker not found for SEO brief');
+          renderMarkerPlanContext();
+          return;
+        }
+
+        appState.markerPlan = {
+          projectId: initialState.projectId,
+          markerId: initialState.markerId,
+          markerTitle: String(marker.title || 'Draft marker'),
+          markerNotes: String(marker.notes || ''),
+          placements,
+        };
+        if (qs('projectId')) qs('projectId').value = initialState.projectId;
+        if (qs('projectFilter')) qs('projectFilter').value = initialState.projectId;
+        appState.filterProjectId = initialState.projectId;
+        qs('topicHint').value = appState.markerPlan.markerTitle;
+        qs('campaignContext').value = buildMarkerPlanCampaignContext(appState.markerPlan);
+        if (placements.length > 0) {
+          setLanguagesIfPresent(placements.map((placement) => placement.targetLanguage));
+        }
+        await fillFromBrandMemory({ silent: true }).catch(() => undefined);
+        renderMarkerPlanContext();
+        showToast(
+          placements.length > 0
+            ? 'Marker plan loaded into SEO brief'
+            : 'Marker loaded, but it has no placements yet',
+        );
+      }
+
+      function markerPlanPlacementsForRun(run) {
+        const markerPlan = appState.markerPlan;
+        if (!markerPlan?.placements?.length) return [];
+        const runLanguage = normalizeTargetLanguage(run?.market?.language || qs('language')?.value || 'en');
+        return markerPlan.placements.filter((placement) => placement.targetLanguage === runLanguage);
+      }
+
+      function markerPlanBlogPlacementsForRun(run) {
+        return markerPlanPlacementsForRun(run).filter(
+          (placement) => placement.channelId === 'channel_blog',
+        );
+      }
+
+      function markerPlanChannelsForRun(run) {
+        const seen = new Set();
+        return markerPlanPlacementsForRun(run)
+          .filter((placement) => {
+            if (seen.has(placement.channelId)) return false;
+            seen.add(placement.channelId);
+            return true;
+          })
+          .map((placement) => ({
+            channelId: placement.channelId,
+            displayName: channelDisplayName(placement.channelId),
+            promptInstructions: null,
+          }));
+      }
+
+      async function scheduleLongreadAdaptation(articleId, adaptationId, channelId, language, publishAtIso) {
+        const normalizedChannelId = normalizePublicationChannelId(channelId);
+        const payload = {
+          articleId,
+          adaptationId,
+          targetLanguage: normalizeTargetLanguage(language),
+          publishAt: publishAtIso,
+        };
+
+        await fetchJson('/publishing/plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            articleId,
+            channelId: normalizedChannelId,
+            targetLanguage: payload.targetLanguage,
+            publishAt: payload.publishAt,
+          }),
+        });
+
+        await fetchJson(publishingScheduleEndpoint(normalizedChannelId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      async function cleanupScheduledMarkerPlacement(placement) {
+        const markerPlan = appState.markerPlan;
+        if (!markerPlan?.projectId || !placement?.id) {
+          return { placementDeleted: false, markerDeleted: false };
+        }
+
+        await fetchJson(
+          '/projects/' +
+            encodeURIComponent(markerPlan.projectId) +
+            '/marker-placements/' +
+            encodeURIComponent(placement.id),
+          { method: 'DELETE' },
+        );
+
+        markerPlan.placements = markerPlan.placements.filter((item) => item.id !== placement.id);
+        let markerDeleted = false;
+        const remainingPlacements = markerPlan.placements.filter(
+          (item) => item.markerId === markerPlan.markerId,
+        );
+        if (remainingPlacements.length === 0 && markerPlan.markerId) {
+          await fetchJson(
+            '/projects/' +
+              encodeURIComponent(markerPlan.projectId) +
+              '/markers/' +
+              encodeURIComponent(markerPlan.markerId),
+            { method: 'DELETE' },
+          ).catch(() => undefined);
+          markerDeleted = true;
+          appState.markerPlan = null;
+        }
+        renderMarkerPlanContext();
+
+        return { placementDeleted: true, markerDeleted };
+      }
+
+      async function autoScheduleMarkerPlanAdaptations(run, result) {
+        const placements = markerPlanPlacementsForRun(run);
+        const adaptations = Array.isArray(result?.adaptations) ? result.adaptations : [];
+        const details = [];
+        if (!result?.articleId) {
+          details.push('Cannot schedule: adaptation export has no articleId.');
+          return { scheduled: 0, skipped: 0, failed: 1, details };
+        }
+        if (placements.length === 0) {
+          details.push('Cannot schedule: marker plan has no placements for this language.');
+          return { scheduled: 0, skipped: 0, failed: 0, details };
+        }
+        if (adaptations.length === 0) {
+          details.push('Cannot schedule: dashboard adaptations export is empty.');
+          return { scheduled: 0, skipped: 0, failed: 1, details };
+        }
+
+        let scheduled = 0;
+        let skipped = 0;
+        let failed = 0;
+        let markerCleanupFailed = 0;
+        let markerDeleted = false;
+        let markerPlacementsDeleted = 0;
+        for (const placement of placements) {
+          const placementLabel =
+            channelDisplayName(placement.channelId) +
+            ' / ' +
+            placement.targetLanguage +
+            ' / ' +
+            placement.publishAt;
+          if (placement.channelId === 'channel_blog') {
+            const inputArtifact = findArtifact(run, 'normalized_input');
+            const coverImageUrl = inputArtifact?.payload?.coverImageUrl;
+            if (typeof coverImageUrl !== 'string' || !coverImageUrl.startsWith('https://')) {
+              skipped += 1;
+              details.push(placementLabel + ': skipped because Blog requires a cover image URL in SEO input.');
+              continue;
+            }
+          }
+          const publishAt = new Date(placement.publishAt);
+          if (Number.isNaN(publishAt.getTime())) {
+            skipped += 1;
+            details.push(placementLabel + ': skipped because publishAt is invalid.');
+            continue;
+          }
+          if (publishAt.getTime() <= Date.now()) {
+            skipped += 1;
+            details.push(placementLabel + ': skipped because publish time is in the past.');
+            continue;
+          }
+          const adaptation = adaptations.find(
+            (item) => normalizePublicationChannelId(item?.channelId) === placement.channelId,
+          );
+          if (!adaptation?.adaptationId) {
+            skipped += 1;
+            details.push(placementLabel + ': skipped because no matching adaptation was created.');
+            continue;
+          }
+          try {
+            await scheduleLongreadAdaptation(
+              result.articleId,
+              adaptation.adaptationId,
+              placement.channelId,
+              placement.targetLanguage,
+              publishAt.toISOString(),
+            );
+            scheduled += 1;
+            details.push(placementLabel + ': scheduled.');
+            try {
+              const cleanupResult = await cleanupScheduledMarkerPlacement(placement);
+              if (cleanupResult.placementDeleted) {
+                markerPlacementsDeleted += 1;
+                details.push(placementLabel + ': marker placement removed.');
+              }
+              if (cleanupResult.markerDeleted) {
+                markerDeleted = true;
+                details.push('Marker removed because all its placements were scheduled.');
+              }
+            } catch (error) {
+              markerCleanupFailed += 1;
+              details.push(
+                placementLabel +
+                  ': scheduled, but failed to remove marker placement: ' +
+                  (error instanceof Error ? error.message : 'unknown error'),
+              );
+            }
+          } catch (error) {
+            failed += 1;
+            details.push(
+              placementLabel +
+                ': failed to schedule: ' +
+                (error instanceof Error ? error.message : 'unknown error'),
+            );
+          }
+        }
+        return {
+          scheduled,
+          skipped,
+          failed,
+          details,
+          markerCleanupFailed,
+          markerDeleted,
+          markerPlacementsDeleted,
+        };
       }
 
       function renderFinalBriefOutline(outline) {
@@ -4391,6 +5055,11 @@ High-risk leverage</textarea>
           url.searchParams.set('projectId', projectId);
         } else {
           url.searchParams.delete('projectId');
+        }
+        if (appState.markerPlan?.markerId) {
+          url.searchParams.set('markerId', appState.markerPlan.markerId);
+        } else {
+          url.searchParams.delete('markerId');
         }
         if (appState.activeSeoStep && appState.activeSeoStep !== 'input') {
           url.searchParams.set('step', appState.activeSeoStep);
@@ -4653,6 +5322,10 @@ High-risk leverage</textarea>
 
       function renderStepActionCard(run, flags) {
         const step = appState.activeSeoStep;
+        const cleanupArtifact = findArtifact(run, 'longread_cleanup');
+        const cleanupPayload = cleanupArtifact?.payload || {};
+        const cleanupStatus = String(cleanupPayload?.status || '');
+        const cleanupPassed = cleanupStatus === 'passed' || cleanupStatus === 'passed_with_warnings';
         const actionByStep = {
           input: {
             title: 'Input',
@@ -4841,23 +5514,25 @@ High-risk leverage</textarea>
               : '',
           },
           longreadCleanup: {
-            title: 'Safety + SEO Cleanup',
+            title: 'AI Review Loop',
             message: flags.longreadDraft
-              ? 'AI reviews and revises the draft for claims safety, SEO structure, tone, product insertion, and factual-check warnings.'
+              ? 'AI iteratively reviews and regenerates the longread for SEO fit, claims safety, US compliance risk, tone, product insertion, and factual-check warnings.'
               : 'Generate the draft article first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.longreadDraft ? 'primary ' : '') + (appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="cleanupLongreadArticleBtn" ' + (!flags.longreadDraft || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Cleaning article...' : flags.longreadCleanup ? 'Refresh Safety Cleanup' : 'Run Safety Cleanup') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((flags.longreadDraft ? 'primary ' : '') + (appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="cleanupLongreadArticleBtn" ' + (!flags.longreadDraft || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Running review loop...' : flags.longreadCleanup ? 'Refresh AI Review Loop' : 'Run AI Review Loop') + '</button>',
             progress: appState.longreadCleanupLoading
-              ? '<div class="inline-progress"><p>AI is revising the draft and checking compliance-sensitive claims.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              ? '<div class="inline-progress"><p>AI is reviewing, revising, and rechecking the article until it passes or reaches the attempt limit.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
           },
           longreadPackage: {
             title: 'Final Article Package',
-            message: flags.longreadCleanup
-              ? 'AI packages the reviewed article into CMS-ready JSON: article fields, SEO fields, product insertion, claims review, and checklist.'
-              : 'Run safety cleanup first.',
+            message: cleanupPassed
+              ? 'AI packages the passed reviewed article into CMS-ready JSON: article fields, SEO fields, product insertion, claims review, and checklist.'
+              : flags.longreadCleanup
+                ? 'The AI review loop could not resolve publish-blocking issues. The longread was cancelled; refresh the review loop to retry from the draft.'
+                : 'Run the AI review loop first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.longreadCleanup ? 'primary ' : '') + (appState.longreadPackageLoading ? 'is-loading' : '')) + '" id="packageLongreadArticleBtn" ' + (!flags.longreadCleanup || appState.longreadPackageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadPackageLoading ? 'Packaging article...' : flags.longreadPackage ? 'Refresh Final Package' : 'Create Final Package') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((cleanupPassed ? 'primary ' : '') + (appState.longreadPackageLoading ? 'is-loading' : '')) + '" id="packageLongreadArticleBtn" ' + (!cleanupPassed || appState.longreadPackageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadPackageLoading ? 'Packaging article...' : flags.longreadPackage ? 'Refresh Final Package' : 'Create Final Package') + '</button>',
             progress: appState.longreadPackageLoading
               ? '<div class="inline-progress"><p>AI is creating the CMS-ready article package.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
@@ -5007,6 +5682,7 @@ High-risk leverage</textarea>
           step: 'keywords',
           loadingKey: 'keywordHypothesesLoading',
           path: '/generate-keyword-hypotheses',
+          readyFlag: 'keywords',
           payload: {},
         },
         {
@@ -5014,6 +5690,7 @@ High-risk leverage</textarea>
           step: 'serpGroup',
           loadingKey: 'serpPreviewLoading',
           path: '/preview-keyword-serps',
+          readyFlag: 'serp',
           payload: {},
         },
         {
@@ -5021,6 +5698,7 @@ High-risk leverage</textarea>
           step: 'serpGroup',
           loadingKey: 'serpDerivedCandidatesLoading',
           path: '/extract-serp-derived-candidates',
+          readyFlag: 'candidates',
           payload: {},
         },
         {
@@ -5028,6 +5706,7 @@ High-risk leverage</textarea>
           step: 'competitionGroup',
           loadingKey: 'rankedKeywordsLoading',
           path: '/build-competitor-keyword-map',
+          readyFlag: 'rankedKeywords',
           payload: {},
         },
         {
@@ -5035,6 +5714,7 @@ High-risk leverage</textarea>
           step: 'competitionGroup',
           loadingKey: 'competitorMatchingLoading',
           path: '/match-competitor-keywords',
+          readyFlag: 'competitorMatching',
           payload: () => ({ mode: 'algorithmic' }),
         },
         {
@@ -5042,6 +5722,7 @@ High-risk leverage</textarea>
           step: 'competitionGroup',
           loadingKey: 'dirtyKeywordPoolLoading',
           path: '/build-dirty-keyword-pool',
+          readyFlag: 'dirtyPool',
           payload: {},
         },
         {
@@ -5049,6 +5730,7 @@ High-risk leverage</textarea>
           step: 'competitionGroup',
           loadingKey: 'candidateScoringLoading',
           path: '/score-keyword-candidates',
+          readyFlag: 'candidateScoring',
           payload: {},
         },
         {
@@ -5056,6 +5738,7 @@ High-risk leverage</textarea>
           step: 'clusterGroup',
           loadingKey: 'keywordClusteringLoading',
           path: '/cluster-keyword-candidates',
+          readyFlag: 'clusters',
           payload: {},
         },
         {
@@ -5063,13 +5746,15 @@ High-risk leverage</textarea>
           step: 'clusterGroup',
           loadingKey: 'clusterProductFitLoading',
           path: '/review-cluster-product-fit',
+          readyFlag: 'productFit',
           payload: {},
         },
         {
-          label: 'Preparing ranked cluster choices',
+          label: 'Selecting the main cluster automatically',
           step: 'clusterGroup',
           loadingKey: 'clusterSelectionLoading',
           path: '/select-seo-brief-clusters',
+          readyFlag: 'selection',
           payload: {},
         },
       ];
@@ -5079,6 +5764,7 @@ High-risk leverage</textarea>
           step: 'onPageGroup',
           loadingKey: 'onPageLoading',
           path: '/fetch-selected-cluster-onpage',
+          readyFlag: 'onPage',
           payload: {},
         },
         {
@@ -5086,6 +5772,7 @@ High-risk leverage</textarea>
           step: 'onPageGroup',
           loadingKey: 'onPageSynthesisLoading',
           path: '/synthesize-onpage',
+          readyFlag: 'onPageSynthesis',
           payload: {},
         },
         {
@@ -5093,12 +5780,38 @@ High-risk leverage</textarea>
           step: 'finalBrief',
           loadingKey: 'finalBriefLoading',
           path: '/generate-final-brief',
+          readyFlag: 'finalBrief',
           payload: {},
         },
       ];
 
       function getAutoFlowPayload(stepConfig) {
         return typeof stepConfig.payload === 'function' ? stepConfig.payload() : stepConfig.payload || {};
+      }
+
+      function shouldSkipAutoFlowStep(run, stepConfig) {
+        if (!run || !stepConfig.readyFlag) return false;
+        return Boolean(getManualStepFlags(run)[stepConfig.readyFlag]);
+      }
+
+      async function fetchRunSnapshot(runId) {
+        return fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId));
+      }
+
+      async function executeAutoFlowStep(runId, stepConfig) {
+        const beforeRun = await fetchRunSnapshot(runId);
+        if (shouldSkipAutoFlowStep(beforeRun, stepConfig)) {
+          return { skipped: true, run: beforeRun };
+        }
+
+        await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(getAutoFlowPayload(stepConfig)),
+        });
+
+        const afterRun = await fetchRunSnapshot(runId);
+        return { skipped: false, run: afterRun };
       }
 
       function clearAutoFlowStepLoading() {
@@ -5149,11 +5862,10 @@ High-risk leverage</textarea>
               renderDetail(appState.selectedRun);
             }
 
-            await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(getAutoFlowPayload(stepConfig)),
-            });
+            const stepResult = await executeAutoFlowStep(runId, stepConfig);
+            if (stepResult.skipped) {
+              showToast('Skipped completed step: ' + stepConfig.label);
+            }
 
             appState[stepConfig.loadingKey] = false;
             await loadRuns();
@@ -5191,12 +5903,12 @@ High-risk leverage</textarea>
       }
 
       async function runAutoFlowUntilClusterSelection(runId) {
-        await runAutoFlowSequence(runId, AUTO_FLOW_STEPS, {
-          title: 'Running until manual topic choice',
-          description: 'The UI is calling the same step endpoints automatically. It will stop before OnPage, when you need to choose the cluster/topic manually.',
-          finalStep: 'clusterGroup',
+        await runAutoFlowSequence(runId, [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS], {
+          title: 'Running to final brief',
+          description: 'The UI is calling the same step endpoints automatically, including cluster selection, OnPage evidence, and final brief generation.',
+          finalStep: 'finalBrief',
           startedToast: 'Auto workflow started',
-          finishedToast: 'Auto workflow stopped at manual topic selection',
+          finishedToast: 'Final SEO brief generated automatically',
         });
       }
 
@@ -5208,6 +5920,41 @@ High-risk leverage</textarea>
           startedToast: 'Auto workflow resumed after topic selection',
           finishedToast: 'Final SEO brief generated automatically',
         });
+      }
+
+      async function runAutoFlowHeadless(runId, onProgress) {
+        const steps = [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS];
+        for (let index = 0; index < steps.length; index += 1) {
+          const stepConfig = steps[index];
+          if (typeof onProgress === 'function') {
+            onProgress({
+              index: index + 1,
+              label: stepConfig.label,
+              status: 'running',
+              total: steps.length,
+            });
+          }
+          setLaunchStatus(
+            'Auto flow ' +
+              String(index + 1) +
+              '/' +
+              String(steps.length) +
+              ': ' +
+              stepConfig.label,
+          );
+          const stepResult = await executeAutoFlowStep(runId, stepConfig);
+          if (stepResult.skipped) {
+            if (typeof onProgress === 'function') {
+              onProgress({
+                index: index + 1,
+                label: stepConfig.label,
+                status: 'skipped',
+                total: steps.length,
+              });
+            }
+            setLaunchStatus('Skipped completed step: ' + stepConfig.label);
+          }
+        }
       }
 
       function renderCostReceipt(run) {
@@ -5311,6 +6058,8 @@ High-risk leverage</textarea>
         const failedSteps = steps.filter((step) => step.status === 'failed').length;
         const failedLlmCalls = llmCalls.filter((call) => call.status === 'failed').length;
         const failedExternalCalls = externalCalls.filter((call) => call.status === 'failed').length;
+        const llmCost = sumEstimatedCost(llmCalls);
+        const externalCost = sumEstimatedCost(externalCalls);
 
         return (
           '<section class="card full">' +
@@ -5319,8 +6068,8 @@ High-risk leverage</textarea>
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(String(steps.length)) + '</strong><span>Step attempts</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(artifacts.length)) + '</strong><span>Artifacts</span></div>' +
-              '<div><strong>' + escapeHtmlClient(String(llmCalls.length)) + '</strong><span>DeepSeek calls</span></div>' +
-              '<div><strong>' + escapeHtmlClient(String(externalCalls.length)) + '</strong><span>DataForSEO calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(llmCalls.length) + ' · ' + formatMoney(llmCost)) + '</strong><span>DeepSeek calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(externalCalls.length) + ' · ' + formatMoney(externalCost)) + '</strong><span>DataForSEO calls</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(scoreLogs.length)) + '</strong><span>Score logs</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(failedSteps + failedLlmCalls + failedExternalCalls)) + '</strong><span>Failures</span></div>' +
             '</div>' +
@@ -5344,6 +6093,24 @@ High-risk leverage</textarea>
             '</div>' +
           '</details>'
         );
+      }
+
+      function renderAuditCostSection(title, calls, rows, open) {
+        return (
+          '<details class="audit-section" ' + (open ? 'open' : '') + '>' +
+            '<summary>' + escapeHtmlClient(title + ' · ' + String(calls.length) + ' · ' + formatMoney(sumEstimatedCost(calls))) + '</summary>' +
+            '<div class="audit-section-body">' +
+              (rows || '<div class="empty">No records saved.</div>') +
+            '</div>' +
+          '</details>'
+        );
+      }
+
+      function sumEstimatedCost(calls) {
+        return (Array.isArray(calls) ? calls : []).reduce((sum, call) => {
+          const value = Number(call?.estimatedCost || 0);
+          return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
       }
 
       function renderAuditStepAttempts(steps) {
@@ -5398,7 +6165,7 @@ High-risk leverage</textarea>
             '</article>'
           );
         }).join('');
-        return renderAuditSection('DeepSeek calls', calls.length, rows, calls.some((call) => call.status === 'failed'));
+        return renderAuditCostSection('DeepSeek calls', calls, rows, calls.some((call) => call.status === 'failed'));
       }
 
       function renderAuditExternalCalls(calls) {
@@ -5418,7 +6185,7 @@ High-risk leverage</textarea>
             '</article>'
           );
         }).join('');
-        return renderAuditSection('DataForSEO / external calls', calls.length, rows, calls.some((call) => call.status === 'failed'));
+        return renderAuditCostSection('DataForSEO / external calls', calls, rows, calls.some((call) => call.status === 'failed'));
       }
 
       function renderAuditScoreLogs(logs) {
@@ -5435,6 +6202,13 @@ High-risk leverage</textarea>
       function renderDetail(run) {
         detachLaunchPanel();
         const manualStepFlags = getManualStepFlags(run);
+        const actionContent = renderStepActionCard(run, manualStepFlags);
+        const activeStepContent = renderActiveStepContent(run, manualStepFlags);
+        const shouldShowArticleResultsFirst = appState.activeSeoStep === 'articleGroup'
+          && (manualStepFlags.longreadDraft
+            || manualStepFlags.longreadCleanup
+            || manualStepFlags.longreadPackage
+            || manualStepFlags.longreadAdaptations);
 
         qs('detailContent').innerHTML =
           '<section class="card full">' +
@@ -5453,11 +6227,28 @@ High-risk leverage</textarea>
 
           renderStepTabs(manualStepFlags) +
           renderAutoFlowProgress() +
-          renderStepActionCard(run, manualStepFlags) +
-          renderActiveStepContent(run, manualStepFlags) +
+          renderAutoFlowResumeCard(run, manualStepFlags) +
+          (shouldShowArticleResultsFirst ? activeStepContent + actionContent : actionContent + activeStepContent) +
           renderCostReceipt(run);
 
         bindDetailActions(run);
+      }
+
+      function renderAutoFlowResumeCard(run, flags) {
+        const isAutoRun = readRunWorkflowMode(run) === 'auto_until_selection';
+        if (!isAutoRun || flags.finalBrief || appState.autoFlowLoading) {
+          return '';
+        }
+        const nextStep = [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS].find(
+          (stepConfig) => !flags[stepConfig.readyFlag],
+        );
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Auto Workflow</div><h3>Resume Auto to Final Brief</h3></div><span class="badge">auto</span></div>' +
+            '<p>' + escapeHtmlClient(nextStep ? 'Next missing step: ' + nextStep.label : 'All auto steps look complete. Refresh the run if final brief is not visible.') + '</p>' +
+            '<div class="actions"><button type="button" class="primary" id="resumeAutoFlowBtn">Resume Auto to Final Brief</button></div>' +
+          '</section>'
+        );
       }
 
       function bindDetailActions(run) {
@@ -5483,6 +6274,9 @@ High-risk leverage</textarea>
             updateUrl(run.id);
             renderDetail(run);
           });
+        });
+        qs('resumeAutoFlowBtn')?.addEventListener('click', () => {
+          void runAutoFlowUntilClusterSelection(run.id);
         });
 
         qs('generateKeywordHypothesesBtn')?.addEventListener('click', async () => {
@@ -5770,11 +6564,15 @@ High-risk leverage</textarea>
                 body: JSON.stringify({}),
               },
             );
-            showToast('Ranked cluster choices prepared');
+            const autoWorkflowMode = readRunWorkflowMode(run) === 'auto_until_selection';
+            showToast(autoWorkflowMode ? 'Main topic selected automatically' : 'Ranked cluster choices prepared');
             appState.clusterSelectionLoading = false;
-            appState.activeSeoStep = 'selection';
+            appState.activeSeoStep = autoWorkflowMode ? 'onPageGroup' : 'selection';
             await loadRuns();
             await selectRun(run.id, false);
+            if (autoWorkflowMode) {
+              void runAutoFlowToFinalBrief(run.id);
+            }
           } catch (error) {
             appState.clusterSelectionLoading = false;
             renderDetail(run);
@@ -6028,6 +6826,13 @@ High-risk leverage</textarea>
           appState.longreadAdaptationsLoading = true;
           renderDetail(run);
           try {
+            const markerChannels = markerPlanChannelsForRun(run);
+            if (appState.markerPlan && markerChannels.length === 0) {
+              appState.longreadAdaptationsLoading = false;
+              renderDetail(run);
+              showToast('No social adaptations needed for this marker. Use Publish to Blog.');
+              return;
+            }
             const result = await fetchJson(
               '/seo-briefing/runs/' +
                 encodeURIComponent(run.id) +
@@ -6035,10 +6840,27 @@ High-risk leverage</textarea>
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({
+                  channels: markerChannels,
+                }),
               },
             );
             showToast('Dashboard adaptations created for article ' + (result.articleId || ''));
+            const markerScheduleResult = await autoScheduleMarkerPlanAdaptations(run, result);
+            if (
+              markerScheduleResult.scheduled > 0 ||
+              markerScheduleResult.skipped > 0 ||
+              markerScheduleResult.failed > 0
+            ) {
+              showToast(
+                'Marker plan scheduled ' +
+                  String(markerScheduleResult.scheduled) +
+                  ', skipped ' +
+                  String(markerScheduleResult.skipped) +
+                  ', failed ' +
+                  String(markerScheduleResult.failed),
+              );
+            }
             appState.longreadAdaptationsLoading = false;
             appState.activeSeoStep = 'articleGroup';
             await loadRuns();
@@ -6078,31 +6900,13 @@ High-risk leverage</textarea>
             appState.longreadPublicationLoadingId = adaptationId;
             renderDetail(run);
             try {
-              const normalizedChannelId = normalizePublicationChannelId(channelId);
-              const payload = {
+              await scheduleLongreadAdaptation(
                 articleId,
                 adaptationId,
-                targetLanguage: normalizeTargetLanguage(language),
-                publishAt: publishAt.toISOString(),
-              };
-
-              await fetchJson('/publishing/plans', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  articleId,
-                  channelId: normalizedChannelId,
-                  targetLanguage: payload.targetLanguage,
-                  publishAt: payload.publishAt,
-                }),
-              });
-
-              await fetchJson(publishingScheduleEndpoint(normalizedChannelId), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              });
-
+                channelId,
+                language,
+                publishAt.toISOString(),
+              );
               showToast('Adaptation scheduled and sent to dashboard');
               appState.longreadPublicationLoadingId = null;
               await loadRuns();
@@ -6111,6 +6915,38 @@ High-risk leverage</textarea>
               appState.longreadPublicationLoadingId = null;
               renderDetail(run);
               showToast(error instanceof Error ? error.message : 'Failed to schedule adaptation');
+            }
+          });
+        });
+        document.querySelectorAll('[data-publish-blog-article]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const row = button.closest('[data-blog-publish-row]');
+            if (!row || appState.blogPublishLoading) return;
+            const coverImageUrl = row.querySelector('[data-blog-cover-image-url]')?.value?.trim() || '';
+            const locale = row.getAttribute('data-locale') || normalizeTargetLanguage(run?.market?.language || 'en');
+            appState.blogPublishLoading = true;
+            renderDetail(run);
+            try {
+              const result = await fetchJson(
+                '/seo-briefing/runs/' + encodeURIComponent(run.id) + '/publish-blog',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    coverImageUrl: coverImageUrl || null,
+                    locale,
+                    status: 'published',
+                  }),
+                },
+              );
+              showToast('Blog published' + (result.url ? ': ' + result.url : ''));
+              appState.blogPublishLoading = false;
+              await loadRuns();
+              await selectRun(run.id, false);
+            } catch (error) {
+              appState.blogPublishLoading = false;
+              renderDetail(run);
+              showToast(error instanceof Error ? error.message : 'Failed to publish Blog article');
             }
           });
         });
@@ -6149,70 +6985,61 @@ High-risk leverage</textarea>
         appState.longreadCleanupLoading = false;
         appState.longreadPackageLoading = false;
         appState.longreadAdaptationsLoading = false;
+        appState.blogPublishLoading = false;
         appState.autoFlowLoading = false;
         appState.autoFlowTitle = null;
         appState.autoFlowDescription = null;
         appState.autoFlowCurrentLabel = null;
         appState.autoFlowCurrentIndex = 0;
         appState.autoFlowTotal = 0;
+        appState.languageBatchItems = [];
+        appState.languageBatchWorkflowMode = 'manual';
+        appState.languageBatchFinalizing = false;
         clearAutoFlowStepLoading();
         appState.activeSeoStep = 'input';
         syncRunPolling(null);
         updateUrl(null);
         renderRunList();
         renderEmptyDetail();
+        const batchProgress = qs('languageBatchProgress');
+        if (batchProgress) {
+          batchProgress.hidden = true;
+          batchProgress.innerHTML = '';
+        }
         qs('topicHint').focus();
         showToast('Ready for a new SEO brief');
       }
 
       async function createRun(event) {
         event.preventDefault();
+        setLaunchStatus('Button clicked. Validating launch form...');
+        if (!validateLaunchForm()) {
+          setLaunchStatus('Validation stopped the launch. Check the highlighted required field.', 'error');
+          return;
+        }
         const launchBtn = qs('launchBtn');
         launchBtn.disabled = true;
         try {
           const workflowMode = qs('workflowMode')?.value === 'auto_until_selection'
             ? 'auto_until_selection'
             : 'manual';
-          const payload = {
-            projectId: qs('projectId').value || null,
-            aiModelMode: qs('aiModelMode').value,
-            workflowMode,
-            topicHint: qs('topicHint').value,
-            hypothesesCount: Number(qs('hypothesesCount').value || '10'),
-            serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
-            requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
-            market: {
-              country: qs('country').value,
-              language: qs('language').value,
-            },
-            audience: qs('audience').value,
-            userPains: parseListInput('userPains'),
-            userScenarios: parseListInput('userScenarios'),
-            keywordExpansionPrompt: qs('keywordExpansionPrompt').value || null,
-            product: {
-              name: qs('productName').value,
-              description: qs('productDescription').value,
-            },
-            keyMessage: qs('keyMessage').value || null,
-            brandConstraints: parseListInput('brandConstraints'),
-            claimsConstraints: parseListInput('claimsConstraints'),
-            preferredAngle: qs('preferredAngle').value || null,
-            excludedTopics: parseListInput('excludedTopics'),
-            campaignContext: qs('campaignContext').value || null,
-            audienceShift: qs('audienceBefore').value && qs('audienceAfter').value
-              ? { before: qs('audienceBefore').value, after: qs('audienceAfter').value }
-              : null,
-            cta: qs('cta').value || null,
-            seoProductBalance: {
-              seoWeight: Number(qs('seoWeight').value || '0.5'),
-              productWeight: Number(qs('productWeight').value || '0.5'),
-            },
-          };
-          const result = await fetchJson('/seo-briefing/runs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
+          const selectedLanguages = getSelectedLanguagePresets();
+          setLaunchStatus(
+            selectedLanguages.length > 1
+              ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs in parallel...'
+              : 'Creating one SEO brief run...',
+          );
+          showToast(
+            selectedLanguages.length > 1
+              ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs'
+              : 'Creating SEO brief run',
+          );
+          if (selectedLanguages.length > 1) {
+            await createLanguageBatch(selectedLanguages, workflowMode);
+            return;
+          }
+          const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_LANGUAGE_PRESETS[0], workflowMode);
+          setLaunchStatus('Run created: ' + result.runId);
           appState.selectedRunId = result.runId;
           appState.activeSeoStep = 'keywords';
           setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
@@ -6229,10 +7056,413 @@ High-risk leverage</textarea>
             void runAutoFlowUntilClusterSelection(result.runId);
           }
         } catch (error) {
+          setLaunchStatus(error instanceof Error ? error.message : 'Failed to create run', 'error');
           showToast(error instanceof Error ? error.message : 'Failed to create run');
         } finally {
           launchBtn.disabled = false;
         }
+      }
+
+      function buildCreateRunPayload(language, workflowMode, country) {
+        return {
+          projectId: qs('projectId').value || null,
+          aiModelMode: qs('aiModelMode').value,
+          workflowMode,
+          topicHint: qs('topicHint').value,
+          hypothesesCount: Number(qs('hypothesesCount').value || '10'),
+          serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
+          requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
+          coverImageUrl: qs('blogCoverImageUrl').value.trim() || null,
+          deepSeekPricing: {
+            inputUsdPerMillionTokens: Number(qs('deepSeekInputUsdPerMillionTokens').value || '0'),
+            outputUsdPerMillionTokens: Number(qs('deepSeekOutputUsdPerMillionTokens').value || '0'),
+          },
+          market: {
+            country: country || qs('country').value,
+            language,
+          },
+          audience: qs('audience').value,
+          userPains: parseListInput('userPains'),
+          userScenarios: parseListInput('userScenarios'),
+          keywordExpansionPrompt: qs('keywordExpansionPrompt').value || null,
+          product: {
+            name: qs('productName').value,
+            description: qs('productDescription').value,
+          },
+          keyMessage: qs('keyMessage').value || null,
+          brandConstraints: parseListInput('brandConstraints'),
+          claimsConstraints: parseListInput('claimsConstraints'),
+          preferredAngle: qs('preferredAngle').value || null,
+          excludedTopics: parseListInput('excludedTopics'),
+          campaignContext: qs('campaignContext').value || null,
+          audienceShift: qs('audienceBefore').value && qs('audienceAfter').value
+            ? { before: qs('audienceBefore').value, after: qs('audienceAfter').value }
+            : null,
+          cta: qs('cta').value || null,
+          seoProductBalance: {
+            seoWeight: Number(qs('seoWeight').value || '0.5'),
+            productWeight: Number(qs('productWeight').value || '0.5'),
+          },
+        };
+      }
+
+      async function createSeoBriefRunForLanguage(language, workflowMode) {
+        const preset = resolveRunLanguagePreset(language);
+        return fetchJson('/seo-briefing/runs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildCreateRunPayload(preset.name, workflowMode, preset.country)),
+        });
+      }
+
+      async function createLanguageBatch(languages, workflowMode) {
+        appState.selectedRunId = null;
+        appState.selectedRun = null;
+        appState.activeSeoStep = 'input';
+        updateUrl(null);
+        syncRunPolling(null);
+        renderEmptyDetail();
+        const batchItems = languages.map((language) => ({
+          code: language.code,
+          country: language.country,
+          label: language.label,
+          name: language.name,
+          runId: null,
+          readyForFinalize: false,
+          diagnostics: [],
+          stage: 'Queued',
+          status: 'queued',
+          message: 'Waiting',
+        }));
+        appState.languageBatchItems = batchItems;
+        appState.languageBatchWorkflowMode = workflowMode;
+        setLaunchStatus('Language batch queued: ' + batchItems.map((item) => item.label + ' → ' + item.country).join(', '));
+        renderLanguageBatchProgress();
+        qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showToast('Creating ' + String(batchItems.length) + ' language runs');
+
+        await runWithConcurrency(batchItems, 3, async (item) => {
+          item.status = 'running';
+          item.stage = 'Create run';
+          item.message = 'Creating run';
+          renderLanguageBatchProgress();
+          try {
+            setLaunchStatus('Sending create-run request for ' + item.label + ' → ' + item.country);
+            const result = await createSeoBriefRunForLanguage(item, workflowMode);
+            item.runId = result.runId;
+            setLaunchStatus('Run created for ' + item.label + ': ' + result.runId);
+            setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
+            item.status = workflowMode === 'auto_until_selection' ? 'running' : 'done';
+            item.stage = workflowMode === 'auto_until_selection' ? 'Auto flow' : 'Run created';
+            item.message = workflowMode === 'auto_until_selection'
+              ? 'Running auto flow'
+              : result.deduplicated
+                ? 'Reused existing run'
+                : 'Run created';
+            renderLanguageBatchProgress();
+
+            if (workflowMode === 'auto_until_selection') {
+              await runAutoFlowHeadless(result.runId, (progress) => {
+                item.stage = progress.label;
+                item.message =
+                  progress.status === 'skipped'
+                    ? 'Skipped completed step ' + String(progress.index) + '/' + String(progress.total)
+                    : 'Step ' + String(progress.index) + '/' + String(progress.total);
+                renderLanguageBatchProgress();
+              });
+              item.readyForFinalize = true;
+              item.status = 'done';
+              item.stage = 'Final brief';
+              item.message = 'Final brief generated';
+              renderLanguageBatchProgress();
+            }
+          } catch (error) {
+            item.status = 'failed';
+            item.stage = item.stage || 'Failed';
+            item.message = error instanceof Error ? error.message : 'Failed';
+            renderLanguageBatchProgress();
+          }
+        });
+
+        await loadRuns();
+        renderLanguageBatchProgress();
+        qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const failedCount = batchItems.filter((item) => item.status === 'failed').length;
+        showToast(failedCount > 0
+          ? 'Language batch finished with ' + String(failedCount) + ' failed run(s)'
+          : 'Language batch finished');
+      }
+
+      async function postRunAction(runId, path, payload = {}) {
+        return fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      function setBatchItemProgress(item, stage, message, status = 'running') {
+        item.stage = stage;
+        item.message = message;
+        item.status = status;
+        renderLanguageBatchProgress();
+      }
+
+      async function finalizeLanguageBatch() {
+        if (appState.languageBatchFinalizing) return;
+        const items = appState.languageBatchItems.filter((item) => item.runId);
+        if (!items.length) {
+          showToast('No batch runs to finalize');
+          return;
+        }
+        appState.languageBatchFinalizing = true;
+        renderLanguageBatchProgress();
+        try {
+          await runWithConcurrency(items, 2, async (item) => {
+            try {
+              await finalizeLanguageBatchItem(item);
+              if (item.status !== 'done') {
+                setBatchItemProgress(item, 'Calendar', 'Finalized and scheduled', 'done');
+              }
+            } catch (error) {
+              item.diagnostics = [
+                error instanceof Error ? error.message : 'Failed to finalize this language',
+              ];
+              setBatchItemProgress(
+                item,
+                item.stage || 'Finalize failed',
+                error instanceof Error ? error.message : 'Failed to finalize',
+                'failed',
+              );
+            }
+          });
+          showToast('Batch finalization finished');
+        } finally {
+          appState.languageBatchFinalizing = false;
+          renderLanguageBatchProgress();
+          await loadRuns();
+          if (appState.selectedRunId) {
+            await selectRun(appState.selectedRunId, false);
+          }
+        }
+      }
+
+      async function finalizeLanguageBatchItem(item) {
+        let run = await fetchRunSnapshot(item.runId);
+        let flags = getManualStepFlags(run);
+        if (!flags.longreadDraft) {
+          setBatchItemProgress(item, 'Longread Draft', 'Generating longread');
+          await postRunAction(item.runId, '/generate-longread-draft');
+          run = await fetchRunSnapshot(item.runId);
+          flags = getManualStepFlags(run);
+        }
+        if (!flags.longreadCleanup) {
+          setBatchItemProgress(item, 'AI Review Loop', 'Reviewing and revising longread');
+          await postRunAction(item.runId, '/cleanup-longread-article');
+          run = await fetchRunSnapshot(item.runId);
+          flags = getManualStepFlags(run);
+        }
+        if (!flags.longreadPackage) {
+          setBatchItemProgress(item, 'Final Package', 'Packaging final article');
+          await postRunAction(item.runId, '/package-longread-article');
+          run = await fetchRunSnapshot(item.runId);
+          flags = getManualStepFlags(run);
+        }
+
+        const socialChannels = markerPlanChannelsForRun(run);
+        if (socialChannels.length > 0) {
+          setBatchItemProgress(item, 'Adaptations', 'Creating dashboard adaptations');
+          let adaptationResult = null;
+          const existingArtifact = findArtifact(run, 'longread_adaptations_export');
+          const existingAdaptations = Array.isArray(existingArtifact?.payload?.adaptations)
+            ? existingArtifact.payload.adaptations
+            : [];
+          const existingArtifactCoversChannels = socialChannels.every((channel) =>
+            existingAdaptations.some(
+              (adaptation) =>
+                normalizePublicationChannelId(adaptation?.channelId) === channel.channelId &&
+                adaptation?.adaptationId,
+            ),
+          );
+          if (existingArtifact?.payload?.articleId && existingArtifactCoversChannels) {
+            adaptationResult = existingArtifact.payload;
+          } else {
+            adaptationResult = await postRunAction(item.runId, '/create-longread-adaptations', {
+              channels: socialChannels,
+            });
+            run = await fetchRunSnapshot(item.runId);
+          }
+          setBatchItemProgress(item, 'Calendar', 'Scheduling marker placements');
+          const scheduleResult = await autoScheduleMarkerPlanAdaptations(run, adaptationResult);
+          item.diagnostics = Array.isArray(scheduleResult.details) ? scheduleResult.details : [];
+          item.message =
+            'Scheduled ' +
+            String(scheduleResult.scheduled) +
+            ', skipped ' +
+            String(scheduleResult.skipped) +
+            ', failed ' +
+            String(scheduleResult.failed) +
+            ', marker placements removed ' +
+            String(scheduleResult.markerPlacementsDeleted || 0);
+          item.status =
+            scheduleResult.failed > 0 ||
+            scheduleResult.markerCleanupFailed > 0 ||
+            scheduleResult.scheduled === 0
+              ? 'failed'
+              : 'done';
+          renderLanguageBatchProgress();
+        } else if (markerPlanBlogPlacementsForRun(run).length > 0) {
+          item.diagnostics = ['Blog placement found. Final package is ready, but Blog publish needs the Blog publish action and cover URL.'];
+          setBatchItemProgress(item, 'Blog', 'Final package ready; publish Blog with cover URL', 'done');
+        } else {
+          item.diagnostics = ['No marker placements matched this language.'];
+          setBatchItemProgress(item, 'Calendar', 'No marker placements for this language', 'done');
+        }
+      }
+
+      async function runWithConcurrency(items, concurrency, worker) {
+        let nextIndex = 0;
+        const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+          while (nextIndex < items.length) {
+            const item = items[nextIndex];
+            nextIndex += 1;
+            await worker(item);
+          }
+        });
+        await Promise.all(workers);
+      }
+
+      function getBatchWorkflowStep(item) {
+        const stage = String(item?.stage || '').toLowerCase();
+        if (stage.includes('longread') || stage.includes('review') || stage.includes('package') || stage.includes('adaptation') || stage.includes('calendar') || stage.includes('blog')) {
+          return 'articleGroup';
+        }
+        if (stage.includes('final brief') || stage.includes('final seo brief')) {
+          return 'finalBrief';
+        }
+        if (stage.includes('onpage')) {
+          return 'onPageGroup';
+        }
+        if (stage.includes('cluster') || stage.includes('product fit') || stage.includes('selecting')) {
+          return 'clusterGroup';
+        }
+        if (stage.includes('competitor') || stage.includes('dirty') || stage.includes('filtering') || stage.includes('scoring')) {
+          return 'competitionGroup';
+        }
+        if (stage.includes('serp')) {
+          return 'serpGroup';
+        }
+        if (stage.includes('keyword') || stage.includes('hypotheses')) {
+          return 'keywords';
+        }
+        return 'input';
+      }
+
+      function getBatchStepIndex(stepId) {
+        const order = SEO_STEP_TABS.map((step) => step.id);
+        const index = order.indexOf(stepId);
+        return index >= 0 ? index : 0;
+      }
+
+      function renderBatchWorkflowTabs(item) {
+        const activeStep = getBatchWorkflowStep(item);
+        const activeIndex = getBatchStepIndex(activeStep);
+        const isFinalized = item.status === 'done' && activeStep === 'articleGroup';
+        return (
+          '<div class="batch-step-tabs">' +
+            SEO_STEP_TABS.map((step) => {
+              const stepIndex = getBatchStepIndex(step.id);
+              const active = step.id === activeStep;
+              const ready =
+                stepIndex < activeIndex ||
+                (item.readyForFinalize && stepIndex <= getBatchStepIndex('finalBrief')) ||
+                (isFinalized && stepIndex <= getBatchStepIndex('articleGroup'));
+              const loading = item.status === 'running' && active;
+              const className = [
+                'seo-step-tab',
+                active ? 'is-active' : '',
+                ready ? 'is-ready' : '',
+                loading ? 'is-loading' : '',
+                step.kind === 'article' ? 'is-article' : '',
+                step.kind === 'audit' ? 'is-audit' : '',
+              ].filter(Boolean).join(' ');
+              return (
+                '<span class="' + escapeHtmlClient(className) + '">' +
+                  '<span class="seo-step-dot"></span>' +
+                  '<span>' + escapeHtmlClient(String(step.number) + ' ' + step.label) + '</span>' +
+                '</span>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      function renderLanguageBatchItem(item) {
+        const className = [
+          'batch-workflow-card',
+          item.status === 'failed' ? 'is-failed' : '',
+          item.status === 'done' ? 'is-done' : '',
+        ].filter(Boolean).join(' ');
+        const statusLabel = item.status === 'running'
+          ? 'running'
+          : item.status === 'done'
+            ? 'done'
+            : item.status === 'failed'
+              ? 'failed'
+              : 'queued';
+        const diagnostics = Array.isArray(item.diagnostics) ? item.diagnostics.filter(Boolean) : [];
+        return (
+          '<section class="' + escapeHtmlClient(className) + '">' +
+            '<div class="batch-workflow-head">' +
+              '<div>' +
+                '<div class="eyebrow">Language Workflow</div>' +
+                '<h4>' + escapeHtmlClient(item.label + ' (' + item.code + ')') + '</h4>' +
+                '<div class="batch-workflow-meta">' +
+                  '<span>DataForSEO: ' + escapeHtmlClient(item.country) + '</span>' +
+                  (item.runId ? '<span class="mono">' + escapeHtmlClient(item.runId) + '</span>' : '<span>No run yet</span>') +
+                '</div>' +
+              '</div>' +
+              '<span class="badge">' + escapeHtmlClient(statusLabel) + '</span>' +
+            '</div>' +
+            renderBatchWorkflowTabs(item) +
+            '<p>' + escapeHtmlClient((item.stage || statusLabel) + ' · ' + (item.message || statusLabel)) + '</p>' +
+            (diagnostics.length
+              ? '<details class="batch-diagnostics" open><summary>Diagnostics</summary><ul>' +
+                diagnostics.map((detail) => '<li>' + escapeHtmlClient(detail) + '</li>').join('') +
+                '</ul></details>'
+              : '') +
+          '</section>'
+        );
+      }
+
+      function renderLanguageBatchProgress(items = appState.languageBatchItems, workflowMode = appState.languageBatchWorkflowMode) {
+        const node = qs('languageBatchProgress');
+        if (!node) return;
+        if (!Array.isArray(items) || items.length === 0) {
+          node.hidden = true;
+          node.innerHTML = '';
+          return;
+        }
+        const counts = {
+          queued: items.filter((item) => item.status === 'queued').length,
+          running: items.filter((item) => item.status === 'running').length,
+          done: items.filter((item) => item.status === 'done').length,
+          failed: items.filter((item) => item.status === 'failed').length,
+        };
+        const canFinalize =
+          appState.markerPlan &&
+          items.length > 0 &&
+          items.every((item) => item.status === 'done' && item.runId && item.readyForFinalize);
+        node.hidden = false;
+        node.innerHTML =
+          '<div class="inline-meta"><strong>Language batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to final brief' : 'create runs only') + '</span></div>' +
+          '<p>' + escapeHtmlClient(String(counts.running) + ' running / ' + String(counts.queued) + ' queued / ' + String(counts.done) + ' done / ' + String(counts.failed) + ' failed') + '</p>' +
+          '<div class="batch-progress-list">' + items.map(renderLanguageBatchItem).join('') + '</div>' +
+          (canFinalize
+            ? '<div class="actions"><button type="button" class="primary ' + escapeHtmlClient(appState.languageBatchFinalizing ? 'is-loading' : '') + '" id="finalizeLanguageBatchBtn" ' + (appState.languageBatchFinalizing ? 'disabled' : '') + '>' + escapeHtmlClient(appState.languageBatchFinalizing ? 'Finalizing...' : 'Finalize all + send marker publications to calendar') + '</button></div>'
+            : appState.markerPlan
+              ? '<p class="muted">Finalize button appears when every language reaches final brief.</p>'
+              : '<p class="muted">Calendar scheduling requires launching from a marker plan.</p>');
       }
 
       function bindLaunchFormActions() {
@@ -6242,6 +7472,17 @@ High-risk leverage</textarea>
         }
         launchForm.dataset.bound = 'true';
         launchForm.addEventListener('submit', createRun);
+        qs('launchBtn')?.addEventListener('click', (event) => {
+          event.preventDefault();
+          void createRun(event);
+        });
+        document.addEventListener('click', (event) => {
+          const target = event.target;
+          if (target instanceof HTMLElement && target.closest('#finalizeLanguageBatchBtn')) {
+            event.preventDefault();
+            void finalizeLanguageBatch();
+          }
+        });
         qs('balanceSlider')?.addEventListener('input', syncBalanceSlider);
         document.querySelectorAll('input[name="inputMode"]').forEach((input) => {
           input.addEventListener('change', syncInputMode);
@@ -6264,6 +7505,7 @@ High-risk leverage</textarea>
         document.querySelectorAll('input[name="workflowModeChoice"]').forEach((input) => {
           input.addEventListener('change', syncWorkflowMode);
         });
+        qs('language')?.addEventListener('change', syncCountryFromSelectedLanguages);
         qs('extractBriefTextBtn')?.addEventListener('click', async () => {
           try {
             await extractContextFromText(qs('briefContextText').value);
@@ -6285,6 +7527,12 @@ High-risk leverage</textarea>
           }
         });
         qs('projectId')?.addEventListener('change', () => {
+          if (appState.markerPlan && qs('projectId')?.value !== appState.markerPlan.projectId) {
+            appState.markerPlan = null;
+            qs('campaignContext').value = '';
+            renderMarkerPlanContext();
+            updateUrl(appState.selectedRunId);
+          }
           fillFromBrandMemory({ silent: true }).catch(() => undefined);
         });
         qs('fillFromBrandMemoryBtn')?.addEventListener('click', () => {
@@ -6305,6 +7553,7 @@ High-risk leverage</textarea>
         syncInputMode();
         syncAiModelMode();
         syncWorkflowMode();
+        syncCountryFromSelectedLanguages();
         qs('refreshAllBtn').addEventListener('click', async () => {
           await loadRuns();
           if (appState.selectedRunId) {
@@ -6325,6 +7574,7 @@ High-risk leverage</textarea>
           updateUrl(null);
         });
         await loadProjects();
+        await applyMarkerPlanFromInitialState();
         await loadRuns();
       }
 

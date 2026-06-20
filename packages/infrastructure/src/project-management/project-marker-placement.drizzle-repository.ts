@@ -86,6 +86,10 @@ export class ProjectMarkerPlacementDrizzleRepository extends ProjectMarkerPlacem
       });
   }
 
+  async deleteById(id: ProjectMarkerPlacementId): Promise<void> {
+    await this.db.delete(projectMarkerPlacements).where(eq(projectMarkerPlacements.id, id));
+  }
+
   async deleteByMarkerId(markerId: ProjectMarkerId): Promise<void> {
     await this.db
       .delete(projectMarkerPlacements)

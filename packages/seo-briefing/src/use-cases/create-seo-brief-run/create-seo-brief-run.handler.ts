@@ -21,11 +21,11 @@ import {
 } from '../../ports/brand-memory-reader.port.js';
 import type { SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
 import { deriveTopicHintScope } from '../../services/topic-hint-scope.service.js';
+import { normalizeSeoBriefRequestTimeoutMs } from '../seo-brief-request-timeout.js';
 import {
   CreateSeoBriefRunCommand,
   type CreateSeoBriefRunInput,
 } from './create-seo-brief-run.command.js';
-import { normalizeSeoBriefRequestTimeoutMs } from '../seo-brief-request-timeout.js';
 
 export interface CreateSeoBriefRunResult {
   runId: string;
@@ -44,6 +44,9 @@ interface NormalizedCreateSeoBriefRunInput {
   hypothesesCount: number;
   serpEnrichmentCount: number;
   requestTimeoutMs: number;
+  coverImageUrl: string | null;
+  deepSeekInputUsdPerMillionTokens: number | null;
+  deepSeekOutputUsdPerMillionTokens: number | null;
   competitorKeywordsJsonId: string | null;
   country: string;
   language: string;
@@ -107,11 +110,7 @@ function normalizeRequiredInputText(value?: string | null): string {
 
 function normalizeTextList(value?: string[] | null): string[] {
   return Array.from(
-    new Set(
-      (value ?? [])
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0),
-    ),
+    new Set((value ?? []).map((item) => item.trim()).filter((item) => item.length > 0)),
   );
 }
 
@@ -169,6 +168,14 @@ function normalizePositiveInteger(value: number | null | undefined, fallback: nu
   return Math.max(1, Math.floor(value));
 }
 
+function normalizeNonNegativeNumber(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+
+  return value;
+}
+
 function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBriefRunInput {
   const weights = normalizeWeights(input.seoProductBalance);
   const topicHint = normalizeRequiredInputText(input.topicHint ?? input.topicSeed);
@@ -184,6 +191,13 @@ function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBrief
     hypothesesCount,
     serpEnrichmentCount: Math.min(requestedSerpEnrichmentCount, hypothesesCount),
     requestTimeoutMs: normalizeSeoBriefRequestTimeoutMs(input.requestTimeoutMs),
+    coverImageUrl: normalizeText(input.coverImageUrl),
+    deepSeekInputUsdPerMillionTokens: normalizeNonNegativeNumber(
+      input.deepSeekPricing?.inputUsdPerMillionTokens,
+    ),
+    deepSeekOutputUsdPerMillionTokens: normalizeNonNegativeNumber(
+      input.deepSeekPricing?.outputUsdPerMillionTokens,
+    ),
     competitorKeywordsJsonId: normalizeText(input.competitorKeywordsJsonId),
     country: normalizeRequiredText(input.market.country),
     language: normalizeRequiredText(input.market.language),
@@ -265,8 +279,7 @@ function mergeBrandMemorySnapshot(
     requiredPhrases: source.brandMemorySnapshot.requiredPhrases,
     brandDocs: source.brandMemorySnapshot.brandDocs,
     adaptationPromptRules: source.brandMemorySnapshot.adaptationPromptRules,
-    seoCompetitors:
-      source.brandMemorySnapshot.seoCompetitors ?? inputBackedSnapshot.seoCompetitors,
+    seoCompetitors: source.brandMemorySnapshot.seoCompetitors ?? inputBackedSnapshot.seoCompetitors,
     seoCompetitorKeywordMap:
       source.brandMemorySnapshot.seoCompetitorKeywordMap ??
       inputBackedSnapshot.seoCompetitorKeywordMap,
@@ -292,7 +305,7 @@ function applyBrandMemoryDefaults(
     brandConstraints:
       input.brandConstraints.length > 0
         ? input.brandConstraints
-        : brandMemorySnapshot.brandConstraints ?? [],
+        : (brandMemorySnapshot.brandConstraints ?? []),
     claimsConstraints:
       input.claimsConstraints.length > 0
         ? input.claimsConstraints
@@ -318,6 +331,11 @@ function createNormalizedInputArtifactPayload(
     hypothesesCount: input.hypothesesCount,
     serpEnrichmentCount: input.serpEnrichmentCount,
     requestTimeoutMs: input.requestTimeoutMs,
+    coverImageUrl: input.coverImageUrl,
+    deepSeekPricing: {
+      inputUsdPerMillionTokens: input.deepSeekInputUsdPerMillionTokens,
+      outputUsdPerMillionTokens: input.deepSeekOutputUsdPerMillionTokens,
+    },
     competitorKeywordsJsonId: input.competitorKeywordsJsonId,
     market: {
       country: input.country,
@@ -536,14 +554,13 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
     knownCompetitorsOptional: input.knownCompetitorsOptional.map((item) =>
       item.trim().toLowerCase(),
     ),
-    knownCompetitorsExclude: input.knownCompetitorsExclude.map((item) =>
-      item.trim().toLowerCase(),
-    ),
+    knownCompetitorsExclude: input.knownCompetitorsExclude.map((item) => item.trim().toLowerCase()),
     userPains: input.userPains.map((item) => item.trim().toLowerCase()),
     userScenarios: input.userScenarios.map((item) => item.trim().toLowerCase()),
     hypothesesCount: input.hypothesesCount,
     serpEnrichmentCount: input.serpEnrichmentCount,
     requestTimeoutMs: input.requestTimeoutMs,
+    coverImageUrl: input.coverImageUrl?.trim() ?? null,
     competitorKeywordsJsonId: input.competitorKeywordsJsonId?.trim().toLowerCase() ?? null,
     brandConstraints: input.brandConstraints.map((item) => item.trim().toLowerCase()),
     claimsConstraints: input.claimsConstraints.map((item) => item.trim().toLowerCase()),
@@ -588,10 +605,7 @@ function extractNormalizedInputPayload(artifacts: SeoBriefArtifact[]): SeoBriefJ
   return inputArtifact?.payload ?? null;
 }
 
-function extractStringArrayFromPayload(
-  payload: SeoBriefJsonValue | null,
-  field: string,
-): string[] {
+function extractStringArrayFromPayload(payload: SeoBriefJsonValue | null, field: string): string[] {
   if (!payload || Array.isArray(payload) || typeof payload !== 'object') {
     return [];
   }
@@ -629,6 +643,41 @@ function extractKnownCompetitorsFromPayload(
     knownCompetitorsMustInclude: extractStringArrayFromPayload(value, 'mustInclude'),
     knownCompetitorsOptional: extractStringArrayFromPayload(value, 'optional'),
     knownCompetitorsExclude: extractStringArrayFromPayload(value, 'exclude'),
+  };
+}
+
+function extractDeepSeekPricingFromPayload(
+  payload: SeoBriefJsonValue | null,
+): Pick<
+  NormalizedCreateSeoBriefRunInput,
+  'deepSeekInputUsdPerMillionTokens' | 'deepSeekOutputUsdPerMillionTokens'
+> {
+  if (!payload || Array.isArray(payload) || typeof payload !== 'object') {
+    return {
+      deepSeekInputUsdPerMillionTokens: null,
+      deepSeekOutputUsdPerMillionTokens: null,
+    };
+  }
+
+  const pricing = payload.deepSeekPricing;
+  if (!pricing || Array.isArray(pricing) || typeof pricing !== 'object') {
+    return {
+      deepSeekInputUsdPerMillionTokens: null,
+      deepSeekOutputUsdPerMillionTokens: null,
+    };
+  }
+
+  return {
+    deepSeekInputUsdPerMillionTokens:
+      typeof pricing.inputUsdPerMillionTokens === 'number' &&
+      Number.isFinite(pricing.inputUsdPerMillionTokens)
+        ? pricing.inputUsdPerMillionTokens
+        : null,
+    deepSeekOutputUsdPerMillionTokens:
+      typeof pricing.outputUsdPerMillionTokens === 'number' &&
+      Number.isFinite(pricing.outputUsdPerMillionTokens)
+        ? pricing.outputUsdPerMillionTokens
+        : null,
   };
 }
 
@@ -814,6 +863,7 @@ export class CreateSeoBriefRunHandler
           const candidateInputPayload = extractNormalizedInputPayload(candidateArtifacts);
           const candidateKnownCompetitors =
             extractKnownCompetitorsFromPayload(candidateInputPayload);
+          const candidateDeepSeekPricing = extractDeepSeekPricingFromPayload(candidateInputPayload);
           return createRunFingerprint({
             projectId: candidate.projectId,
             aiModelMode: extractAiModelModeFromArtifacts(candidateArtifacts),
@@ -842,6 +892,8 @@ export class CreateSeoBriefRunHandler
               'requestTimeoutMs',
               300_000,
             ),
+            coverImageUrl: extractTextFromPayload(candidateInputPayload, 'coverImageUrl'),
+            ...candidateDeepSeekPricing,
             competitorKeywordsJsonId: extractTextFromPayload(
               candidateInputPayload,
               'competitorKeywordsJsonId',

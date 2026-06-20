@@ -165,6 +165,7 @@ export { CreateProjectMarkerPlacementCommand } from './use-cases/create-project-
 export { DeleteCampaignCommand } from './use-cases/delete-campaign/delete-campaign.command.js';
 export { DeleteProjectCommand } from './use-cases/delete-project/delete-project.command.js';
 export { DeleteProjectMarkerCommand } from './use-cases/delete-project-marker/delete-project-marker.command.js';
+export { DeleteProjectMarkerPlacementCommand } from './use-cases/delete-project-marker-placement/delete-project-marker-placement.command.js';
 export type {
   CampaignApprovalInboxItemResult,
   GetCampaignApprovalInboxResult,

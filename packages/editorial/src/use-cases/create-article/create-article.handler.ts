@@ -1,3 +1,4 @@
+import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { Article } from '../../domain/article.aggregate.js';
 import { ArticleRepository } from '../../domain/article.repository.js';
@@ -6,7 +7,9 @@ import { CreateArticleCommand } from './create-article.command.js';
 @CommandHandler(CreateArticleCommand)
 export class CreateArticleHandler implements ICommandHandler<CreateArticleCommand, string> {
   constructor(
+    @Inject(ArticleRepository)
     private readonly articleRepository: ArticleRepository,
+    @Inject(EventBus)
     private readonly eventBus: EventBus,
   ) {}
 
@@ -16,6 +19,7 @@ export class CreateArticleHandler implements ICommandHandler<CreateArticleComman
       content: command.content,
       language: command.language,
       releasePlanSnapshot: command.releasePlanSnapshot,
+      defaultCoverUrl: command.defaultCoverUrl,
     });
 
     await this.articleRepository.save(article);

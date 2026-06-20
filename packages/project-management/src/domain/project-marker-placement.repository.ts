@@ -18,5 +18,6 @@ export abstract class ProjectMarkerPlacementRepository {
     publishAt: Date,
   ): Promise<ProjectMarkerPlacement | null>;
   abstract save(placement: ProjectMarkerPlacement): Promise<void>;
+  abstract deleteById(id: ProjectMarkerPlacementId): Promise<void>;
   abstract deleteByMarkerId(markerId: ProjectMarkerId): Promise<void>;
 }

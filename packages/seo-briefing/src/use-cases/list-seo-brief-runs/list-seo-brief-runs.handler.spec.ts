@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SeoBriefArtifact } from '../../domain/seo-brief-artifact.entity.js';
 import { SeoBriefDocument } from '../../domain/seo-brief-document.entity.js';
 import { SeoBriefExternalCallLog } from '../../domain/seo-brief-external-call-log.entity.js';
 import { SeoBriefLlmCallLog } from '../../domain/seo-brief-llm-call-log.entity.js';
@@ -9,6 +10,7 @@ import {
   InMemorySeoBriefLlmLogRepository,
 } from '../../testing/logging-test-harness.js';
 import {
+  InMemorySeoBriefArtifactRepository,
   InMemorySeoBriefDocumentRepository,
   InMemorySeoBriefRunRepository,
   InMemorySeoBriefRunStepRepository,
@@ -20,6 +22,7 @@ describe('ListSeoBriefRunsHandler', () => {
   it('returns recent runs with final brief summary fields', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const documentRepository = new InMemorySeoBriefDocumentRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
     const stepRepository = new InMemorySeoBriefRunStepRepository();
     const llmLogRepository = new InMemorySeoBriefLlmLogRepository();
     const externalCallLogRepository = new InMemorySeoBriefExternalCallLogRepository();
@@ -123,6 +126,7 @@ describe('ListSeoBriefRunsHandler', () => {
     const handler = new ListSeoBriefRunsHandler(
       runRepository,
       documentRepository,
+      artifactRepository,
       stepRepository,
       llmLogRepository,
       externalCallLogRepository,
@@ -156,6 +160,7 @@ describe('ListSeoBriefRunsHandler', () => {
   it('supports filtering by project and status', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const documentRepository = new InMemorySeoBriefDocumentRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
     const stepRepository = new InMemorySeoBriefRunStepRepository();
     const llmLogRepository = new InMemorySeoBriefLlmLogRepository();
     const externalCallLogRepository = new InMemorySeoBriefExternalCallLogRepository();
@@ -212,6 +217,7 @@ describe('ListSeoBriefRunsHandler', () => {
     const handler = new ListSeoBriefRunsHandler(
       runRepository,
       documentRepository,
+      artifactRepository,
       stepRepository,
       llmLogRepository,
       externalCallLogRepository,
@@ -225,5 +231,80 @@ describe('ListSeoBriefRunsHandler', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe(keptRun.id);
+  });
+
+  it('uses artifact snapshots for run list summary when final document is missing', async () => {
+    const runRepository = new InMemorySeoBriefRunRepository();
+    const documentRepository = new InMemorySeoBriefDocumentRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
+    const stepRepository = new InMemorySeoBriefRunStepRepository();
+    const llmLogRepository = new InMemorySeoBriefLlmLogRepository();
+    const externalCallLogRepository = new InMemorySeoBriefExternalCallLogRepository();
+
+    const run = SeoBriefRun.create({
+      projectId: 'project_1',
+      topicSeed: 'usdc on tron',
+      country: 'Nigeria',
+      language: 'Hausa',
+      audience: 'Beginners',
+      productName: 'Northstar',
+      productDescription: 'Digital asset education',
+      brandMemorySnapshot: {
+        brandName: 'Northstar',
+        productDescription: 'Digital asset education',
+        targetAudience: 'Beginners',
+        approvedFacts: [],
+        forbiddenClaims: [],
+        glossary: {},
+        bannedPhrases: [],
+        requiredPhrases: [],
+        brandDocs: [],
+        adaptationPromptRules: null,
+      },
+    });
+    run.complete();
+    await runRepository.save(run);
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'cluster_selection',
+        artifactType: 'cluster_selection_snapshot',
+        payload: {
+          selectedCluster: {
+            label: 'USDC transfers on Tron',
+            primaryKeyword: 'usdc on tron',
+          },
+        },
+      }),
+    );
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'brief_generation',
+        artifactType: 'final_brief_snapshot',
+        payload: {
+          brief: {
+            recommendedTitle: 'USDC on Tron: What Beginners Need to Know',
+          },
+        },
+      }),
+    );
+
+    const handler = new ListSeoBriefRunsHandler(
+      runRepository,
+      documentRepository,
+      artifactRepository,
+      stepRepository,
+      llmLogRepository,
+      externalCallLogRepository,
+    );
+
+    const result = await handler.execute(new ListSeoBriefRunsQuery({ limit: 10 }));
+
+    expect(result[0]).toMatchObject({
+      selectedClusterLabel: 'USDC transfers on Tron',
+      finalBriefTitle: 'USDC on Tron: What Beginners Need to Know',
+      hasFinalBrief: true,
+    });
   });
 });

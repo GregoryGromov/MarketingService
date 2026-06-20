@@ -38,6 +38,8 @@ interface ClusterSelectionCandidate {
   sourceCluster: JsonRecord;
 }
 
+type WorkflowMode = 'manual' | 'auto_until_selection';
+
 export interface SelectSeoBriefClustersResult {
   artifactType: 'cluster_selection_snapshot';
   mainClusterName: string | null;
@@ -89,21 +91,27 @@ export class SelectSeoBriefClustersHandler
       const candidates = reviews
         .map((review) => toSelectionCandidate(review, requiredTopicTerms))
         .sort(compareSelectionCandidates);
+      const workflowMode = readWorkflowMode(artifacts);
       const selectedClusterName = normalizeClusterName(command.selectedClusterName);
-      const mainCluster = selectedClusterName
-        ? findManuallySelectedCluster(candidates, selectedClusterName)
-        : null;
+      const mainCluster = resolveMainCluster(candidates, workflowMode, selectedClusterName);
       const supportingClusters = candidates
         .filter((candidate) => candidate !== mainCluster && candidate.decision !== 'rejected')
         .slice(0, 3);
       const rejectedClusters = candidates.filter((candidate) => candidate.decision === 'rejected');
+      const selectionMode =
+        workflowMode === 'auto_until_selection' && !selectedClusterName
+          ? 'auto_selected'
+          : mainCluster
+            ? 'manual_selected'
+            : 'manual_required';
+      const manualSelectionRequired = workflowMode === 'manual' && !mainCluster;
 
       const payload: SeoBriefJsonObject = {
         artifactVersion: 'cluster_selection_v2',
         sourceArtifactType: 'cluster_product_fit_review',
         inputClusterCount: candidates.length,
-        selectionMode: mainCluster ? 'manual_selected' : 'manual_required',
-        manualSelectionRequired: !mainCluster,
+        selectionMode,
+        manualSelectionRequired,
         selectedClusterName: mainCluster?.clusterName ?? null,
         weights: {
           productFit: 28,
@@ -116,15 +124,21 @@ export class SelectSeoBriefClustersHandler
         },
         requiredTopicTerms,
         notes: [
-          'Main cluster is selected manually by the operator from ranked approved/supporting clusters.',
+          workflowMode === 'auto_until_selection'
+            ? 'Auto workflow selects the highest-ranked approved/supporting cluster and continues without manual confirmation.'
+            : 'Main cluster is selected manually by the operator from ranked approved/supporting clusters.',
           'Approved and supporting-only clusters can be selected manually; rejected clusters cannot.',
           'High competitor/proxy demand does not override bad Product Fit.',
           'Concrete topic hint terms are scored separately so generic adjacent clusters do not replace the requested scope.',
           'No direct volume does not kill a cluster when SERP, proxy, and Product Fit evidence are strong.',
         ],
         mainCluster: mainCluster ? toSelectedClusterJson(mainCluster) : null,
-        supportingClusters: supportingClusters.map(toSupportingClusterJson) as unknown as SeoBriefJsonValue,
-        rejectedClusters: rejectedClusters.map(toRejectedClusterJson) as unknown as SeoBriefJsonValue,
+        supportingClusters: supportingClusters.map(
+          toSupportingClusterJson,
+        ) as unknown as SeoBriefJsonValue,
+        rejectedClusters: rejectedClusters.map(
+          toRejectedClusterJson,
+        ) as unknown as SeoBriefJsonValue,
         rankedClusters: candidates.map(toRankedClusterJson) as unknown as SeoBriefJsonValue,
         selectedCluster: mainCluster ? toLegacySelectedClusterJson(mainCluster) : null,
       };
@@ -167,6 +181,28 @@ function normalizeClusterName(value: string | null | undefined): string | null {
   return normalized || null;
 }
 
+function resolveMainCluster(
+  candidates: ClusterSelectionCandidate[],
+  workflowMode: WorkflowMode,
+  selectedClusterName: string | null,
+): ClusterSelectionCandidate | null {
+  if (selectedClusterName) {
+    return findManuallySelectedCluster(candidates, selectedClusterName);
+  }
+
+  if (workflowMode !== 'auto_until_selection') {
+    return null;
+  }
+
+  const autoSelectedCluster =
+    candidates.find((candidate) => candidate.decision !== 'rejected') ?? null;
+  if (!autoSelectedCluster) {
+    throw new Error('Auto cluster selection found no approved or supporting clusters');
+  }
+
+  return autoSelectedCluster;
+}
+
 function findManuallySelectedCluster(
   candidates: ClusterSelectionCandidate[],
   selectedClusterName: string,
@@ -193,9 +229,18 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
+}
+
+function readWorkflowMode(artifacts: SeoBriefArtifact[]): WorkflowMode {
+  const normalizedInput = readLatestObjectArtifact(artifacts, 'normalized_input');
+  return normalizedInput?.workflowMode === 'auto_until_selection'
+    ? 'auto_until_selection'
+    : 'manual';
 }
 
 function readProductFitReviews(payload: SeoBriefJsonObject): JsonRecord[] {
@@ -252,7 +297,11 @@ function calculateScoreBreakdown(
   requiredTopicTerms: string[],
 ): ClusterSelectionScore {
   const productFit = clampScore(readNumber(review.productFitScore) ?? 0);
-  const topicScopeAlignment = calculateTopicScopeAlignment(review, sourceCluster, requiredTopicTerms);
+  const topicScopeAlignment = calculateTopicScopeAlignment(
+    review,
+    sourceCluster,
+    requiredTopicTerms,
+  );
   const competitorProxyDemandEvidence = calculateCompetitorProxyDemandEvidence(sourceCluster);
   const intentRelevance = calculateIntentRelevance(review, sourceCluster);
   const serpEnrichmentSupport = calculateSerpEnrichmentSupport(sourceCluster);
@@ -341,11 +390,13 @@ function getConcreteAnchorTerms(requiredTopicTerms: string[]): string[] {
 
 function calculateCompetitorProxyDemandEvidence(sourceCluster: JsonRecord): number {
   const supportingDetails = readSupportingItemDetails(sourceCluster);
-  const proxyScores = supportingDetails.flatMap((item) => [
-    readNumber(asObject(item.metrics)?.proxyDemandScore),
-    readNumber(asObject(item.metrics)?.competitorMatchScore),
-    readNumber(asObject(item.metrics)?.candidateScore),
-  ]).filter((value): value is number => value !== null);
+  const proxyScores = supportingDetails
+    .flatMap((item) => [
+      readNumber(asObject(item.metrics)?.proxyDemandScore),
+      readNumber(asObject(item.metrics)?.competitorMatchScore),
+      readNumber(asObject(item.metrics)?.candidateScore),
+    ])
+    .filter((value): value is number => value !== null);
   const searchVolumes = supportingDetails
     .map((item) => readNumber(asObject(item.metrics)?.searchVolume))
     .filter((value): value is number => value !== null);
@@ -387,7 +438,9 @@ function calculateSerpEnrichmentSupport(sourceCluster: JsonRecord): number {
   const questionCount = readArray(sourceCluster.questions).length;
   const supportingCount = supportingDetails.length;
   const serpSourceCount = supportingDetails.filter((item) =>
-    readStringArray(item.sources).some((source) => source.includes('serp') || source.includes('related')),
+    readStringArray(item.sources).some(
+      (source) => source.includes('serp') || source.includes('related'),
+    ),
   ).length;
 
   return clampScore(
@@ -424,8 +477,17 @@ function calculateRiskPenalty(review: JsonRecord): number {
     readString(review.productInsertionAngle),
     readString(review.whereToInsert),
     ...readStringArray(review.whatNotToClaim),
-  ].join(' ').toLowerCase();
-  const riskyWords = ['guaranteed', 'risk-free', 'no-risk', 'private key', 'seed phrase', 'cash-out tool'];
+  ]
+    .join(' ')
+    .toLowerCase();
+  const riskyWords = [
+    'guaranteed',
+    'risk-free',
+    'no-risk',
+    'private key',
+    'seed phrase',
+    'cash-out tool',
+  ];
   const keywordPenalty = riskyWords.some((word) => text.includes(word)) ? 8 : 0;
   const rejectionPenalty = decision === 'reject' || fitType === 'no_fit' ? 100 : 0;
 

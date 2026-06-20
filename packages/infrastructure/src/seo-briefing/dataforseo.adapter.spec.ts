@@ -284,6 +284,60 @@ describe('DataForSeoAdapter', () => {
     });
   });
 
+  it.each([
+    ['Pidgin', 'pcm'],
+    ['Hausa', 'ha'],
+    ['Punjabi', 'pa'],
+    ['Pashto', 'ps'],
+    ['Xhosa', 'xh'],
+    ['Igbo', 'ig'],
+    ['Romanian', 'ro'],
+  ])('normalizes %s before sending SERP requests to DataForSEO', async (language, code) => {
+    const { adapter, client } = createAdapter([
+      {
+        type: 'response',
+        value: {
+          status: 200,
+          payload: {
+            tasks: [
+              {
+                cost: 0.002,
+                status_code: 20000,
+                result: [
+                  {
+                    keyword: 'usdt',
+                    location_name: 'Nigeria',
+                    language_name: language,
+                    language_code: code,
+                    device: 'mobile',
+                    os: 'android',
+                    item_types: [],
+                    items: [],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    await adapter.getOrganicSerpSnapshot({
+      runId: 'seo_brief_run_language' as never,
+      keyword: 'USDT',
+      market: {
+        country: 'Nigeria',
+        language,
+      },
+    });
+
+    expect(client.requests[0]?.payload).toMatchObject({
+      language_code: code,
+      language_name: language,
+      location_name: 'Nigeria',
+    });
+  });
+
   it('maps a normalized serp snapshot with organic, paa, related searches, and special blocks', async () => {
     const { adapter, client, repository } = createAdapter([
       {
@@ -552,9 +606,7 @@ describe('DataForSeoAdapter', () => {
                             search_volume: 170,
                             cpc: 0.4,
                             competition_level: 'LOW',
-                            monthly_searches: [
-                              { year: 2026, month: 5, search_volume: 170 },
-                            ],
+                            monthly_searches: [{ year: 2026, month: 5, search_volume: 170 }],
                           },
                           keyword_properties: {
                             keyword_difficulty: 8,
@@ -744,7 +796,10 @@ describe('DataForSeoAdapter', () => {
                           h3: ['Flexible access'],
                         },
                         markdown: '# Earn USDT Rewards',
-                        text_blocks: ['Earn rewards on your USDT holdings.', 'Understand the risks.'],
+                        text_blocks: [
+                          'Earn rewards on your USDT holdings.',
+                          'Understand the risks.',
+                        ],
                         tables: [{ rows: 2 }],
                         links: [
                           {

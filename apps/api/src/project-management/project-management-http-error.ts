@@ -25,6 +25,7 @@ const BAD_REQUEST_PATTERNS = [
   /\bmust use a valid 24-hour time\b/i,
   /\bdayoffset must be an integer\b/i,
   /\bsource image\b/i,
+  /\bcoverimageurl must be a valid https url\b/i,
   /\bcannot be acknowledged\b/i,
 ];
 
@@ -50,8 +51,7 @@ export function rethrowProjectManagementHttpError(error: unknown): never {
     throw error;
   }
 
-  const message =
-    error instanceof Error ? error.message : 'Internal server error';
+  const message = error instanceof Error ? error.message : 'Internal server error';
 
   if (NOT_FOUND_PATTERNS.some((pattern) => pattern.test(message))) {
     throw new NotFoundException(message);

@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common';
-import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
+import { type IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { PublicationRepository } from '../../domain/publication.repository.js';
 import { PublicationPlanRepository } from '../../domain/publication-plan.repository.js';
 import { GetProjectPublicationPlansQuery } from './get-project-publication-plans.query.js';
@@ -26,7 +26,9 @@ export class GetProjectPublicationPlansHandler
     private readonly publicationRepository: PublicationRepository,
   ) {}
 
-  async execute(query: GetProjectPublicationPlansQuery): Promise<GetProjectPublicationPlansResultItem[]> {
+  async execute(
+    query: GetProjectPublicationPlansQuery,
+  ): Promise<GetProjectPublicationPlansResultItem[]> {
     const [plans, publications] = await Promise.all([
       this.publicationPlanRepository.findByProjectId(query.projectId, {
         from: query.from,
@@ -37,6 +39,17 @@ export class GetProjectPublicationPlansHandler
         to: query.to,
       }),
     ]);
+
+    const planKeys = new Set(
+      plans.map((plan) =>
+        publicationPlanDisplayKey(
+          plan.articleId,
+          plan.channelId,
+          plan.targetLanguage,
+          plan.publishAt,
+        ),
+      ),
+    );
 
     const items = [
       ...plans.map((plan) => ({
@@ -49,16 +62,28 @@ export class GetProjectPublicationPlansHandler
         createdAt: plan.createdAt,
         updatedAt: plan.updatedAt,
       })),
-      ...publications.map((publication) => ({
-        id: publication.id,
-        articleId: publication.articleId,
-        projectId: query.projectId,
-        channelId: publication.channelId,
-        targetLanguage: publication.targetLanguage,
-        publishAt: publication.publishAt,
-        createdAt: publication.createdAt,
-        updatedAt: publication.updatedAt,
-      })),
+      ...publications
+        .filter(
+          (publication) =>
+            !planKeys.has(
+              publicationPlanDisplayKey(
+                publication.articleId,
+                publication.channelId,
+                publication.targetLanguage,
+                publication.publishAt,
+              ),
+            ),
+        )
+        .map((publication) => ({
+          id: publication.id,
+          articleId: publication.articleId,
+          projectId: query.projectId,
+          channelId: publication.channelId,
+          targetLanguage: publication.targetLanguage,
+          publishAt: publication.publishAt,
+          createdAt: publication.createdAt,
+          updatedAt: publication.updatedAt,
+        })),
     ];
 
     return items.sort((left, right) => {
@@ -70,4 +95,13 @@ export class GetProjectPublicationPlansHandler
       return left.createdAt.getTime() - right.createdAt.getTime();
     });
   }
+}
+
+function publicationPlanDisplayKey(
+  articleId: string,
+  channelId: string,
+  targetLanguage: string,
+  publishAt: Date,
+): string {
+  return [articleId, channelId, targetLanguage.trim().toLowerCase(), publishAt.getTime()].join('|');
 }

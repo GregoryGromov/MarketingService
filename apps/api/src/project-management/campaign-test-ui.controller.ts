@@ -1726,6 +1726,11 @@ export class CampaignTestUiController {
               <input id="sourceImage" type="file" accept="image/png,image/jpeg,image/webp" />
               <span id="sourceImageNote" class="source-image-note">Optional. The image will be cropped automatically for Telegram, X, Discord, and Blog.</span>
             </label>
+            <label class="field">
+              Blog cover image URL
+              <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+              <span class="source-image-note">Optional. If set, Blog publishing uses this HTTPS image instead of BLOG_DEFAULT_COVER_IMAGE_URL.</span>
+            </label>
           </form>
         </section>
 
@@ -1858,7 +1863,37 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
+        const languageOptions = [
+          { value: 'en', label: 'English (en)' },
+          { value: 'pt', label: 'Português (pt)' },
+          { value: 'id', label: 'Bahasa Indonesia (id)' },
+          { value: 'es', label: 'Español (es)' },
+          { value: 'vi', label: 'Tiếng Việt (vi)' },
+          { value: 'ur', label: 'اردو (ur)' },
+          { value: 'tl', label: 'Tagalog (tl)' },
+          { value: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { value: 'ha', label: 'Hausa (ha)' },
+          { value: 'yo', label: 'Yorùbá (yo)' },
+          { value: 'ps', label: 'پښتو (ps)' },
+          { value: 'zu', label: 'isiZulu (zu)' },
+          { value: 'tr', label: 'Türkçe (tr)' },
+          { value: 'ar', label: 'العربية (ar)' },
+          { value: 'ru', label: 'Русский (ru)' },
+          { value: 'hi', label: 'हिन्दी (hi)' },
+          { value: 'ja', label: '日本語 (ja)' },
+          { value: 'ko', label: '한국어 (ko)' },
+          { value: 'fr', label: 'Français (fr)' },
+          { value: 'de', label: 'Deutsch (de)' },
+          { value: 'it', label: 'Italiano (it)' },
+          { value: 'nl', label: 'Nederlands (nl)' },
+          { value: 'ms', label: 'Bahasa Melayu (ms)' },
+          { value: 'th', label: 'ไทย (th)' },
+          { value: 'af', label: 'Afrikaans (af)' },
+          { value: 'xh', label: 'isiXhosa (xh)' },
+          { value: 'ig', label: 'Igbo (ig)' },
+          { value: 'pl', label: 'Polski (pl)' },
+          { value: 'ro', label: 'Română (ro)' },
+        ];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
         const emptyPresetId = '__empty__';
@@ -2568,6 +2603,10 @@ export class CampaignTestUiController {
           if (sourceImageNote && currentArticle?.defaultCoverUrl) {
             sourceImageNote.textContent = 'Image attached. Cropped variants will be used for social publishing.';
           }
+          const blogCoverImageUrlInput = document.getElementById('blogCoverImageUrl');
+          if (blogCoverImageUrlInput && currentArticle?.defaultCoverUrl?.startsWith('https://')) {
+            blogCoverImageUrlInput.value = currentArticle.defaultCoverUrl;
+          }
 
           return currentArticle;
         }
@@ -2592,17 +2631,19 @@ export class CampaignTestUiController {
         }
 
         function normalizePublicationLanguage(value) {
-          const normalizedValue = String(value || 'EN').toUpperCase();
-          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+          const normalizedValue = String(value || 'en').trim().toLowerCase();
+          const aliases = { fil: 'tl', english: 'en', russian: 'ru' };
+          const nextValue = aliases[normalizedValue] || normalizedValue;
+          return languageOptions.some((language) => language.value === nextValue) ? nextValue : 'en';
         }
 
         function buildLanguageSelectOptions(selectedValue) {
           const normalizedValue = normalizePublicationLanguage(selectedValue);
           return languageOptions
             .map((language) =>
-              '<option value="' + escapeHtml(language) + '"' +
-              (language === normalizedValue ? ' selected' : '') +
-              '>' + escapeHtml(language) + '</option>'
+              '<option value="' + escapeHtml(language.value) + '"' +
+              (language.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language.label) + '</option>'
             )
             .join('');
         }
@@ -2739,7 +2780,7 @@ export class CampaignTestUiController {
             dayOffset: '0',
             localTime: '09:00',
             channel: 'channel_telegram',
-            language: 'EN',
+            language: 'en',
             publicationType: normalizePublicationTypeValue('channel_telegram', null),
             style: 'default',
           };
@@ -3044,6 +3085,7 @@ export class CampaignTestUiController {
             }
             const sourceImageInput = document.getElementById('sourceImage');
             const sourceImageFile = sourceImageInput?.files?.[0] || null;
+            const coverImageUrl = document.getElementById('blogCoverImageUrl')?.value?.trim() || null;
 
             setPrimaryButtonBusy('longreadNext', true, 'Starting AI...', 'Next');
             try {
@@ -3058,6 +3100,7 @@ export class CampaignTestUiController {
                   body: JSON.stringify({
                     content: sourceContent,
                     language: getSelectedSourceLanguage(),
+                    coverImageUrl,
                     sourceImageDataUrl,
                   }),
                 },
@@ -3227,7 +3270,37 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
+        const languageOptions = [
+          { value: 'en', label: 'English (en)' },
+          { value: 'pt', label: 'Português (pt)' },
+          { value: 'id', label: 'Bahasa Indonesia (id)' },
+          { value: 'es', label: 'Español (es)' },
+          { value: 'vi', label: 'Tiếng Việt (vi)' },
+          { value: 'ur', label: 'اردو (ur)' },
+          { value: 'tl', label: 'Tagalog (tl)' },
+          { value: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { value: 'ha', label: 'Hausa (ha)' },
+          { value: 'yo', label: 'Yorùbá (yo)' },
+          { value: 'ps', label: 'پښتو (ps)' },
+          { value: 'zu', label: 'isiZulu (zu)' },
+          { value: 'tr', label: 'Türkçe (tr)' },
+          { value: 'ar', label: 'العربية (ar)' },
+          { value: 'ru', label: 'Русский (ru)' },
+          { value: 'hi', label: 'हिन्दी (hi)' },
+          { value: 'ja', label: '日本語 (ja)' },
+          { value: 'ko', label: '한국어 (ko)' },
+          { value: 'fr', label: 'Français (fr)' },
+          { value: 'de', label: 'Deutsch (de)' },
+          { value: 'it', label: 'Italiano (it)' },
+          { value: 'nl', label: 'Nederlands (nl)' },
+          { value: 'ms', label: 'Bahasa Melayu (ms)' },
+          { value: 'th', label: 'ไทย (th)' },
+          { value: 'af', label: 'Afrikaans (af)' },
+          { value: 'xh', label: 'isiXhosa (xh)' },
+          { value: 'ig', label: 'Igbo (ig)' },
+          { value: 'pl', label: 'Polski (pl)' },
+          { value: 'ro', label: 'Română (ro)' },
+        ];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
 
@@ -3242,17 +3315,19 @@ export class CampaignTestUiController {
         }
 
         function normalizePublicationLanguage(value) {
-          const normalizedValue = String(value || 'EN').toUpperCase();
-          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+          const normalizedValue = String(value || 'en').trim().toLowerCase();
+          const aliases = { fil: 'tl', english: 'en', russian: 'ru' };
+          const nextValue = aliases[normalizedValue] || normalizedValue;
+          return languageOptions.some((language) => language.value === nextValue) ? nextValue : 'en';
         }
 
         function buildLanguageSelectOptions(selectedValue) {
           const normalizedValue = normalizePublicationLanguage(selectedValue);
           return languageOptions
             .map((language) =>
-              '<option value="' + escapeHtml(language) + '"' +
-              (language === normalizedValue ? ' selected' : '') +
-              '>' + escapeHtml(language) + '</option>'
+              '<option value="' + escapeHtml(language.value) + '"' +
+              (language.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language.label) + '</option>'
             )
             .join('');
         }
@@ -3288,7 +3363,7 @@ export class CampaignTestUiController {
             dayOffset: '0',
             localTime: '09:00',
             channel: 'channel_telegram',
-            language: 'EN',
+            language: 'en',
             publicationType: normalizePublicationTypeValue('channel_telegram', null),
             style: 'default',
           };
@@ -4329,6 +4404,11 @@ export class CampaignTestUiController {
                   Source content
                   <textarea id="sourceContent" placeholder="Paste the canonical longread or source memo here."></textarea>
                 </label>
+                <label class="field full">
+                  Blog cover image URL
+                  <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+                  <span class="source-image-note">Optional. Blog publishing uses this HTTPS image instead of BLOG_DEFAULT_COVER_IMAGE_URL.</span>
+                </label>
               </div>
               <div class="actions">
                 <button class="primary" type="submit">Attach source</button>
@@ -4801,6 +4881,7 @@ export class CampaignTestUiController {
               {
                 content: document.getElementById('sourceContent').value,
                 language: document.getElementById('sourceLanguage').value || 'en',
+                coverImageUrl: document.getElementById('blogCoverImageUrl')?.value?.trim() || null,
               },
             );
           });

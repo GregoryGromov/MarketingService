@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SeoBriefArtifact, SeoBriefRun } from '../../index.js';
+import { SeoBriefArtifact, SeoBriefRun, type SeoBriefRunId } from '../../index.js';
 import {
   InMemorySeoBriefArtifactRepository,
   InMemorySeoBriefRunRepository,
@@ -31,6 +31,120 @@ function createRun(): SeoBriefRun {
   });
 }
 
+async function seedSelectionInputs(
+  artifactRepository: InMemorySeoBriefArtifactRepository,
+  runId: SeoBriefRunId,
+  workflowMode: 'manual' | 'auto_until_selection' = 'manual',
+) {
+  await artifactRepository.save(
+    SeoBriefArtifact.create({
+      runId,
+      stage: 'created',
+      artifactType: 'normalized_input',
+      payload: {
+        workflowMode,
+      },
+    }),
+  );
+  await artifactRepository.save(
+    SeoBriefArtifact.create({
+      runId,
+      stage: 'cluster_scoring',
+      artifactType: 'cluster_product_fit_review',
+      payload: {
+        artifactVersion: 'cluster_product_fit_review_v1',
+        clusterProductFit: [
+          {
+            clusterName: 'Safe USDT earning options',
+            productFitScore: 84,
+            productFitType: 'education_bridge',
+            decision: 'approve',
+            productInsertionAngle: 'Education-first product bridge.',
+            whereToInsert: 'After risk explanation.',
+            whatNotToClaim: ['Do not promise guaranteed yield.'],
+            reason: 'Strong safety education fit.',
+            sourceCluster: {
+              clusterName: 'Safe USDT earning options',
+              primaryKeywordCandidate: 'is it safe to earn interest on USDT',
+              intent: 'informational',
+              keywords: ['is it safe to earn interest on USDT', 'USDT savings account'],
+              questions: ['is USDT staking safe'],
+              supportingItemDetails: [
+                {
+                  text: 'USDT savings account',
+                  sources: ['ranked_keywords', 'serp_derived_candidate'],
+                  candidateScore: 72,
+                  metrics: {
+                    searchVolume: 170,
+                    bestRankAbsolute: 3,
+                    proxyDemandScore: 64,
+                    competitorMatchScore: 88,
+                  },
+                },
+              ],
+              competitorUrls: [
+                {
+                  domain: 'trustwallet.com',
+                  url: 'https://trustwallet.com/stablecoin-earn/usdt',
+                  title: 'Earn USDT Rewards',
+                  rankAbsolute: 3,
+                },
+              ],
+              sourceConfidence: 'high',
+              evidenceSummary: 'SERP and ranked keyword evidence support safety intent.',
+            },
+          },
+          {
+            clusterName: 'USDT cash-out workflows',
+            productFitScore: 58,
+            productFitType: 'workflow_bridge',
+            decision: 'supporting_only',
+            productInsertionAngle: 'Use as workflow support.',
+            whereToInsert: 'Internal support article.',
+            whatNotToClaim: ['Do not imply Reinforce is a cash-out tool.'],
+            reason: 'Useful, but not the direct main article.',
+            sourceCluster: {
+              clusterName: 'USDT cash-out workflows',
+              primaryKeywordCandidate: 'how to cash out USDT to naira',
+              intent: 'informational',
+              keywords: ['how to cash out USDT to naira'],
+              questions: [],
+              supportingItemDetails: [
+                {
+                  text: 'USDT to naira',
+                  sources: ['serp_derived_candidate'],
+                  metrics: {
+                    proxyDemandScore: 42,
+                  },
+                },
+              ],
+              competitorUrls: [],
+              sourceConfidence: 'medium',
+            },
+          },
+          {
+            clusterName: 'Free USDT generators',
+            productFitScore: 12,
+            productFitType: 'no_fit',
+            decision: 'reject',
+            productInsertionAngle: 'Do not insert.',
+            whereToInsert: 'Nowhere.',
+            whatNotToClaim: ['Do not discuss scam tools as options.'],
+            reason: 'Unsafe and no Product Fit.',
+            sourceCluster: {
+              clusterName: 'Free USDT generators',
+              primaryKeywordCandidate: 'free USDT generator',
+              intent: 'transactional',
+              keywords: ['free USDT generator'],
+              sourceConfidence: 'low',
+            },
+          },
+        ],
+      },
+    }),
+  );
+}
+
 describe('SelectSeoBriefClustersHandler', () => {
   it('saves a manually selected main cluster, supporting clusters, and rejected clusters', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
@@ -38,103 +152,7 @@ describe('SelectSeoBriefClustersHandler', () => {
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
     const run = createRun();
     await runRepository.save(run);
-    await artifactRepository.save(
-      SeoBriefArtifact.create({
-        runId: run.id,
-        stage: 'cluster_scoring',
-        artifactType: 'cluster_product_fit_review',
-        payload: {
-          artifactVersion: 'cluster_product_fit_review_v1',
-          clusterProductFit: [
-            {
-              clusterName: 'Safe USDT earning options',
-              productFitScore: 84,
-              productFitType: 'education_bridge',
-              decision: 'approve',
-              productInsertionAngle: 'Education-first product bridge.',
-              whereToInsert: 'After risk explanation.',
-              whatNotToClaim: ['Do not promise guaranteed yield.'],
-              reason: 'Strong safety education fit.',
-              sourceCluster: {
-                clusterName: 'Safe USDT earning options',
-                primaryKeywordCandidate: 'is it safe to earn interest on USDT',
-                intent: 'informational',
-                keywords: ['is it safe to earn interest on USDT', 'USDT savings account'],
-                questions: ['is USDT staking safe'],
-                supportingItemDetails: [
-                  {
-                    text: 'USDT savings account',
-                    sources: ['ranked_keywords', 'serp_derived_candidate'],
-                    candidateScore: 72,
-                    metrics: {
-                      searchVolume: 170,
-                      bestRankAbsolute: 3,
-                      proxyDemandScore: 64,
-                      competitorMatchScore: 88,
-                    },
-                  },
-                ],
-                competitorUrls: [
-                  {
-                    domain: 'trustwallet.com',
-                    url: 'https://trustwallet.com/stablecoin-earn/usdt',
-                    title: 'Earn USDT Rewards',
-                    rankAbsolute: 3,
-                  },
-                ],
-                sourceConfidence: 'high',
-                evidenceSummary: 'SERP and ranked keyword evidence support safety intent.',
-              },
-            },
-            {
-              clusterName: 'USDT cash-out workflows',
-              productFitScore: 58,
-              productFitType: 'workflow_bridge',
-              decision: 'supporting_only',
-              productInsertionAngle: 'Use as workflow support.',
-              whereToInsert: 'Internal support article.',
-              whatNotToClaim: ['Do not imply Reinforce is a cash-out tool.'],
-              reason: 'Useful, but not the direct main article.',
-              sourceCluster: {
-                clusterName: 'USDT cash-out workflows',
-                primaryKeywordCandidate: 'how to cash out USDT to naira',
-                intent: 'informational',
-                keywords: ['how to cash out USDT to naira'],
-                questions: [],
-                supportingItemDetails: [
-                  {
-                    text: 'USDT to naira',
-                    sources: ['serp_derived_candidate'],
-                    metrics: {
-                      proxyDemandScore: 42,
-                    },
-                  },
-                ],
-                competitorUrls: [],
-                sourceConfidence: 'medium',
-              },
-            },
-            {
-              clusterName: 'Free USDT generators',
-              productFitScore: 12,
-              productFitType: 'no_fit',
-              decision: 'reject',
-              productInsertionAngle: 'Do not insert.',
-              whereToInsert: 'Nowhere.',
-              whatNotToClaim: ['Do not discuss scam tools as options.'],
-              reason: 'Unsafe and no Product Fit.',
-              sourceCluster: {
-                clusterName: 'Free USDT generators',
-                primaryKeywordCandidate: 'free USDT generator',
-                intent: 'transactional',
-                keywords: ['free USDT generator'],
-                sourceConfidence: 'low',
-              },
-            },
-          ],
-        },
-      }),
-    );
+    await seedSelectionInputs(artifactRepository, run.id);
     const handler = new SelectSeoBriefClustersHandler(
       runRepository,
       stepRepository,
@@ -145,8 +163,9 @@ describe('SelectSeoBriefClustersHandler', () => {
       new SelectSeoBriefClustersCommand(run.id, 'Safe USDT earning options'),
     );
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const saved = artifacts.find((artifact) => artifact.artifactType === 'cluster_selection_snapshot')
-      ?.payload as {
+    const saved = artifacts.find(
+      (artifact) => artifact.artifactType === 'cluster_selection_snapshot',
+    )?.payload as {
       mainCluster: { clusterName: string; primaryKeyword: string; priorityScore: number };
       manualSelectionRequired: boolean;
       rankedClusters: Array<{ clusterName: string; priorityScore: number }>;
@@ -191,6 +210,46 @@ describe('SelectSeoBriefClustersHandler', () => {
       stage: 'cluster_selection',
       status: 'completed',
     });
+    expect((await runRepository.findById(run.id))?.status).toBe('awaiting_confirmation');
+  });
+
+  it('auto-selects the top ranked cluster in auto workflow mode', async () => {
+    const runRepository = new InMemorySeoBriefRunRepository();
+    const stepRepository = new InMemorySeoBriefRunStepRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
+    const run = createRun();
+    await runRepository.save(run);
+    await seedSelectionInputs(artifactRepository, run.id, 'auto_until_selection');
+    const handler = new SelectSeoBriefClustersHandler(
+      runRepository,
+      stepRepository,
+      artifactRepository,
+    );
+
+    const result = await handler.execute(new SelectSeoBriefClustersCommand(run.id));
+    const artifacts = await artifactRepository.findByRunId(run.id);
+    const saved = artifacts.find(
+      (artifact) => artifact.artifactType === 'cluster_selection_snapshot',
+    )?.payload as {
+      mainCluster: { clusterName: string; primaryKeyword: string };
+      manualSelectionRequired: boolean;
+      selectedClusterName: string | null;
+      selectionMode: string;
+    };
+
+    expect(result).toMatchObject({
+      artifactType: 'cluster_selection_snapshot',
+      mainClusterName: 'Safe USDT earning options',
+      supportingClusterCount: 1,
+      rejectedClusterCount: 1,
+    });
+    expect(saved.mainCluster).toMatchObject({
+      clusterName: 'Safe USDT earning options',
+      primaryKeyword: 'is it safe to earn interest on USDT',
+    });
+    expect(saved.selectedClusterName).toBe('Safe USDT earning options');
+    expect(saved.selectionMode).toBe('auto_selected');
+    expect(saved.manualSelectionRequired).toBe(false);
     expect((await runRepository.findById(run.id))?.status).toBe('awaiting_confirmation');
   });
 });

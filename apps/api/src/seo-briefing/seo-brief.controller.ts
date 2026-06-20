@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import {
-  AddAdaptationCommand,
   type AdaptationId,
+  AddAdaptationCommand,
+  ApproveAdaptationCommand,
   type ArticleId,
   type ChannelId,
   CreateArticleCommand,
@@ -23,9 +25,9 @@ import {
   ContinueSeoBriefRunCommand,
   CreateSeoBriefRunCommand,
   type CreateSeoBriefRunResult,
+  type ExtractedSeoBriefContext,
   ExtractSerpDerivedCandidatesCommand,
   type ExtractSerpDerivedCandidatesResult,
-  type ExtractedSeoBriefContext,
   FetchFirstKeywordSerpPreviewCommand,
   type FetchFirstKeywordSerpPreviewResult,
   FetchKeywordSerpPreviewsCommand,
@@ -53,10 +55,10 @@ import {
   type PackageLongreadArticleUseCaseResult,
   RegenerateSeoBriefCommand,
   RejectSeoBriefRunCommand,
-  ReviewClusterProductFitCommand,
-  type ReviewClusterProductFitUseCaseResult,
   RerunSeoBriefRunCommand,
   RerunSeoBriefStageCommand,
+  ReviewClusterProductFitCommand,
+  type ReviewClusterProductFitUseCaseResult,
   ScoreKeywordCandidatesCommand,
   type ScoreKeywordCandidatesResult,
   SelectFirstKeywordRelatedQueriesCommand,
@@ -84,6 +86,7 @@ import {
   type UpdateFinalSeoBriefResult,
 } from '@marketing-service/seo-briefing';
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -150,6 +153,23 @@ interface CreateLongreadAdaptationsResult {
     preview: string;
   }>;
   artifactType: 'longread_adaptations_export';
+}
+
+interface PublishBlogArticleDto {
+  articleId?: string | null;
+  coverImageUrl?: string | null;
+  locale?: string | null;
+  status?: 'draft' | 'published';
+}
+
+interface PublishBlogArticleResult {
+  articleId: string;
+  artifactType: 'blog_publish_result';
+  localizedUrls: Record<string, string> | null;
+  locale: string;
+  slug: string | null;
+  status: 'draft' | 'published';
+  url: string | null;
 }
 
 @Controller('seo-briefing')
@@ -357,9 +377,7 @@ export class SeoBriefController {
 
   @Post('runs/:id/classify-serp-domains')
   @HttpCode(202)
-  async classifySerpDomains(
-    @Param('id') id: string,
-  ): Promise<ClassifySerpDomainsUseCaseResult> {
+  async classifySerpDomains(@Param('id') id: string): Promise<ClassifySerpDomainsUseCaseResult> {
     try {
       return await this.commandBus.execute(new ClassifySerpDomainsCommand(id));
     } catch (error) {
@@ -489,9 +507,7 @@ export class SeoBriefController {
 
   @Post('runs/:id/cluster-keyword-candidates')
   @HttpCode(202)
-  async clusterKeywordCandidates(
-    @Param('id') id: string,
-  ): Promise<ClusterKeywordCandidatesResult> {
+  async clusterKeywordCandidates(@Param('id') id: string): Promise<ClusterKeywordCandidatesResult> {
     try {
       return await this.commandBus.execute(new ClusterKeywordCandidatesCommand(id));
     } catch (error) {
@@ -590,9 +606,7 @@ export class SeoBriefController {
 
   @Post('runs/:id/synthesize-onpage')
   @HttpCode(202)
-  async synthesizeOnPage(
-    @Param('id') id: string,
-  ): Promise<SynthesizeOnPageUseCaseResult> {
+  async synthesizeOnPage(@Param('id') id: string): Promise<SynthesizeOnPageUseCaseResult> {
     try {
       return await this.commandBus.execute(new SynthesizeOnPageCommand(id));
     } catch (error) {
@@ -614,9 +628,7 @@ export class SeoBriefController {
 
   @Post('runs/:id/generate-final-brief')
   @HttpCode(202)
-  async generateFinalBrief(
-    @Param('id') id: string,
-  ): Promise<GenerateFinalSeoBriefUseCaseResult> {
+  async generateFinalBrief(@Param('id') id: string): Promise<GenerateFinalSeoBriefUseCaseResult> {
     try {
       return await this.commandBus.execute(new GenerateFinalSeoBriefCommand(id));
     } catch (error) {
@@ -664,9 +676,7 @@ export class SeoBriefController {
 
   @Post('runs/:id/generate-longread-draft')
   @HttpCode(202)
-  async generateLongreadDraft(
-    @Param('id') id: string,
-  ): Promise<GenerateLongreadDraftResult> {
+  async generateLongreadDraft(@Param('id') id: string): Promise<GenerateLongreadDraftResult> {
     try {
       return await this.commandBus.execute(new GenerateLongreadDraftCommand(id));
     } catch (error) {
@@ -723,6 +733,7 @@ export class SeoBriefController {
       if (
         error instanceof Error &&
         (error.message.includes('Run longread safety cleanup') ||
+          error.message.includes('Longread cleanup must pass') ||
           error.message.includes('Generate Final Brief') ||
           error.message.includes('brief_validation_failed'))
       ) {
@@ -744,7 +755,9 @@ export class SeoBriefController {
       throw new NotFoundException(`SEO brief run ${id} not found`);
     }
     if (!run.projectId) {
-      throw new ConflictException('SEO brief run must be connected to a project before creating adaptations');
+      throw new ConflictException(
+        'SEO brief run must be connected to a project before creating adaptations',
+      );
     }
 
     const packageArtifact = findLatestSeoBriefArtifact(run, 'longread_final_package');
@@ -758,11 +771,15 @@ export class SeoBriefController {
     const title = readNonEmptyString(article.title) ?? run.topicSeed;
     const articleContent = buildArticleSourceContent(title, bodyMarkdown);
     const seoBriefContext = buildSeoBriefAdaptationContext(run, packagePayload);
+    const normalizedInputArtifact = findLatestSeoBriefArtifact(run, 'normalized_input');
+    const normalizedInputPayload = readSeoBriefObject(normalizedInputArtifact?.payload);
+    const coverImageUrl = readNonEmptyString(normalizedInputPayload?.coverImageUrl);
+    const articleLanguage = normalizeBlogLocale(run.market.language);
     const articleId = (await this.commandBus.execute(
       new CreateArticleCommand(
         run.projectId as ProjectId,
         articleContent,
-        run.market.language,
+        articleLanguage,
         {
           source: 'seo_brief_longread',
           seoBriefRunId: run.id,
@@ -773,7 +790,9 @@ export class SeoBriefController {
             : null,
           finalBrief: compactSeoBriefContext(run.finalBrief?.briefPayload),
           articlePackage: compactArticlePackage(packagePayload),
+          coverImageUrl,
         },
+        coverImageUrl,
       ),
     )) as ArticleId;
 
@@ -782,6 +801,7 @@ export class SeoBriefController {
     for (const channel of channels) {
       const promptInstructions = buildSeoBriefAdaptationInstructions(
         seoBriefContext,
+        channel.channelId,
         channel.displayName,
         channel.promptInstructions,
       );
@@ -796,6 +816,7 @@ export class SeoBriefController {
       const adaptedContent = (await this.commandBus.execute(
         new GenerateAdaptationCommand(articleId, adaptationId),
       )) as string;
+      await this.commandBus.execute(new ApproveAdaptationCommand(articleId, adaptationId));
       adaptations.push({
         adaptationId,
         channelId: channel.channelId,
@@ -822,6 +843,95 @@ export class SeoBriefController {
           adaptations,
           sourceArtifactType: 'longread_final_package',
           sourceArtifactId: packageArtifact?.id ?? null,
+        } satisfies SeoBriefJsonObject,
+        attempt: nextSeoBriefArtifactAttempt(run, result.artifactType),
+      }),
+    );
+
+    return result;
+  }
+
+  @Post('runs/:id/publish-blog')
+  @HttpCode(202)
+  async publishBlogArticle(
+    @Param('id') id: string,
+    @Body() dto: PublishBlogArticleDto = {},
+  ): Promise<PublishBlogArticleResult> {
+    const run = await this.queryBus.execute(new GetSeoBriefRunQuery(id as SeoBriefRunId));
+    if (!run) {
+      throw new NotFoundException(`SEO brief run ${id} not found`);
+    }
+
+    const packageArtifact = findLatestSeoBriefArtifact(run, 'longread_final_package');
+    const packagePayload = readSeoBriefObject(packageArtifact?.payload);
+    const article = readSeoBriefObject(packagePayload?.article);
+    const title = readNonEmptyString(article?.title);
+    const bodyMd = readNonEmptyString(article?.bodyMarkdown);
+    if (!packagePayload || !article || !title || !bodyMd) {
+      throw new ConflictException('Create Final Article Package before publishing to Blog');
+    }
+
+    const normalizedInputArtifact = findLatestSeoBriefArtifact(run, 'normalized_input');
+    const normalizedInputPayload = readSeoBriefObject(normalizedInputArtifact?.payload);
+    const coverImageUrl =
+      readNonEmptyString(dto.coverImageUrl) ??
+      readNonEmptyString(normalizedInputPayload?.coverImageUrl) ??
+      readNonEmptyString(article.coverImageUrl) ??
+      readNonEmptyString(packagePayload.coverImageUrl) ??
+      readNonEmptyString(process.env.BLOG_DEFAULT_COVER_IMAGE_URL);
+    if (!coverImageUrl) {
+      throw new BadRequestException(
+        'coverImageUrl is required for Blog publishing. Provide a direct HTTPS image URL.',
+      );
+    }
+    assertHttpsUrl(coverImageUrl, 'coverImageUrl');
+
+    const locale = normalizeBlogLocale(dto.locale ?? run.market.language);
+    const status = dto.status === 'draft' ? 'draft' : 'published';
+    const blogArticleId =
+      readNonEmptyString(dto.articleId) ?? deterministicUuid(`seo-brief-blog:${run.id}:${locale}`);
+    const excerpt =
+      readNonEmptyString(article.metaDescription) ??
+      readNonEmptyString(packagePayload.seoSummary) ??
+      null;
+    const requestPayload = {
+      articleId: blogArticleId,
+      status,
+      coverImageUrl,
+      translations: [
+        {
+          locale,
+          title,
+          excerpt,
+          bodyMd,
+        },
+      ],
+    };
+
+    const responsePayload = await publishBlogAdminArticle(blogArticleId, requestPayload);
+    const result: PublishBlogArticleResult = {
+      articleId: blogArticleId,
+      artifactType: 'blog_publish_result',
+      localizedUrls: readStringRecord(responsePayload.localizedUrls),
+      locale,
+      slug: readNonEmptyString(responsePayload.slug),
+      status,
+      url: readNonEmptyString(responsePayload.url),
+    };
+
+    await this.artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id as SeoBriefRunId,
+        stage: 'brief_generation',
+        artifactType: result.artifactType,
+        payload: {
+          artifactVersion: 'blog_publish_result_v1',
+          sourceArtifactType: 'longread_final_package',
+          sourceArtifactId: packageArtifact?.id ?? null,
+          coverImageUrl,
+          requestPayload,
+          responsePayload,
+          ...result,
         } satisfies SeoBriefJsonObject,
         attempt: nextSeoBriefArtifactAttempt(run, result.artifactType),
       }),
@@ -981,7 +1091,9 @@ function findLatestSeoBriefArtifact(
   run: GetSeoBriefRunResult,
   artifactType: string,
 ): SeoBriefRunArtifactResult | null {
-  return [...run.artifacts].reverse().find((artifact) => artifact.artifactType === artifactType) ?? null;
+  return (
+    [...run.artifacts].reverse().find((artifact) => artifact.artifactType === artifactType) ?? null
+  );
 }
 
 function nextSeoBriefArtifactAttempt(run: GetSeoBriefRunResult, artifactType: string): number {
@@ -998,6 +1110,246 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function readStringRecord(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const entries = Object.entries(value).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+function deterministicUuid(input: string): string {
+  const hex = createHash('sha256').update(input).digest('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    ((Number.parseInt(hex.slice(16, 18), 16) & 0x3f) | 0x80).toString(16) + hex.slice(18, 20),
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+function assertHttpsUrl(value: string, fieldName: string): void {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') {
+      throw new Error('Expected HTTPS');
+    }
+  } catch {
+    throw new BadRequestException(`${fieldName} must be a valid direct HTTPS URL`);
+  }
+}
+
+function normalizeBlogLocale(value: string | null | undefined): string {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace('_', '-');
+  const known: Record<string, string> = {
+    af: 'af',
+    afrikaans: 'af',
+    ar: 'ar',
+    arabic: 'ar',
+    de: 'de',
+    german: 'de',
+    en: 'en',
+    english: 'en',
+    es: 'es',
+    spanish: 'es',
+    fr: 'fr',
+    french: 'fr',
+    ha: 'ha',
+    hausa: 'ha',
+    hi: 'hi',
+    hindi: 'hi',
+    id: 'id',
+    indonesian: 'id',
+    ig: 'ig',
+    igbo: 'ig',
+    it: 'it',
+    italian: 'it',
+    ja: 'ja',
+    japanese: 'ja',
+    jv: 'jv',
+    javanese: 'jv',
+    ko: 'ko',
+    korean: 'ko',
+    ms: 'ms',
+    malay: 'ms',
+    nl: 'nl',
+    dutch: 'nl',
+    pa: 'pa',
+    punjabi: 'pa',
+    pcm: 'pcm',
+    pidgin: 'pcm',
+    pl: 'pl',
+    polish: 'pl',
+    ps: 'ps',
+    pashto: 'ps',
+    pt: 'pt',
+    portuguese: 'pt',
+    ro: 'ro',
+    romanian: 'ro',
+    ru: 'ru',
+    russian: 'ru',
+    th: 'th',
+    thai: 'th',
+    tl: 'tl',
+    tagalog: 'tl',
+    fil: 'tl',
+    filipino: 'tl',
+    tr: 'tr',
+    turkish: 'tr',
+    ur: 'ur',
+    urdu: 'ur',
+    vi: 'vi',
+    vietnamese: 'vi',
+    xh: 'xh',
+    xhosa: 'xh',
+    yo: 'yo',
+    yoruba: 'yo',
+    zu: 'zu',
+    zulu: 'zu',
+  };
+  const locale = known[normalized] ?? normalized;
+  const supported = new Set([
+    'en',
+    'pt',
+    'id',
+    'es',
+    'vi',
+    'ur',
+    'tl',
+    'pcm',
+    'ha',
+    'pa',
+    'yo',
+    'jv',
+    'ps',
+    'zu',
+    'tr',
+    'ar',
+    'ru',
+    'hi',
+    'ja',
+    'ko',
+    'fr',
+    'de',
+    'it',
+    'nl',
+    'ms',
+    'th',
+    'af',
+    'xh',
+    'ig',
+    'pl',
+    'ro',
+  ]);
+  if (!supported.has(locale)) {
+    throw new BadRequestException(`Unsupported Blog locale: ${value || 'empty'}`);
+  }
+  return locale;
+}
+
+function resolveBlogAdminArticlesUrl(articleId?: string): string {
+  const rawBase = readNonEmptyString(process.env.BLOG_ADMIN_BASE_URL);
+  if (!rawBase) {
+    throw new ConflictException('BLOG_ADMIN_BASE_URL is not configured');
+  }
+  const base = rawBase.replace(/\/+$/, '');
+  const articlePath = articleId ? `/${encodeURIComponent(articleId)}` : '';
+  if (base.endsWith('/v1/blog')) {
+    return `${base}/admin/articles${articlePath}`;
+  }
+  return `${base}/v1/blog/admin/articles${articlePath}`;
+}
+
+function resolveBlogAdminApiKey(): string {
+  const key = readNonEmptyString(process.env.BLOG_ADMIN_API_KEY);
+  if (!key) {
+    throw new ConflictException('BLOG_ADMIN_API_KEY is not configured');
+  }
+  return key;
+}
+
+async function publishBlogAdminArticle(
+  articleId: string,
+  payload: SeoBriefJsonObject,
+): Promise<SeoBriefJsonObject> {
+  const response = await requestBlogAdmin(resolveBlogAdminArticlesUrl(), 'POST', payload);
+  if (response.ok) {
+    return response.payload;
+  }
+  if (response.status === 409 && response.kind === 'article-id-taken') {
+    const { articleId: _articleId, status: _status, ...updatePayload } = payload;
+    const putResponse = await requestBlogAdmin(
+      resolveBlogAdminArticlesUrl(articleId),
+      'PUT',
+      updatePayload,
+    );
+    if (putResponse.ok) {
+      return putResponse.payload;
+    }
+    throw blogAdminException(putResponse.status, putResponse.payload);
+  }
+  throw blogAdminException(response.status, response.payload);
+}
+
+async function requestBlogAdmin(
+  url: string,
+  method: 'POST' | 'PUT',
+  payload: SeoBriefJsonObject,
+): Promise<{ kind: string | null; ok: boolean; payload: SeoBriefJsonObject; status: number }> {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${resolveBlogAdminApiKey()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const text = await response.text();
+  const parsed = parseJsonObject(text);
+  return {
+    kind: readNonEmptyString(parsed.kind),
+    ok: response.ok,
+    payload: parsed,
+    status: response.status,
+  };
+}
+
+function parseJsonObject(text: string): SeoBriefJsonObject {
+  if (!text.trim()) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return readSeoBriefObject(parsed) ?? { raw: text };
+  } catch {
+    return { raw: text };
+  }
+}
+
+function blogAdminException(status: number, payload: SeoBriefJsonObject): Error {
+  const message =
+    readNonEmptyString(payload.detail) ??
+    readNonEmptyString(payload.title) ??
+    readNonEmptyString(payload.message) ??
+    `Blog admin request failed with HTTP ${status}`;
+  if (status === 400 || status === 413) {
+    return new BadRequestException(message);
+  }
+  if (status === 401) {
+    return new ConflictException('Blog admin rejected BLOG_ADMIN_API_KEY');
+  }
+  if (status === 404) {
+    return new NotFoundException(message);
+  }
+  return new ConflictException(message);
+}
+
 function normalizeAdaptationChannels(
   channels: SeoBriefAdaptationChannelDto[] | undefined,
 ): NormalizedAdaptationChannel[] {
@@ -1010,7 +1362,8 @@ function normalizeAdaptationChannels(
           }
           return {
             channelId,
-            displayName: readNonEmptyString(channel.displayName) ?? defaultChannelDisplayName(channelId),
+            displayName:
+              readNonEmptyString(channel.displayName) ?? defaultChannelDisplayName(channelId),
             promptInstructions: readNonEmptyString(channel.promptInstructions),
           };
         })
@@ -1163,7 +1516,12 @@ function limitJsonArray(value: unknown, limit: number): SeoBriefJsonValue[] {
 }
 
 function toSeoBriefJsonValue(value: unknown): SeoBriefJsonValue {
-  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
   if (Array.isArray(value)) {
@@ -1182,19 +1540,70 @@ function toSeoBriefJsonValue(value: unknown): SeoBriefJsonValue {
 
 function buildSeoBriefAdaptationInstructions(
   context: SeoBriefJsonObject,
+  channelId: string,
   displayName: string,
   extraInstructions: string | null,
 ): string {
+  const brandAdaptationRules = extractBrandAdaptationRules(context, channelId);
+  const market = readSeoBriefObject(context.market);
+  const targetLanguage = readNonEmptyString(market?.language);
   const base = [
     'Generate this adaptation from the supplied longread, but use the SEO brief context below as binding guidance.',
     `Target channel: ${displayName}.`,
+    channelId === 'channel_blog'
+      ? 'For Blog, preserve the full longread as a complete Markdown article. Do not summarize it into a short social post.'
+      : null,
+    targetLanguage
+      ? `Write the entire adaptation in the SEO run language: ${targetLanguage}. Do not switch to English unless English is the selected language.`
+      : null,
+    'Brand Memory adaptation rules below are mandatory unless they conflict with hard factual or compliance constraints.',
     'Preserve the brief angle, target reader, primary keyword intent, product insertion boundaries, CTA, and compliance/risk constraints.',
     'Do not invent new product claims, APY guarantees, or unsupported facts. If a claim needs verification, phrase it cautiously.',
+    brandAdaptationRules,
     extraInstructions ? `Extra channel instructions: ${extraInstructions}` : null,
     'SEO brief context:',
     JSON.stringify(context),
   ].filter(Boolean);
   return base.join('\n\n');
+}
+
+function extractBrandAdaptationRules(
+  context: SeoBriefJsonObject,
+  channelId: string,
+): string | null {
+  const brandRules = readSeoBriefObject(context.brandRules);
+  const promptRules = readSeoBriefObject(brandRules?.adaptationPromptRules);
+  if (!promptRules) {
+    return null;
+  }
+
+  const generalInstructions = readNonEmptyString(promptRules.generalInstructions);
+  const channelRules = readNonEmptyString(readChannelAdaptationRule(promptRules, channelId));
+  const sections: string[] = [];
+
+  if (generalInstructions) {
+    sections.push(`Brand Memory general adaptation rules:\n${generalInstructions}`);
+  }
+  if (channelRules) {
+    sections.push(`Brand Memory channel-specific adaptation rules:\n${channelRules}`);
+  }
+
+  return sections.length > 0 ? sections.join('\n\n') : null;
+}
+
+function readChannelAdaptationRule(promptRules: SeoBriefJsonObject, channelId: string): unknown {
+  switch (channelId) {
+    case 'channel_telegram':
+      return promptRules.telegram;
+    case 'channel_x':
+      return promptRules.x;
+    case 'channel_discord':
+      return promptRules.discord;
+    case 'channel_blog':
+      return promptRules.blog;
+    default:
+      return null;
+  }
 }
 
 function createPreview(value: string): string {

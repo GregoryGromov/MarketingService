@@ -840,12 +840,14 @@ ${renderDevConsoleScript()}
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
       }
-      a.btn.marker-linked {
+      a.btn.marker-linked,
+      button.marker-linked {
         border-color: var(--marker-border);
         background: var(--marker-bg);
         color: var(--marker-text);
       }
-      a.btn.marker-linked:hover {
+      a.btn.marker-linked:hover,
+      button.marker-linked:hover {
         background: var(--marker-bg);
         transform: translateY(-1px);
       }
@@ -1627,6 +1629,7 @@ ${renderDevConsoleStyles()}
             <p id="markerToolbarMeta"></p>
           </div>
           <div class="marker-toolbar-actions">
+            <button id="createSeoBriefFromMarkerBtn" class="marker-linked" onclick="openSeoBriefFromActiveMarker()" hidden>Create SEO brief</button>
             <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
             <button onclick="openMarkerModal()">New marker</button>
           </div>
@@ -1902,13 +1905,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
+        const match = languageOptions().find((option) => option.language === normalized);
+        if (match) return match.label;
+        if (normalized === 'fil') return 'Tagalog (tl)';
         return normalized.toUpperCase();
       }
 
@@ -2427,13 +2426,36 @@ ${renderDevConsoleStyles()}
 
       function languageOptions() {
         return [
-          { language: 'en', label: 'English' },
-          { language: 'es', label: 'Spanish' },
-          { language: 'ru', label: 'Russian' },
-          { language: 'id', label: 'Indonesian' },
-          { language: 'fil', label: 'Filipino' },
-          { language: 'vi', label: 'Vietnamese' },
-          { language: 'pt', label: 'Portuguese' },
+          { language: 'en', label: 'English (en)' },
+          { language: 'pt', label: 'Português (pt)' },
+          { language: 'id', label: 'Bahasa Indonesia (id)' },
+          { language: 'es', label: 'Español (es)' },
+          { language: 'vi', label: 'Tiếng Việt (vi)' },
+          { language: 'ur', label: 'اردو (ur)' },
+          { language: 'tl', label: 'Tagalog (tl)' },
+          { language: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { language: 'ha', label: 'Hausa (ha)' },
+          { language: 'pa', label: 'ਪੰਜਾਬੀ (pa)' },
+          { language: 'yo', label: 'Yorùbá (yo)' },
+          { language: 'ps', label: 'پښتو (ps)' },
+          { language: 'zu', label: 'isiZulu (zu)' },
+          { language: 'tr', label: 'Türkçe (tr)' },
+          { language: 'ar', label: 'العربية (ar)' },
+          { language: 'ru', label: 'Русский (ru)' },
+          { language: 'hi', label: 'हिन्दी (hi)' },
+          { language: 'ja', label: '日本語 (ja)' },
+          { language: 'ko', label: '한국어 (ko)' },
+          { language: 'fr', label: 'Français (fr)' },
+          { language: 'de', label: 'Deutsch (de)' },
+          { language: 'it', label: 'Italiano (it)' },
+          { language: 'nl', label: 'Nederlands (nl)' },
+          { language: 'ms', label: 'Bahasa Melayu (ms)' },
+          { language: 'th', label: 'ไทย (th)' },
+          { language: 'af', label: 'Afrikaans (af)' },
+          { language: 'xh', label: 'isiXhosa (xh)' },
+          { language: 'ig', label: 'Igbo (ig)' },
+          { language: 'pl', label: 'Polski (pl)' },
+          { language: 'ro', label: 'Română (ro)' },
         ];
       }
 
@@ -2490,9 +2512,13 @@ ${renderDevConsoleStyles()}
       function renderMarkers() {
         const root = document.getElementById('markerList');
         const meta = document.getElementById('markerToolbarMeta');
+        const createSeoBriefButton = document.getElementById('createSeoBriefFromMarkerBtn');
 
         if (!Array.isArray(currentProjectMarkers) || currentProjectMarkers.length === 0) {
           meta.textContent = '';
+          if (createSeoBriefButton) {
+            createSeoBriefButton.hidden = true;
+          }
           const button = document.getElementById('editMarkersBtn');
           if (button) {
             button.textContent = 'Edit markers';
@@ -2506,7 +2532,22 @@ ${renderDevConsoleStyles()}
         const activeMarker = markerById(activeMarkerId);
         meta.textContent = markerEditMode
           ? 'Delete draft marker templates. Their placements on the calendar will be removed too.'
-          : '';
+          : activeMarker
+            ? 'Selected marker can seed a multi-language SEO brief from all its calendar placements.'
+            : '';
+        if (createSeoBriefButton) {
+          createSeoBriefButton.hidden = markerEditMode || !activeMarker;
+          createSeoBriefButton.classList.toggle('marker-linked', Boolean(activeMarker));
+          if (activeMarker) {
+            createSeoBriefButton.style.setProperty('--marker-bg', activeMarker.colorBg);
+            createSeoBriefButton.style.setProperty('--marker-border', activeMarker.colorBorder);
+            createSeoBriefButton.style.setProperty('--marker-text', activeMarker.colorText);
+          } else {
+            createSeoBriefButton.style.removeProperty('--marker-bg');
+            createSeoBriefButton.style.removeProperty('--marker-border');
+            createSeoBriefButton.style.removeProperty('--marker-text');
+          }
+        }
 
         root.innerHTML = currentProjectMarkers.map((marker) =>
           '<div class="marker-pill-wrap">' +
@@ -2531,6 +2572,18 @@ ${renderDevConsoleStyles()}
             '</button>' +
           '</div>'
         ).join('');
+      }
+
+      function openSeoBriefFromActiveMarker() {
+        const marker = markerById(activeMarkerId);
+        if (!marker || !currentProjectId) {
+          return;
+        }
+
+        window.location.href = '/test-ui/seo-briefing?projectId=' +
+          encodeURIComponent(currentProjectId) +
+          '&markerId=' +
+          encodeURIComponent(marker.id);
       }
 
       async function deleteMarker(event, markerId) {
@@ -3483,13 +3536,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
+        const match = languageOptions().find((option) => option.language === normalized);
+        if (match) return match.label;
+        if (normalized === 'fil') return 'Tagalog (tl)';
         return normalized.toUpperCase();
       }
 
@@ -4465,14 +4514,41 @@ ${renderDevConsoleStyles()}
       let editingTypeId = null;
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return language.toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function builtInPrompt(channelId) {
@@ -5412,13 +5488,36 @@ ${renderDevConsoleStyles()}
         const originalLanguage = String(currentArticle?.original?.language || 'en').trim().toLowerCase() || 'en';
         const options = [
           { language: originalLanguage, label: languageLabel(originalLanguage) },
-          { language: 'en', label: 'English' },
-          { language: 'es', label: 'Spanish' },
-          { language: 'ru', label: 'Russian' },
-          { language: 'id', label: 'Indonesian' },
-          { language: 'fil', label: 'Filipino' },
-          { language: 'vi', label: 'Vietnamese' },
-          { language: 'pt', label: 'Portuguese' },
+          { language: 'en', label: 'English (en)' },
+          { language: 'pt', label: 'Português (pt)' },
+          { language: 'id', label: 'Bahasa Indonesia (id)' },
+          { language: 'es', label: 'Español (es)' },
+          { language: 'vi', label: 'Tiếng Việt (vi)' },
+          { language: 'ur', label: 'اردو (ur)' },
+          { language: 'tl', label: 'Tagalog (tl)' },
+          { language: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { language: 'ha', label: 'Hausa (ha)' },
+          { language: 'pa', label: 'ਪੰਜਾਬੀ (pa)' },
+          { language: 'yo', label: 'Yorùbá (yo)' },
+          { language: 'ps', label: 'پښتو (ps)' },
+          { language: 'zu', label: 'isiZulu (zu)' },
+          { language: 'tr', label: 'Türkçe (tr)' },
+          { language: 'ar', label: 'العربية (ar)' },
+          { language: 'ru', label: 'Русский (ru)' },
+          { language: 'hi', label: 'हिन्दी (hi)' },
+          { language: 'ja', label: '日本語 (ja)' },
+          { language: 'ko', label: '한국어 (ko)' },
+          { language: 'fr', label: 'Français (fr)' },
+          { language: 'de', label: 'Deutsch (de)' },
+          { language: 'it', label: 'Italiano (it)' },
+          { language: 'nl', label: 'Nederlands (nl)' },
+          { language: 'ms', label: 'Bahasa Melayu (ms)' },
+          { language: 'th', label: 'ไทย (th)' },
+          { language: 'af', label: 'Afrikaans (af)' },
+          { language: 'xh', label: 'isiXhosa (xh)' },
+          { language: 'ig', label: 'Igbo (ig)' },
+          { language: 'pl', label: 'Polski (pl)' },
+          { language: 'ro', label: 'Română (ro)' },
         ];
 
         return options.filter(
@@ -5428,14 +5527,40 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
-        return normalized.toUpperCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
@@ -6688,14 +6813,41 @@ ${renderDevConsoleStyles()}
       }
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return String(language || '').toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function formatDateTime(value) {
@@ -7412,14 +7564,41 @@ ${renderDevConsoleStyles()}
       }
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return String(language || '').toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function formatDateTime(value) {
@@ -7573,7 +7752,9 @@ ${renderDevConsoleStyles()}
                     : publication.channelId === 'channel_x'
                       ? 'X post #' + String(publication.telegramMessageId)
                       : publication.channelId === 'channel_blog'
-                        ? 'Blog item marked as published'
+                        ? String(publication.telegramMessageId).startsWith('http')
+                          ? 'Blog published: ' + String(publication.telegramMessageId)
+                          : 'Blog published'
                       : 'Telegram message #' + String(publication.telegramMessageId),
                 ) +
               '</div>'

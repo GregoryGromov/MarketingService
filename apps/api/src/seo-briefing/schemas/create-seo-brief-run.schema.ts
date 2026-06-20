@@ -4,6 +4,24 @@ const OptionalTextListSchema = v.optional(
   v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
 );
 
+const OptionalHttpsUrlSchema = v.optional(
+  v.nullish(
+    v.pipe(
+      v.string(),
+      v.trim(),
+      v.minLength(1),
+      v.maxLength(2048),
+      v.check((value) => {
+        try {
+          return new URL(value).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      }, 'coverImageUrl must be a valid HTTPS URL'),
+    ),
+  ),
+);
+
 export const CreateSeoBriefRunSchema = v.object({
   projectId: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
   aiModelMode: v.optional(v.nullish(v.picklist(['flash', 'pro', 'pro_thinking']))),
@@ -14,6 +32,15 @@ export const CreateSeoBriefRunSchema = v.object({
   serpEnrichmentCount: v.optional(v.nullish(v.pipe(v.number(), v.minValue(1), v.maxValue(100)))),
   requestTimeoutMs: v.optional(
     v.nullish(v.pipe(v.number(), v.minValue(30_000), v.maxValue(900_000))),
+  ),
+  coverImageUrl: OptionalHttpsUrlSchema,
+  deepSeekPricing: v.optional(
+    v.nullish(
+      v.object({
+        inputUsdPerMillionTokens: v.pipe(v.number(), v.minValue(0), v.maxValue(1000)),
+        outputUsdPerMillionTokens: v.pipe(v.number(), v.minValue(0), v.maxValue(1000)),
+      }),
+    ),
   ),
   competitorKeywordsJsonId: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240))),

@@ -1,10 +1,10 @@
 import {
   type BuildProductBridgeParams,
   type BuildProductBridgeResult,
-  type CleanupLongreadArticleParams,
-  type CleanupLongreadArticleResult,
   type ClassifySerpDomainsParams,
   type ClassifySerpDomainsResult,
+  type CleanupLongreadArticleParams,
+  type CleanupLongreadArticleResult,
   type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type CompleteSeoBriefLlmCallLogParams,
@@ -42,6 +42,7 @@ import {
   type SeoBriefAiModelMode,
   SeoBriefAiTransportError,
   SeoBriefAiValidationError,
+  SeoBriefArtifactRepository,
   type SeoBriefJsonValue,
   SeoBriefLlmCallLog,
   SeoBriefLlmLogRepository,
@@ -54,9 +55,9 @@ import {
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  buildClusterKeywordsPrompt,
   buildClassifySerpDomainsPrompt,
   buildCleanupLongreadArticlePrompt,
+  buildClusterKeywordsPrompt,
   buildDraftLongreadArticlePrompt,
   buildEvaluateCompetitorKeywordMatchesPrompt,
   buildExpandKeywordsPrompt,
@@ -114,9 +115,15 @@ interface SeoBriefStructuredPrompt {
   userPrompt: string;
 }
 
+interface DeepSeekRunPricing {
+  inputUsdPerMillionTokens: number;
+  outputUsdPerMillionTokens: number;
+}
+
 @Injectable()
 export class DeepSeekSeoBriefAiAdapter {
   private readonly logger = new Logger(DeepSeekSeoBriefAiAdapter.name);
+  private readonly pricingCache = new Map<string, DeepSeekRunPricing | null>();
 
   constructor(
     @Inject(ConfigService)
@@ -125,6 +132,8 @@ export class DeepSeekSeoBriefAiAdapter {
     private readonly httpClient: SeoBriefAiHttpClientPort,
     @Inject(SeoBriefLlmLogRepository)
     private readonly llmLogRepository: SeoBriefLlmLogRepository,
+    @Inject(SeoBriefArtifactRepository)
+    private readonly artifactRepository: SeoBriefArtifactRepository,
   ) {}
 
   async extractContext(params: ExtractSeoBriefContextParams): Promise<ExtractedSeoBriefContext> {
@@ -193,9 +202,7 @@ export class DeepSeekSeoBriefAiAdapter {
     );
   }
 
-  async classifySerpDomains(
-    params: ClassifySerpDomainsParams,
-  ): Promise<ClassifySerpDomainsResult> {
+  async classifySerpDomains(params: ClassifySerpDomainsParams): Promise<ClassifySerpDomainsResult> {
     return this.runStructuredOperation(
       buildClassifySerpDomainsPrompt(params),
       params,
@@ -389,6 +396,12 @@ export class DeepSeekSeoBriefAiAdapter {
             response.rawPayload,
           );
           const result = validator(jsonPayload, prompt.operation);
+          const estimatedCost = await this.resolveEstimatedCost(
+            params.runId,
+            response.tokenUsageInput,
+            response.tokenUsageOutput,
+            response.estimatedCost,
+          );
 
           await this.completeLog(log.id, {
             responsePayload: {
@@ -397,17 +410,23 @@ export class DeepSeekSeoBriefAiAdapter {
             },
             tokenUsageInput: response.tokenUsageInput,
             tokenUsageOutput: response.tokenUsageOutput,
-            estimatedCost: response.estimatedCost,
+            estimatedCost,
           });
 
           return result;
         } catch (error) {
+          const estimatedCost = await this.resolveEstimatedCost(
+            params.runId,
+            response.tokenUsageInput,
+            response.tokenUsageOutput,
+            response.estimatedCost,
+          );
           await this.failLog(log.id, {
             errorMessage: this.describeError(error),
             responsePayload: response.rawPayload,
             tokenUsageInput: response.tokenUsageInput,
             tokenUsageOutput: response.tokenUsageOutput,
-            estimatedCost: response.estimatedCost,
+            estimatedCost,
           });
 
           if (error instanceof SeoBriefAiValidationError && repairAttempt < maxRepairAttempts) {
@@ -629,6 +648,67 @@ export class DeepSeekSeoBriefAiAdapter {
     return this.getPositiveIntegerConfig('SEO_BRIEF_AI_STRUCTURED_REPAIR_ATTEMPTS', 1);
   }
 
+  private async resolveEstimatedCost(
+    runId: string,
+    tokenUsageInput: number | null,
+    tokenUsageOutput: number | null,
+    providerEstimatedCost: number | null,
+  ): Promise<number | null> {
+    if (providerEstimatedCost != null && Number.isFinite(providerEstimatedCost)) {
+      return providerEstimatedCost;
+    }
+
+    if (tokenUsageInput == null || tokenUsageOutput == null) {
+      return null;
+    }
+
+    const pricing = await this.getRunPricing(runId);
+    if (!pricing) {
+      return null;
+    }
+
+    return roundUsdCost(
+      (tokenUsageInput / 1_000_000) * pricing.inputUsdPerMillionTokens +
+        (tokenUsageOutput / 1_000_000) * pricing.outputUsdPerMillionTokens,
+    );
+  }
+
+  private async getRunPricing(runId: string): Promise<DeepSeekRunPricing | null> {
+    if (this.pricingCache.has(runId)) {
+      return this.pricingCache.get(runId) ?? null;
+    }
+
+    const artifacts = await this.artifactRepository.findByRunId(runId as never);
+    const inputArtifact = [...artifacts]
+      .reverse()
+      .find((artifact) => artifact.artifactType === 'normalized_input');
+    const payload = inputArtifact?.payload;
+    const pricing =
+      payload && !Array.isArray(payload) && typeof payload === 'object'
+        ? payload.deepSeekPricing
+        : null;
+    const inputUsdPerMillionTokens =
+      pricing && !Array.isArray(pricing) && typeof pricing === 'object'
+        ? pricing.inputUsdPerMillionTokens
+        : null;
+    const outputUsdPerMillionTokens =
+      pricing && !Array.isArray(pricing) && typeof pricing === 'object'
+        ? pricing.outputUsdPerMillionTokens
+        : null;
+    const normalizedPricing =
+      typeof inputUsdPerMillionTokens === 'number' &&
+      Number.isFinite(inputUsdPerMillionTokens) &&
+      inputUsdPerMillionTokens >= 0 &&
+      typeof outputUsdPerMillionTokens === 'number' &&
+      Number.isFinite(outputUsdPerMillionTokens) &&
+      outputUsdPerMillionTokens >= 0
+        ? { inputUsdPerMillionTokens, outputUsdPerMillionTokens }
+        : null;
+
+    this.pricingCache.set(runId, normalizedPricing);
+    return normalizedPricing;
+  }
+
   private getPositiveIntegerConfig(key: string, fallback: number): number {
     const rawValue = this.config.get<string>(key);
     if (!rawValue) {
@@ -678,4 +758,8 @@ export class DeepSeekSeoBriefAiAdapter {
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+}
+
+function roundUsdCost(value: number): number {
+  return Number(value.toFixed(8));
 }

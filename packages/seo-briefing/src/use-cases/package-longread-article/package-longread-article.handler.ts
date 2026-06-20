@@ -8,8 +8,8 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoBriefAiPort,
   type CleanupLongreadArticleResult as AiCleanupLongreadArticleResult,
+  SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
 import {
   buildArticleGenerationContext,
@@ -53,6 +53,12 @@ export class PackageLongreadArticleHandler
     const reviewedArticleMarkdown = readString(cleanupArtifact?.articleMarkdown);
     if (!reviewedArticleMarkdown) {
       throw new Error('Run longread safety cleanup before packaging');
+    }
+    if (
+      cleanupArtifact?.status !== 'passed' &&
+      cleanupArtifact?.status !== 'passed_with_warnings'
+    ) {
+      throw new Error('Longread cleanup must pass AI review checks before packaging');
     }
 
     const cleanupWarnings = readCleanupWarnings(cleanupArtifact?.warnings);
@@ -133,6 +139,7 @@ function readCleanupWarnings(value: unknown): AiCleanupLongreadArticleResult['wa
       if (
         !message ||
         (type !== 'claims' &&
+          type !== 'compliance' &&
           type !== 'seo' &&
           type !== 'product_insertion' &&
           type !== 'factual_check' &&

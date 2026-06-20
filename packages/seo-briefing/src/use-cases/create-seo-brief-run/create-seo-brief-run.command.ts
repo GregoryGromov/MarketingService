@@ -19,6 +19,11 @@ export interface CreateSeoBriefRunSeoProductBalanceInput {
   productWeight?: number | null;
 }
 
+export interface CreateSeoBriefRunDeepSeekPricingInput {
+  inputUsdPerMillionTokens?: number | null;
+  outputUsdPerMillionTokens?: number | null;
+}
+
 export interface CreateSeoBriefRunKnownCompetitorsInput {
   mustInclude?: string[] | null;
   optional?: string[] | null;
@@ -38,6 +43,8 @@ export interface CreateSeoBriefRunInput {
   hypothesesCount?: number | null;
   serpEnrichmentCount?: number | null;
   requestTimeoutMs?: number | null;
+  coverImageUrl?: string | null;
+  deepSeekPricing?: CreateSeoBriefRunDeepSeekPricingInput | null;
   competitorKeywordsJsonId?: string | null;
   market: CreateSeoBriefRunMarketInput;
   audience: string;

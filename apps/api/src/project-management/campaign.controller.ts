@@ -40,6 +40,7 @@ import { rethrowProjectManagementHttpError } from './project-management-http-err
 const AttachCampaignSourceSchema = v.object({
   content: v.pipe(v.string(), v.trim(), v.minLength(1)),
   language: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)),
+  coverImageUrl: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(2048)))),
   sourceImageDataUrl: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
 });
 
@@ -127,13 +128,14 @@ export class CampaignController {
         campaignId: id,
         contentLength: dto.content.length,
         language: dto.language,
+        hasCoverImageUrl: Boolean(dto.coverImageUrl),
         hasSourceImage: Boolean(dto.sourceImageDataUrl),
         sourceImageDataUrlLength: dto.sourceImageDataUrl?.length ?? 0,
       });
 
-      let defaultCoverUrl: string | null = null;
+      let defaultCoverUrl: string | null = normalizeHttpsCoverImageUrl(dto.coverImageUrl);
 
-      if (dto.sourceImageDataUrl) {
+      if (!defaultCoverUrl && dto.sourceImageDataUrl) {
         const campaign = await this.queryBus.execute(new GetCampaignDetailQuery(id as CampaignId));
         if (!campaign) {
           throw new NotFoundException(`Campaign ${id} not found`);
@@ -369,5 +371,21 @@ export class CampaignController {
     }
 
     return overview;
+  }
+}
+
+function normalizeHttpsCoverImageUrl(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'https:') {
+      throw new Error('Expected HTTPS URL');
+    }
+    return url.toString();
+  } catch {
+    throw new Error('coverImageUrl must be a valid HTTPS URL');
   }
 }

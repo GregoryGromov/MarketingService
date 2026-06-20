@@ -84,7 +84,9 @@ function asString(value: unknown): string | null {
 
 function asStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    return value.filter(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0,
+    );
   }
 
   return typeof value === 'string' && value.trim() ? [value] : [];
@@ -122,7 +124,10 @@ function normalizeUrl(value: string): string {
 }
 
 function normalizeNullableDomain(value: string | null): string | null {
-  const normalized = value?.trim().toLowerCase().replace(/^www\./u, '');
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/^www\./u, '');
   return normalized || null;
 }
 
@@ -156,25 +161,38 @@ function readOnPageLinks(value: unknown): Array<{ anchor?: string | null; url: s
 
 const DATAFORSEO_LANGUAGE_BY_INPUT = new Map<string, { code: string; name: string }>(
   [
+    ['afrikaans', 'af'],
     ['arabic', 'ar'],
-    ['chinese', 'zh'],
+    ['dutch', 'nl'],
     ['english', 'en'],
     ['filipino', 'tl'],
     ['french', 'fr'],
     ['german', 'de'],
+    ['hausa', 'ha'],
     ['hindi', 'hi'],
+    ['igbo', 'ig'],
     ['indonesian', 'id'],
     ['italian', 'it'],
     ['japanese', 'ja'],
     ['korean', 'ko'],
+    ['malay', 'ms'],
+    ['pashto', 'ps'],
+    ['pidgin', 'pcm'],
+    ['polish', 'pl'],
     ['portuguese', 'pt'],
+    ['punjabi', 'pa'],
+    ['romanian', 'ro'],
     ['russian', 'ru'],
     ['spanish', 'es'],
     ['tagalog', 'tl'],
     ['thai', 'th'],
     ['turkish', 'tr'],
     ['ukrainian', 'uk'],
+    ['urdu', 'ur'],
     ['vietnamese', 'vi'],
+    ['xhosa', 'xh'],
+    ['yoruba', 'yo'],
+    ['zulu', 'zu'],
   ].flatMap(([name, code]) => [
     [name, { code, name: name[0]?.toUpperCase() + name.slice(1) }],
     [code, { code, name: name[0]?.toUpperCase() + name.slice(1) }],
@@ -1156,10 +1174,7 @@ export class DataForSeoAdapter {
     payload: SeoBriefJsonValue,
     params: GetRankedKeywordsParams,
   ): SeoRankedKeywordsResult {
-    const task = this.getSingleTask(
-      payload,
-      '/v3/dataforseo_labs/google/ranked_keywords/live',
-    );
+    const task = this.getSingleTask(payload, '/v3/dataforseo_labs/google/ranked_keywords/live');
     const result = asObject(task.result?.[0]);
     const metrics = asObject(result?.metrics);
     const organic = asObject(metrics?.organic);
@@ -1218,9 +1233,7 @@ export class DataForSeoAdapter {
         cpc: asNumber(keywordInfo?.cpc),
         competitionLevel: asString(keywordInfo?.competition_level),
         intent: asString(searchIntentInfo?.main_intent),
-        monthlySearches: this.parseRankedKeywordMonthlySearches(
-          keywordInfo?.monthly_searches,
-        ),
+        monthlySearches: this.parseRankedKeywordMonthlySearches(keywordInfo?.monthly_searches),
       },
       competitorEvidence: {
         domain: normalizeNullableDomain(asString(serpItem?.domain)),
@@ -1329,8 +1342,11 @@ export class DataForSeoAdapter {
         asString(meta.description) ??
         asString(result.meta_description),
       canonical: asString(page.canonical) ?? asString(result.canonical),
-      statusCode: asNumber(page.status_code) ?? asNumber(page.statusCode) ?? asNumber(result.status_code),
-      technicalChecks: (asObject(page.checks) ?? asObject(result.checks) ?? {}) as SeoBriefJsonObject,
+      statusCode:
+        asNumber(page.status_code) ?? asNumber(page.statusCode) ?? asNumber(result.status_code),
+      technicalChecks: (asObject(page.checks) ??
+        asObject(result.checks) ??
+        {}) as SeoBriefJsonObject,
     };
   }
 
