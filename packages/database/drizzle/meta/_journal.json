@@ -120,6 +120,13 @@
       "when": 1781053200000,
       "tag": "0016_brand_memory_seo_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782072000000,
+      "tag": "0017_x_oauth_connections",
+      "breakpoints": true
     }
   ]
 }

@@ -80,6 +80,7 @@ import { PublicationOutcomeDrizzlePort } from './publishing/publication-outcome.
 import { PublicationPlanDrizzleRepository } from './publishing/publication-plan.drizzle-repository.js';
 import { TelegramBotApiPublisher } from './publishing/telegram-bot-api.publisher.js';
 import { XApiPublisher } from './publishing/x-api.publisher.js';
+import { XIntegrationService } from './publishing/x-integration.service.js';
 import { DataForSeoAdapter } from './seo-briefing/dataforseo.adapter.js';
 import { DataForSeoHttpClientPort } from './seo-briefing/dataforseo-http-client.port.js';
 import { DataForSeoMemoryCacheService } from './seo-briefing/dataforseo-memory-cache.service.js';
@@ -129,6 +130,7 @@ import { SeoBriefScoreLogDrizzleRepository } from './seo-briefing/seo-brief-scor
     FetchDataForSeoHttpClient,
     TelegramBotApiPublisher,
     XApiPublisher,
+    XIntegrationService,
     CampaignProductionJobBullMqPort,
     CampaignFlowDrizzleTransaction,
     CampaignPublishingDrizzlePort,
@@ -236,6 +238,7 @@ import { SeoBriefScoreLogDrizzleRepository } from './seo-briefing/seo-brief-scor
     TranslationGeneratorPort,
     TelegramPublisherPort,
     XPublisherPort,
+    XIntegrationService,
     PublicationPlanRepository,
     PublicationOutcomePort,
     PublicationRepository,

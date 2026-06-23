@@ -5,6 +5,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "api:local": "turbo run build --filter=@marketing-service/api && pnpm --filter @marketing-service/api exec nest start",
+    "worker:local": "turbo run build --filter=@marketing-service/worker && pnpm --filter @marketing-service/worker exec nest start",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "lint": "biome check .",

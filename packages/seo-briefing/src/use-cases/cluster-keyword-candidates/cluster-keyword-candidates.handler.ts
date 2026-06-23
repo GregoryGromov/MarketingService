@@ -11,8 +11,8 @@ import {
   type ClusterKeywordCandidateInput,
   type ExtractUserPainScenariosResult,
   type SeoBriefAiModelMode,
-  type SeoKeywordCluster,
   SeoBriefAiPort,
+  type SeoKeywordCluster,
 } from '../../ports/seo-brief-ai.port.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClusterKeywordCandidatesCommand } from './cluster-keyword-candidates.command.js';
@@ -90,7 +90,7 @@ export class ClusterKeywordCandidatesHandler
         brandMemorySnapshot: run.brandMemorySnapshot,
         keywords: candidateInputs.map((candidate) => candidate.keyword),
         candidates: candidateInputs,
-        rejectedKeywords: rejected.map((candidate) => readString(candidate.keyword) ?? ''),
+        rejectedKeywords: [],
       });
 
       const clusters = normalizeClusters(result.clusters, viableCandidates);
@@ -155,7 +155,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -197,6 +199,18 @@ function toClusterCandidateInput(candidate: CandidateRecord): ClusterKeywordCand
       proxyDemandScore: readNumber(metrics?.proxyDemandScore),
       competitorMatchScore: readNumber(metrics?.competitorMatchScore),
       candidateScore: readNumber(metrics?.candidateScore),
+      sourceHypothesisSerpDomainConcentrationLabel: readString(
+        metrics?.sourceHypothesisSerpDomainConcentrationLabel,
+      ),
+      sourceHypothesisSerpDomainHhi: readNumber(metrics?.sourceHypothesisSerpDomainHhi),
+      sourceHypothesisSerpDominantDomain: readString(metrics?.sourceHypothesisSerpDominantDomain),
+      sourceHypothesisSerpDominantDomainShare: readNumber(
+        metrics?.sourceHypothesisSerpDominantDomainShare,
+      ),
+      sourceHypothesisSerpResultCount: readNumber(metrics?.sourceHypothesisSerpResultCount),
+      sourceHypothesisSerpUniqueDomainCount: readNumber(
+        metrics?.sourceHypothesisSerpUniqueDomainCount,
+      ),
     },
     competitorUrls: readCompetitorUrls(sourceCandidate),
   };
@@ -233,11 +247,13 @@ function normalizeClusters(
 
     const primaryKeyword = sourceByKeyword.has(normalizeKeywordText(cluster.primaryKeyword))
       ? cluster.primaryKeyword
-      : keywords[0] ?? cluster.primaryKeyword;
+      : (keywords[0] ?? cluster.primaryKeyword);
     const competitorUrls = mergeCompetitorUrls([
       ...(cluster.competitorUrls ?? []),
       ...keywords.flatMap((keyword) =>
-        readCompetitorUrls(asObject(sourceByKeyword.get(normalizeKeywordText(keyword))?.sourceCandidate)),
+        readCompetitorUrls(
+          asObject(sourceByKeyword.get(normalizeKeywordText(keyword))?.sourceCandidate),
+        ),
       ),
     ]);
     const supportingItems = (cluster.supportingItems ?? []).filter((keyword) =>
@@ -266,7 +282,9 @@ function normalizeClusters(
       candidateItems: keywords.map(
         (keyword): SeoBriefJsonObject => ({
           keyword,
-          sourceCandidate: sourceByKeyword.get(normalizeKeywordText(keyword)) as unknown as SeoBriefJsonValue,
+          sourceCandidate: sourceByKeyword.get(
+            normalizeKeywordText(keyword),
+          ) as unknown as SeoBriefJsonValue,
         }),
       ),
     };
@@ -355,9 +373,13 @@ function createSupportingItemDetail(
   };
 }
 
-function readCompetitorUrls(sourceCandidate: CandidateRecord | null): ClusterKeywordCandidateInput['competitorUrls'] {
+function readCompetitorUrls(
+  sourceCandidate: CandidateRecord | null,
+): ClusterKeywordCandidateInput['competitorUrls'] {
   const evidence = Array.isArray(sourceCandidate?.evidence)
-    ? sourceCandidate.evidence.map(asObject).filter((item): item is CandidateRecord => item !== null)
+    ? sourceCandidate.evidence
+        .map(asObject)
+        .filter((item): item is CandidateRecord => item !== null)
     : [];
 
   return mergeCompetitorUrls(

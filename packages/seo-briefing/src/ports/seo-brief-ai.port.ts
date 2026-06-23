@@ -202,6 +202,12 @@ export interface ClusterKeywordCandidateInput {
     keywordDifficulty?: number | null;
     proxyDemandScore?: number | null;
     searchVolume?: number | null;
+    sourceHypothesisSerpDomainConcentrationLabel?: string | null;
+    sourceHypothesisSerpDomainHhi?: number | null;
+    sourceHypothesisSerpDominantDomain?: string | null;
+    sourceHypothesisSerpDominantDomainShare?: number | null;
+    sourceHypothesisSerpResultCount?: number | null;
+    sourceHypothesisSerpUniqueDomainCount?: number | null;
   };
   reasons: string[];
   riskFlags: string[];
@@ -351,6 +357,12 @@ export interface ScoreDirtyKeywordCandidateInput {
     keywordDifficulty?: number | null;
     proxyDemandScore?: number | null;
     searchVolume?: number | null;
+    sourceHypothesisSerpDomainConcentrationLabel?: string | null;
+    sourceHypothesisSerpDomainHhi?: number | null;
+    sourceHypothesisSerpDominantDomain?: string | null;
+    sourceHypothesisSerpDominantDomainShare?: number | null;
+    sourceHypothesisSerpResultCount?: number | null;
+    sourceHypothesisSerpUniqueDomainCount?: number | null;
   };
   normalizedText: string;
   sources: string[];

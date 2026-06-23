@@ -31,7 +31,7 @@ function createRun(): SeoBriefRun {
 }
 
 describe('BuildDirtyKeywordPoolHandler', () => {
-  it('merges keyword candidates from all sources while preserving evidence', async () => {
+  it('merges generated and SERP-derived keyword candidates while ignoring competitor keyword scoring artifacts', async () => {
     const runRepository = new InMemorySeoBriefRunRepository();
     const artifactRepository = new InMemorySeoBriefArtifactRepository();
     const run = createRun();
@@ -80,6 +80,28 @@ describe('BuildDirtyKeywordPoolHandler', () => {
                   reason: 'PAA question',
                 },
               ],
+            },
+          ],
+        },
+      }),
+    );
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'keyword_expansion',
+        artifactType: 'keyword_serp_preview_snapshots',
+        payload: {
+          items: [
+            {
+              keyword: 'is it safe to earn interest on USDT',
+              snapshot: {
+                organicResults: [
+                  { domain: 'binance.com', url: 'https://binance.com/usdt-earn' },
+                  { domain: 'binance.com', url: 'https://binance.com/usdt-savings' },
+                  { domain: 'coinbase.com', url: 'https://coinbase.com/learn/usdt' },
+                  { domain: 'trustwallet.com', url: 'https://trustwallet.com/usdt' },
+                ],
+              },
             },
           ],
         },
@@ -202,6 +224,12 @@ describe('BuildDirtyKeywordPoolHandler', () => {
         };
         metrics: {
           proxyDemandScore: number | null;
+          sourceHypothesisSerpDomainConcentrationLabel?: string | null;
+          sourceHypothesisSerpDomainHhi?: number | null;
+          sourceHypothesisSerpDominantDomain?: string | null;
+          sourceHypothesisSerpDominantDomainShare?: number | null;
+          sourceHypothesisSerpResultCount?: number | null;
+          sourceHypothesisSerpUniqueDomainCount?: number | null;
           searchVolume: number | null;
         };
         normalizedText: string;
@@ -213,46 +241,50 @@ describe('BuildDirtyKeywordPoolHandler', () => {
     };
 
     expect(result.artifactType).toBe('dirty_keyword_pool');
-    expect(payload.candidateCount).toBe(4);
-    expect(payload.duplicateEvidenceCount).toBe(3);
+    expect(payload.candidateCount).toBe(3);
+    expect(payload.duplicateEvidenceCount).toBe(1);
     expect(payload.sourceCounts).toEqual({
-      competitor_keyword_match: 2,
       keyword_hypothesis: 2,
-      ranked_keywords: 1,
       selected_related_query: 1,
       serp_derived_candidate: 1,
     });
     expect(
-      payload.candidates.find((candidate) => candidate.normalizedText === 'how much interest is on usdt'),
+      payload.candidates.find(
+        (candidate) => candidate.normalizedText === 'how much interest is on usdt',
+      ),
     ).toMatchObject({
       text: 'How much interest is on USDT',
-      sources: [
-        'serp_derived_candidate',
-        'selected_related_query',
-        'competitor_keyword_match',
-      ],
-      evidence: [
-        { source: 'serp_derived_candidate' },
-        { source: 'selected_related_query' },
-        { source: 'competitor_keyword_match' },
-      ],
+      sources: ['serp_derived_candidate', 'selected_related_query'],
+      evidence: [{ source: 'serp_derived_candidate' }, { source: 'selected_related_query' }],
       flags: {
-        hasCompetitorKeywordMatch: true,
+        hasCompetitorKeywordMatch: false,
       },
       metrics: {
-        proxyDemandScore: 41,
+        proxyDemandScore: null,
+        sourceHypothesisSerpDomainConcentrationLabel: 'medium',
+        sourceHypothesisSerpDomainHhi: 0.375,
+        sourceHypothesisSerpDominantDomain: 'binance.com',
+        sourceHypothesisSerpDominantDomainShare: 0.5,
+        sourceHypothesisSerpResultCount: 4,
+        sourceHypothesisSerpUniqueDomainCount: 3,
+      },
+    });
+    expect(
+      payload.candidates.find(
+        (candidate) => candidate.normalizedText === 'is it safe to earn interest on usdt',
+      ),
+    ).toMatchObject({
+      metrics: {
+        sourceHypothesisSerpDomainConcentrationLabel: 'medium',
+        sourceHypothesisSerpDomainHhi: 0.375,
+        sourceHypothesisSerpDominantDomain: 'binance.com',
+        sourceHypothesisSerpDominantDomainShare: 0.5,
+        sourceHypothesisSerpResultCount: 4,
+        sourceHypothesisSerpUniqueDomainCount: 3,
       },
     });
     expect(
       payload.candidates.find((candidate) => candidate.normalizedText === 'usdt savings account'),
-    ).toMatchObject({
-      flags: {
-        hasRankedKeywordEvidence: true,
-        hasSearchVolume: true,
-      },
-      metrics: {
-        searchVolume: 170,
-      },
-    });
+    ).toBeUndefined();
   });
 });

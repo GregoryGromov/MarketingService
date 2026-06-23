@@ -4,33 +4,30 @@ import {
   SEO_BRIEF_RUN_QUEUE,
   type SeoBriefRunJobPayload,
 } from '@marketing-service/seo-briefing';
-import { Injectable, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type Job, type RedisOptions, Worker } from 'bullmq';
+import { type Job, Worker } from 'bullmq';
 import { Logger } from 'nestjs-pino';
-
-function buildRedisConnection(redisUrl: string): RedisOptions {
-  const parsed = new URL(redisUrl);
-  const database = parsed.pathname ? Number.parseInt(parsed.pathname.slice(1) || '0', 10) : 0;
-
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number.parseInt(parsed.port, 10) : 6379,
-    username: parsed.username || undefined,
-    password: parsed.password || undefined,
-    db: Number.isNaN(database) ? 0 : database,
-    tls: parsed.protocol === 'rediss:' ? {} : undefined,
-    maxRetriesPerRequest: null,
-  };
-}
+import {
+  createThrottledConnectionErrorLogger,
+  waitForRedisReady,
+} from './redis-worker-connection.js';
 
 @Injectable()
 export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestroy {
   private worker: Worker<SeoBriefRunJobPayload> | null = null;
 
   constructor(
+    @Inject(ConfigService)
     private readonly config: ConfigService,
+    @Inject(Logger)
     private readonly logger: Logger,
+    @Inject(ProcessSeoBriefRunExecutor)
     private readonly executor: ProcessSeoBriefRunExecutor,
   ) {}
 
@@ -39,11 +36,13 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
       return;
     }
 
+    const redisUrl = this.config.getOrThrow<string>('REDIS_URL');
+    const connection = await waitForRedisReady(redisUrl, SEO_BRIEF_RUN_QUEUE, this.logger);
     this.worker = new Worker<SeoBriefRunJobPayload>(
       SEO_BRIEF_RUN_QUEUE,
       async (job) => this.processJob(job),
       {
-        connection: buildRedisConnection(this.config.getOrThrow<string>('REDIS_URL')),
+        connection,
         concurrency: 1,
       },
     );
@@ -57,6 +56,7 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
         `SEO brief job ${job?.name ?? 'unknown'} failed for run ${job?.data?.runId ?? 'unknown'}`,
       );
     });
+    this.worker.on('error', createThrottledConnectionErrorLogger(SEO_BRIEF_RUN_QUEUE, this.logger));
   }
 
   async onModuleDestroy(): Promise<void> {

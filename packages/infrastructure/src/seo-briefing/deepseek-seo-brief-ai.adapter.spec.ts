@@ -1,10 +1,13 @@
 import type {
   BuildProductBridgeParams,
   ClassifySerpDomainsParams,
+  CleanupLongreadArticleParams,
   ClusterKeywordsParams,
+  DraftLongreadArticleParams,
   ExpandKeywordsParams,
   ExplainClusterSelectionParams,
   GenerateSeoBriefParams,
+  PackageLongreadArticleParams,
   ReviewClusterProductFitParams,
   SelectRelatedKeywordsParams,
   SeoBriefArtifactRepository,
@@ -12,6 +15,7 @@ import type {
   SeoBriefLlmCallLogId,
   SeoBriefLlmLogRepository,
   SeoBriefRunId,
+  SynthesizeOnPageParams,
   TriageKeywordsParams,
 } from '@marketing-service/seo-briefing';
 import type { ConfigService } from '@nestjs/config';
@@ -259,7 +263,7 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
   });
 
   it('validates response shape strictly and throws on invalid brief payload', async () => {
-    const { adapter, repository } = createAdapter([
+    const { adapter, client, repository } = createAdapter([
       {
         status: 200,
         model: 'deepseek-v4-pro',
@@ -336,6 +340,43 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
         talkingPoints: ['Idle USDT', 'Risk awareness'],
         risks: ['Avoid guaranteed income language'],
       },
+      clusterSelection: {
+        mainCluster: {
+          clusterName: 'USDT earning guide',
+          primaryKeyword: 'how to earn with usdt',
+          sourceCandidate: {
+            rawEvidence: 'RAW_CLUSTER_EVIDENCE_SHOULD_NOT_APPEAR',
+          },
+        },
+      },
+      onPageSynthesis: {
+        competitorStructureSummary: {
+          commonH2Patterns: ['What USDT earning means', 'Risk and platform comparison'],
+          contentGaps: ['Explain risk without promising returns.'],
+        },
+        rawResponse: 'RAW_ONPAGE_RESPONSE_SHOULD_NOT_APPEAR',
+      },
+      productFitReview: {
+        clusterProductFit: [
+          {
+            clusterName: 'USDT earning guide',
+            decision: 'approve',
+            productInsertionAngle: 'Education-first bridge',
+          },
+        ],
+      },
+      keywordCandidateScoring: {
+        accepted: [{ keyword: 'how to earn with usdt', reason: 'Strong topic fit.' }],
+        rawResponse: 'RAW_KEYWORD_SCORING_SHOULD_NOT_APPEAR',
+      },
+      serpEnrichmentContext: {
+        derivedCandidates: ['usdt earning risks'],
+        markdownPreview: 'RAW_SERP_MARKDOWN_SHOULD_NOT_APPEAR',
+      },
+      competitorKeywordEvidence: {
+        keywordMatches: ['usdt yield guide'],
+        requestPayload: 'RAW_COMPETITOR_REQUEST_SHOULD_NOT_APPEAR',
+      },
     };
 
     const result = await adapter.generateSeoBrief(params);
@@ -345,6 +386,378 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(logs).toHaveLength(2);
     expect(logs[0]?.status).toBe('failed');
     expect(logs[1]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.generateSeoBrief);
+    expect(client.requests[0]?.userPrompt).toContain('FINAL_BRIEF_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('FINAL_BRIEF_EVIDENCE_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('USDT earning guide');
+    expect(client.requests[0]?.userPrompt).toContain('What USDT earning means');
+    expect(client.requests[0]?.userPrompt).not.toContain('sourceCandidate');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_CLUSTER_EVIDENCE_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_ONPAGE_RESPONSE_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_KEYWORD_SCORING_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_SERP_MARKDOWN_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_COMPETITOR_REQUEST_SHOULD_NOT_APPEAR',
+    );
+  });
+
+  it('sends compact article draft context instead of full final brief payload', async () => {
+    const { adapter, client, repository } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          draftArticleMarkdown:
+            '# How to Earn with USDT Safely\n\n## What earning with USDT means\n\nA clear beginner explanation.',
+        }),
+        rawPayload: { id: 'draft-article' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: DraftLongreadArticleParams = {
+      runId: 'seo_brief_run_ai_4' as never,
+      stepId: 'seo_brief_step_ai_4' as never,
+      finalSeoBrief: {
+        market: {
+          country: 'Nigeria',
+          language: 'English',
+        },
+        topicHint: 'USDT earning',
+        mainCluster: 'USDT earning guide',
+        supportingClusters: ['USDT risks'],
+        primaryKeyword: 'how to earn with usdt',
+        secondaryKeywords: ['usdt yield', 'usdt earning risks'],
+        searchIntent: 'Learn safe ways to evaluate USDT earning options.',
+        targetReader: 'Beginners holding USDT',
+        contentType: 'educational guide',
+        recommendedTitle: 'How to Earn with USDT Safely',
+        recommendedH1: 'How to Earn with USDT Safely',
+        recommendedMetaTitle: 'How to Earn with USDT Safely',
+        recommendedMetaDescription: 'Learn practical options and risks.',
+        outline: [
+          {
+            h2: 'What earning with USDT means',
+            h3: ['Common options', 'Basic risks'],
+            notes: 'Define the topic before product mention.',
+            rawEvidence: 'RAW_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR',
+          },
+        ],
+        faq: [
+          {
+            question: 'Is earning with USDT risk-free?',
+            answerDirection: 'No. Explain risk clearly.',
+          },
+        ],
+        productInsertion: {
+          where: 'Conclusion',
+          how: 'Mention Reinforce as one possible option.',
+          sampleAngle: 'Education-first bridge.',
+          avoid: ['Do not promise guaranteed returns.'],
+        },
+        competitorGapsToFill: ['Explain risk simply.'],
+        riskNotes: ['Avoid guaranteed returns.'],
+        cta: 'See how Reinforce works',
+        internalLinks: ['USDT guide'],
+        externalSourcesNeeded: ['Current APY source if APY is mentioned'],
+        legacy: {
+          rawResponse: 'RAW_LEGACY_BRIEF_SHOULD_NOT_APPEAR',
+        },
+      },
+      productProfile: {
+        productName: 'Reinforce',
+        mainValue: 'Helps users put idle USDT to work',
+        rawPayload: 'RAW_PRODUCT_PROFILE_SHOULD_NOT_APPEAR',
+      },
+      claimsPolicy: {
+        notAllowedClaims: ['guaranteed profit'],
+        rawResponse: 'RAW_CLAIMS_POLICY_SHOULD_NOT_APPEAR',
+      },
+      brandVoice: {
+        tone: 'clear and risk-aware',
+        responsePayload: 'RAW_BRAND_VOICE_SHOULD_NOT_APPEAR',
+      },
+      targetLength: 'longread',
+      publishingFormat: 'markdown',
+    };
+
+    const result = await adapter.draftLongreadArticle(params);
+    const logs = await repository.findByRunId(params.runId);
+
+    expect(result.draftArticleMarkdown).toContain('# How to Earn with USDT Safely');
+    expect(logs[0]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.draftLongreadArticle);
+    expect(client.requests[0]?.userPrompt).toContain('ARTICLE_DRAFT_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('How to Earn with USDT Safely');
+    expect(client.requests[0]?.userPrompt).toContain('What earning with USDT means');
+    expect(client.requests[0]?.userPrompt).not.toContain('legacy');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_LEGACY_BRIEF_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_PRODUCT_PROFILE_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_CLAIMS_POLICY_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_BRAND_VOICE_SHOULD_NOT_APPEAR');
+  });
+
+  it('sends full article but compact cleanup context without raw brief payloads', async () => {
+    const { adapter, client, repository } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          status: 'passed_with_warnings',
+          warnings: [
+            {
+              type: 'claims',
+              severity: 'note',
+              message: 'Risk wording is conservative.',
+            },
+          ],
+          changesMade: ['Softened product wording.'],
+          articleMarkdown:
+            '# How to Earn with USDT Safely\n\n## What earning with USDT means\n\nARTICLE_BODY_MUST_REMAIN',
+        }),
+        rawPayload: { id: 'cleanup-article' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: CleanupLongreadArticleParams = {
+      runId: 'seo_brief_run_ai_5' as never,
+      stepId: 'seo_brief_step_ai_5' as never,
+      draftArticleMarkdown:
+        '# How to Earn with USDT Safely\n\n## What earning with USDT means\n\nARTICLE_BODY_MUST_REMAIN',
+      finalSeoBrief: {
+        market: {
+          country: 'Nigeria',
+          language: 'English',
+        },
+        topicHint: 'USDT earning',
+        mainCluster: 'USDT earning guide',
+        primaryKeyword: 'how to earn with usdt',
+        secondaryKeywords: ['usdt yield'],
+        searchIntent: 'Learn safe ways to evaluate USDT earning options.',
+        targetReader: 'Beginners holding USDT',
+        recommendedTitle: 'How to Earn with USDT Safely',
+        recommendedH1: 'How to Earn with USDT Safely',
+        outline: [
+          {
+            h2: 'What earning with USDT means',
+            h3: ['Common options'],
+            notes: 'Define the topic before product mention.',
+            rawEvidence: 'RAW_CLEANUP_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR',
+          },
+        ],
+        faq: [
+          {
+            question: 'Is earning with USDT risk-free?',
+            answerDirection: 'No.',
+          },
+        ],
+        productInsertion: {
+          where: 'Conclusion',
+          how: 'Mention Reinforce as one possible option.',
+          sampleAngle: 'Education-first bridge.',
+          avoid: ['Do not promise guaranteed returns.'],
+        },
+        riskNotes: ['Avoid guaranteed returns.'],
+        cta: 'See how Reinforce works',
+        legacy: {
+          rawResponse: 'RAW_CLEANUP_LEGACY_BRIEF_SHOULD_NOT_APPEAR',
+        },
+      },
+      productProfile: {
+        productName: 'Reinforce',
+        rawPayload: 'RAW_CLEANUP_PRODUCT_PROFILE_SHOULD_NOT_APPEAR',
+      },
+      claimsPolicy: {
+        notAllowedClaims: ['guaranteed profit'],
+        responsePayload: 'RAW_CLEANUP_CLAIMS_POLICY_SHOULD_NOT_APPEAR',
+      },
+      brandVoice: {
+        tone: 'clear and risk-aware',
+        requestPayload: 'RAW_CLEANUP_BRAND_VOICE_SHOULD_NOT_APPEAR',
+      },
+      reviewAttempt: 2,
+      previousReviewFindings: [
+        {
+          attempt: 1,
+          status: 'revised',
+          warnings: [
+            {
+              type: 'claims',
+              severity: 'warning',
+              message: 'Remove guaranteed return wording.',
+              rawEvidence: 'RAW_PREVIOUS_FINDING_EVIDENCE_SHOULD_NOT_APPEAR',
+            },
+          ],
+          changesMade: ['Removed hard claims.'],
+          articleMarkdown: 'RAW_PREVIOUS_ARTICLE_SHOULD_NOT_APPEAR',
+          markdownLength: 1234,
+        },
+      ],
+    };
+
+    const result = await adapter.cleanupLongreadArticle(params);
+    const logs = await repository.findByRunId(params.runId);
+
+    expect(result.status).toBe('passed_with_warnings');
+    expect(logs[0]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.cleanupLongreadArticle);
+    expect(client.requests[0]?.userPrompt).toContain('ARTICLE_CLEANUP_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('ARTICLE_BODY_MUST_REMAIN');
+    expect(client.requests[0]?.userPrompt).toContain('How to Earn with USDT Safely');
+    expect(client.requests[0]?.userPrompt).not.toContain('legacy');
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_CLEANUP_LEGACY_BRIEF_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_CLEANUP_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_CLEANUP_PRODUCT_PROFILE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_CLEANUP_CLAIMS_POLICY_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_CLEANUP_BRAND_VOICE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_PREVIOUS_FINDING_EVIDENCE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_PREVIOUS_ARTICLE_SHOULD_NOT_APPEAR');
+  });
+
+  it('sends full reviewed article but compact package context without raw payloads', async () => {
+    const { adapter, client, repository } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          article: {
+            title: 'How to Earn with USDT Safely',
+            slug: 'how-to-earn-with-usdt-safely',
+            metaTitle: 'How to Earn with USDT Safely',
+            metaDescription: 'Learn practical options and risks.',
+            h1: 'How to Earn with USDT Safely',
+            bodyMarkdown:
+              '# How to Earn with USDT Safely\n\n## What earning with USDT means\n\nPACKAGED_ARTICLE_BODY',
+          },
+          seo: {
+            primaryKeyword: 'how to earn with usdt',
+            secondaryKeywordsUsed: ['usdt yield'],
+            searchIntent: 'Learn safe ways to evaluate USDT earning options.',
+            contentType: 'educational guide',
+            faqIncluded: true,
+            internalLinks: ['USDT guide'],
+            externalSourcesNeeded: ['Current APY source if APY is mentioned'],
+          },
+          productInsertion: {
+            whereInserted: 'Conclusion',
+            angleUsed: 'Education-first bridge.',
+            forced: false,
+          },
+          claimsReview: {
+            status: 'passed_with_warnings',
+            warnings: ['Risk wording is conservative.'],
+          },
+          publishingChecklist: {
+            readyToPublish: false,
+            needsExternalFactCheck: true,
+            needsComplianceReview: false,
+            notes: ['External source needed if APY is mentioned.'],
+          },
+        }),
+        rawPayload: { id: 'package-article' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: PackageLongreadArticleParams = {
+      runId: 'seo_brief_run_ai_6' as never,
+      stepId: 'seo_brief_step_ai_6' as never,
+      reviewedArticleMarkdown:
+        '# How to Earn with USDT Safely\n\n## What earning with USDT means\n\nPACKAGED_ARTICLE_BODY',
+      finalSeoBrief: {
+        market: {
+          country: 'Nigeria',
+          language: 'English',
+        },
+        topicHint: 'USDT earning',
+        mainCluster: 'USDT earning guide',
+        primaryKeyword: 'how to earn with usdt',
+        secondaryKeywords: ['usdt yield'],
+        searchIntent: 'Learn safe ways to evaluate USDT earning options.',
+        targetReader: 'Beginners holding USDT',
+        recommendedTitle: 'How to Earn with USDT Safely',
+        recommendedH1: 'How to Earn with USDT Safely',
+        recommendedMetaTitle: 'How to Earn with USDT Safely',
+        recommendedMetaDescription: 'Learn practical options and risks.',
+        outline: [
+          {
+            h2: 'What earning with USDT means',
+            h3: ['Common options'],
+            notes: 'Define the topic before product mention.',
+            rawEvidence: 'RAW_PACKAGE_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR',
+          },
+        ],
+        faq: [
+          {
+            question: 'Is earning with USDT risk-free?',
+            answerDirection: 'No.',
+          },
+        ],
+        productInsertion: {
+          where: 'Conclusion',
+          how: 'Mention Reinforce as one possible option.',
+          sampleAngle: 'Education-first bridge.',
+          avoid: ['Do not promise guaranteed returns.'],
+        },
+        riskNotes: ['Avoid guaranteed returns.'],
+        cta: 'See how Reinforce works',
+        internalLinks: ['USDT guide'],
+        externalSourcesNeeded: ['Current APY source if APY is mentioned'],
+        legacy: {
+          rawResponse: 'RAW_PACKAGE_LEGACY_BRIEF_SHOULD_NOT_APPEAR',
+        },
+      },
+      cleanupWarnings: [
+        {
+          type: 'claims',
+          severity: 'note',
+          message: 'Risk wording is conservative.',
+          rawEvidence: 'RAW_PACKAGE_WARNING_EVIDENCE_SHOULD_NOT_APPEAR',
+        },
+      ] as unknown as PackageLongreadArticleParams['cleanupWarnings'],
+      productProfile: {
+        productName: 'Reinforce',
+        mainValue: 'Helps users put idle USDT to work',
+        rawPayload: 'RAW_PACKAGE_PRODUCT_PROFILE_SHOULD_NOT_APPEAR',
+      },
+    };
+
+    const result = await adapter.packageLongreadArticle(params);
+    const logs = await repository.findByRunId(params.runId);
+
+    expect(result.article.slug).toBe('how-to-earn-with-usdt-safely');
+    expect(logs[0]?.promptVersion).toBe(SEO_BRIEF_AI_PROMPT_VERSIONS.packageLongreadArticle);
+    expect(client.requests[0]?.userPrompt).toContain('ARTICLE_PACKAGE_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('PACKAGED_ARTICLE_BODY');
+    expect(client.requests[0]?.userPrompt).toContain('How to Earn with USDT Safely');
+    expect(client.requests[0]?.userPrompt).toContain('Risk wording is conservative.');
+    expect(client.requests[0]?.userPrompt).not.toContain('legacy');
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_PACKAGE_LEGACY_BRIEF_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_PACKAGE_OUTLINE_EVIDENCE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_PACKAGE_WARNING_EVIDENCE_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'RAW_PACKAGE_PRODUCT_PROFILE_SHOULD_NOT_APPEAR',
+    );
   });
 
   it('supports triage, product bridge, and cluster selection explanations as standalone methods', async () => {
@@ -551,7 +964,7 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
   });
 
   it('fills empty product insertion angle during Product Fit validation', async () => {
-    const { adapter } = createAdapter([
+    const { adapter, client } = createAdapter([
       {
         status: 200,
         model: 'deepseek-v4-pro',
@@ -591,12 +1004,37 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
           primaryKeywordCandidate: 'usdc on arbitrum',
           intent: 'informational',
           userIntent: 'Understand how USDC works on Arbitrum.',
-          secondaryKeywords: [],
-          questions: [],
-          supportingItems: [],
-          supportingItemDetails: [],
+          secondaryKeywords: ['arbitrum usdc bridge'],
+          questions: ['is USDC safe on Arbitrum'],
+          supportingItems: ['arbitrum usdc bridge'],
+          supportingItemDetails: [
+            {
+              text: 'arbitrum usdc bridge',
+              originType: 'dirty_keyword_pool',
+              sources: ['serp_derived_candidate', 'ai_fit_scoring'],
+              candidateScore: 72,
+              metrics: {
+                searchVolume: 390,
+                keywordDifficulty: 27,
+                bestRankAbsolute: 4,
+                proxyDemandScore: 66,
+              },
+              whyInCluster: 'Bridge workflow supports the user intent.',
+              sourceCandidate: {
+                text: 'arbitrum usdc bridge',
+                rawEvidence: 'this raw nested evidence should not be sent to Product Fit AI',
+              },
+            },
+          ],
           keywords: ['usdc on arbitrum'],
-          competitorUrls: [],
+          competitorUrls: [
+            {
+              domain: 'arbitrum.io',
+              rankAbsolute: 2,
+              title: 'USDC on Arbitrum',
+              url: 'https://arbitrum.io/usdc',
+            },
+          ],
           sourceConfidence: 'medium',
           evidenceSummary: 'SERP cluster about USDC on Arbitrum.',
         },
@@ -608,5 +1046,106 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(result.clusterProductFit[0]?.productInsertionAngle).toBe(
       'No safe product insertion angle provided by AI.',
     );
+    expect(client.requests[0]?.userPrompt).toContain('PRODUCT_FIT_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('CLUSTERS:');
+    expect(client.requests[0]?.userPrompt).toContain('name=USDC on Arbitrum');
+    expect(client.requests[0]?.userPrompt).toContain('support=arbitrum usdc bridge');
+    expect(client.requests[0]?.userPrompt).not.toContain('sourceCandidate');
+    expect(client.requests[0]?.userPrompt).not.toContain('raw nested evidence');
+  });
+
+  it('sends compact on-page synthesis evidence instead of raw page payloads', async () => {
+    const { adapter, client } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          competitor_structure_summary: {
+            common_h2_patterns: ['What USDC on Arbitrum means', 'How bridges work'],
+            common_content_blocks: ['Definitions', 'Risk notes'],
+            common_faq_questions: ['Is USDC safe on Arbitrum?'],
+            common_tables_or_comparisons: ['Bridge comparison table'],
+            content_gaps: ['Explain wallet setup in simpler language.'],
+          },
+          recommended_article_structure: {
+            h1: 'USDC on Arbitrum: beginner guide',
+            h2: [
+              {
+                heading: 'What USDC on Arbitrum means',
+                purpose: 'Define the topic.',
+                subpoints: ['Explain native vs bridged assets.'],
+              },
+            ],
+            faq: ['Is USDC safe on Arbitrum?'],
+          },
+          product_insertion: {
+            section: 'After risk explanation',
+            angle: 'Education-first product bridge',
+            do: ['Keep claims conservative.'],
+            avoid: ['Do not promise risk-free returns.'],
+          },
+          risk_and_compliance_notes: ['Avoid guaranteed return claims.'],
+        }),
+        rawPayload: { id: 'onpage-synthesis' },
+        tokenUsageInput: 10,
+        tokenUsageOutput: 10,
+        estimatedCost: null,
+      },
+    ]);
+    const params: SynthesizeOnPageParams = {
+      runId: 'seo_brief_run_ai_8' as never,
+      stepId: 'seo_brief_step_ai_8' as never,
+      topicSeed: 'USDC on Arbitrum',
+      audience: 'Stablecoin beginners',
+      productName: 'Northstar',
+      productDescription: 'Digital asset education',
+      market: {
+        country: 'United States',
+        language: 'English',
+      },
+      clusterSelection: {
+        mainCluster: {
+          clusterName: 'USDC on Arbitrum',
+          primaryKeyword: 'usdc on arbitrum',
+        },
+      },
+      onPagePages: [
+        {
+          domain: 'example.com',
+          url: 'https://example.com/usdc-arbitrum',
+          role: 'selected_cluster_competitor',
+          sourceQuery: 'usdc on arbitrum',
+          title: 'USDC on Arbitrum explained',
+          metaDescription: 'A guide to USDC on Arbitrum.',
+          canonical: 'https://example.com/usdc-arbitrum',
+          h1: ['USDC on Arbitrum'],
+          h2: ['What is USDC on Arbitrum?', 'How bridges work'],
+          h3: ['Native USDC', 'Bridge risk'],
+          textBlocks: ['This compact lead explains the network and bridge context for beginners.'],
+          markdownPreview: `${'Long raw markdown body. '.repeat(
+            50,
+          )}RAW_MARKDOWN_TAIL_SHOULD_NOT_APPEAR`,
+          importantLinks: [
+            {
+              text: 'Arbitrum docs',
+              domain: 'docs.arbitrum.io',
+              url: 'https://docs.arbitrum.io/',
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = await adapter.synthesizeOnPage(params);
+
+    expect(result.recommendedArticleStructure.h1).toBe('USDC on Arbitrum: beginner guide');
+    expect(client.requests[0]?.userPrompt).toContain('ONPAGE_CONTEXT_JSON=');
+    expect(client.requests[0]?.userPrompt).toContain('PAGES:');
+    expect(client.requests[0]?.userPrompt).toContain('dom=example.com');
+    expect(client.requests[0]?.userPrompt).toContain('h2=What is USDC on Arbitrum?');
+    expect(client.requests[0]?.userPrompt).not.toContain('markdownPreview');
+    expect(client.requests[0]?.userPrompt).not.toContain('textBlocks');
+    expect(client.requests[0]?.userPrompt).not.toContain('importantLinks');
+    expect(client.requests[0]?.userPrompt).not.toContain('RAW_MARKDOWN_TAIL_SHOULD_NOT_APPEAR');
   });
 });

@@ -40,7 +40,7 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   extractUserPainScenarios: 'seo-brief.extract-user-pain-scenarios.v1',
   expandKeywords: 'seo-brief.expand-keywords.v7-topic-scope',
   triageKeywords: 'seo-brief.triage-keywords.v1',
-  clusterKeywords: 'seo-brief.cluster-keywords.v3-topic-scope',
+  clusterKeywords: 'seo-brief.cluster-keywords.v4-compact',
   selectRelatedKeywords: 'seo-brief.select-related-keywords.v1',
   classifySerpDomains: 'seo-brief.classify-serp-domains.v1',
   evaluateCompetitorKeywordMatches: 'seo-brief.evaluate-competitor-keyword-matches.v2-topic-scope',
@@ -49,15 +49,15 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   matchKeywordGroups: 'seo-brief.match-keyword-groups.v2-topic-scope',
   scoreCompetitorKeywordCandidateGroup:
     'seo-brief.score-competitor-keyword-candidate-group.v2-topic-scope',
-  scoreDirtyKeywordCandidates: 'seo-brief.score-dirty-keyword-candidates.v2-topic-scope',
-  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v2-topic-scope',
+  scoreDirtyKeywordCandidates: 'seo-brief.score-dirty-keyword-candidates.v3-compact',
+  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v3-compact',
   buildProductBridge: 'seo-brief.product-bridge.v1',
   explainClusterSelection: 'seo-brief.cluster-selection.v1',
-  synthesizeOnPage: 'seo-brief.synthesize-onpage.v2-topic-scope',
-  generateSeoBrief: 'seo-brief.generate-brief.v2-topic-scope',
-  draftLongreadArticle: 'article-generation.draft.v1',
-  cleanupLongreadArticle: 'article-generation.cleanup.v1',
-  packageLongreadArticle: 'article-generation.package.v1',
+  synthesizeOnPage: 'seo-brief.synthesize-onpage.v3-compact',
+  generateSeoBrief: 'seo-brief.generate-brief.v3-compact',
+  draftLongreadArticle: 'article-generation.draft.v2-compact',
+  cleanupLongreadArticle: 'article-generation.cleanup.v2-compact',
+  packageLongreadArticle: 'article-generation.package.v2-compact',
 } as const;
 
 export function buildExtractContextPrompt(
@@ -218,38 +218,26 @@ export function buildClusterKeywordsPrompt(
       'Return only valid JSON.',
       'Do not use markdown or code fences.',
       'Schema:',
-      '{"clusters":[{"cluster_name":"string","user_intent":"string","primary_keyword_candidate":"string","intent":"informational|commercial|transactional|navigational","secondary_keywords":["string"],"questions":["string"],"supporting_items":["string"],"competitor_urls":[{"domain":"string","url":"string","title":"string|null","rank_absolute":1}],"source_confidence":"low|medium|high","evidence_summary":"string"}]}',
+      '{"clusters":[{"name":"string","user_intent":"string","intent":"informational|commercial|transactional|navigational","primary_id":1,"secondary_ids":[2],"question_ids":[3],"supporting_ids":[4],"confidence":"low|medium|high","reason":"string"}]}',
       'Group items into intent-based SEO clusters.',
       'Cluster by user intent, not exact word overlap.',
       'Use the full cleaned pool of accepted and maybe candidates, not only the top-scored candidates.',
-      'Preserve source evidence and use competitor URLs only when present in input evidence.',
-      'Do not invent new keywords, questions, domains, or URLs.',
-      'Every primary_keyword_candidate, secondary keyword, question, and supporting item must be copied from input candidates.',
+      'Use candidate ids from the input rows. Do not output keyword strings except inside name/user_intent/reason.',
+      'Do not invent new keywords, questions, domains, URLs, or ids.',
+      'Every primary_id, secondary_id, question_id, and supporting_id must refer to an input candidate id.',
       'Do not create clusters around login, logo, download, API, support, seed phrase, scam, flasher, fake screenshot, unrelated coin news, or rejected keywords.',
       'PAA-style questions should support clusters as questions/subintent unless they clearly represent a standalone topic.',
       'topic_hint is a scope boundary, not an exact article title.',
       'Prefer 3-7 clusters for a normal pool.',
-      'Each cluster must have a primary keyword from accepted candidates when possible.',
-      'Use maybe candidates only as supporting_items, questions, or secondary keywords unless they are clearly the best primary.',
+      'Each cluster must have primary_id from accepted candidates when possible.',
+      'Use maybe candidates only as supporting_ids, question_ids, or secondary_ids unless they are clearly the best primary.',
       'Competitor metrics and proxyDemandScore are evidence signals, not automatic reasons to create or prioritize a cluster.',
-      'source_confidence should reflect evidence depth: multiple sources/search volume/competitor URLs = higher confidence.',
+      'confidence should reflect evidence depth: accepted status, strong scores, multiple sources, or SERP diversity signals = higher confidence.',
       hasScoredCandidates
         ? 'The input contains scored candidates with accepted/maybe status. Exclude rejected keywords entirely.'
         : 'The input contains a legacy keyword list. Cluster only the provided keywords.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      topicHint: params.topicSeed,
-      market: params.market,
-      audience: params.audience,
-      productName: params.productName,
-      productDescription: params.productDescription,
-      seoProductContext: params.seoProductContext,
-      userPainScenarios: params.userPainScenarios,
-      brandMemorySnapshot: params.brandMemorySnapshot,
-      keywords: params.keywords,
-      candidates: params.candidates,
-      rejectedKeywords: params.rejectedKeywords,
-    }),
+    userPrompt: createClusterKeywordsUserPrompt(params),
   };
 }
 
@@ -331,25 +319,24 @@ export function buildScoreDirtyKeywordCandidatesPrompt(
       'You are an SEO keyword filtering and scoring analyst.',
       'Return only valid JSON.',
       'Do not use markdown or code fences.',
-      'Schema:',
-      '{"accepted":[{"keyword":"string","status":"accepted","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"maybe":[{"keyword":"string","status":"maybe","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"rejected":[{"keyword":"string","status":"rejected","total_score":0,"scores":{"topic_fit":0,"product_fit":0,"audience_fit":0,"intent_fit":0,"risk_compliance":0,"evidence":0},"fit":{"topic_fit":"strong|moderate|weak|none","product_fit":"strong|moderate|weak|none","audience_fit":"strong|moderate|weak|none","intent_fit":"strong|moderate|weak|none","risk_compliance":"strong|moderate|weak|none","evidence":"strong|moderate|weak|none"},"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reasons":["string"],"risk_flags":["string"],"evidence_notes":["string"]}],"summary":{"accepted_count":0,"maybe_count":0,"rejected_count":0,"notes":["string"]}}',
+      'Output schema:',
+      '{"items":[{"id":1,"keyword":"string","status":"accepted|maybe|rejected","scores":[0,0,0,0,0,0],"intent":"informational|commercial|transactional|navigational","stage":"awareness|consideration|decision","reason":"string","risk":["string"],"evidence":["string"]}],"summary":["string"]}',
+      'scores order is [topic_fit, product_fit, audience_fit, intent_fit, risk_compliance, evidence].',
       'Score every input candidate exactly once into accepted, maybe, or rejected.',
       'Hard-exclude obvious noise terms if present, and reject unsafe or weak candidates.',
       'Do not invent new keywords.',
       'Do not rewrite keyword text.',
-      'The output keyword must exactly match one input candidate.keyword.',
+      'The output id and keyword must exactly match an input candidate row.',
       'Use topic_fit for relevance to topic_hint and user pains.',
       'Use requiredTopicTerms as hard topic anchors. If requiredTopicTerms are concrete and a candidate ignores them or direct synonyms, topic_fit must usually be weak or none.',
       'Do not accept broad adjacent candidates over topic-specific candidates unless the topic-specific candidates are unsafe or unsupported.',
-      'Use product_fit for honest connection to product facts and Brand Memory.',
+      'Use product_fit for honest connection to product facts and compact scoring context.',
       'Use audience_fit for the target audience and market.',
       'Use intent_fit for whether the query can support an SEO article/brief.',
       'Use risk_compliance for claim safety, legal/compliance risk, scamminess, and forbidden claims.',
-      'Use evidence for source strength: selected SERP related queries, multiple sources, search volume, ranked keyword evidence, and competitor ranking evidence.',
-      'If proxyDemandScore or competitorMatchScore is present, treat it as competitor-map demand evidence, not as direct candidate search volume.',
-      'A candidate with strong proxy demand can still be rejected if topic/product/audience/risk fit is weak.',
+      'Use evidence for source strength: selected SERP related queries, multiple sources, and compact SERP concentration signals.',
+      'If source_hypothesis_serp_domain_hhi or source_hypothesis_serp_domain_concentration is present, treat it as deterministic SERP domain concentration for the source hypothesis: higher means fewer domains dominate that source SERP.',
       'Score each criterion from 0 to 100.',
-      'total_score should be a practical weighted overall score from 0 to 100.',
       'accepted means useful and safe enough to continue.',
       'maybe means potentially useful but requires human review or reframing.',
       'rejected means off-topic, weak product fit, unsafe, too broad, scammy, navigational, fragmented, or unsupported.',
@@ -359,19 +346,7 @@ export function buildScoreDirtyKeywordCandidatesPrompt(
       'Keep reasons short, concrete, and non-generic.',
       'Return at least one summary note explaining the main filtering pattern.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      topicHint: params.topicSeed,
-      topicHintScope,
-      market: params.market,
-      audience: params.audience,
-      productName: params.productName,
-      productDescription: params.productDescription,
-      keyMessage: params.keyMessage,
-      seoProductContext: params.seoProductContext,
-      userPainScenarios: params.userPainScenarios,
-      brandMemorySnapshot: params.brandMemorySnapshot,
-      candidates: params.candidates,
-    }),
+    userPrompt: createScoreDirtyKeywordCandidatesUserPrompt(params, topicHintScope),
   };
 }
 
@@ -624,13 +599,13 @@ export function buildReviewClusterProductFitPrompt(
       'Schema:',
       '{"cluster_product_fit":[{"cluster_name":"string","product_fit_score":0,"product_fit_type":"direct_solution|alternative_solution|workflow_bridge|education_bridge|no_fit","decision":"approve|reject|supporting_only","product_insertion_angle":"string","where_to_insert":"string","what_not_to_claim":["string"],"reason":"string"}]}',
       'Evaluate every input cluster exactly once.',
-      'cluster_name must exactly match an input cluster.clusterName.',
+      'cluster_name must exactly copy the name= value from one input CLUSTERS row.',
       'Do not invent clusters, keywords, product facts, claims, or competitor evidence.',
       'Product Fit is not whether the product can be mentioned; it is whether the product can naturally help answer the user intent.',
       'Also verify topic-scope fit. If requiredTopicTerms are concrete and the cluster ignores them, do not approve it as a main-topic cluster.',
       'A broad generic cluster can be supporting_only, but it should not displace a viable topic-specific cluster.',
       'Do not approve a cluster just because it has search volume, ranked keyword evidence, or strong competitors.',
-      'Use supportingItemDetails, sourceCandidate metrics, source lists, and competitorUrls as evidence only.',
+      'Use compact evidence rows, source metrics, and URL hints as evidence only.',
       'Do not treat proxyDemandScore, competitorMatchScore, or searchVolume as Product Fit by themselves.',
       'Reject clusters where product insertion would feel forced.',
       'Approve only when the product can be a direct solution, natural alternative, workflow bridge, or education bridge.',
@@ -642,19 +617,7 @@ export function buildReviewClusterProductFitPrompt(
       'Keep product_insertion_angle, where_to_insert, what_not_to_claim, and reason concrete and short.',
       'Never return empty strings. If the product should not be inserted, say "Do not insert product for this cluster."',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      topicHint: params.topicSeed,
-      topicHintScope,
-      market: params.market,
-      audience: params.audience,
-      productName: params.productName,
-      productDescription: params.productDescription,
-      keyMessage: params.keyMessage,
-      seoProductContext: params.seoProductContext,
-      userPainScenarios: params.userPainScenarios,
-      brandMemorySnapshot: params.brandMemorySnapshot,
-      clusters: params.clusters,
-    }),
+    userPrompt: createReviewClusterProductFitUserPrompt(params, topicHintScope),
   };
 }
 
@@ -703,36 +666,11 @@ export function buildGenerateSeoBriefPrompt(
       'requiredTopicTerms are hard scope anchors. If they are present, the recommended title, H1, intro direction, and outline must explicitly cover at least one concrete required term.',
       'Do not let generic high-volume adjacent keywords replace the topic requested in topic_hint.',
       'Use Competitor OnPage synthesis as the main structure evidence.',
+      'Input evidence is compact. Do not assume omitted raw SERP/page text is unavailable proof; use only summarized facts provided.',
       'Use Product Fit decision and Brand Memory as hard boundaries.',
       'Do not invent unsupported product facts, APY, safety guarantees, or risk-free claims.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      productProfile: {
-        productName: params.productName,
-        productDescription: params.productDescription,
-        productBridge: params.productBridge,
-        brandMemorySnapshot: params.brandMemorySnapshot,
-        seoProductContext: params.seoProductContext,
-      },
-      topicHint: params.topicHint ?? params.primaryKeyword,
-      topicHintScope,
-      market: params.market,
-      audience: params.audience,
-      mainSelectedCluster: params.clusterSelection ?? {
-        clusterLabel: params.clusterLabel,
-        primaryKeyword: params.primaryKeyword,
-        intent: params.intent,
-      },
-      supportingClusters: params.supportingClusters ?? [],
-      primaryKeyword: params.primaryKeyword,
-      serpInsights: params.serpInsights ?? [],
-      constraints: params.constraints ?? [],
-      serpEnrichmentContext: params.serpEnrichmentContext,
-      competitorKeywordEvidence: params.competitorKeywordEvidence,
-      competitorOnPageSynthesis: params.onPageSynthesis,
-      productFitReview: params.productFitReview,
-      keywordCandidateScoring: params.keywordCandidateScoring,
-    }),
+    userPrompt: createGenerateSeoBriefUserPrompt(params, topicHintScope),
   };
 }
 
@@ -754,6 +692,7 @@ export function buildSynthesizeOnPagePrompt(
       'Analyze competitor page structures and produce brief requirements.',
       'Write all user-facing synthesis fields in market.language, including H1, H2 headings, FAQ, gaps, and product insertion guidance.',
       'Use parsed competitor pages as evidence only.',
+      'Input pages are compact evidence rows: use headings, meta, snippets, and page roles; do not expect full article text.',
       'Do not copy competitor text.',
       'Identify repeated structural patterns across competitors.',
       'Identify content gaps that a better article can cover.',
@@ -768,21 +707,7 @@ export function buildSynthesizeOnPagePrompt(
       'Return at least 3 common_h2_patterns when evidence supports them.',
       'Return at least 3 recommended h2 sections.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      topicHint: params.topicSeed,
-      topicHintScope,
-      market: params.market,
-      audience: params.audience,
-      productName: params.productName,
-      productDescription: params.productDescription,
-      keyMessage: params.keyMessage,
-      seoProductContext: params.seoProductContext,
-      brandMemorySnapshot: params.brandMemorySnapshot,
-      clusterSelection: params.clusterSelection,
-      serpEnrichmentContext: params.serpEnrichmentContext,
-      competitorKeywordEvidence: params.competitorKeywordEvidence,
-      parsedCompetitorPages: params.onPagePages,
-    }),
+    userPrompt: createSynthesizeOnPageUserPrompt(params, topicHintScope),
   };
 }
 
@@ -822,14 +747,7 @@ export function buildDraftLongreadArticlePrompt(
       'Markdown must start with the article title as H1, use H2/H3 headings, and include FAQ as an H2 section.',
       'Do not include JSON inside draftArticleMarkdown.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      finalSeoBrief: params.finalSeoBrief,
-      productProfile: params.productProfile,
-      claimsPolicy: params.claimsPolicy,
-      brandVoice: params.brandVoice,
-      targetLength: params.targetLength,
-      publishingFormat: params.publishingFormat,
-    }),
+    userPrompt: createDraftLongreadArticleUserPrompt(params),
   };
 }
 
@@ -869,15 +787,7 @@ export function buildCleanupLongreadArticlePrompt(
       'Use status revised only when you made edits and another automated review pass is needed.',
       'Use status needs_human_review only when at least one blocker remains after you tried to remove, generalize, or neutralize the blocked content.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      draftArticleMarkdown: params.draftArticleMarkdown,
-      finalSeoBrief: params.finalSeoBrief,
-      productProfile: params.productProfile,
-      claimsPolicy: params.claimsPolicy,
-      brandVoice: params.brandVoice,
-      reviewAttempt: params.reviewAttempt,
-      previousReviewFindings: params.previousReviewFindings,
-    }),
+    userPrompt: createCleanupLongreadArticleUserPrompt(params),
   };
 }
 
@@ -905,17 +815,991 @@ export function buildPackageLongreadArticlePrompt(
       'Preserve claims warnings from cleanup.',
       'If externalSourcesNeeded is non-empty or cleanup warnings require factual verification, readyToPublish must be false and needsExternalFactCheck should usually be true.',
     ].join('\n'),
-    userPrompt: createUserPrompt({
-      reviewedArticleMarkdown: params.reviewedArticleMarkdown,
-      finalSeoBrief: params.finalSeoBrief,
-      cleanupWarnings: params.cleanupWarnings,
-      productProfile: params.productProfile,
-    }),
+    userPrompt: createPackageLongreadArticleUserPrompt(params),
   };
 }
 
 function createUserPrompt(input: unknown): string {
   return ['Input payload:', JSON.stringify(input, null, 2)].join('\n');
+}
+
+function createGenerateSeoBriefUserPrompt(
+  params: GenerateSeoBriefParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): string {
+  return [
+    `FINAL_BRIEF_CONTEXT_JSON=${JSON.stringify(createGenerateSeoBriefContext(params, topicHintScope))}`,
+    `FINAL_BRIEF_EVIDENCE_JSON=${JSON.stringify(createGenerateSeoBriefEvidence(params))}`,
+  ].join('\n');
+}
+
+function createGenerateSeoBriefContext(
+  params: GenerateSeoBriefParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): Record<string, unknown> {
+  const brandMemory = asPromptRecord(params.brandMemorySnapshot);
+  const seoProductContext = asPromptRecord(params.seoProductContext);
+
+  return {
+    topicHint: params.topicHint ?? params.primaryKeyword,
+    topicScope: topicHintScope,
+    market: `${params.market.country}/${params.market.language}`,
+    audience: compactText(params.audience, 180),
+    primaryKeyword: params.primaryKeyword,
+    intent: params.intent,
+    mainCluster: compactPromptJson(
+      params.clusterSelection ?? {
+        clusterLabel: params.clusterLabel,
+        primaryKeyword: params.primaryKeyword,
+        intent: params.intent,
+      },
+      { maxArrayItems: 10, maxDepth: 4, stringLimit: 160 },
+    ),
+    supportingClusters: compactPromptJson(params.supportingClusters ?? [], {
+      maxArrayItems: 5,
+      maxDepth: 3,
+      stringLimit: 130,
+    }),
+    product: {
+      name: params.productName,
+      description: compactText(params.productDescription, 320),
+      bridge: compactPromptJson(params.productBridge, {
+        maxArrayItems: 8,
+        maxDepth: 3,
+        stringLimit: 160,
+      }),
+    },
+    researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 8, 90),
+      ],
+      16,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    constraints: uniqueCompactStrings(
+      [
+        ...(params.constraints ?? []).map((item) => compactRowValue(item, 120)),
+        ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
+        ...compactStringArray(readPromptValue(seoProductContext, 'generationGuardrails'), 6, 110),
+      ],
+      16,
+    ),
+    instruction:
+      'Generate the final brief from compact evidence. Preserve concrete topic scope and use OnPage synthesis as the outline source of truth.',
+  };
+}
+
+function createGenerateSeoBriefEvidence(params: GenerateSeoBriefParams): Record<string, unknown> {
+  return {
+    serpInsights: (params.serpInsights ?? []).slice(0, 8).map(formatGenerateSeoBriefSerpInsight),
+    onPageSynthesis: compactPromptJson(params.onPageSynthesis, {
+      maxArrayItems: 10,
+      maxDepth: 5,
+      stringLimit: 180,
+    }),
+    productFitReview: compactPromptJson(params.productFitReview, {
+      maxArrayItems: 8,
+      maxDepth: 4,
+      stringLimit: 160,
+    }),
+    keywordSignals: compactPromptSignals(params.keywordCandidateScoring, 18, 120),
+    serpScopeSignals: compactPromptSignals(params.serpEnrichmentContext, 14, 120),
+    competitorKeywordSignals: compactPromptSignals(params.competitorKeywordEvidence, 14, 120),
+  };
+}
+
+function formatGenerateSeoBriefSerpInsight(
+  insight: NonNullable<GenerateSeoBriefParams['serpInsights']>[number],
+): Record<string, unknown> {
+  return {
+    title: compactText(insight.title, 100),
+    url: compactText(insight.url, 120),
+    observation: compactText(insight.observation, 180),
+  };
+}
+
+function createDraftLongreadArticleUserPrompt(params: DraftLongreadArticleParams): string {
+  return `ARTICLE_DRAFT_CONTEXT_JSON=${JSON.stringify({
+    finalSeoBrief: createArticleDraftBrief(params.finalSeoBrief),
+    productProfile: compactPromptJson(params.productProfile, {
+      maxArrayItems: 10,
+      maxDepth: 4,
+      stringLimit: 180,
+    }),
+    claimsPolicy: compactPromptJson(params.claimsPolicy, {
+      maxArrayItems: 14,
+      maxDepth: 4,
+      stringLimit: 140,
+    }),
+    brandVoice: compactPromptJson(params.brandVoice, {
+      maxArrayItems: 12,
+      maxDepth: 4,
+      stringLimit: 140,
+    }),
+    targetLength: params.targetLength,
+    publishingFormat: params.publishingFormat,
+  })}`;
+}
+
+function createCleanupLongreadArticleUserPrompt(params: CleanupLongreadArticleParams): string {
+  return `ARTICLE_CLEANUP_CONTEXT_JSON=${JSON.stringify({
+    draftArticleMarkdown: params.draftArticleMarkdown,
+    finalSeoBrief: createArticleDraftBrief(params.finalSeoBrief),
+    productProfile: compactPromptJson(params.productProfile, {
+      maxArrayItems: 10,
+      maxDepth: 4,
+      stringLimit: 180,
+    }),
+    claimsPolicy: compactPromptJson(params.claimsPolicy, {
+      maxArrayItems: 14,
+      maxDepth: 4,
+      stringLimit: 140,
+    }),
+    brandVoice: compactPromptJson(params.brandVoice, {
+      maxArrayItems: 12,
+      maxDepth: 4,
+      stringLimit: 140,
+    }),
+    reviewAttempt: params.reviewAttempt ?? null,
+    previousReviewFindings: compactCleanupReviewFindings(params.previousReviewFindings),
+  })}`;
+}
+
+function createPackageLongreadArticleUserPrompt(params: PackageLongreadArticleParams): string {
+  return `ARTICLE_PACKAGE_CONTEXT_JSON=${JSON.stringify({
+    reviewedArticleMarkdown: params.reviewedArticleMarkdown,
+    finalSeoBrief: createArticleDraftBrief(params.finalSeoBrief),
+    cleanupWarnings: compactPackageCleanupWarnings(params.cleanupWarnings),
+    productProfile: compactPromptJson(params.productProfile, {
+      maxArrayItems: 10,
+      maxDepth: 4,
+      stringLimit: 180,
+    }),
+  })}`;
+}
+
+function compactPackageCleanupWarnings(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, 12)
+    .map((item): Record<string, unknown> | null => {
+      const warning = asPromptRecord(item);
+      if (!warning) {
+        return null;
+      }
+
+      const message = compactText(readPromptValue(warning, 'message'), 160);
+      if (!message) {
+        return null;
+      }
+
+      return {
+        type: compactText(readPromptValue(warning, 'type'), 40),
+        severity: compactText(readPromptValue(warning, 'severity'), 40),
+        message,
+      };
+    })
+    .filter((item): item is Record<string, unknown> => item !== null);
+}
+
+function compactCleanupReviewFindings(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(-3)
+    .map((item): Record<string, unknown> | null => {
+      const finding = asPromptRecord(item);
+      if (!finding) {
+        return null;
+      }
+
+      return {
+        attempt: readPromptValue(finding, 'attempt') ?? null,
+        status: compactText(readPromptValue(finding, 'status'), 40),
+        warnings: compactPromptJson(readPromptValue(finding, 'warnings'), {
+          maxArrayItems: 8,
+          maxDepth: 3,
+          stringLimit: 140,
+        }),
+        changesMade: compactStringArray(readPromptValue(finding, 'changesMade'), 8, 120),
+        markdownLength: readPromptValue(finding, 'markdownLength') ?? null,
+      };
+    })
+    .filter((item): item is Record<string, unknown> => item !== null);
+}
+
+function createArticleDraftBrief(value: unknown): Record<string, unknown> {
+  const brief = asPromptRecord(value);
+
+  return {
+    market: compactPromptJson(readPromptValue(brief, 'market'), {
+      maxArrayItems: 4,
+      maxDepth: 2,
+      stringLimit: 80,
+    }),
+    topicHint: compactText(readPromptValue(brief, 'topicHint'), 140),
+    topicScope: compactPromptJson(readPromptValue(brief, 'topicHintScope'), {
+      maxArrayItems: 8,
+      maxDepth: 3,
+      stringLimit: 80,
+    }),
+    mainCluster: compactText(readPromptValue(brief, 'mainCluster'), 140),
+    supportingClusters: compactStringArray(readPromptValue(brief, 'supportingClusters'), 6, 90),
+    primaryKeyword: compactText(readPromptValue(brief, 'primaryKeyword'), 110),
+    secondaryKeywords: compactStringArray(readPromptValue(brief, 'secondaryKeywords'), 18, 90),
+    searchIntent: compactText(readPromptValue(brief, 'searchIntent'), 180),
+    targetReader: compactText(readPromptValue(brief, 'targetReader'), 180),
+    contentType: compactText(readPromptValue(brief, 'contentType'), 80),
+    recommendedTitle: compactText(readPromptValue(brief, 'recommendedTitle'), 120),
+    recommendedH1: compactText(readPromptValue(brief, 'recommendedH1'), 120),
+    recommendedMetaTitle: compactText(readPromptValue(brief, 'recommendedMetaTitle'), 120),
+    recommendedMetaDescription: compactText(
+      readPromptValue(brief, 'recommendedMetaDescription'),
+      180,
+    ),
+    outline: compactArticleOutline(readPromptValue(brief, 'outline')),
+    faq: compactArticleFaq(readPromptValue(brief, 'faq')),
+    productInsertion: compactPromptJson(readPromptValue(brief, 'productInsertion'), {
+      maxArrayItems: 8,
+      maxDepth: 3,
+      stringLimit: 170,
+    }),
+    competitorGapsToFill: compactStringArray(
+      readPromptValue(brief, 'competitorGapsToFill'),
+      8,
+      130,
+    ),
+    riskNotes: compactStringArray(readPromptValue(brief, 'riskNotes'), 12, 130),
+    cta: compactText(readPromptValue(brief, 'cta'), 140),
+    internalLinks: compactStringArray(readPromptValue(brief, 'internalLinks'), 8, 100),
+    externalSourcesNeeded: compactStringArray(
+      readPromptValue(brief, 'externalSourcesNeeded'),
+      8,
+      120,
+    ),
+  };
+}
+
+function compactArticleOutline(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, 10)
+    .map((item): Record<string, unknown> | null => {
+      const section = asPromptRecord(item);
+      if (!section) {
+        return null;
+      }
+
+      const h2 =
+        compactText(readPromptValue(section, 'h2'), 120) ??
+        compactText(readPromptValue(section, 'heading'), 120);
+      if (!h2) {
+        return null;
+      }
+
+      return {
+        h2,
+        h3: compactStringArray(readPromptValue(section, 'h3'), 8, 100),
+        notes:
+          compactText(readPromptValue(section, 'notes'), 220) ??
+          compactText(readPromptValue(section, 'purpose'), 220),
+      };
+    })
+    .filter((item): item is Record<string, unknown> => item !== null);
+}
+
+function compactArticleFaq(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, 8)
+    .map((item): Record<string, unknown> | null => {
+      const faq = asPromptRecord(item);
+      if (!faq) {
+        return null;
+      }
+
+      const question = compactText(readPromptValue(faq, 'question'), 140);
+      if (!question) {
+        return null;
+      }
+
+      return {
+        question,
+        answerDirection:
+          compactText(readPromptValue(faq, 'answerDirection'), 180) ??
+          compactText(readPromptValue(faq, 'answer'), 180),
+      };
+    })
+    .filter((item): item is Record<string, unknown> => item !== null);
+}
+
+function createSynthesizeOnPageUserPrompt(
+  params: SynthesizeOnPageParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): string {
+  return [
+    `ONPAGE_CONTEXT_JSON=${JSON.stringify(createSynthesizeOnPageContext(params, topicHintScope))}`,
+    'PAGES:',
+    ...params.onPagePages.map((page, index) => formatSynthesizeOnPageRow(page, index)),
+  ].join('\n');
+}
+
+function createSynthesizeOnPageContext(
+  params: SynthesizeOnPageParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): Record<string, unknown> {
+  const brandMemory = asPromptRecord(params.brandMemorySnapshot);
+  const seoProductContext = asPromptRecord(params.seoProductContext);
+
+  return {
+    topic: params.topicSeed,
+    topicScope: topicHintScope,
+    market: `${params.market.country}/${params.market.language}`,
+    audience: compactText(params.audience, 180),
+    product: compactText(
+      [params.productName, params.productDescription].filter(Boolean).join(': '),
+      320,
+    ),
+    keyMessage: compactText(params.keyMessage, 200),
+    researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+      ],
+      14,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    constraints: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
+        ...compactStringArray(readPromptValue(seoProductContext, 'generationGuardrails'), 6, 110),
+      ],
+      10,
+    ),
+    selectedCluster: compactPromptJson(params.clusterSelection, {
+      maxArrayItems: 8,
+      maxDepth: 3,
+      stringLimit: 140,
+    }),
+    serpScopeSignals: compactPromptSignals(params.serpEnrichmentContext, 12, 120),
+    competitorKeywordSignals: compactPromptSignals(params.competitorKeywordEvidence, 12, 120),
+    instruction:
+      'Use PAGES rows as competitor evidence. Prefer recurring H2/content-block patterns across domains over one-off snippets.',
+  };
+}
+
+function formatSynthesizeOnPageRow(
+  page: SynthesizeOnPageParams['onPagePages'][number],
+  index: number,
+): string {
+  const h1 = uniqueCompactStrings(
+    page.h1.map((item) => compactRowValue(item, 72)),
+    3,
+  ).join(' / ');
+  const h2 = uniqueCompactStrings(
+    page.h2.map((item) => compactRowValue(item, 78)),
+    12,
+  ).join(' > ');
+  const h3 = uniqueCompactStrings(
+    page.h3.map((item) => compactRowValue(item, 64)),
+    6,
+  ).join(' > ');
+  const snippets = uniqueCompactStrings(
+    [
+      ...page.textBlocks.slice(0, 4).map((item) => compactRowValue(item, 150)),
+      page.markdownPreview ? compactRowValue(page.markdownPreview, 180) : '',
+    ].filter(Boolean),
+    4,
+  ).join(' / ');
+  const links = page.importantLinks
+    .slice(0, 4)
+    .map(formatSynthesizeOnPageLink)
+    .filter(Boolean)
+    .join('; ');
+
+  return [
+    String(index + 1),
+    page.role ? `role=${compactRowValue(page.role, 32)}` : null,
+    `dom=${compactRowValue(page.domain, 48)}`,
+    page.sourceQuery ? `q=${compactRowValue(page.sourceQuery, 90)}` : null,
+    page.title ? `title=${compactRowValue(page.title, 110)}` : null,
+    page.metaDescription ? `meta=${compactRowValue(page.metaDescription, 130)}` : null,
+    h1 ? `h1=${h1}` : null,
+    h2 ? `h2=${h2}` : null,
+    h3 ? `h3=${h3}` : null,
+    snippets ? `snip=${snippets}` : null,
+    links ? `links=${links}` : null,
+    `url=${compactRowValue(page.url, 130)}`,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function formatSynthesizeOnPageLink(
+  link: SynthesizeOnPageParams['onPagePages'][number]['importantLinks'][number],
+): string | null {
+  const record = asPromptRecord(link);
+  const text = compactOptionalRowValue(
+    readPromptValue(record, 'text') ??
+      readPromptValue(record, 'anchor') ??
+      readPromptValue(record, 'title'),
+    48,
+  );
+  const domain = compactOptionalRowValue(readPromptValue(record, 'domain'), 36);
+  const url = compactOptionalRowValue(readPromptValue(record, 'url'), 72);
+
+  if (!text && !domain && !url) {
+    return null;
+  }
+
+  return [text, domain || url].filter(Boolean).join('@');
+}
+
+function createReviewClusterProductFitUserPrompt(
+  params: ReviewClusterProductFitParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): string {
+  return [
+    `PRODUCT_FIT_CONTEXT_JSON=${JSON.stringify(createProductFitReviewContext(params, topicHintScope))}`,
+    'CLUSTERS:',
+    ...params.clusters.map((cluster, index) => formatProductFitClusterRow(cluster, index)),
+  ].join('\n');
+}
+
+function createProductFitReviewContext(
+  params: ReviewClusterProductFitParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): Record<string, unknown> {
+  const brandMemory = asPromptRecord(params.brandMemorySnapshot);
+  const seoProductContext = asPromptRecord(params.seoProductContext);
+
+  return {
+    topic: params.topicSeed,
+    topicScope: topicHintScope,
+    market: `${params.market.country}/${params.market.language}`,
+    audience: compactText(params.audience, 180),
+    product: compactText(
+      [params.productName, params.productDescription].filter(Boolean).join(': '),
+      320,
+    ),
+    keyMessage: compactText(params.keyMessage, 200),
+    researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+      ],
+      14,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    constraints: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
+        ...compactStringArray(readPromptValue(seoProductContext, 'generationGuardrails'), 6, 110),
+      ],
+      10,
+    ),
+    userPains: compactStringArray(params.userPainScenarios, 10, 120),
+    instruction:
+      'Review each CLUSTERS row once. Use name= exactly as cluster_name. Rows are compact summaries, not full evidence dumps.',
+  };
+}
+
+function formatProductFitClusterRow(
+  cluster: ReviewClusterProductFitParams['clusters'][number],
+  index: number,
+): string {
+  const keywordParts = [
+    ...cluster.secondaryKeywords.slice(0, 5),
+    ...cluster.questions.slice(0, 3),
+    ...cluster.supportingItems.slice(0, 4),
+  ]
+    .filter((item) => item !== cluster.primaryKeywordCandidate)
+    .map((item) => compactRowValue(item, 72));
+  const supportDetails = cluster.supportingItemDetails
+    .slice()
+    .sort((left, right) => readProductFitSupportScore(right) - readProductFitSupportScore(left))
+    .slice(0, 5)
+    .map(formatProductFitSupportDetail)
+    .filter(Boolean)
+    .join('; ');
+  const urls = cluster.competitorUrls
+    .slice(0, 3)
+    .map((item) =>
+      [
+        compactRowValue(item.domain, 40),
+        item.rankAbsolute == null ? null : `r=${String(item.rankAbsolute)}`,
+        compactRowValue(item.title ?? item.url, 70),
+      ]
+        .filter(Boolean)
+        .join(':'),
+    )
+    .filter(Boolean)
+    .join('; ');
+
+  return [
+    String(index + 1),
+    `name=${compactRowValue(cluster.clusterName, 220)}`,
+    `pk=${compactRowValue(cluster.primaryKeywordCandidate, 120)}`,
+    `intent=${cluster.intent}`,
+    cluster.sourceConfidence ? `conf=${cluster.sourceConfidence}` : null,
+    cluster.userIntent ? `user=${compactRowValue(cluster.userIntent, 160)}` : null,
+    keywordParts.length ? `kw=${uniqueCompactStrings(keywordParts, 10).join(', ')}` : null,
+    supportDetails ? `support=${supportDetails}` : null,
+    urls ? `urls=${urls}` : null,
+    cluster.evidenceSummary ? `ev=${compactRowValue(cluster.evidenceSummary, 180)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function readProductFitSupportScore(
+  item: ReviewClusterProductFitParams['clusters'][number]['supportingItemDetails'][number],
+): number {
+  return Number(
+    item.candidateScore ?? item.metrics?.candidateScore ?? item.metrics?.proxyDemandScore ?? 0,
+  );
+}
+
+function formatProductFitSupportDetail(
+  item: ReviewClusterProductFitParams['clusters'][number]['supportingItemDetails'][number],
+): string {
+  const metrics = item.metrics ?? {};
+  const metricParts = [
+    numberField('score', item.candidateScore ?? metrics.candidateScore),
+    numberField('sv', metrics.searchVolume),
+    numberField('kd', metrics.keywordDifficulty),
+    numberField('rank', metrics.bestRankAbsolute),
+    numberField('proxy', metrics.proxyDemandScore),
+  ].filter(Boolean);
+  const sources = item.sources.slice(0, 3).map(compactSourceName).filter(Boolean);
+  const detailParts = [
+    item.originType ? `origin=${compactRowValue(item.originType, 32)}` : null,
+    sources.length ? `src=${sources.join(',')}` : null,
+    metricParts.length ? `m=${metricParts.join(',')}` : null,
+    item.whyInCluster ? `why=${compactRowValue(item.whyInCluster, 90)}` : null,
+  ].filter(Boolean);
+
+  return [compactRowValue(item.text, 82), detailParts.length ? `{${detailParts.join(',')}}` : null]
+    .filter(Boolean)
+    .join('');
+}
+
+function createClusterKeywordsUserPrompt(params: ClusterKeywordsParams): string {
+  const context = createClusterKeywordsContext(params);
+  const candidates =
+    Array.isArray(params.candidates) && params.candidates.length > 0
+      ? params.candidates
+      : params.keywords.map((keyword) => ({
+          keyword,
+          status: 'accepted' as const,
+          totalScore: 0,
+          scores: {
+            topicFit: 0,
+            productFit: 0,
+            audienceFit: 0,
+            intentFit: 0,
+            riskCompliance: 0,
+            evidence: 0,
+          },
+          fit: {
+            topicFit: 'none' as const,
+            productFit: 'none' as const,
+            audienceFit: 'none' as const,
+            intentFit: 'none' as const,
+            riskCompliance: 'none' as const,
+            evidence: 'none' as const,
+          },
+          intent: 'informational' as const,
+          stage: 'awareness' as const,
+          reasons: [],
+          riskFlags: [],
+          evidenceNotes: [],
+          sources: [],
+          metrics: {},
+          competitorUrls: [],
+        }));
+
+  return [
+    `CLUSTER_CONTEXT_JSON=${JSON.stringify(context)}`,
+    'CANDIDATES:',
+    ...candidates.map((candidate, index) => formatClusterCandidateRow(candidate, index)),
+  ].join('\n');
+}
+
+function createClusterKeywordsContext(params: ClusterKeywordsParams): Record<string, unknown> {
+  const brandMemory = asPromptRecord(params.brandMemorySnapshot);
+  const seoProductContext = asPromptRecord(params.seoProductContext);
+
+  return {
+    topic: params.topicSeed,
+    market: params.market ? `${params.market.country}/${params.market.language}` : null,
+    audience: compactText(params.audience, 160),
+    product: compactText(
+      [params.productName, params.productDescription].filter(Boolean).join(': '),
+      240,
+    ),
+    researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
+    allowedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 5, 110),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 6, 90),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 6, 70),
+      ],
+      10,
+    ),
+    userPains: compactStringArray(params.userPainScenarios, 8, 110),
+    instruction:
+      'Cluster only listed candidate ids. Rejected keywords are already removed and must not be reintroduced.',
+  };
+}
+
+function formatClusterCandidateRow(
+  candidate: NonNullable<ClusterKeywordsParams['candidates']>[number],
+  index: number,
+): string {
+  const sourceNames = candidate.sources.map(compactSourceName).filter(Boolean);
+  const scoreParts = [
+    numberField('t', candidate.scores.topicFit),
+    numberField('p', candidate.scores.productFit),
+    numberField('a', candidate.scores.audienceFit),
+    numberField('i', candidate.scores.intentFit),
+    numberField('r', candidate.scores.riskCompliance),
+    numberField('e', candidate.scores.evidence),
+  ].filter(Boolean);
+  const metricParts = [
+    numberField('sv', candidate.metrics.searchVolume),
+    numberField('kd', candidate.metrics.keywordDifficulty),
+    numberField('hhi', candidate.metrics.sourceHypothesisSerpDomainHhi),
+    candidate.metrics.sourceHypothesisSerpDomainConcentrationLabel
+      ? `conc=${compactRowValue(candidate.metrics.sourceHypothesisSerpDomainConcentrationLabel, 20)}`
+      : null,
+    candidate.metrics.sourceHypothesisSerpUniqueDomainCount != null &&
+    candidate.metrics.sourceHypothesisSerpResultCount != null
+      ? `doms=${candidate.metrics.sourceHypothesisSerpUniqueDomainCount}/${candidate.metrics.sourceHypothesisSerpResultCount}`
+      : null,
+  ].filter(Boolean);
+  const notes = [...candidate.reasons, ...candidate.evidenceNotes]
+    .slice(0, 2)
+    .map((item) => compactRowValue(item, 120))
+    .join('; ');
+
+  return [
+    String(index + 1),
+    `kw=${compactRowValue(candidate.keyword, 130)}`,
+    `st=${candidate.status === 'maybe' ? 'maybe' : 'accepted'}`,
+    `intent=${candidate.intent}`,
+    `stage=${candidate.stage}`,
+    `score=${String(Math.round(candidate.totalScore))}`,
+    scoreParts.length ? `scores=${scoreParts.join('/')}` : null,
+    sourceNames.length ? `src=${sourceNames.join(',')}` : null,
+    candidate.riskFlags.length
+      ? `flags=${candidate.riskFlags.map((item) => compactRowValue(item, 40)).join(',')}`
+      : null,
+    metricParts.length ? `m=${metricParts.join(',')}` : null,
+    notes ? `ev=${notes}` : null,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function createScoreDirtyKeywordCandidatesUserPrompt(
+  params: ScoreDirtyKeywordCandidatesParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): string {
+  return [
+    `SCORING_CONTEXT_JSON=${JSON.stringify(createKeywordScoringContext(params, topicHintScope))}`,
+    'CANDIDATES:',
+    ...params.candidates.map((candidate, index) =>
+      formatKeywordScoringCandidateRow(candidate, index),
+    ),
+  ].join('\n');
+}
+
+function createKeywordScoringContext(
+  params: ScoreDirtyKeywordCandidatesParams,
+  topicHintScope: ReturnType<typeof deriveTopicHintScope>,
+): Record<string, unknown> {
+  const brandMemory = asPromptRecord(params.brandMemorySnapshot);
+  const seoProductContext = asPromptRecord(params.seoProductContext);
+
+  return {
+    topic: params.topicSeed,
+    topicScope: topicHintScope,
+    market: `${params.market.country}/${params.market.language}`,
+    audience: compactText(params.audience, 180),
+    product: compactText(
+      [params.productName, params.productDescription].filter(Boolean).join(': '),
+      260,
+    ),
+    keyMessage: compactText(params.keyMessage, 180),
+    allowedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+      ],
+      14,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 70),
+    marketerConstraints: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 8, 110),
+        ...compactStringArray(readPromptValue(seoProductContext, 'generationGuardrails'), 8, 110),
+      ],
+      12,
+    ),
+    userPains: compactStringArray(params.userPainScenarios, 10, 120),
+    rejectByDefault: [
+      'free USDT',
+      'seed phrase',
+      'private key',
+      'fake app',
+      'login/support/navigation',
+      'guaranteed profit',
+      'risk-free yield',
+    ],
+  };
+}
+
+function formatKeywordScoringCandidateRow(
+  candidate: ScoreDirtyKeywordCandidatesParams['candidates'][number],
+  index: number,
+): string {
+  const metrics = candidate.metrics;
+  const flags = [
+    candidate.flags.isInitialHypothesis ? 'initial' : null,
+    candidate.flags.hasSelectedRelatedQuery ? 'selected_related' : null,
+    candidate.flags.hasSearchVolume ? 'search_volume' : null,
+    candidate.flags.hasRankedKeywordEvidence ? 'ranked_evidence' : null,
+    candidate.flags.hasCompetitorKeywordMatch ? 'competitor_match' : null,
+  ].filter(Boolean);
+  const metricParts = [
+    numberField('sv', metrics.searchVolume),
+    numberField('kd', metrics.keywordDifficulty),
+    numberField('hhi', metrics.sourceHypothesisSerpDomainHhi),
+    metrics.sourceHypothesisSerpDomainConcentrationLabel
+      ? `conc=${metrics.sourceHypothesisSerpDomainConcentrationLabel}`
+      : null,
+    metrics.sourceHypothesisSerpUniqueDomainCount != null &&
+    metrics.sourceHypothesisSerpResultCount != null
+      ? `doms=${metrics.sourceHypothesisSerpUniqueDomainCount}/${metrics.sourceHypothesisSerpResultCount}`
+      : null,
+    metrics.sourceHypothesisSerpDominantDomain
+      ? `top=${metrics.sourceHypothesisSerpDominantDomain}:${metrics.sourceHypothesisSerpDominantDomainShare ?? '?'}`
+      : null,
+  ].filter(Boolean);
+  const evidence = candidate.evidenceSummary
+    .slice(0, 3)
+    .map((item) => compactRowValue(item, 150))
+    .join('; ');
+
+  return [
+    String(index + 1),
+    `kw=${compactRowValue(candidate.keyword, 140)}`,
+    `src=${candidate.sources.map(compactSourceName).join(',') || 'unknown'}`,
+    flags.length ? `flags=${flags.join(',')}` : null,
+    metricParts.length ? `m=${metricParts.join(',')}` : null,
+    evidence ? `ev=${evidence}` : null,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function numberField(label: string, value: number | null | undefined): string | null {
+  return value == null ? null : `${label}=${String(value)}`;
+}
+
+function compactSourceName(value: string): string {
+  if (value === 'keyword_hypothesis') {
+    return 'hyp';
+  }
+  if (value === 'serp_derived_candidate') {
+    return 'serp';
+  }
+  if (value === 'selected_related_query') {
+    return 'selected';
+  }
+  if (value === 'ai_fit_scoring') {
+    return 'pass2';
+  }
+  return compactRowValue(value, 24);
+}
+
+function asPromptRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readPromptValue(record: Record<string, unknown> | null, key: string): unknown {
+  return record?.[key];
+}
+
+function compactPromptSignals(value: unknown, limit: number, itemLimit: number): string[] {
+  return uniqueCompactStrings(
+    collectPromptSignalStrings(value)
+      .map((item) => compactText(item, itemLimit))
+      .filter((item): item is string => Boolean(item)),
+    limit,
+  );
+}
+
+function collectPromptSignalStrings(value: unknown, depth = 0): string[] {
+  if (depth > 5 || value === null || value === undefined) {
+    return [];
+  }
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectPromptSignalStrings(item, depth + 1));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) =>
+      isRawPromptField(key) ? [] : collectPromptSignalStrings(item, depth + 1),
+    );
+  }
+  return [];
+}
+
+function compactPromptJson(
+  value: unknown,
+  options: { maxArrayItems: number; maxDepth: number; stringLimit: number },
+  depth = 0,
+): unknown {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return compactText(value, options.stringLimit);
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (depth >= options.maxDepth) {
+      return `[truncated ${String(value.length)} items]`;
+    }
+    return value
+      .slice(0, options.maxArrayItems)
+      .map((item) => compactPromptJson(item, options, depth + 1));
+  }
+  if (typeof value === 'object') {
+    if (depth >= options.maxDepth) {
+      return '[truncated object]';
+    }
+
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (isRawPromptField(key)) {
+        continue;
+      }
+      output[key] = compactPromptJson(item, options, depth + 1);
+    }
+    return output;
+  }
+
+  return null;
+}
+
+function isRawPromptField(key: string): boolean {
+  return [
+    'markdownPreview',
+    'providerResponse',
+    'rawEvidence',
+    'rawPayload',
+    'rawResponse',
+    'rawResponses',
+    'requestPayload',
+    'responsePayload',
+    'sourceCandidate',
+    'textBlocks',
+  ].includes(key);
+}
+
+function compactStringArray(value: unknown, limit: number, itemLimit: number): string[] {
+  return collectPromptStrings(value)
+    .map((item) => compactText(item, itemLimit))
+    .filter((item): item is string => Boolean(item))
+    .slice(0, limit);
+}
+
+function collectPromptStrings(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectPromptStrings(item));
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value as Record<string, unknown>).flatMap((item) =>
+      collectPromptStrings(item),
+    );
+  }
+  return [];
+}
+
+function uniqueCompactStrings(values: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const key = value.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(value);
+    if (result.length >= limit) {
+      break;
+    }
+  }
+  return result;
+}
+
+function compactText(value: unknown, limit: number): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 3)}...` : normalized;
+}
+
+function compactOptionalRowValue(value: unknown, limit: number): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  return compactText(value.replace(/[|\n\r]+/g, ' '), limit);
+}
+
+function compactRowValue(value: unknown, limit: number): string {
+  return (
+    compactText(
+      typeof value === 'string' ? value.replace(/[|\n\r]+/g, ' ') : String(value),
+      limit,
+    ) ?? ''
+  );
 }
 
 function createExpandKeywordsUserPrompt(

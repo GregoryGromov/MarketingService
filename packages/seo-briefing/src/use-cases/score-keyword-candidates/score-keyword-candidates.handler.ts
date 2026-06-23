@@ -9,10 +9,10 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoBriefAiPort,
-  type ScoreDirtyKeywordCandidateInput,
   type ScoreDirtyKeywordCandidatesResult as AiScoreDirtyKeywordCandidatesResult,
+  type ScoreDirtyKeywordCandidateInput,
   type ScoredDirtyKeywordCandidate,
+  SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ScoreKeywordCandidatesCommand } from './score-keyword-candidates.command.js';
@@ -177,7 +177,8 @@ const BUCKET_DETAILS: Record<SemanticBucket, { description: string; label: strin
   },
   dollar_savings: {
     label: 'Dollar savings',
-    description: 'Queries about saving in dollars, inflation, naira, and local currency protection.',
+    description:
+      'Queries about saving in dollars, inflation, naira, and local currency protection.',
   },
   fees_and_risk: {
     label: 'Fees and risk',
@@ -271,7 +272,9 @@ export class ScoreKeywordCandidatesHandler
       const payload: SeoBriefJsonObject = {
         artifactVersion: 'keyword_candidate_scoring_v3',
         sourceArtifactType: 'dirty_keyword_pool',
-        filteringMode: isFallback ? 'deterministic_fallback_after_ai_failure' : 'ai_staged_filtering',
+        filteringMode: isFallback
+          ? 'deterministic_fallback_after_ai_failure'
+          : 'ai_staged_filtering',
         scoringCriteria: [
           'ai_noise_and_eligibility',
           'ai_fit_scoring',
@@ -393,20 +396,22 @@ export class ScoreKeywordCandidatesHandler
       batchSize: AI_ELIGIBILITY_BATCH_SIZE,
       candidates: aiInputs,
       params: baseParams,
-      stageNote:
-        'AI pass 1 / eligibility: reject obvious noise, unsafe queries, very weak topic/product/audience fit, and fragmented keywords. Accepted or maybe means eligible for deeper scoring.',
+      stageNote: 'pass=eligibility',
     });
     const eligibilityAccepted = [...eligibility.result.accepted, ...eligibility.result.maybe];
     const eligibilityRejected = eligibility.result.rejected;
-    const eligibleKeys = new Set(eligibilityAccepted.map((candidate) => normalizeKeywordText(candidate.keyword)));
-    const eligibleInputs = aiInputs.filter((input) => eligibleKeys.has(normalizeKeywordText(input.keyword)));
+    const eligibleKeys = new Set(
+      eligibilityAccepted.map((candidate) => normalizeKeywordText(candidate.keyword)),
+    );
+    const eligibleInputs = aiInputs.filter((input) =>
+      eligibleKeys.has(normalizeKeywordText(input.keyword)),
+    );
 
     const fitScoring = await this.scoreCandidateInputBatches({
       batchSize: AI_SCORING_BATCH_SIZE,
       candidates: eligibleInputs,
       params: baseParams,
-      stageNote:
-        'AI pass 2 / fit scoring: score each eligible candidate against topic, product, audience, intent, risk/compliance, and saved evidence only.',
+      stageNote: 'pass=fit_scoring',
     });
 
     const calibrationCandidates = [...fitScoring.result.accepted, ...fitScoring.result.maybe]
@@ -422,8 +427,7 @@ export class ScoreKeywordCandidatesHandler
             batchSize: AI_SCORING_BATCH_SIZE,
             candidates: calibrationInputs,
             params: baseParams,
-            stageNote:
-              'AI pass 3 / final calibration: dedupe, balance, and make the final accepted/maybe/rejected shortlist. Be stricter than pass 2 and keep only candidates worth sending to clustering.',
+            stageNote: 'pass=final_calibration',
           })
         : {
             aiCallCount: 0,
@@ -451,23 +455,53 @@ export class ScoreKeywordCandidatesHandler
       }));
 
     const finalAccepted = calibration.result.accepted.map((candidate) =>
-      aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+      aiScoredCandidateToJson(
+        candidate,
+        inputByKeyword,
+        sourceCandidateByKeyword,
+        'ai_final_calibration',
+      ),
     );
     const finalMaybe = calibration.result.maybe.map((candidate) =>
-      aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+      aiScoredCandidateToJson(
+        candidate,
+        inputByKeyword,
+        sourceCandidateByKeyword,
+        'ai_final_calibration',
+      ),
     );
     const finalRejected = [
       ...eligibilityRejected.map((candidate) =>
-        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_eligibility'),
+        aiScoredCandidateToJson(
+          candidate,
+          inputByKeyword,
+          sourceCandidateByKeyword,
+          'ai_eligibility',
+        ),
       ),
       ...fitScoring.result.rejected.map((candidate) =>
-        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_fit_scoring'),
+        aiScoredCandidateToJson(
+          candidate,
+          inputByKeyword,
+          sourceCandidateByKeyword,
+          'ai_fit_scoring',
+        ),
       ),
       ...calibration.result.rejected.map((candidate) =>
-        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration'),
+        aiScoredCandidateToJson(
+          candidate,
+          inputByKeyword,
+          sourceCandidateByKeyword,
+          'ai_final_calibration',
+        ),
       ),
       ...overflowRejected.map((candidate) =>
-        aiScoredCandidateToJson(candidate, inputByKeyword, sourceCandidateByKeyword, 'ai_final_calibration_overflow'),
+        aiScoredCandidateToJson(
+          candidate,
+          inputByKeyword,
+          sourceCandidateByKeyword,
+          'ai_final_calibration_overflow',
+        ),
       ),
     ];
 
@@ -659,6 +693,18 @@ function toAiCandidateInput(candidate: CandidateRecord): ScoreDirtyKeywordCandid
       keywordDifficulty: readNumber(metrics?.keywordDifficulty),
       proxyDemandScore: readNumber(metrics?.proxyDemandScore),
       searchVolume: readNumber(metrics?.searchVolume),
+      sourceHypothesisSerpDomainConcentrationLabel: readString(
+        metrics?.sourceHypothesisSerpDomainConcentrationLabel,
+      ),
+      sourceHypothesisSerpDomainHhi: readNumber(metrics?.sourceHypothesisSerpDomainHhi),
+      sourceHypothesisSerpDominantDomain: readString(metrics?.sourceHypothesisSerpDominantDomain),
+      sourceHypothesisSerpDominantDomainShare: readNumber(
+        metrics?.sourceHypothesisSerpDominantDomainShare,
+      ),
+      sourceHypothesisSerpResultCount: readNumber(metrics?.sourceHypothesisSerpResultCount),
+      sourceHypothesisSerpUniqueDomainCount: readNumber(
+        metrics?.sourceHypothesisSerpUniqueDomainCount,
+      ),
     },
     normalizedText,
     sources,
@@ -673,9 +719,16 @@ function toCalibrationCandidateInput(
   const stageEvidence = [
     `pass_2_status=${candidate.status}`,
     `pass_2_total_score=${candidate.totalScore}`,
-    `pass_2_scores=${JSON.stringify(candidate.scores)}`,
-    ...candidate.reasons.slice(0, 3).map((reason) => `pass_2_reason=${reason}`),
-    ...candidate.evidenceNotes.slice(0, 3).map((note) => `pass_2_evidence=${note}`),
+    `pass_2_scores=${[
+      candidate.scores.topicFit,
+      candidate.scores.productFit,
+      candidate.scores.audienceFit,
+      candidate.scores.intentFit,
+      candidate.scores.riskCompliance,
+      candidate.scores.evidence,
+    ].join('/')}`,
+    ...candidate.reasons.slice(0, 2).map((reason) => `pass_2_reason=${reason}`),
+    ...candidate.evidenceNotes.slice(0, 2).map((note) => `pass_2_evidence=${note}`),
   ];
 
   return {
@@ -706,7 +759,8 @@ function aiScoredCandidateToJson(
 ): SeoBriefJsonObject {
   const key = normalizeKeywordText(candidate.keyword);
   const input = inputByKeyword.get(key);
-  const sourceCandidate = sourceCandidateByKeyword.get(key) ?? ({ keyword: candidate.keyword } as CandidateRecord);
+  const sourceCandidate =
+    sourceCandidateByKeyword.get(key) ?? ({ keyword: candidate.keyword } as CandidateRecord);
 
   return {
     keyword: candidate.keyword,
@@ -849,7 +903,9 @@ function uniqueAiCandidateInputs(
 function formatCandidateMetricSummary(candidate: CandidateRecord): string[] {
   const metrics = asObject(candidate.metrics);
   const parts = [
-    readNumber(metrics?.searchVolume) !== null ? `search_volume=${readNumber(metrics?.searchVolume)}` : null,
+    readNumber(metrics?.searchVolume) !== null
+      ? `search_volume=${readNumber(metrics?.searchVolume)}`
+      : null,
     readNumber(metrics?.keywordDifficulty) !== null
       ? `keyword_difficulty=${readNumber(metrics?.keywordDifficulty)}`
       : null,
@@ -859,9 +915,25 @@ function formatCandidateMetricSummary(candidate: CandidateRecord): string[] {
     readNumber(metrics?.competitorMatchScore) !== null
       ? `competitor_match_score=${readNumber(metrics?.competitorMatchScore)}`
       : null,
-    readString(metrics?.bestMatchType) ? `best_match_type=${readString(metrics?.bestMatchType)}` : null,
+    readString(metrics?.bestMatchType)
+      ? `best_match_type=${readString(metrics?.bestMatchType)}`
+      : null,
     readNumber(metrics?.bestRankAbsolute) !== null
       ? `best_rank_absolute=${readNumber(metrics?.bestRankAbsolute)}`
+      : null,
+    readNumber(metrics?.sourceHypothesisSerpDomainHhi) !== null
+      ? `source_hypothesis_serp_domain_hhi=${readNumber(metrics?.sourceHypothesisSerpDomainHhi)}`
+      : null,
+    readString(metrics?.sourceHypothesisSerpDomainConcentrationLabel)
+      ? `source_hypothesis_serp_domain_concentration=${readString(metrics?.sourceHypothesisSerpDomainConcentrationLabel)}`
+      : null,
+    readNumber(metrics?.sourceHypothesisSerpUniqueDomainCount) !== null &&
+    readNumber(metrics?.sourceHypothesisSerpResultCount) !== null
+      ? `source_hypothesis_serp_domains=${readNumber(metrics?.sourceHypothesisSerpUniqueDomainCount)}/${readNumber(metrics?.sourceHypothesisSerpResultCount)}`
+      : null,
+    readString(metrics?.sourceHypothesisSerpDominantDomain) &&
+    readNumber(metrics?.sourceHypothesisSerpDominantDomainShare) !== null
+      ? `source_hypothesis_serp_dominant_domain=${readString(metrics?.sourceHypothesisSerpDominantDomain)}:${readNumber(metrics?.sourceHypothesisSerpDominantDomainShare)}`
       : null,
   ].filter((part): part is string => Boolean(part));
 
@@ -892,7 +964,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -1011,7 +1085,8 @@ function runStagedFiltering(params: {
     stages: [
       {
         stage: 'noise_filter',
-        description: 'Reject obvious navigation, scams, unsupported topics, and compliance-risk noise.',
+        description:
+          'Reject obvious navigation, scams, unsupported topics, and compliance-risk noise.',
         inputCount: params.scorableCandidates.length + params.deterministicRejected.length,
         keptCount: params.scorableCandidates.length,
         rejectedCount: params.deterministicRejected.length,
@@ -1188,13 +1263,45 @@ function classifySemanticBucket(keyword: string): SemanticBucket {
   if (matchesAny(normalized, ['binance p2p', 'p2p', 'peer to peer'])) {
     return 'binance_p2p';
   }
-  if (matchesAny(normalized, ['cash out', 'cashout', 'withdraw', 'sell usdt', 'convert usdt', 'bank account'])) {
+  if (
+    matchesAny(normalized, [
+      'cash out',
+      'cashout',
+      'withdraw',
+      'sell usdt',
+      'convert usdt',
+      'bank account',
+    ])
+  ) {
     return 'usdt_cashout';
   }
-  if (matchesAny(normalized, ['trc20', 'trc 20', 'trc-20', 'bep20', 'bep 20', 'bep-20', 'network', 'transfer fee'])) {
+  if (
+    matchesAny(normalized, [
+      'trc20',
+      'trc 20',
+      'trc-20',
+      'bep20',
+      'bep 20',
+      'bep-20',
+      'network',
+      'transfer fee',
+    ])
+  ) {
     return 'network_education';
   }
-  if (matchesAny(normalized, ['vs', 'versus', 'compare', 'comparison', 'best', 'alternative', 'nexo', 'binance earn', 'trust wallet'])) {
+  if (
+    matchesAny(normalized, [
+      'vs',
+      'versus',
+      'compare',
+      'comparison',
+      'best',
+      'alternative',
+      'nexo',
+      'binance earn',
+      'trust wallet',
+    ])
+  ) {
     return 'comparison_alternatives';
   }
   if (matchesAny(normalized, ['scam', 'safe', 'safety', 'risk', 'trust', 'secure', 'wallet'])) {
@@ -1203,10 +1310,24 @@ function classifySemanticBucket(keyword: string): SemanticBucket {
   if (matchesAny(normalized, ['fee', 'fees', 'lock', 'lockup', 'lock period', 'risk'])) {
     return 'fees_and_risk';
   }
-  if (matchesAny(normalized, ['earn', 'yield', 'interest', 'staking', 'stake', 'saving', 'savings', 'passive income', 'apy'])) {
+  if (
+    matchesAny(normalized, [
+      'earn',
+      'yield',
+      'interest',
+      'staking',
+      'stake',
+      'saving',
+      'savings',
+      'passive income',
+      'apy',
+    ])
+  ) {
     return 'stablecoin_yield';
   }
-  if (matchesAny(normalized, ['dollar', 'dollars', 'inflation', 'devaluation', 'naira', 'save money'])) {
+  if (
+    matchesAny(normalized, ['dollar', 'dollars', 'inflation', 'devaluation', 'naira', 'save money'])
+  ) {
     return 'dollar_savings';
   }
 
@@ -1263,8 +1384,25 @@ function classifyProductFit(
       .join(' '),
   );
   const hasUsdt = hasSearchTerm(normalized, 'usdt') || hasSearchTerm(contextText, 'usdt');
-  const directYield = matchesAny(normalized, ['earn', 'yield', 'interest', 'staking', 'stake', 'saving', 'savings', 'passive income']);
-  const trustOrRisk = matchesAny(normalized, ['safe', 'safety', 'risk', 'scam', 'trust', 'lock', 'fee']);
+  const directYield = matchesAny(normalized, [
+    'earn',
+    'yield',
+    'interest',
+    'staking',
+    'stake',
+    'saving',
+    'savings',
+    'passive income',
+  ]);
+  const trustOrRisk = matchesAny(normalized, [
+    'safe',
+    'safety',
+    'risk',
+    'scam',
+    'trust',
+    'lock',
+    'fee',
+  ]);
   const competitorComparison = bucket === 'comparison_alternatives';
 
   if (hasUsdt && directYield) {
@@ -1273,7 +1411,10 @@ function classifyProductFit(
   if (hasUsdt && (trustOrRisk || competitorComparison || bucket === 'fees_and_risk')) {
     return { label: 'high', insertionType: 'education_bridge', score: 82 };
   }
-  if (hasUsdt && (bucket === 'binance_p2p' || bucket === 'usdt_cashout' || bucket === 'network_education')) {
+  if (
+    hasUsdt &&
+    (bucket === 'binance_p2p' || bucket === 'usdt_cashout' || bucket === 'network_education')
+  ) {
     return { label: 'medium', insertionType: 'workflow_bridge', score: 68 };
   }
   if (hasUsdt && bucket === 'dollar_savings') {
@@ -1308,7 +1449,17 @@ function scoreAudienceFit(keyword: string, context: StagedFilteringContext): num
   const normalized = normalizeKeywordText(keyword);
   const audienceMatches = countTokenMatches(normalized, context.audience);
   let score = 45 + Math.min(20, audienceMatches * 7);
-  if (matchesAny(normalized, ['beginner', 'beginners', 'safe', 'simple', 'nigeria', 'naira', 'mobile'])) {
+  if (
+    matchesAny(normalized, [
+      'beginner',
+      'beginners',
+      'safe',
+      'simple',
+      'nigeria',
+      'naira',
+      'mobile',
+    ])
+  ) {
     score += 18;
   }
   if (matchesAny(normalized, [normalizeKeywordText(context.country)])) {
@@ -1341,11 +1492,21 @@ function scoreIntentFit(intent: IntentLabel, keyword: string): number {
 
 function scoreRiskCompliance(keyword: string, riskFlags: string[]): number {
   const normalized = normalizeKeywordText(keyword);
-  if (riskFlags.some((flag) => flag === 'scam_or_free_money' || flag === 'credential_or_seed_phrase')) {
+  if (
+    riskFlags.some((flag) => flag === 'scam_or_free_money' || flag === 'credential_or_seed_phrase')
+  ) {
     return 0;
   }
   let score = 88;
-  if (matchesAny(normalized, ['guaranteed', 'risk free', 'daily profit', '100 usdt daily', 'double money'])) {
+  if (
+    matchesAny(normalized, [
+      'guaranteed',
+      'risk free',
+      'daily profit',
+      '100 usdt daily',
+      'double money',
+    ])
+  ) {
     score -= 45;
   }
   if (riskFlags.length > 0) {
@@ -1448,11 +1609,17 @@ function buildDecisionReasons(params: {
     reasons.push(`Risk/compliance flags: ${params.riskFlags.join(', ')}.`);
   }
   if (params.status === 'accepted') {
-    reasons.push('Accepted because fit, intent, compliance, and evidence are strong enough to continue.');
+    reasons.push(
+      'Accepted because fit, intent, compliance, and evidence are strong enough to continue.',
+    );
   } else if (params.status === 'maybe') {
-    reasons.push('Kept as maybe because the query can be useful but needs review or careful framing.');
+    reasons.push(
+      'Kept as maybe because the query can be useful but needs review or careful framing.',
+    );
   } else {
-    reasons.push('Rejected because fit, risk, or evidence is too weak for the next algorithm steps.');
+    reasons.push(
+      'Rejected because fit, risk, or evidence is too weak for the next algorithm steps.',
+    );
   }
 
   return reasons;
@@ -1467,7 +1634,11 @@ function classifyJourneyStage(
   if (intent === 'transactional' || matchesAny(normalized, ['best', 'vs', 'compare'])) {
     return 'decision';
   }
-  if (intent === 'commercial' || bucket === 'comparison_alternatives' || bucket === 'stablecoin_yield') {
+  if (
+    intent === 'commercial' ||
+    bucket === 'comparison_alternatives' ||
+    bucket === 'stablecoin_yield'
+  ) {
     return 'consideration';
   }
 
@@ -1498,7 +1669,17 @@ function classifySourceRole(candidate: CandidateRecord): string {
 function findRiskFlags(keyword: string): string[] {
   const normalized = normalizeKeywordText(keyword);
   const flags: string[] = [];
-  if (matchesAny(normalized, ['free usdt', 'free tether', 'generator', 'faucet', 'airdrop', 'flasher', 'double money'])) {
+  if (
+    matchesAny(normalized, [
+      'free usdt',
+      'free tether',
+      'generator',
+      'faucet',
+      'airdrop',
+      'flasher',
+      'double money',
+    ])
+  ) {
     flags.push('scam_or_free_money');
   }
   if (matchesAny(normalized, ['seed phrase', 'private key', 'with balance'])) {
@@ -1514,7 +1695,9 @@ function findRiskFlags(keyword: string): string[] {
   return flags;
 }
 
-function groupDecisionsByBucket(decisions: StagedDecision[]): Record<SemanticBucket, StagedDecision[]> {
+function groupDecisionsByBucket(
+  decisions: StagedDecision[],
+): Record<SemanticBucket, StagedDecision[]> {
   const initialGroups: Record<SemanticBucket, StagedDecision[]> = {
     stablecoin_yield: [],
     wallet_safety: [],
@@ -1527,13 +1710,10 @@ function groupDecisionsByBucket(decisions: StagedDecision[]): Record<SemanticBuc
     other: [],
   };
 
-  return decisions.reduce(
-    (groups, decision) => {
-      groups[decision.bucket].push(decision);
-      return groups;
-    },
-    initialGroups,
-  );
+  return decisions.reduce((groups, decision) => {
+    groups[decision.bucket].push(decision);
+    return groups;
+  }, initialGroups);
 }
 
 function getCandidateKeyword(candidate: CandidateRecord): string {
@@ -1615,7 +1795,9 @@ function formatDeterministicSignals(candidate: CandidateRecord): string[] {
 
 function findHardExcludeTerm(value: string): string | null {
   const normalized = normalizeKeywordText(value);
-  return HARD_EXCLUDE_TERMS.find((term) => hasSearchTerm(normalized, normalizeKeywordText(term))) ?? null;
+  return (
+    HARD_EXCLUDE_TERMS.find((term) => hasSearchTerm(normalized, normalizeKeywordText(term))) ?? null
+  );
 }
 
 function findBoostPatterns(value: string): string[] {
@@ -1668,5 +1850,9 @@ function readBoolean(value: unknown): boolean {
 }
 
 function normalizeKeywordText(value: string): string {
-  return value.replace(/\s+/g, ' ').replace(/[?!.\u3002\uff01\uff1f]+$/u, '').trim().toLowerCase();
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/[?!.\u3002\uff01\uff1f]+$/u, '')
+    .trim()
+    .toLowerCase();
 }

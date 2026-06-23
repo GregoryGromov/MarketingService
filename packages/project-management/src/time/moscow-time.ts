@@ -1,5 +1,6 @@
 const MOSCOW_UTC_OFFSET_MINUTES = 180;
 const MOSCOW_UTC_OFFSET_MS = MOSCOW_UTC_OFFSET_MINUTES * 60 * 1000;
+const MOSCOW_UTC_OFFSET_HOURS = MOSCOW_UTC_OFFSET_MINUTES / 60;
 
 export interface MoscowDateParts {
   year: number;
@@ -42,7 +43,7 @@ export function createDateFromMoscowParts(parts: MoscowDateParts): Date {
       parts.year,
       parts.month - 1,
       parts.day,
-      parts.hours - 3,
+      parts.hours - MOSCOW_UTC_OFFSET_HOURS,
       parts.minutes,
       0,
       0,

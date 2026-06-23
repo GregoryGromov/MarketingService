@@ -3,6 +3,7 @@ import {
   type ClassifySerpDomainsResult,
   type CleanupLongreadArticleResult,
   type ClusterKeywordCompetitorUrl,
+  type ClusterKeywordsParams,
   type ClusterKeywordsResult,
   type DraftLongreadArticleResult,
   type EvaluateCompetitorKeywordMatchesResult,
@@ -422,10 +423,16 @@ export function validateTriageKeywordsResult(
 export function validateClusterKeywordsResult(
   payload: unknown,
   operation: string,
+  params?: ClusterKeywordsParams,
 ): ClusterKeywordsResult {
   const record = ensureObject(payload, operation, 'payload');
+  const candidateById = createClusterCandidateById(params);
   const clusters = ensureArray(record.clusters, operation, 'clusters').map((item, index) => {
     const cluster = ensureObject(item, operation, `clusters[${index}]`);
+    if (cluster.primary_id != null || cluster.primaryId != null) {
+      return validateCompactCluster(cluster, index, operation, candidateById);
+    }
+
     const label =
       ensureNullableText(cluster.cluster_name, operation, `clusters[${index}].cluster_name`) ??
       ensureText(cluster.label, operation, `clusters[${index}].label`);
@@ -502,6 +509,157 @@ export function validateClusterKeywordsResult(
   }
 
   return { clusters };
+}
+
+function validateCompactCluster(
+  cluster: Record<string, unknown>,
+  index: number,
+  operation: string,
+  candidateById: Map<number, string>,
+): ClusterKeywordsResult['clusters'][number] {
+  if (candidateById.size === 0) {
+    throw validationError(
+      `${operation} compact cluster output requires input candidate id map`,
+      operation,
+      cluster,
+    );
+  }
+
+  const path = `clusters[${index}]`;
+  const label =
+    ensureNullableText(cluster.name, operation, `${path}.name`) ??
+    ensureNullableText(cluster.cluster_name, operation, `${path}.cluster_name`) ??
+    ensureText(cluster.label, operation, `${path}.label`);
+  const primaryId = ensurePositiveInteger(
+    cluster.primary_id ?? cluster.primaryId,
+    operation,
+    `${path}.primary_id`,
+  );
+  const secondaryIds = ensureOptionalIdArray(
+    cluster.secondary_ids ?? cluster.secondaryIds,
+    operation,
+    `${path}.secondary_ids`,
+  );
+  const questionIds = ensureOptionalIdArray(
+    cluster.question_ids ?? cluster.questionIds,
+    operation,
+    `${path}.question_ids`,
+  );
+  const supportingIds = ensureOptionalIdArray(
+    cluster.supporting_ids ?? cluster.supportingIds,
+    operation,
+    `${path}.supporting_ids`,
+  );
+  const primaryKeyword = keywordForClusterId(
+    primaryId,
+    candidateById,
+    operation,
+    `${path}.primary_id`,
+  );
+  const secondaryKeywords = idsToKeywords(
+    secondaryIds,
+    candidateById,
+    operation,
+    `${path}.secondary_ids`,
+  );
+  const questions = idsToKeywords(questionIds, candidateById, operation, `${path}.question_ids`);
+  const supportingItems = idsToKeywords(
+    supportingIds,
+    candidateById,
+    operation,
+    `${path}.supporting_ids`,
+  );
+  const keywords = uniqueStrings([
+    primaryKeyword,
+    ...secondaryKeywords,
+    ...questions,
+    ...supportingItems,
+  ]);
+  const reason =
+    ensureNullableText(cluster.reason, operation, `${path}.reason`) ??
+    ensureNullableText(cluster.evidence_summary, operation, `${path}.evidence_summary`) ??
+    ensureText(cluster.rationale, operation, `${path}.rationale`);
+
+  return {
+    label,
+    primaryKeyword,
+    intent: ensureKeywordIntent(cluster.intent, operation, `${path}.intent`),
+    keywords,
+    rationale: reason,
+    userIntent: ensureNullableText(cluster.user_intent, operation, `${path}.user_intent`),
+    secondaryKeywords,
+    questions,
+    supportingItems,
+    competitorUrls: [],
+    sourceConfidence:
+      cluster.confidence == null && cluster.source_confidence == null
+        ? undefined
+        : ensureClusterSourceConfidence(
+            cluster.confidence ?? cluster.source_confidence,
+            operation,
+            `${path}.confidence`,
+          ),
+    evidenceSummary: reason,
+  };
+}
+
+function createClusterCandidateById(params?: ClusterKeywordsParams): Map<number, string> {
+  const candidates =
+    Array.isArray(params?.candidates) && params.candidates.length > 0
+      ? params.candidates.map((candidate) => candidate.keyword)
+      : (params?.keywords ?? []);
+  return new Map(
+    candidates
+      .map((keyword, index): [number, string] | null => {
+        const normalized = typeof keyword === 'string' ? keyword.trim() : '';
+        return normalized ? [index + 1, normalized] : null;
+      })
+      .filter((item): item is [number, string] => item !== null),
+  );
+}
+
+function ensurePositiveInteger(value: unknown, operation: string, path: string): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  throw validationError(`${operation}.${path} must be a positive integer`, operation, value);
+}
+
+function ensureOptionalIdArray(value: unknown, operation: string, path: string): number[] {
+  if (value == null) {
+    return [];
+  }
+  return ensureArray(value, operation, path).map((item, index) =>
+    ensurePositiveInteger(item, operation, `${path}[${index}]`),
+  );
+}
+
+function keywordForClusterId(
+  id: number,
+  candidateById: Map<number, string>,
+  operation: string,
+  path: string,
+): string {
+  const keyword = candidateById.get(id);
+  if (!keyword) {
+    throw validationError(
+      `${operation}.${path} references unknown candidate id ${id}`,
+      operation,
+      id,
+    );
+  }
+  return keyword;
+}
+
+function idsToKeywords(
+  ids: number[],
+  candidateById: Map<number, string>,
+  operation: string,
+  path: string,
+): string[] {
+  return uniqueStrings(
+    ids.map((id, index) => keywordForClusterId(id, candidateById, operation, `${path}[${index}]`)),
+  );
 }
 
 function validateClusterCompetitorUrls(
@@ -648,6 +806,28 @@ export function validateScoreDirtyKeywordCandidatesResult(
   operation: string,
 ): ScoreDirtyKeywordCandidatesResult {
   const record = ensureObject(payload, operation, 'payload');
+  if ('items' in record) {
+    const items = ensureArray(record.items, operation, 'items').map((item, index) =>
+      validateCompactScoredDirtyKeywordCandidate(item, operation, `items[${index}]`),
+    );
+    const accepted = items.filter((item) => item.status === 'accepted');
+    const maybe = items.filter((item) => item.status === 'maybe');
+    const rejected = items.filter((item) => item.status === 'rejected');
+    const summaryNotes = ensureCompactStringList(record.summary, operation, 'summary');
+
+    return {
+      accepted,
+      maybe,
+      rejected,
+      summary: {
+        acceptedCount: accepted.length,
+        maybeCount: maybe.length,
+        rejectedCount: rejected.length,
+        notes: summaryNotes,
+      },
+    };
+  }
+
   const accepted = ensureArray(record.accepted, operation, 'accepted').map((item, index) =>
     validateScoredDirtyKeywordCandidate(item, operation, `accepted[${index}]`, 'accepted'),
   );
@@ -680,6 +860,36 @@ export function validateScoreDirtyKeywordCandidatesResult(
   };
 }
 
+function validateCompactScoredDirtyKeywordCandidate(
+  value: unknown,
+  operation: string,
+  path: string,
+): ScoreDirtyKeywordCandidatesResult['accepted'][number] {
+  const candidate = ensureObject(value, operation, path);
+  const status = ensureKeywordCandidateStatus(candidate.status, operation, `${path}.status`);
+  const scores = validateCompactKeywordCandidateScores(
+    candidate.scores,
+    operation,
+    `${path}.scores`,
+  );
+
+  return {
+    keyword: ensureText(candidate.keyword, operation, `${path}.keyword`),
+    status,
+    totalScore:
+      typeof candidate.total_score === 'number'
+        ? ensureScoreNumber(candidate.total_score, operation, `${path}.total_score`)
+        : calculateTotalCandidateScore(scores),
+    scores,
+    fit: keywordCandidateFitFromScores(scores),
+    intent: ensureKeywordIntent(candidate.intent, operation, `${path}.intent`),
+    stage: ensureJourneyStage(candidate.stage, operation, `${path}.stage`),
+    reasons: ensureCompactStringList(candidate.reason, operation, `${path}.reason`),
+    riskFlags: ensureCompactStringList(candidate.risk, operation, `${path}.risk`),
+    evidenceNotes: ensureCompactStringList(candidate.evidence, operation, `${path}.evidence`),
+  };
+}
+
 function validateScoredDirtyKeywordCandidate(
   value: unknown,
   operation: string,
@@ -706,6 +916,29 @@ function validateScoredDirtyKeywordCandidate(
   };
 }
 
+function validateCompactKeywordCandidateScores(
+  value: unknown,
+  operation: string,
+  path: string,
+): KeywordCandidateScoreBreakdown {
+  if (Array.isArray(value)) {
+    if (value.length !== 6) {
+      throw validationError(`${path} must contain exactly 6 score numbers`, operation, value);
+    }
+
+    return {
+      topicFit: ensureScoreNumber(value[0], operation, `${path}[0]`),
+      productFit: ensureScoreNumber(value[1], operation, `${path}[1]`),
+      audienceFit: ensureScoreNumber(value[2], operation, `${path}[2]`),
+      intentFit: ensureScoreNumber(value[3], operation, `${path}[3]`),
+      riskCompliance: ensureScoreNumber(value[4], operation, `${path}[4]`),
+      evidence: ensureScoreNumber(value[5], operation, `${path}[5]`),
+    };
+  }
+
+  return validateKeywordCandidateScores(value, operation, path);
+}
+
 function validateKeywordCandidateScores(
   value: unknown,
   operation: string,
@@ -720,6 +953,55 @@ function validateKeywordCandidateScores(
     riskCompliance: ensureScoreNumber(scores.risk_compliance, operation, `${path}.risk_compliance`),
     evidence: ensureScoreNumber(scores.evidence, operation, `${path}.evidence`),
   };
+}
+
+function keywordCandidateFitFromScores(
+  scores: KeywordCandidateScoreBreakdown,
+): KeywordCandidateFitBreakdown {
+  return {
+    topicFit: keywordCandidateFitFromScore(scores.topicFit),
+    productFit: keywordCandidateFitFromScore(scores.productFit),
+    audienceFit: keywordCandidateFitFromScore(scores.audienceFit),
+    intentFit: keywordCandidateFitFromScore(scores.intentFit),
+    riskCompliance: keywordCandidateFitFromScore(scores.riskCompliance),
+    evidence: keywordCandidateFitFromScore(scores.evidence),
+  };
+}
+
+function keywordCandidateFitFromScore(
+  score: number,
+): KeywordCandidateFitBreakdown[keyof KeywordCandidateFitBreakdown] {
+  if (score >= 75) {
+    return 'strong';
+  }
+  if (score >= 55) {
+    return 'moderate';
+  }
+  if (score >= 25) {
+    return 'weak';
+  }
+  return 'none';
+}
+
+function calculateTotalCandidateScore(scores: KeywordCandidateScoreBreakdown): number {
+  return Math.round(
+    scores.topicFit * 0.24 +
+      scores.productFit * 0.22 +
+      scores.audienceFit * 0.14 +
+      scores.intentFit * 0.14 +
+      scores.riskCompliance * 0.14 +
+      scores.evidence * 0.12,
+  );
+}
+
+function ensureCompactStringList(value: unknown, operation: string, path: string): string[] {
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  if (value == null) {
+    return [];
+  }
+  return ensureStringArray(value, operation, path);
 }
 
 function validateKeywordCandidateFit(

@@ -840,6 +840,11 @@ ${renderDevConsoleScript()}
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
       }
+      button.danger, a.btn.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+        border-color: rgba(180, 35, 24, 0.28);
+      }
       a.btn.marker-linked,
       button.marker-linked {
         border-color: var(--marker-border);
@@ -889,6 +894,7 @@ ${renderDevConsoleScript()}
       }
       .hero-actions,
       .week-nav,
+      .calendar-create-actions,
       .card-actions {
         display: flex;
         gap: 10px;
@@ -1014,6 +1020,10 @@ ${renderDevConsoleScript()}
         gap: 14px;
         flex-wrap: wrap;
       }
+      .calendar-create-actions {
+        justify-content: flex-end;
+        margin-left: auto;
+      }
       .calendar-range {
         display: inline-flex;
         align-items: center;
@@ -1034,8 +1044,15 @@ ${renderDevConsoleScript()}
         gap: 16px;
         flex-wrap: wrap;
       }
+      .marker-toolbar-side {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        width: 168px;
+        flex: 0 0 168px;
+      }
       .marker-toolbar-label {
-        padding-top: 12px;
+        padding-top: 0;
         white-space: nowrap;
       }
       .marker-toolbar-main {
@@ -1045,10 +1062,12 @@ ${renderDevConsoleScript()}
         flex: 1 1 auto;
       }
       .marker-toolbar-actions {
-        display: flex;
+        display: grid;
         gap: 10px;
-        flex-wrap: wrap;
-        margin-left: auto;
+        width: 100%;
+      }
+      .marker-toolbar-actions button {
+        width: 100%;
       }
       .marker-list {
         display: flex;
@@ -1297,6 +1316,7 @@ ${renderDevConsoleScript()}
         color: var(--marker-text);
         display: grid;
         gap: 6px;
+        cursor: pointer;
       }
       .week-marker.is-active {
         border-style: solid;
@@ -1320,6 +1340,25 @@ ${renderDevConsoleScript()}
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
+      }
+      button.week-marker-add {
+        min-height: 54px;
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 16px;
+        border: 1px dashed rgba(18, 18, 18, 0.16);
+        background: rgba(18, 18, 18, 0.055);
+        color: rgba(18, 18, 18, 0.42);
+        font-size: 24px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      button.week-marker-add:hover {
+        background: rgba(18, 18, 18, 0.09);
+        color: rgba(18, 18, 18, 0.72);
+        transform: translateY(-1px);
       }
       .week-publication {
         --pub-bg: #eaf0ff;
@@ -1558,14 +1597,19 @@ ${renderDevConsoleScript()}
           flex-direction: column;
           align-items: flex-start;
         }
+        .marker-toolbar-side {
+          width: 100%;
+          flex-basis: auto;
+        }
         .marker-toolbar-label {
           padding-top: 0;
         }
-        .marker-toolbar-actions {
-          margin-left: 0;
-        }
         .calendar-headline {
           align-items: flex-start;
+        }
+        .calendar-create-actions {
+          justify-content: flex-start;
+          margin-left: 0;
         }
         .calendar-switch-row {
           align-items: flex-start;
@@ -1613,25 +1657,28 @@ ${renderDevConsoleStyles()}
             <div class="calendar-headline">
               <h2 class="calendar-title">Publication calendar</h2>
               <span id="weekRange" class="calendar-range"></span>
+            </div>
+          </div>
+          <div class="calendar-create-actions">
               <a
                 class="btn primary"
                 id="dashboardCreateCampaignBtn"
                 href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}"
-                hidden
               >Create campaign</a>
-            </div>
+              <button id="createSeoBriefFromMarkerBtn" class="primary" onclick="openSeoBriefFromActiveMarker()">Create SEO brief</button>
           </div>
         </div>
         <div class="marker-toolbar">
-          <span class="eyebrow marker-toolbar-label">Draft markers</span>
+          <div class="marker-toolbar-side">
+            <span class="eyebrow marker-toolbar-label">Draft markers</span>
+            <div class="marker-toolbar-actions">
+              <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
+              <button onclick="openMarkerModal()">New marker</button>
+            </div>
+          </div>
           <div class="marker-toolbar-main">
             <div id="markerList" class="marker-list"></div>
             <p id="markerToolbarMeta"></p>
-          </div>
-          <div class="marker-toolbar-actions">
-            <button id="createSeoBriefFromMarkerBtn" class="marker-linked" onclick="openSeoBriefFromActiveMarker()" hidden>Create SEO brief</button>
-            <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
-            <button onclick="openMarkerModal()">New marker</button>
           </div>
         </div>
         <div id="error" class="error"></div>
@@ -1696,7 +1743,7 @@ ${renderDevConsoleStyles()}
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-head">
           <div>
-            <h3>Place draft marker</h3>
+            <h3 id="markerPlacementTitle">Place draft marker</h3>
             <p id="markerPlacementSubtitle">Choose language and time for this marker placement.</p>
           </div>
           <button type="button" onclick="closeMarkerPlacementModal()">Close</button>
@@ -1710,7 +1757,8 @@ ${renderDevConsoleStyles()}
           <input id="markerPlacementTime" type="time" />
         </label>
         <div class="modal-actions">
-          <button type="button" onclick="saveMarkerPlacement()">Save placement</button>
+          <button type="button" id="markerPlacementSaveBtn" onclick="saveMarkerPlacement()">Save placement</button>
+          <button type="button" id="markerPlacementDeleteBtn" class="danger" onclick="deleteMarkerPlacement()" hidden>Delete placement</button>
           <button type="button" onclick="closeMarkerPlacementModal()">Cancel</button>
         </div>
         <div id="markerPlacementError" class="error"></div>
@@ -1973,8 +2021,9 @@ ${renderDevConsoleStyles()}
           }
         }
         if (dashboardCreateCampaignBtn) {
-          dashboardCreateCampaignBtn.hidden = !activeMarker;
+          dashboardCreateCampaignBtn.hidden = false;
           dashboardCreateCampaignBtn.setAttribute('href', createCampaignUrl);
+          dashboardCreateCampaignBtn.classList.toggle('primary', !activeMarker);
           dashboardCreateCampaignBtn.classList.toggle('marker-linked', Boolean(activeMarker));
           if (activeMarker) {
             dashboardCreateCampaignBtn.style.setProperty('--marker-bg', activeMarker.colorBg);
@@ -2359,6 +2408,14 @@ ${renderDevConsoleStyles()}
         return year + '-' + month + '-' + day;
       }
 
+      function moscowDateKey(value) {
+        const parts = getMoscowDateParts(value);
+        if (!parts) return '';
+        return String(parts.year) + '-' +
+          String(parts.month + 1).padStart(2, '0') + '-' +
+          String(parts.day).padStart(2, '0');
+      }
+
       function isSameDay(a, b) {
         const left = getMoscowDateParts(a);
         const right = getMoscowDateParts(b);
@@ -2477,21 +2534,6 @@ ${renderDevConsoleStyles()}
         renderWeekDashboard();
       }
 
-      function selectMarkerFromPlacement(event, markerId) {
-        if (event) {
-          event.stopPropagation();
-        }
-
-        if (markerEditMode || !markerId) {
-          return;
-        }
-
-        activeMarkerId = markerId;
-        renderProjectHero();
-        renderMarkers();
-        renderWeekDashboard();
-      }
-
       function toggleMarkerEditMode() {
         markerEditMode = !markerEditMode;
         const button = document.getElementById('editMarkersBtn');
@@ -2515,9 +2557,14 @@ ${renderDevConsoleStyles()}
         const createSeoBriefButton = document.getElementById('createSeoBriefFromMarkerBtn');
 
         if (!Array.isArray(currentProjectMarkers) || currentProjectMarkers.length === 0) {
-          meta.textContent = '';
+          meta.textContent = markerEditMode ? 'Delete draft marker templates. Their placements on the calendar will be removed too.' : '';
           if (createSeoBriefButton) {
-            createSeoBriefButton.hidden = true;
+            createSeoBriefButton.hidden = false;
+            createSeoBriefButton.classList.add('primary');
+            createSeoBriefButton.classList.remove('marker-linked');
+            createSeoBriefButton.style.removeProperty('--marker-bg');
+            createSeoBriefButton.style.removeProperty('--marker-border');
+            createSeoBriefButton.style.removeProperty('--marker-text');
           }
           const button = document.getElementById('editMarkersBtn');
           if (button) {
@@ -2536,7 +2583,8 @@ ${renderDevConsoleStyles()}
             ? 'Selected marker can seed a multi-language SEO brief from all its calendar placements.'
             : '';
         if (createSeoBriefButton) {
-          createSeoBriefButton.hidden = markerEditMode || !activeMarker;
+          createSeoBriefButton.hidden = false;
+          createSeoBriefButton.classList.toggle('primary', !activeMarker);
           createSeoBriefButton.classList.toggle('marker-linked', Boolean(activeMarker));
           if (activeMarker) {
             createSeoBriefButton.style.setProperty('--marker-bg', activeMarker.colorBg);
@@ -2576,14 +2624,17 @@ ${renderDevConsoleStyles()}
 
       function openSeoBriefFromActiveMarker() {
         const marker = markerById(activeMarkerId);
-        if (!marker || !currentProjectId) {
+        if (!currentProjectId) {
           return;
         }
 
-        window.location.href = '/test-ui/seo-briefing?projectId=' +
-          encodeURIComponent(currentProjectId) +
-          '&markerId=' +
-          encodeURIComponent(marker.id);
+        const url = new URL('/test-ui/seo-briefing', window.location.origin);
+        url.searchParams.set('projectId', currentProjectId);
+        if (marker) {
+          url.searchParams.set('markerId', marker.id);
+        }
+
+        window.location.href = url.pathname + url.search;
       }
 
       async function deleteMarker(event, markerId) {
@@ -2688,30 +2739,106 @@ ${renderDevConsoleStyles()}
         }
 
         pendingMarkerPlacement = {
+          mode: 'create',
           markerId: marker.id,
           channelId,
           dayKey,
         };
 
+        configureMarkerPlacementModal({
+          title: 'Place draft marker',
+          subtitle:
+            marker.title + ' · ' +
+            (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
+            ' · ' +
+            formatDayLabel(selectedDay),
+          targetLanguage: null,
+          timeValue: resolveDefaultMarkerPlacementTime(selectedDay),
+          saveLabel: 'Save placement',
+          canDelete: false,
+        });
+      }
+
+      function openExistingMarkerPlacementModal(event, placementId) {
+        if (event) {
+          event.stopPropagation();
+        }
+
+        const placement = currentProjectMarkerPlacements.find((item) => item.id === placementId);
+        if (!placement) {
+          return;
+        }
+
+        const marker = markerById(placement.markerId);
+        if (!marker) {
+          return;
+        }
+
+        const publishAt = new Date(placement.publishAt);
+        if (Number.isNaN(publishAt.getTime())) {
+          return;
+        }
+
+        pendingMarkerPlacement = {
+          mode: 'edit',
+          placementId: placement.id,
+          markerId: placement.markerId,
+          channelId: placement.channelId,
+          dayKey: moscowDateKey(publishAt),
+          originalTargetLanguage: placement.targetLanguage,
+          originalPublishAt: publishAt.toISOString(),
+        };
+
+        configureMarkerPlacementModal({
+          title: 'Edit marker placement',
+          subtitle:
+            marker.title + ' · ' +
+            (adaptationChannels.find((item) => item.id === placement.channelId)?.label || placement.channelId) +
+            ' · ' +
+            formatDayLabel(publishAt),
+          targetLanguage: placement.targetLanguage,
+          timeValue: formatTimeInputValue(publishAt),
+          saveLabel: 'Save changes',
+          canDelete: true,
+        });
+      }
+
+      function resolveDefaultMarkerPlacementTime(selectedDay) {
+        if (isSameDay(selectedDay, new Date())) {
+          const nowParts = getMoscowDateParts(new Date(Date.now() + 5 * 60 * 1000));
+          return String(nowParts.hours).padStart(2, '0') + ':' +
+            String(nowParts.minutes).padStart(2, '0');
+        }
+
+        return '12:00';
+      }
+
+      function formatTimeInputValue(value) {
+        const parts = getMoscowDateParts(value);
+        if (!parts) {
+          return '12:00';
+        }
+        return String(parts.hours).padStart(2, '0') + ':' +
+          String(parts.minutes).padStart(2, '0');
+      }
+
+      function configureMarkerPlacementModal(options) {
+        document.getElementById('markerPlacementTitle').textContent = options.title;
+        document.getElementById('markerPlacementSubtitle').textContent = options.subtitle;
+        document.getElementById('markerPlacementSaveBtn').textContent = options.saveLabel;
+        document.getElementById('markerPlacementDeleteBtn').hidden = !options.canDelete;
+
         const languageSelect = document.getElementById('markerPlacementLanguage');
         languageSelect.innerHTML = languageOptions().map((option) =>
           '<option value="' + escapeHtml(option.language) + '">' + escapeHtml(option.label) + '</option>'
         ).join('');
-
-        const timeInput = document.getElementById('markerPlacementTime');
-        if (isSameDay(selectedDay, new Date())) {
-          const nowParts = getMoscowDateParts(new Date(Date.now() + 5 * 60 * 1000));
-          timeInput.value = String(nowParts.hours).padStart(2, '0') + ':' +
-            String(nowParts.minutes).padStart(2, '0');
-        } else {
-          timeInput.value = '12:00';
+        if (options.targetLanguage) {
+          languageSelect.value = options.targetLanguage;
         }
 
-        document.getElementById('markerPlacementSubtitle').textContent =
-          marker.title + ' · ' +
-          (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
-          ' · ' +
-          formatDayLabel(selectedDay);
+        const timeInput = document.getElementById('markerPlacementTime');
+        timeInput.value = options.timeValue;
+
         document.getElementById('markerPlacementError').textContent = '';
         document.getElementById('markerPlacementModalBackdrop').classList.add('open');
       }
@@ -2751,16 +2878,71 @@ ${renderDevConsoleStyles()}
         }
 
         try {
-          await request('/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              markerId: pendingMarkerPlacement.markerId,
-              channelId: pendingMarkerPlacement.channelId,
-              targetLanguage,
-              publishAt: publishAt.toISOString(),
-            }),
-          });
+          if (
+            pendingMarkerPlacement.mode === 'edit' &&
+            pendingMarkerPlacement.originalTargetLanguage === targetLanguage.toLowerCase() &&
+            pendingMarkerPlacement.originalPublishAt === publishAt.toISOString()
+          ) {
+            closeMarkerPlacementModal();
+            return;
+          }
+
+          await request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                markerId: pendingMarkerPlacement.markerId,
+                channelId: pendingMarkerPlacement.channelId,
+                targetLanguage,
+                publishAt: publishAt.toISOString(),
+              }),
+            },
+            { renderResponse: false },
+          );
+
+          if (pendingMarkerPlacement.mode === 'edit' && pendingMarkerPlacement.placementId) {
+            await request(
+              '/projects/' +
+                encodeURIComponent(currentProjectId) +
+                '/marker-placements/' +
+                encodeURIComponent(pendingMarkerPlacement.placementId),
+              { method: 'DELETE' },
+              { renderResponse: false },
+            );
+          }
+
+          closeMarkerPlacementModal();
+          await refreshProject();
+        } catch (requestError) {
+          error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
+        }
+      }
+
+      async function deleteMarkerPlacement() {
+        const error = document.getElementById('markerPlacementError');
+        error.textContent = '';
+
+        if (!pendingMarkerPlacement?.placementId) {
+          error.textContent = 'No marker placement selected.';
+          return;
+        }
+
+        const confirmed = window.confirm('Delete this marker placement from the calendar?');
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          await request(
+            '/projects/' +
+              encodeURIComponent(currentProjectId) +
+              '/marker-placements/' +
+              encodeURIComponent(pendingMarkerPlacement.placementId),
+            { method: 'DELETE' },
+            { renderResponse: false },
+          );
           closeMarkerPlacementModal();
           await refreshProject();
         } catch (requestError) {
@@ -2794,11 +2976,13 @@ ${renderDevConsoleStyles()}
             const isPast = isPastPlanningDay(dayDate);
             const markerPlacements = markerPlacementsForCell(channel.id, dayDate);
             const publications = plannedPublicationsForCell(channel.id, dayDate);
-            const markerContent = calendarMode === 'markers' && markerPlacements.length
+            const cellDayKey = dateKey(dayDate);
+            const canPlaceMarker = calendarMode === 'markers' && Boolean(activeMarkerId) && !isPast;
+            const markerCards = calendarMode === 'markers' && markerPlacements.length
               ? markerPlacements.map((item) =>
                   '<div class="week-marker ' + (item.markerId === activeMarkerId ? 'is-active' : '') + '"' +
-                    ' onclick="selectMarkerFromPlacement(event, \\''
-                      + escapeHtml(item.markerId)
+                    ' onclick="openExistingMarkerPlacementModal(event, \\''
+                      + escapeHtml(item.id)
                       + '\\')"'
                     + ' style="' +
                     '--marker-bg:' + item.colorBg + ';' +
@@ -2813,6 +2997,14 @@ ${renderDevConsoleStyles()}
                   '</div>'
                 ).join('')
               : '';
+            const markerAddControl = calendarMode === 'markers' && canPlaceMarker && markerPlacements.length >= 2
+              ? '<button type="button" class="week-marker-add" onclick="openMarkerPlacementModal(event, \\'' +
+                  escapeHtml(channel.id) +
+                  '\\', \\'' +
+                  escapeHtml(cellDayKey) +
+                  '\\')" aria-label="Add marker placement">+</button>'
+              : '';
+            const markerContent = markerCards + markerAddControl;
             const publicationContent = calendarMode === 'posts' && publications.length
               ? publications.map((item) =>
                   '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '"' +
@@ -2835,12 +3027,11 @@ ${renderDevConsoleStyles()}
               '<span class="week-cell-placeholder">' +
                 (calendarMode === 'markers' && activeMarkerId && !isPast ? 'Place marker' : '—') +
               '</span>';
-            const canPlaceMarker = calendarMode === 'markers' && Boolean(activeMarkerId) && !isPast;
 
             return \`
               <div
                 class="week-cell \${isToday ? 'is-today' : ''} \${canPlaceMarker ? 'is-placeable' : ''}"
-                onclick="handleCellPress('\${channel.id}', '\${dateKey(dayDate)}')"
+                onclick="handleCellPress('\${channel.id}', '\${cellDayKey}')"
               >
                 <div class="week-cell-scroll">\${content}</div>
               </div>

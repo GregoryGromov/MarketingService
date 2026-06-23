@@ -4,7 +4,7 @@ import {
   SEO_BRIEF_RUN_QUEUE,
   type SeoBriefRunJobPayload,
 } from '@marketing-service/seo-briefing';
-import { Inject, Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { type JobsOptions, Queue, type RedisOptions } from 'bullmq';
 
@@ -31,17 +31,19 @@ function buildRedisConnection(redisUrl: string): RedisOptions {
 
 @Injectable()
 export class SeoBriefRunBullMqPort implements OnModuleDestroy {
-  private readonly queue: Queue<SeoBriefRunJobPayload>;
+  private readonly logger = new Logger(SeoBriefRunBullMqPort.name);
+  private queue: Queue<SeoBriefRunJobPayload> | null = null;
+  private readonly redisUrl: string;
 
   constructor(@Inject(ConfigService) config: ConfigService) {
-    this.queue = new Queue<SeoBriefRunJobPayload>(SEO_BRIEF_RUN_QUEUE, {
-      connection: buildRedisConnection(config.getOrThrow<string>('REDIS_URL')),
-      defaultJobOptions: DEFAULT_JOB_OPTIONS,
-    });
+    this.redisUrl = config.getOrThrow<string>('REDIS_URL');
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.queue.close();
+    if (this.queue) {
+      await this.queue.close();
+      this.queue = null;
+    }
   }
 
   async enqueueRun(payload: SeoBriefRunJobPayload): Promise<EnqueuedSeoBriefRunJob> {
@@ -51,12 +53,26 @@ export class SeoBriefRunBullMqPort implements OnModuleDestroy {
       payload.stopAfterStage ?? 'full',
       String(Date.now()),
     ].join('__');
-    const job = await this.queue.add(PROCESS_SEO_BRIEF_RUN_JOB, payload, {
+    const job = await this.getQueue().add(PROCESS_SEO_BRIEF_RUN_JOB, payload, {
       jobId,
     });
 
     return {
       jobId: String(job.id),
     };
+  }
+
+  private getQueue(): Queue<SeoBriefRunJobPayload> {
+    if (!this.queue) {
+      this.queue = new Queue<SeoBriefRunJobPayload>(SEO_BRIEF_RUN_QUEUE, {
+        connection: buildRedisConnection(this.redisUrl),
+        defaultJobOptions: DEFAULT_JOB_OPTIONS,
+      });
+      this.queue.on('error', (error) => {
+        this.logger.error(error, `BullMQ queue ${SEO_BRIEF_RUN_QUEUE} connection error`);
+      });
+    }
+
+    return this.queue;
   }
 }

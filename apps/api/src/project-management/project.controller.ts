@@ -647,6 +647,13 @@ export class BrandMemorySeoCompetitorKeywordRefreshScheduler
   ) {}
 
   onApplicationBootstrap(): void {
+    if (process.env.SEO_COMPETITOR_KEYWORD_REFRESH_SCHEDULER_ENABLED !== 'true') {
+      this.logger.log(
+        'SEO competitor keyword refresh scheduler disabled. Set SEO_COMPETITOR_KEYWORD_REFRESH_SCHEDULER_ENABLED=true to enable it.',
+      );
+      return;
+    }
+
     this.timer = setInterval(() => {
       void this.refreshDueProjects();
     }, SEO_COMPETITOR_KEYWORD_REFRESH_CHECK_INTERVAL_MS);

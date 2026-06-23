@@ -278,7 +278,7 @@ describe('ClusterKeywordCandidatesHandler', () => {
       'is it safe to earn interest on USDT',
       'USDT savings account',
     ]);
-    expect(ai.clusterCalls[0]?.rejectedKeywords).toEqual(['free USDT generator']);
+    expect(ai.clusterCalls[0]?.rejectedKeywords).toEqual([]);
     expect(ai.clusterCalls[0]?.candidates?.map((candidate) => candidate.status)).toEqual([
       'accepted',
       'maybe',

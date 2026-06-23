@@ -188,7 +188,7 @@ export class DeepSeekSeoBriefAiAdapter {
     return this.runStructuredOperation(
       buildClusterKeywordsPrompt(params),
       params,
-      validateClusterKeywordsResult,
+      (payload, operation) => validateClusterKeywordsResult(payload, operation, params),
     );
   }
 

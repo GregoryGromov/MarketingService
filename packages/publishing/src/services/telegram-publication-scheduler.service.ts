@@ -11,7 +11,13 @@ import {
   TranslationRepository,
   XPublisherPort,
 } from '@marketing-service/editorial';
-import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import type { Publication } from '../domain/publication.aggregate.js';
 import { PublicationRepository } from '../domain/publication.repository.js';
 import {
@@ -22,6 +28,7 @@ import { PublicationOutcomePort } from '../ports/publication-outcome.port.js';
 
 @Injectable()
 export class PublicationSchedulerService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PublicationSchedulerService.name);
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
@@ -47,6 +54,13 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
   ) {}
 
   onModuleInit(): void {
+    if (process.env.PUBLICATION_SCHEDULER_ENABLED !== 'true') {
+      this.logger.log(
+        'Publication scheduler disabled. Set PUBLICATION_SCHEDULER_ENABLED=true to enable it.',
+      );
+      return;
+    }
+
     this.timer = setInterval(() => {
       void this.processDuePublications();
     }, 2_000);
@@ -92,9 +106,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
           }
         } catch (error) {
           for (const publication of blogGroup) {
-            publication.markFailed(error instanceof Error ? error.message : String(error));
-            await this.publicationRepository.save(publication);
-            await this.syncPublicationOutcome(publication);
+            await this.markPublicationFailed(publication, error);
           }
         }
       }
@@ -113,17 +125,28 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
           await this.publicationRepository.save(publication);
           await this.syncPublicationOutcome(publication);
         } catch (error) {
-          publication.markFailed(error instanceof Error ? error.message : String(error));
-          await this.publicationRepository.save(publication);
-          await this.syncPublicationOutcome(publication);
+          await this.markPublicationFailed(publication, error);
         }
       }
+    } catch (error) {
+      this.logger.error('Failed to process due publications', error);
     } finally {
       this.running = false;
     }
   }
 
+  private async markPublicationFailed(publication: Publication, error: unknown): Promise<void> {
+    publication.markFailed(error instanceof Error ? error.message : String(error));
+    try {
+      await this.publicationRepository.save(publication);
+      await this.syncPublicationOutcome(publication);
+    } catch (saveError) {
+      this.logger.error(`Failed to persist publication failure for ${publication.id}`, saveError);
+    }
+  }
+
   private async publish(publication: {
+    id: string;
     articleId: ArticleId;
     adaptationId: AdaptationId;
     channelId: string;
@@ -179,6 +202,7 @@ export class PublicationSchedulerService implements OnModuleInit, OnModuleDestro
         text,
         imagePath,
         publishingTarget: publication.publishingTarget,
+        requestId: publication.id,
       });
 
       publication.markPublished({

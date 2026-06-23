@@ -458,6 +458,122 @@ export class SeoBriefTestUiController {
         margin: 0;
         padding-left: 18px;
       }
+      .client-dev-panel {
+        position: fixed;
+        right: 20px;
+        bottom: 86px;
+        z-index: 1000;
+        width: min(620px, calc(100vw - 32px));
+        max-height: min(78vh, 720px);
+        border: 1px solid rgba(20, 19, 17, 0.16);
+        border-radius: 24px;
+        background: rgba(255, 252, 247, 0.98);
+        box-shadow: 0 28px 80px rgba(20, 19, 17, 0.22);
+        padding: 0;
+        overflow: hidden;
+      }
+      .client-dev-panel[hidden] {
+        display: none;
+      }
+      .client-dev-head {
+        padding: 14px 16px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .client-dev-title {
+        display: grid;
+        gap: 4px;
+      }
+      .client-dev-title strong {
+        font-size: 16px;
+      }
+      .client-dev-status {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .client-dev-toggle {
+        position: fixed;
+        right: 20px;
+        bottom: 22px;
+        z-index: 1001;
+        box-shadow: 0 14px 36px rgba(20, 19, 17, 0.18);
+      }
+      .client-dev-toggle.has-warn {
+        border-color: rgba(154, 100, 16, 0.5);
+        background: #fff4dd;
+      }
+      .client-dev-toggle.has-error {
+        border-color: rgba(181, 56, 40, 0.5);
+        background: #ffe9e5;
+      }
+      .client-dev-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 14px 14px;
+        max-height: calc(min(78vh, 720px) - 64px);
+      }
+      .client-dev-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .client-dev-log {
+        min-height: 96px;
+        max-height: none;
+        flex: 1;
+        overflow: auto;
+        border: 1px solid rgba(20, 19, 17, 0.12);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.74);
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 1.42;
+        white-space: pre-wrap;
+      }
+      .client-dev-empty {
+        color: var(--muted);
+      }
+      .client-dev-entry {
+        border-bottom: 1px solid rgba(20, 19, 17, 0.08);
+        padding-bottom: 8px;
+      }
+      .client-dev-entry:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+      .client-dev-entry strong {
+        color: var(--text);
+      }
+      .client-dev-entry.is-error strong {
+        color: var(--danger);
+      }
+      .client-dev-entry.is-warn strong {
+        color: var(--warning);
+      }
+      .client-dev-entry code {
+        color: var(--muted);
+        word-break: break-word;
+      }
+      @media (max-width: 720px) {
+        .client-dev-panel {
+          right: 12px;
+          left: 12px;
+          bottom: 78px;
+          width: auto;
+          max-height: 72vh;
+        }
+        .client-dev-toggle {
+          right: 12px;
+          bottom: 14px;
+        }
+      }
       .prompt-inventory {
         border: 1px solid rgba(180, 132, 41, 0.22);
         border-radius: 22px;
@@ -1125,6 +1241,38 @@ export class SeoBriefTestUiController {
       .batch-diagnostics ul {
         margin: 0;
         padding: 0 16px 12px 28px;
+      }
+      .auto-flow-debug {
+        margin-top: 12px;
+        border: 1px solid rgba(18, 18, 18, 0.1);
+        border-radius: 16px;
+        background: rgba(18, 18, 18, 0.035);
+        overflow: hidden;
+      }
+      .auto-flow-debug summary {
+        cursor: pointer;
+        padding: 10px 12px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .auto-flow-debug ul {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+        padding: 0 12px 12px;
+        list-style: none;
+      }
+      .auto-flow-debug li {
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 8px 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        color: var(--text);
+      }
+      .auto-flow-debug li.is-error {
+        background: rgba(180, 35, 24, 0.08);
+        color: #8a1f14;
       }
       .seo-step-tab.is-ready:not(.is-active) .seo-step-dot {
         background: #117a43;
@@ -1802,6 +1950,27 @@ High-risk leverage</textarea>
       </div>
     </div>
 
+    <button type="button" id="clientDevToggleBtn" class="client-dev-toggle">Dev Log</button>
+    <section id="clientDevPanel" class="client-dev-panel" aria-label="Client Dev Log">
+      <div class="client-dev-head">
+        <div class="client-dev-title">
+          <strong>Client Dev Log</strong>
+          <span id="clientDevStatus" class="client-dev-status">Current step: Input</span>
+        </div>
+        <button type="button" id="hideClientDevLogBtn">Hide</button>
+      </div>
+      <div class="client-dev-body">
+        <p class="sub">Browser-side trace for clicks, validation, payload assembly, API requests, and current SEO stage.</p>
+        <div class="client-dev-actions">
+          <button type="button" id="copyClientDevLogBtn">Copy Client Log</button>
+          <button type="button" id="clearClientDevLogBtn">Clear</button>
+        </div>
+        <div id="clientDevLog" class="client-dev-log">
+          <div class="client-dev-empty">No client events yet.</div>
+        </div>
+      </div>
+    </section>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <div id="clusterDetailModal" class="modal-backdrop" hidden>
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="clusterDetailModalTitle">
@@ -1858,8 +2027,12 @@ High-risk leverage</textarea>
         autoFlowCurrentLabel: null,
         autoFlowCurrentIndex: 0,
         autoFlowTotal: 0,
+        autoFlowDebugEvents: [],
       };
       let launchPanelNode = null;
+      let clientDevLogSeq = 0;
+      let clientFetchSeq = 0;
+      const CLIENT_DEV_LOG_LIMIT = 120;
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
       const SEO_BRIEF_LANGUAGE_PRESETS = [
         { code: 'en', name: 'English', label: 'English', country: 'United States' },
@@ -1895,6 +2068,7 @@ High-risk leverage</textarea>
       ];
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
+      const CLIENT_DEV_PANEL_OPEN_STORAGE_KEY = 'seoBriefing.clientDevPanelOpen';
       const SEO_STEP_TABS = [
         { id: 'input', label: 'Input', number: '0' },
         { id: 'keywords', label: 'Keywords', number: '1' },
@@ -2236,6 +2410,158 @@ High-risk leverage</textarea>
       function prettyJson(value) {
         return JSON.stringify(value, null, 2);
       }
+
+      function getActiveSeoStepLabel() {
+        const activeStep = appState.activeSeoStep || 'input';
+        const groupId = SEO_STEP_TO_GROUP[activeStep] || activeStep;
+        const group = SEO_STEP_TABS.find((step) => step.id === groupId);
+        if (!group) return activeStep;
+        if (group.id === activeStep) {
+          return String(group.number) + ' ' + group.label;
+        }
+        return String(group.number) + ' ' + group.label + ' / ' + activeStep;
+      }
+
+      function updateClientDevStatus() {
+        const node = qs('clientDevStatus');
+        if (!node) return;
+        const parts = [
+          'Step: ' + getActiveSeoStepLabel(),
+          appState.selectedRunId ? 'Run: ' + appState.selectedRunId : 'No run selected',
+        ];
+        if (appState.autoFlowLoading) {
+          parts.push(
+            'Auto: ' +
+              (appState.autoFlowCurrentLabel || 'running') +
+              ' ' +
+              String(appState.autoFlowCurrentIndex || 0) +
+              '/' +
+              String(appState.autoFlowTotal || 0),
+          );
+        }
+        node.textContent = parts.join(' · ');
+      }
+
+      function setClientDevPanelOpen(open) {
+        const panel = qs('clientDevPanel');
+        const toggle = qs('clientDevToggleBtn');
+        if (!panel || !toggle) return;
+        panel.hidden = !open;
+        toggle.textContent = open ? 'Hide Dev Log' : 'Dev Log';
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        localStorage.setItem(CLIENT_DEV_PANEL_OPEN_STORAGE_KEY, open ? 'true' : 'false');
+      }
+
+      function syncClientDevPanelOpenState() {
+        const saved = localStorage.getItem(CLIENT_DEV_PANEL_OPEN_STORAGE_KEY);
+        setClientDevPanelOpen(saved !== 'false');
+      }
+
+      function redactForClientDevLog(value) {
+        if (typeof value === 'string') {
+          return value.length > 360 ? value.slice(0, 360) + '…(' + String(value.length) + ' chars)' : value;
+        }
+        if (Array.isArray(value)) {
+          return value.slice(0, 12).map(redactForClientDevLog);
+        }
+        if (value && typeof value === 'object') {
+          return Object.fromEntries(
+            Object.entries(value).map(([key, entry]) => [key, redactForClientDevLog(entry)]),
+          );
+        }
+        return value;
+      }
+
+      function appendClientDevLog(message, details = null, tone = 'info') {
+        const node = qs('clientDevLog');
+        if (!node) return;
+        updateClientDevStatus();
+        const entry = document.createElement('div');
+        entry.className = 'client-dev-entry ' + (tone === 'error' ? 'is-error' : tone === 'warn' ? 'is-warn' : '');
+        const timestamp = new Date().toLocaleTimeString();
+        const safeDetails = details == null ? '' : '\\n' + prettyJson(redactForClientDevLog(details));
+        entry.innerHTML =
+          '<strong>#' + escapeHtmlClient(++clientDevLogSeq) + ' ' + escapeHtmlClient(timestamp) + '</strong> ' +
+          escapeHtmlClient(message) +
+          (safeDetails ? '<br><code>' + escapeHtmlClient(safeDetails) + '</code>' : '');
+        const empty = node.querySelector('.client-dev-empty');
+        if (empty) empty.remove();
+        node.appendChild(entry);
+        while (node.children.length > CLIENT_DEV_LOG_LIMIT) {
+          node.firstElementChild?.remove();
+        }
+        node.scrollTop = node.scrollHeight;
+        const toggle = qs('clientDevToggleBtn');
+        if (toggle && tone === 'error') {
+          toggle.classList.add('has-error');
+        } else if (toggle && tone === 'warn' && !toggle.classList.contains('has-error')) {
+          toggle.classList.add('has-warn');
+        }
+      }
+
+      async function copyClientDevLog() {
+        const node = qs('clientDevLog');
+        if (!node) return;
+        const text = node.innerText.trim();
+        if (!text) {
+          showToast('Client log is empty');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('Client log copied');
+        } catch (_error) {
+          showToast('Could not copy client log automatically');
+        }
+      }
+
+      function clearClientDevLog() {
+        const node = qs('clientDevLog');
+        if (!node) return;
+        clientDevLogSeq = 0;
+        qs('clientDevToggleBtn')?.classList.remove('has-error', 'has-warn');
+        node.innerHTML = '<div class="client-dev-empty">No client events yet.</div>';
+        updateClientDevStatus();
+      }
+
+      function summarizeCreateRunPayload(payload) {
+        return {
+          projectId: payload.projectId,
+          aiModelMode: payload.aiModelMode,
+          workflowMode: payload.workflowMode,
+          topicHint: payload.topicHint,
+          hypothesesCount: payload.hypothesesCount,
+          serpEnrichmentCount: payload.serpEnrichmentCount,
+          requestTimeoutMs: payload.requestTimeoutMs,
+          market: payload.market,
+          userPainsCount: Array.isArray(payload.userPains) ? payload.userPains.length : 0,
+          userScenariosCount: Array.isArray(payload.userScenarios) ? payload.userScenarios.length : 0,
+          product: payload.product,
+          keywordExpansionPromptChars: String(payload.keywordExpansionPrompt || '').length,
+          campaignContextChars: String(payload.campaignContext || '').length,
+        };
+      }
+
+      window.addEventListener('error', (event) => {
+        appendClientDevLog(
+          'window error: ' + (event.message || 'Unknown script error'),
+          {
+            source: event.filename,
+            line: event.lineno,
+            column: event.colno,
+          },
+          'error',
+        );
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason;
+        appendClientDevLog(
+          'unhandled promise rejection: ' + (reason instanceof Error ? reason.message : String(reason)),
+          reason instanceof Error ? { stack: reason.stack } : { reason },
+          'error',
+        );
+      });
 
       function renderAiPromptInventory() {
         return (
@@ -3131,12 +3457,45 @@ High-risk leverage</textarea>
       }
 
       async function fetchJson(url, init) {
-        const response = await fetch(url, init);
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || 'Request failed: ' + response.status);
+        const requestId = ++clientFetchSeq;
+        const method = String(init?.method || 'GET').toUpperCase();
+        const startedAt = performance.now();
+        appendClientDevLog('fetch #' + String(requestId) + ' start: ' + method + ' ' + url);
+        const slowTimer = window.setTimeout(() => {
+          appendClientDevLog(
+            'fetch #' + String(requestId) + ' still waiting after 5s: ' + method + ' ' + url,
+            null,
+            'warn',
+          );
+        }, 5000);
+        try {
+          const response = await fetch(url, init);
+          const elapsedMs = Math.round(performance.now() - startedAt);
+          window.clearTimeout(slowTimer);
+          appendClientDevLog(
+            'fetch #' + String(requestId) + ' response: ' + String(response.status) + ' in ' + String(elapsedMs) + 'ms',
+            { method, url },
+            response.ok ? 'info' : 'error',
+          );
+          if (!response.ok) {
+            const text = await response.text();
+            appendClientDevLog(
+              'fetch #' + String(requestId) + ' error body',
+              { body: text || 'Request failed: ' + response.status },
+              'error',
+            );
+            throw new Error(text || 'Request failed: ' + response.status);
+          }
+          return response.json();
+        } catch (error) {
+          window.clearTimeout(slowTimer);
+          appendClientDevLog(
+            'fetch #' + String(requestId) + ' failed: ' + (error instanceof Error ? error.message : String(error)),
+            { method, url },
+            'error',
+          );
+          throw error;
         }
-        return response.json();
       }
 
       function showToast(message) {
@@ -3560,20 +3919,18 @@ High-risk leverage</textarea>
         return (
           '<section class="card full">' +
             '<div class="section-head"><div class="stack"><div class="eyebrow">Algorithm Step 6</div><h3>Dirty Keyword Pool</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'dirty_keyword_pool') + '</span></div>' +
-            '<p>Primary output: one intentionally dirty pool of keyword candidates from hypotheses, SERP-derived queries, selected related queries, and Ranked Keywords. Filtering happens later.</p>' +
+            '<p>Primary output: one intentionally dirty pool of keyword candidates from hypotheses, SERP-derived queries, and selected related queries. Filtering happens later.</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(payload?.candidateCount ?? candidates.length) + '</strong><span>Unique candidates</span></div>' +
               '<div><strong>' + escapeHtmlClient(payload?.duplicateEvidenceCount ?? 0) + '</strong><span>Merged duplicate evidence</span></div>' +
               '<div><strong>' + escapeHtmlClient(sourceCounts.keyword_hypothesis ?? 0) + '</strong><span>Initial hypotheses</span></div>' +
-              '<div><strong>' + escapeHtmlClient(sourceCounts.competitor_keyword_match ?? 0) + '</strong><span>Competitor matches</span></div>' +
+              '<div><strong>' + escapeHtmlClient(sourceCounts.selected_related_query ?? 0) + '</strong><span>Selected related</span></div>' +
             '</div>' +
             '<div class="section-subhead"><h4>Source mix</h4><p>Counts show how many unique candidates have evidence from each source.</p></div>' +
             '<dl class="definition-list">' +
               '<dt>Hypotheses</dt><dd>' + escapeHtmlClient(sourceCounts.keyword_hypothesis ?? 0) + '</dd>' +
               '<dt>SERP-derived</dt><dd>' + escapeHtmlClient(sourceCounts.serp_derived_candidate ?? 0) + '</dd>' +
               '<dt>Selected related</dt><dd>' + escapeHtmlClient(sourceCounts.selected_related_query ?? 0) + '</dd>' +
-              '<dt>Competitor matches</dt><dd>' + escapeHtmlClient(sourceCounts.competitor_keyword_match ?? 0) + '</dd>' +
-              '<dt>Ranked Keywords</dt><dd>' + escapeHtmlClient(sourceCounts.ranked_keywords ?? 0) + '</dd>' +
             '</dl>' +
             '<div class="section-subhead"><h4>Candidate pool</h4><p>Sorted by source coverage and search volume. This is not filtered by Product Fit yet.</p></div>' +
             renderDirtyKeywordCards(topCandidates) +
@@ -5410,11 +5767,11 @@ High-risk leverage</textarea>
           },
           dirtyPool: {
             title: 'Dirty Keyword Pool',
-            message: flags.competitorMatching
-              ? 'Merge hypotheses, SERP-derived candidates, competitor matches, selected related queries, and Ranked Keywords into one dirty pool.'
-              : 'Run Competitor Keyword Matching first.',
+            message: flags.keywords && flags.candidates
+              ? 'Merge hypotheses, SERP-derived candidates, and selected related queries into one dirty pool.'
+              : 'Run keyword generation and SERP-derived expansion first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.competitorMatching ? 'primary ' : '') + (appState.dirtyKeywordPoolLoading ? 'is-loading' : '')) + '" id="buildDirtyKeywordPoolBtn" ' + (!flags.competitorMatching || appState.dirtyKeywordPoolLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.dirtyKeywordPoolLoading ? 'Building dirty pool...' : flags.dirtyPool ? 'Refresh Dirty Keyword Pool' : 'Build Dirty Keyword Pool') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((flags.keywords && flags.candidates ? 'primary ' : '') + (appState.dirtyKeywordPoolLoading ? 'is-loading' : '')) + '" id="buildDirtyKeywordPoolBtn" ' + (!flags.keywords || !flags.candidates || appState.dirtyKeywordPoolLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.dirtyKeywordPoolLoading ? 'Building dirty pool...' : flags.dirtyPool ? 'Refresh Dirty Keyword Pool' : 'Build Dirty Keyword Pool') + '</button>',
             progress: appState.dirtyKeywordPoolLoading
               ? '<div class="inline-progress"><p>Merging saved keyword evidence into one candidate pool.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
@@ -5702,22 +6059,6 @@ High-risk leverage</textarea>
           payload: {},
         },
         {
-          label: 'Loading competitor keyword map from Brand Memory',
-          step: 'competitionGroup',
-          loadingKey: 'rankedKeywordsLoading',
-          path: '/build-competitor-keyword-map',
-          readyFlag: 'rankedKeywords',
-          payload: {},
-        },
-        {
-          label: 'Matching candidates to competitor keyword evidence',
-          step: 'competitionGroup',
-          loadingKey: 'competitorMatchingLoading',
-          path: '/match-competitor-keywords',
-          readyFlag: 'competitorMatching',
-          payload: () => ({ mode: 'algorithmic' }),
-        },
-        {
           label: 'Building dirty keyword pool',
           step: 'competitionGroup',
           loadingKey: 'dirtyKeywordPoolLoading',
@@ -5798,19 +6139,129 @@ High-risk leverage</textarea>
         return fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId));
       }
 
+      function formatDuration(ms) {
+        if (!Number.isFinite(ms)) return 'n/a';
+        if (ms < 1000) return String(Math.round(ms)) + 'ms';
+        return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's';
+      }
+
+      function summarizeAutoFlowResult(value) {
+        if (!value || typeof value !== 'object') return '';
+        const keys = [
+          'keywordCount',
+          'candidateQueryCount',
+          'themeCount',
+          'candidateCount',
+          'clusterCount',
+          'acceptedCount',
+          'maybeCount',
+          'rejectedCount',
+          'articleId',
+          'artifactType',
+        ];
+        const parts = keys
+          .filter((key) => value[key] !== undefined && value[key] !== null)
+          .map((key) => key + '=' + String(value[key]));
+        return parts.length ? ' | ' + parts.join(', ') : '';
+      }
+
+      function pushAutoFlowDebugEvent(event) {
+        const timestamp = new Date().toLocaleTimeString();
+        const nextEvent = {
+          timestamp,
+          status: event.status || 'info',
+          label: event.label || 'Step',
+          message: event.message || '',
+          path: event.path || '',
+          durationMs: event.durationMs,
+        };
+        appState.autoFlowDebugEvents = [nextEvent, ...appState.autoFlowDebugEvents].slice(0, 40);
+        if (typeof console !== 'undefined' && console.info) {
+          console.info('[seo-brief-auto-flow]', nextEvent);
+        }
+        appendClientDevLog(
+          'Auto flow ' + nextEvent.status + ': ' + nextEvent.label,
+          {
+            path: nextEvent.path,
+            message: nextEvent.message,
+            durationMs: nextEvent.durationMs,
+          },
+          nextEvent.status === 'error' ? 'error' : 'info',
+        );
+        updateClientDevStatus();
+      }
+
+      function renderAutoFlowDebugLog() {
+        const events = Array.isArray(appState.autoFlowDebugEvents) ? appState.autoFlowDebugEvents : [];
+        if (!events.length) {
+          return '';
+        }
+        return (
+          '<details class="auto-flow-debug" open>' +
+            '<summary>Dev live log</summary>' +
+            '<ul>' +
+              events.map((event) => {
+                const duration = event.durationMs !== undefined ? ' · ' + formatDuration(Number(event.durationMs)) : '';
+                const path = event.path ? ' · ' + event.path : '';
+                return (
+                  '<li class="' + escapeHtmlClient(event.status === 'error' ? 'is-error' : '') + '">' +
+                    escapeHtmlClient(event.timestamp + ' · ' + event.status + ' · ' + event.label + path + duration + (event.message ? ' · ' + event.message : '')) +
+                  '</li>'
+                );
+              }).join('') +
+            '</ul>' +
+          '</details>'
+        );
+      }
+
       async function executeAutoFlowStep(runId, stepConfig) {
+        const stepStartedAt = performance.now();
+        pushAutoFlowDebugEvent({
+          status: 'check',
+          label: stepConfig.label,
+          path: stepConfig.path,
+          message: 'fetching current run snapshot',
+        });
         const beforeRun = await fetchRunSnapshot(runId);
         if (shouldSkipAutoFlowStep(beforeRun, stepConfig)) {
+          pushAutoFlowDebugEvent({
+            status: 'skip',
+            label: stepConfig.label,
+            path: stepConfig.path,
+            durationMs: performance.now() - stepStartedAt,
+            message: 'ready artifact already exists',
+          });
           return { skipped: true, run: beforeRun };
         }
 
-        await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
+        pushAutoFlowDebugEvent({
+          status: 'start',
+          label: stepConfig.label,
+          path: stepConfig.path,
+          message: 'POST started',
+        });
+        const actionStartedAt = performance.now();
+        const actionResult = await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(getAutoFlowPayload(stepConfig)),
         });
+        pushAutoFlowDebugEvent({
+          status: 'done',
+          label: stepConfig.label,
+          path: stepConfig.path,
+          durationMs: performance.now() - actionStartedAt,
+          message: 'POST completed' + summarizeAutoFlowResult(actionResult),
+        });
 
         const afterRun = await fetchRunSnapshot(runId);
+        pushAutoFlowDebugEvent({
+          status: 'snapshot',
+          label: stepConfig.label,
+          path: stepConfig.path,
+          durationMs: performance.now() - stepStartedAt,
+          message: 'refreshed run after step',
+        });
         return { skipped: false, run: afterRun };
       }
 
@@ -5834,6 +6285,7 @@ High-risk leverage</textarea>
             '<strong>' + escapeHtmlClient(appState.autoFlowCurrentLabel || 'Preparing next step') + '</strong>' +
             '<p>' + escapeHtmlClient(appState.autoFlowDescription || 'The UI is calling the same step endpoints automatically.') + '</p>' +
             '<div class="progress-track"><div class="progress-bar"></div></div>' +
+            renderAutoFlowDebugLog() +
           '</section>'
         );
       }
@@ -5843,6 +6295,7 @@ High-risk leverage</textarea>
         appState.autoFlowTitle = config.title;
         appState.autoFlowDescription = config.description;
         appState.autoFlowTotal = steps.length;
+        appState.autoFlowDebugEvents = [];
         clearAutoFlowStepLoading();
         showToast(config.startedToast || 'Auto workflow started');
 
@@ -5862,7 +6315,18 @@ High-risk leverage</textarea>
               renderDetail(appState.selectedRun);
             }
 
-            const stepResult = await executeAutoFlowStep(runId, stepConfig);
+            let stepResult;
+            try {
+              stepResult = await executeAutoFlowStep(runId, stepConfig);
+            } catch (error) {
+              pushAutoFlowDebugEvent({
+                status: 'error',
+                label: stepConfig.label,
+                path: stepConfig.path,
+                message: error instanceof Error ? error.message : 'unknown error',
+              });
+              throw error;
+            }
             if (stepResult.skipped) {
               showToast('Skipped completed step: ' + stepConfig.label);
             }
@@ -6201,6 +6665,7 @@ High-risk leverage</textarea>
 
       function renderDetail(run) {
         detachLaunchPanel();
+        updateClientDevStatus();
         const manualStepFlags = getManualStepFlags(run);
         const actionContent = renderStepActionCard(run, manualStepFlags);
         const activeStepContent = renderActiveStepContent(run, manualStepFlags);
@@ -7012,8 +7477,10 @@ High-risk leverage</textarea>
 
       async function createRun(event) {
         event.preventDefault();
+        appendClientDevLog('Create SEO Brief Run clicked');
         setLaunchStatus('Button clicked. Validating launch form...');
         if (!validateLaunchForm()) {
+          appendClientDevLog('Launch validation failed before API request', null, 'warn');
           setLaunchStatus('Validation stopped the launch. Check the highlighted required field.', 'error');
           return;
         }
@@ -7024,6 +7491,14 @@ High-risk leverage</textarea>
             ? 'auto_until_selection'
             : 'manual';
           const selectedLanguages = getSelectedLanguagePresets();
+          appendClientDevLog('Launch validation passed', {
+            workflowMode,
+            selectedLanguages: selectedLanguages.map((language) => ({
+              code: language.code,
+              name: language.name,
+              country: language.country,
+            })),
+          });
           setLaunchStatus(
             selectedLanguages.length > 1
               ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs in parallel...'
@@ -7038,7 +7513,9 @@ High-risk leverage</textarea>
             await createLanguageBatch(selectedLanguages, workflowMode);
             return;
           }
+          appendClientDevLog('Creating single SEO brief run');
           const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_LANGUAGE_PRESETS[0], workflowMode);
+          appendClientDevLog('Create SEO brief run returned', result);
           setLaunchStatus('Run created: ' + result.runId);
           appState.selectedRunId = result.runId;
           appState.activeSeoStep = 'keywords';
@@ -7056,10 +7533,16 @@ High-risk leverage</textarea>
             void runAutoFlowUntilClusterSelection(result.runId);
           }
         } catch (error) {
+          appendClientDevLog(
+            'Create SEO brief run failed: ' + (error instanceof Error ? error.message : String(error)),
+            error instanceof Error ? { stack: error.stack } : { error },
+            'error',
+          );
           setLaunchStatus(error instanceof Error ? error.message : 'Failed to create run', 'error');
           showToast(error instanceof Error ? error.message : 'Failed to create run');
         } finally {
           launchBtn.disabled = false;
+          appendClientDevLog('Launch button re-enabled');
         }
       }
 
@@ -7108,10 +7591,12 @@ High-risk leverage</textarea>
 
       async function createSeoBriefRunForLanguage(language, workflowMode) {
         const preset = resolveRunLanguagePreset(language);
+        const payload = buildCreateRunPayload(preset.name, workflowMode, preset.country);
+        appendClientDevLog('POST /seo-briefing/runs payload ready', summarizeCreateRunPayload(payload));
         return fetchJson('/seo-briefing/runs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildCreateRunPayload(preset.name, workflowMode, preset.country)),
+          body: JSON.stringify(payload),
         });
       }
 
@@ -7526,6 +8011,16 @@ High-risk leverage</textarea>
             showToast(error instanceof Error ? error.message : 'Failed to extract file context');
           }
         });
+        qs('copyClientDevLogBtn')?.addEventListener('click', () => {
+          void copyClientDevLog();
+        });
+        qs('clearClientDevLogBtn')?.addEventListener('click', clearClientDevLog);
+        qs('clientDevToggleBtn')?.addEventListener('click', () => {
+          setClientDevPanelOpen(Boolean(qs('clientDevPanel')?.hidden));
+        });
+        qs('hideClientDevLogBtn')?.addEventListener('click', () => {
+          setClientDevPanelOpen(false);
+        });
         qs('projectId')?.addEventListener('change', () => {
           if (appState.markerPlan && qs('projectId')?.value !== appState.markerPlan.projectId) {
             appState.markerPlan = null;
@@ -7543,7 +8038,11 @@ High-risk leverage</textarea>
       }
 
       async function boot() {
+        syncClientDevPanelOpenState();
+        updateClientDevStatus();
+        appendClientDevLog('UI boot started', initialState);
         bindLaunchFormActions();
+        appendClientDevLog('Launch form actions bound');
         renderLaunchPromptInventory();
         qs('startNewRunBtn').addEventListener('click', startNewRun);
         qs('runLibraryBtn')?.addEventListener('click', () => {
@@ -7574,11 +8073,22 @@ High-risk leverage</textarea>
           updateUrl(null);
         });
         await loadProjects();
+        appendClientDevLog('Projects loaded', { count: appState.projects.length });
         await applyMarkerPlanFromInitialState();
+        appendClientDevLog('Initial marker plan applied', {
+          hasMarkerPlan: Boolean(appState.markerPlan),
+          placements: appState.markerPlan?.placements?.length || 0,
+        });
         await loadRuns();
+        appendClientDevLog('Runs loaded', { count: appState.runs.length });
       }
 
       boot().catch((error) => {
+        appendClientDevLog(
+          'UI boot failed: ' + (error instanceof Error ? error.message : 'Unknown error'),
+          error instanceof Error ? { stack: error.stack } : { error },
+          'error',
+        );
         qs('detailContent').innerHTML = '<div class="empty full">Failed to boot UI: ' + escapeHtmlClient(error instanceof Error ? error.message : 'Unknown error') + '</div>';
       });
     </script>

@@ -10,9 +10,7 @@ import { BuildDirtyKeywordPoolCommand } from './build-dirty-keyword-pool.command
 type DirtyKeywordSource =
   | 'keyword_hypothesis'
   | 'serp_derived_candidate'
-  | 'selected_related_query'
-  | 'competitor_keyword_match'
-  | 'ranked_keywords';
+  | 'selected_related_query';
 
 interface DirtyKeywordEvidence {
   candidateScore?: number | null;
@@ -27,6 +25,15 @@ interface DirtyKeywordEvidence {
   sourceDomain?: string | null;
   sourceKeyword?: string | null;
   sourceText?: string | null;
+}
+
+interface SerpDomainConcentration {
+  dominantDomain: string | null;
+  dominantDomainShare: number | null;
+  hhi: number;
+  label: 'low' | 'medium' | 'high' | 'very_high';
+  resultCount: number;
+  uniqueDomainCount: number;
 }
 
 interface DirtyKeywordCandidate {
@@ -48,6 +55,12 @@ interface DirtyKeywordCandidate {
     keywordDifficulty: number | null;
     proxyDemandScore: number | null;
     searchVolume: number | null;
+    sourceHypothesisSerpDomainConcentrationLabel: string | null;
+    sourceHypothesisSerpDomainHhi: number | null;
+    sourceHypothesisSerpDominantDomain: string | null;
+    sourceHypothesisSerpDominantDomainShare: number | null;
+    sourceHypothesisSerpResultCount: number | null;
+    sourceHypothesisSerpUniqueDomainCount: number | null;
   };
   normalizedText: string;
   primarySource: DirtyKeywordSource;
@@ -82,16 +95,12 @@ export class BuildDirtyKeywordPoolHandler
     }
 
     const artifacts = await this.artifactRepository.findByRunId(run.id);
-    if (!readLatestObjectArtifact(artifacts, 'competitor_keyword_matches')) {
-      throw new Error('Run competitor keyword matching before building dirty keyword pool');
-    }
+    const serpDomainConcentrationByKeyword = buildSerpDomainConcentrationByKeyword(artifacts);
 
     const builder = new DirtyKeywordPoolBuilder();
-    collectKeywordHypotheses(artifacts, builder);
-    collectSerpDerivedCandidates(artifacts, builder);
-    collectSelectedRelatedQueries(artifacts, builder);
-    collectCompetitorKeywordMatches(artifacts, builder);
-    collectRankedKeywords(artifacts, builder);
+    collectKeywordHypotheses(artifacts, builder, serpDomainConcentrationByKeyword);
+    collectSerpDerivedCandidates(artifacts, builder, serpDomainConcentrationByKeyword);
+    collectSelectedRelatedQueries(artifacts, builder, serpDomainConcentrationByKeyword);
 
     const candidates = builder.build();
     if (candidates.length === 0) {
@@ -111,16 +120,16 @@ export class BuildDirtyKeywordPoolHandler
         artifactVersion: 'dirty_keyword_pool_v1',
         sourceArtifactTypes: [
           'keyword_hypotheses',
+          'keyword_serp_preview_snapshots',
           'keyword_serp_derived_keywords',
           'keyword_related_query_selections',
-          'competitor_keyword_matches',
-          'ranked_keywords_universe',
         ],
         notes: [
           'This is an intentionally dirty candidate pool, not a final keyword shortlist.',
           'Duplicate exact-normalized queries are merged, but all source evidence is preserved.',
           'SERP themes are not included as keywords because they are content topics, not validated search queries.',
-          'competitor_keyword_matches add proxy demand evidence without copying competitor volume onto candidate queries.',
+          'SERP domain concentration is calculated with unweighted HHI over organic result domains for the source hypothesis.',
+          'Competitor keyword matches and Ranked Keywords are intentionally excluded from this candidate pool.',
           'Product Fit filtering and final scoring happen in the next step.',
         ],
         candidateCount: candidates.length,
@@ -183,6 +192,7 @@ class DirtyKeywordPoolBuilder {
 function collectKeywordHypotheses(
   artifacts: SeoBriefArtifact[],
   builder: DirtyKeywordPoolBuilder,
+  serpDomainConcentrationByKeyword: Map<string, SerpDomainConcentration>,
 ): void {
   const payload = readLatestObjectArtifact(artifacts, 'keyword_hypotheses');
   const hypotheses = Array.isArray(payload?.hypotheses) ? payload.hypotheses : [];
@@ -198,8 +208,12 @@ function collectKeywordHypotheses(
     builder.add(keyword, {
       source: 'keyword_hypothesis',
       sourceKeyword: keyword,
-      keywordGroup: readString(record?.group) ?? groupByKeyword.get(normalizeKeywordText(keyword)) ?? null,
+      keywordGroup:
+        readString(record?.group) ?? groupByKeyword.get(normalizeKeywordText(keyword)) ?? null,
       intent: readString(record?.intentHint) ?? readString(record?.intent_hint),
+      metrics: createSerpDomainConcentrationMetrics(
+        serpDomainConcentrationByKeyword.get(normalizeKeywordText(keyword)),
+      ),
       reason: readString(record?.reason),
     });
   }
@@ -208,6 +222,7 @@ function collectKeywordHypotheses(
 function collectSerpDerivedCandidates(
   artifacts: SeoBriefArtifact[],
   builder: DirtyKeywordPoolBuilder,
+  serpDomainConcentrationByKeyword: Map<string, SerpDomainConcentration>,
 ): void {
   const payload =
     readLatestObjectArtifact(artifacts, 'keyword_serp_derived_keywords') ??
@@ -217,9 +232,7 @@ function collectSerpDerivedCandidates(
   for (const item of items) {
     const record = asObject(item);
     const sourceKeyword = readString(record?.keyword);
-    const queries = Array.isArray(record?.similarSearchQueries)
-      ? record.similarSearchQueries
-      : [];
+    const queries = Array.isArray(record?.similarSearchQueries) ? record.similarSearchQueries : [];
 
     for (const queryItem of queries) {
       const query = asObject(queryItem);
@@ -235,8 +248,18 @@ function collectSerpDerivedCandidates(
         reason: readString(query?.reason),
         serpEvidence: {
           source: readString(query?.source),
+          sourceHypothesisSerpDomainConcentration: createSerpDomainConcentrationMetrics(
+            sourceKeyword
+              ? serpDomainConcentrationByKeyword.get(normalizeKeywordText(sourceKeyword))
+              : undefined,
+          ),
           sourceText: readString(query?.sourceText),
         } as unknown as SeoBriefJsonValue,
+        metrics: createSerpDomainConcentrationMetrics(
+          sourceKeyword
+            ? serpDomainConcentrationByKeyword.get(normalizeKeywordText(sourceKeyword))
+            : undefined,
+        ),
       });
     }
   }
@@ -245,6 +268,7 @@ function collectSerpDerivedCandidates(
 function collectSelectedRelatedQueries(
   artifacts: SeoBriefArtifact[],
   builder: DirtyKeywordPoolBuilder,
+  serpDomainConcentrationByKeyword: Map<string, SerpDomainConcentration>,
 ): void {
   const payload =
     readLatestObjectArtifact(artifacts, 'keyword_related_query_selections') ??
@@ -270,77 +294,107 @@ function collectSelectedRelatedQueries(
         reason: readString(query?.reason),
         serpEvidence: {
           source: readString(query?.source),
+          sourceHypothesisSerpDomainConcentration: createSerpDomainConcentrationMetrics(
+            sourceKeyword
+              ? serpDomainConcentrationByKeyword.get(normalizeKeywordText(sourceKeyword))
+              : undefined,
+          ),
           sourceText: readString(query?.sourceText),
         } as unknown as SeoBriefJsonValue,
+        metrics: createSerpDomainConcentrationMetrics(
+          sourceKeyword
+            ? serpDomainConcentrationByKeyword.get(normalizeKeywordText(sourceKeyword))
+            : undefined,
+        ),
       });
     }
   }
 }
 
-function collectCompetitorKeywordMatches(
+function buildSerpDomainConcentrationByKeyword(
   artifacts: SeoBriefArtifact[],
-  builder: DirtyKeywordPoolBuilder,
-): void {
-  const payload = readLatestObjectArtifact(artifacts, 'competitor_keyword_matches');
-  const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
-
-  for (const item of candidates) {
-    const record = asObject(item);
-    const text = readString(record?.text);
-    if (!text) {
-      continue;
-    }
-
-    const proxyEvaluation = asObject(record?.proxyEvaluation);
-    const semanticMatches = Array.isArray(proxyEvaluation?.semanticMatches)
-      ? proxyEvaluation.semanticMatches
-      : [];
-
-    builder.add(text, {
-      source: 'competitor_keyword_match',
-      sourceKeyword: text,
-      sourceText: readString(record?.sourceText),
-      intent: readString(record?.intent),
-      reason: 'Candidate was matched against competitor ranked keywords as demand proxy evidence.',
-      metrics: {
-        proxyDemandScore: readNumber(proxyEvaluation?.proxyDemandScore),
-        competitorMatchScore: readNumber(proxyEvaluation?.competitorMatchScore),
-        bestMatchType: readString(proxyEvaluation?.bestMatchType),
-        matchingDomainCount: readNumber(proxyEvaluation?.matchingDomainCount),
-      } as unknown as SeoBriefJsonValue,
-      proxyEvaluation: proxyEvaluation as SeoBriefJsonValue | null,
-      competitorEvidence: {
-        semanticMatches: semanticMatches.slice(0, 10),
-      } as unknown as SeoBriefJsonValue,
-      candidateScore: readNumber(record?.candidateScore),
-    });
-  }
-}
-
-function collectRankedKeywords(
-  artifacts: SeoBriefArtifact[],
-  builder: DirtyKeywordPoolBuilder,
-): void {
-  const payload = readLatestObjectArtifact(artifacts, 'ranked_keywords_universe');
-  const items = Array.isArray(payload?.items) ? payload.items : [];
+): Map<string, SerpDomainConcentration> {
+  const payload =
+    readLatestObjectArtifact(artifacts, 'keyword_serp_preview_snapshots') ??
+    readLatestObjectArtifact(artifacts, 'first_keyword_serp_preview_snapshot');
+  const items = Array.isArray(payload?.items) ? payload.items : payload ? [payload] : [];
+  const result = new Map<string, SerpDomainConcentration>();
 
   for (const item of items) {
     const record = asObject(item);
-    const text = readString(record?.text);
-    if (!text) {
+    const keyword = readString(record?.keyword);
+    const snapshot = asObject(record?.snapshot);
+    if (!keyword || !snapshot) {
       continue;
     }
 
-    builder.add(text, {
-      source: 'ranked_keywords',
-      sourceDomain: readString(record?.sourceDomain),
-      metrics: (asObject(record?.metrics) ?? null) as SeoBriefJsonValue | null,
-      competitorEvidence: (asObject(record?.competitorEvidence) ?? null) as SeoBriefJsonValue | null,
-      serpEvidence: (asObject(record?.serpEvidence) ?? null) as SeoBriefJsonValue | null,
-      intent: readString(asObject(record?.metrics)?.intent),
-      reason: 'Competitor domain ranks for this keyword in DataForSEO Ranked Keywords.',
-    });
+    const concentration = calculateSerpDomainConcentration(snapshot);
+    if (concentration) {
+      result.set(normalizeKeywordText(keyword), concentration);
+    }
   }
+
+  return result;
+}
+
+function calculateSerpDomainConcentration(
+  snapshot: Record<string, unknown>,
+): SerpDomainConcentration | null {
+  const domains = readObjectArray(snapshot.organicResults)
+    .map((item) => readString(item.domain) ?? domainFromUrl(readString(item.url)))
+    .filter((domain): domain is string => Boolean(domain))
+    .map(normalizeDomain)
+    .filter((domain) => domain.length > 0);
+
+  if (domains.length === 0) {
+    return null;
+  }
+
+  const counts = new Map<string, number>();
+  for (const domain of domains) {
+    counts.set(domain, (counts.get(domain) ?? 0) + 1);
+  }
+
+  const resultCount = domains.length;
+  const hhi = roundMetric(
+    [...counts.values()].reduce((sum, count) => {
+      const share = count / resultCount;
+      return sum + share ** 2;
+    }, 0),
+  );
+  const [dominantDomain, dominantCount] = [...counts.entries()].sort(
+    (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+  )[0] ?? [null, null];
+  const dominantDomainShare =
+    dominantCount === null || dominantCount === undefined
+      ? null
+      : roundMetric(dominantCount / resultCount);
+
+  return {
+    dominantDomain,
+    dominantDomainShare,
+    hhi,
+    label: labelSerpDomainConcentration(hhi),
+    resultCount,
+    uniqueDomainCount: counts.size,
+  };
+}
+
+function createSerpDomainConcentrationMetrics(
+  concentration: SerpDomainConcentration | undefined,
+): SeoBriefJsonValue | null {
+  if (!concentration) {
+    return null;
+  }
+
+  return {
+    sourceHypothesisSerpDomainConcentrationLabel: concentration.label,
+    sourceHypothesisSerpDomainHhi: concentration.hhi,
+    sourceHypothesisSerpDominantDomain: concentration.dominantDomain,
+    sourceHypothesisSerpDominantDomainShare: concentration.dominantDomainShare,
+    sourceHypothesisSerpResultCount: concentration.resultCount,
+    sourceHypothesisSerpUniqueDomainCount: concentration.uniqueDomainCount,
+  } as unknown as SeoBriefJsonValue;
 }
 
 function readLatestObjectArtifact(
@@ -348,7 +402,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -392,13 +448,15 @@ function countSources(candidates: DirtyKeywordCandidate[]): Record<string, numbe
 function choosePrimarySource(evidence: DirtyKeywordEvidence[]): DirtyKeywordSource {
   const priority: DirtyKeywordSource[] = [
     'selected_related_query',
-    'competitor_keyword_match',
     'keyword_hypothesis',
     'serp_derived_candidate',
-    'ranked_keywords',
   ];
 
-  return priority.find((source) => evidence.some((item) => item.source === source)) ?? evidence[0]?.source ?? 'ranked_keywords';
+  return (
+    priority.find((source) => evidence.some((item) => item.source === source)) ??
+    evidence[0]?.source ??
+    'serp_derived_candidate'
+  );
 }
 
 function summarizeMetrics(evidence: DirtyKeywordEvidence[]): DirtyKeywordCandidate['metrics'] {
@@ -422,6 +480,23 @@ function summarizeMetrics(evidence: DirtyKeywordEvidence[]): DirtyKeywordCandida
       ...metricRecords.map((item) => readString(item?.intent)),
     ]),
     bestRankAbsolute: minNumber(competitorRecords.map((item) => readNumber(item?.rankAbsolute))),
+    sourceHypothesisSerpDomainHhi: maxNumber(
+      metricRecords.map((item) => readNumber(item?.sourceHypothesisSerpDomainHhi)),
+    ),
+    sourceHypothesisSerpResultCount: maxNumber(
+      metricRecords.map((item) => readNumber(item?.sourceHypothesisSerpResultCount)),
+    ),
+    sourceHypothesisSerpUniqueDomainCount: maxNumber(
+      metricRecords.map((item) => readNumber(item?.sourceHypothesisSerpUniqueDomainCount)),
+    ),
+    sourceHypothesisSerpDominantDomainShare: maxNumber(
+      metricRecords.map((item) => readNumber(item?.sourceHypothesisSerpDominantDomainShare)),
+    ),
+    sourceHypothesisSerpDominantDomain: firstString(
+      metricRecords.map((item) => readString(item?.sourceHypothesisSerpDominantDomain)),
+    ),
+    sourceHypothesisSerpDomainConcentrationLabel:
+      strongestSourceHypothesisSerpDomainConcentrationLabel(metricRecords),
   };
 }
 
@@ -431,8 +506,8 @@ function summarizeFlags(evidence: DirtyKeywordEvidence[]): DirtyKeywordCandidate
   return {
     isInitialHypothesis: evidence.some((item) => item.source === 'keyword_hypothesis'),
     hasSelectedRelatedQuery: evidence.some((item) => item.source === 'selected_related_query'),
-    hasCompetitorKeywordMatch: evidence.some((item) => item.source === 'competitor_keyword_match'),
-    hasRankedKeywordEvidence: evidence.some((item) => item.source === 'ranked_keywords'),
+    hasCompetitorKeywordMatch: false,
+    hasRankedKeywordEvidence: false,
     hasSearchVolume: metrics.some((item) => readNumber(item?.searchVolume) !== null),
   };
 }
@@ -452,7 +527,10 @@ function compareCandidates(left: DirtyKeywordCandidate, right: DirtyKeywordCandi
 }
 
 function normalizeDisplayKeyword(value: string): string {
-  return value.replace(/\s+/g, ' ').replace(/[?!.\u3002\uff01\uff1f]+$/u, '').trim();
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/[?!.\u3002\uff01\uff1f]+$/u, '')
+    .trim();
 }
 
 function normalizeKeywordText(value: string): string {
@@ -463,6 +541,12 @@ function asObject(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function readObjectArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.map(asObject).filter((item): item is Record<string, unknown> => item !== null)
+    : [];
 }
 
 function readString(value: unknown): string | null {
@@ -485,4 +569,57 @@ function maxNumber(values: Array<number | null>): number | null {
 function minNumber(values: Array<number | null>): number | null {
   const numbers = values.filter((value): value is number => value !== null);
   return numbers.length ? Math.min(...numbers) : null;
+}
+
+function strongestSourceHypothesisSerpDomainConcentrationLabel(
+  metricRecords: Array<Record<string, unknown> | null>,
+): string | null {
+  const byStrength: Record<string, number> = {
+    low: 1,
+    medium: 2,
+    high: 3,
+    very_high: 4,
+  };
+  const labels = metricRecords
+    .map((item) => readString(item?.sourceHypothesisSerpDomainConcentrationLabel))
+    .filter((label): label is string => Boolean(label));
+
+  return (
+    labels.sort((left, right) => (byStrength[right] ?? 0) - (byStrength[left] ?? 0))[0] ?? null
+  );
+}
+
+function labelSerpDomainConcentration(hhi: number): SerpDomainConcentration['label'] {
+  if (hhi < 0.2) {
+    return 'low';
+  }
+  if (hhi < 0.4) {
+    return 'medium';
+  }
+  if (hhi < 0.7) {
+    return 'high';
+  }
+  return 'very_high';
+}
+
+function normalizeDomain(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, '');
+}
+
+function domainFromUrl(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function roundMetric(value: number): number {
+  return Math.round(value * 1_000) / 1_000;
 }

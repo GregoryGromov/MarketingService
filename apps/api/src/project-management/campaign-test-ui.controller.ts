@@ -957,7 +957,8 @@ function renderSharedClientScript(): string {
       }
 
       const MOSCOW_TIME_ZONE = 'Europe/Moscow';
-      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
+      const MOSCOW_OFFSET_HOURS = 3;
+      const MOSCOW_OFFSET_MS = MOSCOW_OFFSET_HOURS * 60 * 60 * 1000;
 
       function toggleDevOverlay(forceOpen) {
         const overlay = document.getElementById('devOverlay');
@@ -1170,7 +1171,7 @@ function renderSharedClientScript(): string {
         if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
           return null;
         }
-        return new Date(Date.UTC(year, month - 1, day, hours - 3, minutes, 0, 0)).toISOString();
+        return new Date(Date.UTC(year, month - 1, day, hours - MOSCOW_OFFSET_HOURS, minutes, 0, 0)).toISOString();
       }
 
       function formatDateTime(value) {

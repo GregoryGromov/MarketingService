@@ -3,13 +3,13 @@ import {
   CAMPAIGN_SOURCE_CHECK_JOB,
   CAMPAIGN_STAGE_1_JOB,
   CAMPAIGN_STAGE_2_JOB,
-  CampaignProductionJobPort,
   type CampaignProductionJobPayload,
+  CampaignProductionJobPort,
   type EnqueuedCampaignProductionJob,
 } from '@marketing-service/project-management';
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue, type JobsOptions, type RedisOptions } from 'bullmq';
+import { type JobsOptions, Queue, type RedisOptions } from 'bullmq';
 
 function buildRedisConnection(redisUrl: string): RedisOptions {
   const parsed = new URL(redisUrl);
@@ -37,25 +37,26 @@ export class CampaignProductionJobBullMqPort
   extends CampaignProductionJobPort
   implements OnModuleDestroy
 {
-  private readonly queue: Queue<CampaignProductionJobPayload>;
+  private readonly logger = new Logger(CampaignProductionJobBullMqPort.name);
+  private queue: Queue<CampaignProductionJobPayload> | null = null;
+  private readonly redisUrl: string;
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     super();
-
-    this.queue = new Queue<CampaignProductionJobPayload>(CAMPAIGN_PRODUCTION_QUEUE, {
-      connection: buildRedisConnection(config.getOrThrow<string>('REDIS_URL')),
-      defaultJobOptions: DEFAULT_JOB_OPTIONS,
-    });
+    this.redisUrl = config.getOrThrow<string>('REDIS_URL');
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.queue.close();
+    if (this.queue) {
+      await this.queue.close();
+      this.queue = null;
+    }
   }
 
   async enqueueSourceCheck(
     payload: CampaignProductionJobPayload,
   ): Promise<EnqueuedCampaignProductionJob> {
-    const job = await this.queue.add(CAMPAIGN_SOURCE_CHECK_JOB, payload, {
+    const job = await this.getQueue().add(CAMPAIGN_SOURCE_CHECK_JOB, payload, {
       jobId: payload.workflowRunId,
     });
 
@@ -65,7 +66,7 @@ export class CampaignProductionJobBullMqPort
   async enqueueStage1(
     payload: CampaignProductionJobPayload,
   ): Promise<EnqueuedCampaignProductionJob> {
-    const job = await this.queue.add(CAMPAIGN_STAGE_1_JOB, payload, {
+    const job = await this.getQueue().add(CAMPAIGN_STAGE_1_JOB, payload, {
       jobId: payload.workflowRunId,
     });
 
@@ -75,10 +76,24 @@ export class CampaignProductionJobBullMqPort
   async enqueueStage2(
     payload: CampaignProductionJobPayload,
   ): Promise<EnqueuedCampaignProductionJob> {
-    const job = await this.queue.add(CAMPAIGN_STAGE_2_JOB, payload, {
+    const job = await this.getQueue().add(CAMPAIGN_STAGE_2_JOB, payload, {
       jobId: payload.workflowRunId,
     });
 
     return { jobId: String(job.id) };
+  }
+
+  private getQueue(): Queue<CampaignProductionJobPayload> {
+    if (!this.queue) {
+      this.queue = new Queue<CampaignProductionJobPayload>(CAMPAIGN_PRODUCTION_QUEUE, {
+        connection: buildRedisConnection(this.redisUrl),
+        defaultJobOptions: DEFAULT_JOB_OPTIONS,
+      });
+      this.queue.on('error', (error) => {
+        this.logger.error(error, `BullMQ queue ${CAMPAIGN_PRODUCTION_QUEUE} connection error`);
+      });
+    }
+
+    return this.queue;
   }
 }
