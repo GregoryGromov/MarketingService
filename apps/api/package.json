@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "scripts": {
     "build": "nest build",
+    "build:fast": "nest build -c nest-cli.fast.json",
     "dev": "nest start --watch",
     "start": "node dist/src/main.js",
     "start:debug": "nest start --debug --watch",

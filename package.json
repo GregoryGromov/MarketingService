@@ -13,10 +13,10 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
-    "db:generate": "pnpm --filter @marketing-service/database drizzle-kit generate",
-    "db:migrate": "pnpm --filter @marketing-service/database drizzle-kit migrate",
+    "db:generate": "pnpm --filter @marketing-service/database exec drizzle-kit generate",
+    "db:migrate": "pnpm --filter @marketing-service/database exec drizzle-kit migrate",
     "db:seed:campaign-presets": "pnpm --filter @marketing-service/database build && pnpm --filter @marketing-service/database seed:campaign-presets",
-    "db:studio": "pnpm --filter @marketing-service/database drizzle-kit studio"
+    "db:studio": "pnpm --filter @marketing-service/database exec drizzle-kit studio"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
