@@ -15,18 +15,21 @@ export type SeoBriefAiKeywordIntent =
 export type SeoBriefAiJourneyStage = 'awareness' | 'consideration' | 'decision';
 export type SeoBriefAiProductFit = 'strong' | 'moderate' | 'weak';
 export type SeoBriefAiModelMode = 'flash' | 'pro' | 'pro_thinking';
+export type SeoBriefPromptInstructionOverrides = Record<string, string>;
 
 export interface SeoBriefAiRequestContext {
   runId: SeoBriefRunId;
   stepId?: SeoBriefRunStepId | null;
   modelMode?: SeoBriefAiModelMode | null;
   timeoutMs?: number | null;
+  promptInstructionOverrides?: SeoBriefPromptInstructionOverrides | null;
 }
 
 export interface ExtractSeoBriefContextParams {
   contextText: string;
   modelMode?: SeoBriefAiModelMode | null;
   timeoutMs?: number | null;
+  promptInstructionOverrides?: SeoBriefPromptInstructionOverrides | null;
 }
 
 export interface ExtractedSeoBriefContext {

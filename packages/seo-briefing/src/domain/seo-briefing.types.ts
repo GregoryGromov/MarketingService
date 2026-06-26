@@ -33,6 +33,7 @@ export interface SeoBriefBrandMemorySnapshot {
   brandName: string | null;
   productDescription: string | null;
   targetAudience: string | null;
+  targetAudiences?: string[];
   keyMessage?: string | null;
   defaultCta?: string | null;
   brandConstraints?: string[];

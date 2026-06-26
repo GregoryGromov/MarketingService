@@ -12,7 +12,7 @@ import {
   ProjectMarkerPlacementRepository,
 } from '@marketing-service/project-management';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../database.module.js';
 
 @Injectable()
@@ -59,7 +59,9 @@ export class ProjectMarkerPlacementDrizzleRepository extends ProjectMarkerPlacem
     channelId: string,
     targetLanguage: string,
     publishAt: Date,
+    marketCountry?: string | null,
   ): Promise<ProjectMarkerPlacement | null> {
+    const normalizedMarketCountry = marketCountry?.trim() || null;
     const [row] = await this.db
       .select()
       .from(projectMarkerPlacements)
@@ -68,6 +70,9 @@ export class ProjectMarkerPlacementDrizzleRepository extends ProjectMarkerPlacem
           eq(projectMarkerPlacements.markerId, markerId),
           eq(projectMarkerPlacements.channelId, channelId),
           eq(projectMarkerPlacements.targetLanguage, targetLanguage.toLowerCase()),
+          normalizedMarketCountry
+            ? eq(projectMarkerPlacements.marketCountry, normalizedMarketCountry)
+            : isNull(projectMarkerPlacements.marketCountry),
           eq(projectMarkerPlacements.publishAt, publishAt),
         ),
       )
@@ -103,6 +108,8 @@ export class ProjectMarkerPlacementDrizzleRepository extends ProjectMarkerPlacem
       projectId: row.projectId as ProjectId,
       channelId: row.channelId,
       targetLanguage: row.targetLanguage,
+      marketCountry: row.marketCountry,
+      marketLocationName: row.marketLocationName,
       publishAt: row.publishAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -116,6 +123,8 @@ export class ProjectMarkerPlacementDrizzleRepository extends ProjectMarkerPlacem
       projectId: placement.projectId,
       channelId: placement.channelId,
       targetLanguage: placement.targetLanguage,
+      marketCountry: placement.marketCountry,
+      marketLocationName: placement.marketLocationName,
       publishAt: placement.publishAt,
       createdAt: placement.createdAt,
       updatedAt: placement.updatedAt,

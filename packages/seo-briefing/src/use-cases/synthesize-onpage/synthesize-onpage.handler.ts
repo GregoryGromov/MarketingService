@@ -8,10 +8,11 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoBriefAiPort,
   type SeoBriefAiModelMode,
+  SeoBriefAiPort,
   type SynthesizeOnPagePageInput,
 } from '../../ports/seo-brief-ai.port.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { SynthesizeOnPageCommand } from './synthesize-onpage.command.js';
 
@@ -76,6 +77,7 @@ export class SynthesizeOnPageHandler
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
+        promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,
@@ -154,7 +156,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }

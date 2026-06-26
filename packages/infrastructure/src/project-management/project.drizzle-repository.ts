@@ -1,16 +1,16 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { asc, desc, eq } from 'drizzle-orm';
-import { projects, type NewProjectRow, type ProjectRow } from '@marketing-service/database';
+import { type NewProjectRow, type ProjectRow, projects } from '@marketing-service/database';
 import {
   type AdaptationPromptRules,
   type BrandMemoryDocument,
-  type SeoCompetitorKeywordMapMemory,
-  type SeoCompetitorsMemory,
   Project,
-  ProjectRepository,
   type ProjectId,
   type ProjectProps,
+  ProjectRepository,
+  type SeoCompetitorKeywordMapMemory,
+  type SeoCompetitorsMemory,
 } from '@marketing-service/project-management';
+import { Inject, Injectable } from '@nestjs/common';
+import { asc, desc, eq } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleExecutor } from '../database.module.js';
 
 @Injectable()
@@ -53,6 +53,7 @@ export class ProjectDrizzleRepository extends ProjectRepository {
         brandName: row.brandName,
         productDescription: row.productDescription,
         targetAudience: row.targetAudience,
+        targetAudiences: (row.targetAudiences as string[] | null) ?? [],
         keyMessage: row.keyMessage,
         defaultCta: row.defaultCta,
         brandConstraints: (row.brandConstraints as string[] | null) ?? [],
@@ -63,26 +64,24 @@ export class ProjectDrizzleRepository extends ProjectRepository {
         bannedPhrases: (row.bannedPhrases as string[] | null) ?? [],
         requiredPhrases: (row.requiredPhrases as string[] | null) ?? [],
         brandDocs: (row.brandDocs as BrandMemoryDocument[] | null) ?? [],
-        adaptationPromptRules:
-          (row.adaptationPromptRules as AdaptationPromptRules | null) ?? {
-            generalInstructions: null,
-            telegram: null,
-            x: null,
-            discord: null,
-            blog: null,
-            mediaAspectRatios: {
-              telegram: '1:1',
-              x: '16:9',
-              discord: '16:9',
-              blog: '1200:630',
-            },
+        adaptationPromptRules: (row.adaptationPromptRules as AdaptationPromptRules | null) ?? {
+          generalInstructions: null,
+          telegram: null,
+          x: null,
+          discord: null,
+          blog: null,
+          mediaAspectRatios: {
+            telegram: '1:1',
+            x: '16:9',
+            discord: '16:9',
+            blog: '1200:630',
           },
-        seoCompetitors:
-          (row.seoCompetitors as SeoCompetitorsMemory | null) ?? {
-            mustInclude: [],
-            optional: [],
-            exclude: [],
-          },
+        },
+        seoCompetitors: (row.seoCompetitors as SeoCompetitorsMemory | null) ?? {
+          mustInclude: [],
+          optional: [],
+          exclude: [],
+        },
         seoCompetitorKeywordMap:
           (row.seoCompetitorKeywordMap as SeoCompetitorKeywordMapMemory | null) ?? null,
       },
@@ -98,6 +97,7 @@ export class ProjectDrizzleRepository extends ProjectRepository {
       brandName: project.brandMemory.brandName,
       productDescription: project.brandMemory.productDescription,
       targetAudience: project.brandMemory.targetAudience,
+      targetAudiences: project.brandMemory.targetAudiences,
       keyMessage: project.brandMemory.keyMessage,
       defaultCta: project.brandMemory.defaultCta,
       brandConstraints: project.brandMemory.brandConstraints,

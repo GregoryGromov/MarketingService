@@ -13,6 +13,7 @@ import type {
   SeoBriefAiModelMode,
 } from '../../ports/seo-brief-ai.port.js';
 import { SeoBriefAiPort } from '../../ports/seo-brief-ai.port.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateKeywordHypothesesCommand } from './generate-keyword-hypotheses.command.js';
 
@@ -41,7 +42,9 @@ export class GenerateKeywordHypothesesHandler
     private readonly ai: SeoBriefAiPort,
   ) {}
 
-  async execute(command: GenerateKeywordHypothesesCommand): Promise<GenerateKeywordHypothesesResult> {
+  async execute(
+    command: GenerateKeywordHypothesesCommand,
+  ): Promise<GenerateKeywordHypothesesResult> {
     const run = await this.runRepository.findById(command.runId as never);
     if (!run) {
       throw new SeoBriefRunNotFoundError(command.runId);
@@ -73,6 +76,7 @@ export class GenerateKeywordHypothesesHandler
         stepId: step.id,
         modelMode: aiModelMode,
         timeoutMs: requestTimeoutMs,
+        promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,
@@ -144,8 +148,14 @@ function nextAttemptNumber(artifacts: SeoBriefArtifactList, type: string): numbe
 function readUserPainScenarios(
   artifacts: SeoBriefArtifactList,
 ): ExtractUserPainScenariosResult | null {
-  const artifact = [...artifacts].reverse().find((item) => item.artifactType === 'user_pain_scenarios');
-  if (!artifact?.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+  const artifact = [...artifacts]
+    .reverse()
+    .find((item) => item.artifactType === 'user_pain_scenarios');
+  if (
+    !artifact?.payload ||
+    typeof artifact.payload !== 'object' ||
+    Array.isArray(artifact.payload)
+  ) {
     return null;
   }
 
@@ -154,13 +164,19 @@ function readUserPainScenarios(
     topicHintInterpretation: asString(payload.topicHintInterpretation),
     userPains: asArray(payload.userPains),
     userScenarios: asArray(payload.userScenarios),
-    riskNotes: asArray(payload.riskNotes).filter((item): item is string => typeof item === 'string'),
+    riskNotes: asArray(payload.riskNotes).filter(
+      (item): item is string => typeof item === 'string',
+    ),
   };
 }
 
 function readSeoProductContext(artifacts: SeoBriefArtifactList): SeoBriefJsonObject | null {
-  const artifact = [...artifacts].reverse().find((item) => item.artifactType === 'seo_product_context');
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  const artifact = [...artifacts]
+    .reverse()
+    .find((item) => item.artifactType === 'seo_product_context');
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -190,8 +206,12 @@ function readHypothesesCount(artifacts: SeoBriefArtifactList): number {
 }
 
 function readNormalizedInput(artifacts: SeoBriefArtifactList): Record<string, unknown> | null {
-  const artifact = [...artifacts].reverse().find((item) => item.artifactType === 'normalized_input');
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  const artifact = [...artifacts]
+    .reverse()
+    .find((item) => item.artifactType === 'normalized_input');
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as Record<string, unknown>)
     : null;
 }

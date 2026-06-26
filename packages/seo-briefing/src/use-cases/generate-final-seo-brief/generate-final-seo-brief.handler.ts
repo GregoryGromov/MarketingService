@@ -10,12 +10,13 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoBriefAiPort,
   type BuildProductBridgeResult,
   type SeoBriefAiKeywordIntent,
   type SeoBriefAiModelMode,
+  SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
 import { deriveTopicHintScope } from '../../services/topic-hint-scope.service.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateFinalSeoBriefCommand } from './generate-final-seo-brief.command.js';
 
@@ -54,7 +55,9 @@ export class GenerateFinalSeoBriefHandler
     private readonly ai: SeoBriefAiPort,
   ) {}
 
-  async execute(command: GenerateFinalSeoBriefCommand): Promise<GenerateFinalSeoBriefUseCaseResult> {
+  async execute(
+    command: GenerateFinalSeoBriefCommand,
+  ): Promise<GenerateFinalSeoBriefUseCaseResult> {
     const run = await this.runRepository.findById(command.runId as never);
     if (!run) {
       throw new SeoBriefRunNotFoundError(command.runId);
@@ -85,11 +88,7 @@ export class GenerateFinalSeoBriefHandler
     await this.stepRepository.save(step);
 
     try {
-      const productBridge = buildProductBridgeFromEvidence(
-        mainCluster,
-        onPageSynthesis,
-        run.cta,
-      );
+      const productBridge = buildProductBridgeFromEvidence(mainCluster, onPageSynthesis, run.cta);
       const supportingClusters = readSupportingClusters(clusterSelection);
       const finalClusterSelection = buildFinalClusterSelectionContext(
         clusterSelection,
@@ -116,6 +115,7 @@ export class GenerateFinalSeoBriefHandler
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
+        promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
         topicHint: run.topicSeed,
         primaryKeyword: mainCluster.primaryKeyword,
         clusterLabel: mainCluster.clusterName,
@@ -142,7 +142,9 @@ export class GenerateFinalSeoBriefHandler
       });
 
       const selectedClusterPayload = finalClusterSelection as SeoBriefJsonValue;
-      const rejectedClustersPayload = readObjectArray(clusterSelection.rejectedClusters) as unknown as SeoBriefJsonValue;
+      const rejectedClustersPayload = readObjectArray(
+        clusterSelection.rejectedClusters,
+      ) as unknown as SeoBriefJsonValue;
       const briefPayload = buildFinalBriefPayload({
         brief,
         topicHint: run.topicSeed,
@@ -243,16 +245,16 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
 
 function readMainCluster(selection: SeoBriefJsonObject): MainClusterContext {
   const main =
-    asObject(selection.mainCluster) ??
-    readObjectArray(selection.supportingClusters)[0] ??
-    {};
+    asObject(selection.mainCluster) ?? readObjectArray(selection.supportingClusters)[0] ?? {};
   const sourceCluster = asObject(main.sourceCluster) ?? {};
   const primaryKeyword =
     readString(main.primaryKeyword) ??
@@ -260,7 +262,10 @@ function readMainCluster(selection: SeoBriefJsonObject): MainClusterContext {
     readString(sourceCluster.primaryKeyword) ??
     '';
   const clusterName =
-    readString(main.clusterName) ?? readString(sourceCluster.clusterName) ?? readString(sourceCluster.label) ?? '';
+    readString(main.clusterName) ??
+    readString(sourceCluster.clusterName) ??
+    readString(sourceCluster.label) ??
+    '';
 
   return {
     clusterName,
@@ -273,7 +278,9 @@ function readMainCluster(selection: SeoBriefJsonObject): MainClusterContext {
       ...readStringArray(sourceCluster.keywords),
       ...readStringArray(sourceCluster.questions),
       ...readStringArray(sourceCluster.supportingItems),
-    ]).filter((item) => item.toLowerCase() !== primaryKeyword.toLowerCase()).slice(0, 20),
+    ])
+      .filter((item) => item.toLowerCase() !== primaryKeyword.toLowerCase())
+      .slice(0, 20),
   };
 }
 
@@ -311,9 +318,12 @@ function buildProductBridgeFromEvidence(
 
   return {
     fit: mainCluster.productFitDecision === 'approve' ? 'strong' : 'moderate',
-    summary: readString(insertion.angle) ?? 'Insert product only where it naturally helps the user.',
+    summary:
+      readString(insertion.angle) ?? 'Insert product only where it naturally helps the user.',
     positioningAngle:
-      readString(insertion.angle) ?? readString(insertion.section) ?? 'Education-first product bridge',
+      readString(insertion.angle) ??
+      readString(insertion.section) ??
+      'Education-first product bridge',
     cta: cta ?? 'Learn how Reinforce works',
     talkingPoints: readStringArray(insertion.do),
     risks,
@@ -386,7 +396,8 @@ function buildFinalBriefPayload(input: {
     recommendedTitle: input.brief.recommendedTitle ?? input.brief.title,
     recommendedH1: input.brief.recommendedH1 ?? input.brief.title,
     recommendedMetaTitle: input.brief.recommendedMetaTitle ?? input.brief.metaTitle,
-    recommendedMetaDescription: input.brief.recommendedMetaDescription ?? input.brief.metaDescription,
+    recommendedMetaDescription:
+      input.brief.recommendedMetaDescription ?? input.brief.metaDescription,
     outline: input.brief.outline.map((section) => ({
       h2: section.h2 ?? section.heading,
       h3: section.h3 ?? section.keyPoints,
@@ -406,7 +417,8 @@ function buildFinalBriefPayload(input: {
     riskNotes: (input.brief.riskNotes ?? []) as unknown as SeoBriefJsonValue,
     cta: input.brief.cta ?? input.fallbackCta,
     internalLinks: (input.brief.internalLinks ?? []) as unknown as SeoBriefJsonValue,
-    externalSourcesNeeded: (input.brief.externalSourcesNeeded ?? []) as unknown as SeoBriefJsonValue,
+    externalSourcesNeeded: (input.brief.externalSourcesNeeded ??
+      []) as unknown as SeoBriefJsonValue,
     legacy: {
       title: input.brief.title,
       metaTitle: input.brief.metaTitle,
@@ -420,7 +432,11 @@ function buildFinalBriefPayload(input: {
 }
 
 function buildConstraints(
-  brandMemorySnapshot: { bannedPhrases: string[]; forbiddenClaims: string[]; requiredPhrases: string[] },
+  brandMemorySnapshot: {
+    bannedPhrases: string[];
+    forbiddenClaims: string[];
+    requiredPhrases: string[];
+  },
   keyMessage: string | null,
 ): string[] {
   return uniqueStrings([
@@ -526,8 +542,10 @@ function buildFinalProductFitReviewContext(
 
   const reviews = readObjectArray(payload.clusterProductFit);
   const selectedReview =
-    reviews.find((review) => normalizeText(readString(review.clusterName) ?? '') === normalizeText(selectedClusterName)) ??
-    null;
+    reviews.find(
+      (review) =>
+        normalizeText(readString(review.clusterName) ?? '') === normalizeText(selectedClusterName),
+    ) ?? null;
 
   return {
     artifactVersion: payload.artifactVersion ?? null,
@@ -538,9 +556,7 @@ function buildFinalProductFitReviewContext(
       supportingOnlyCount: readNumber(payload.supportingOnlyCount),
       rejectedCount: readNumber(payload.rejectedCount),
     } as unknown as SeoBriefJsonValue,
-    selectedClusterReview: selectedReview
-      ? compactProductFitReview(selectedReview)
-      : null,
+    selectedClusterReview: selectedReview ? compactProductFitReview(selectedReview) : null,
     approvedOrSupportingClusters: reviews
       .filter((review) => readString(review.decision) !== 'reject')
       .slice(0, FINAL_BRIEF_PRODUCT_FIT_CLUSTER_LIMIT)
@@ -548,8 +564,12 @@ function buildFinalProductFitReviewContext(
   };
 }
 
-function buildFinalSeoProductContext(payload: SeoBriefJsonObject | null): SeoBriefJsonObject | null {
-  return payload ? (compactJson(payload, { maxArrayItems: 8, maxDepth: 4 }) as SeoBriefJsonObject) : null;
+function buildFinalSeoProductContext(
+  payload: SeoBriefJsonObject | null,
+): SeoBriefJsonObject | null {
+  return payload
+    ? (compactJson(payload, { maxArrayItems: 8, maxDepth: 4 }) as SeoBriefJsonObject)
+    : null;
 }
 
 function compactBucketSummary(bucket: JsonRecord): SeoBriefJsonObject {

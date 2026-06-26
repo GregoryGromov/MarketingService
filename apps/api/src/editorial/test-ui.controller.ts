@@ -1744,12 +1744,12 @@ ${renderDevConsoleStyles()}
         <div class="modal-head">
           <div>
             <h3 id="markerPlacementTitle">Place draft marker</h3>
-            <p id="markerPlacementSubtitle">Choose language and time for this marker placement.</p>
+            <p id="markerPlacementSubtitle">Choose location and time for this marker placement.</p>
           </div>
           <button type="button" onclick="closeMarkerPlacementModal()">Close</button>
         </div>
         <label>
-          Language
+          Location
           <select id="markerPlacementLanguage"></select>
         </label>
         <label>
@@ -2470,6 +2470,8 @@ ${renderDevConsoleStyles()}
                   title: marker.title,
                   notes: marker.notes,
                   targetLanguage: placement.targetLanguage,
+                  marketCountry: placement.marketCountry || placement.market_country || null,
+                  marketLocationName: placement.marketLocationName || placement.market_location_name || null,
                   publishAt: new Date(placement.publishAt),
                   colorBg: marker.colorBg,
                   colorBorder: marker.colorBorder,
@@ -2514,6 +2516,83 @@ ${renderDevConsoleStyles()}
           { language: 'pl', label: 'Polski (pl)' },
           { language: 'ro', label: 'Română (ro)' },
         ];
+      }
+
+      function marketLocationOptions() {
+        return [
+          { key: 'india-en', country: 'India', locationName: 'India', language: 'en', label: 'India · English (en)' },
+          { key: 'nigeria-en', country: 'Nigeria', locationName: 'Nigeria', language: 'en', label: 'Nigeria · English (en)' },
+          { key: 'pakistan-en', country: 'Pakistan', locationName: 'Pakistan', language: 'en', label: 'Pakistan · English (en)' },
+          { key: 'philippines-en', country: 'Philippines', locationName: 'Philippines', language: 'en', label: 'Philippines · English (en)' },
+          { key: 'singapore-en', country: 'Singapore', locationName: 'Singapore', language: 'en', label: 'Singapore · English (en)' },
+          { key: 'united-arab-emirates-en', country: 'United Arab Emirates', locationName: 'United Arab Emirates', language: 'en', label: 'United Arab Emirates · English (en)' },
+          { key: 'indonesia-id', country: 'Indonesia', locationName: 'Indonesia', language: 'id', label: 'Indonesia · Bahasa Indonesia (id)' },
+          { key: 'pakistan-ur', country: 'Pakistan', locationName: 'Pakistan', language: 'ur', label: 'Pakistan · اردو (ur)' },
+          { key: 'brazil-pt', country: 'Brazil', locationName: 'Brazil', language: 'pt', label: 'Brazil · Português (pt)' },
+          { key: 'vietnam-vi', country: 'Vietnam', locationName: 'Vietnam', language: 'vi', label: 'Vietnam · Tiếng Việt (vi)' },
+          { key: 'argentina-es', country: 'Argentina', locationName: 'Argentina', language: 'es', label: 'Argentina · Español (es)' },
+          { key: 'mexico-es', country: 'Mexico', locationName: 'Mexico', language: 'es', label: 'Mexico · Español (es)' },
+          { key: 'venezuela-es', country: 'Venezuela', locationName: 'Venezuela', language: 'es', label: 'Venezuela · Español (es)' },
+          { key: 'colombia-es', country: 'Colombia', locationName: 'Colombia', language: 'es', label: 'Colombia · Español (es)' },
+          { key: 'peru-es', country: 'Peru', locationName: 'Peru', language: 'es', label: 'Peru · Español (es)' },
+          { key: 'chile-es', country: 'Chile', locationName: 'Chile', language: 'es', label: 'Chile · Español (es)' },
+          { key: 'russia-ru', country: 'Russia', locationName: 'Russia', language: 'ru', label: 'Russia · Русский (ru)' },
+          { key: 'ukraine-ru', country: 'Ukraine', locationName: 'Ukraine', language: 'ru', label: 'Ukraine · Русский (ru)' },
+          { key: 'kazakhstan-ru', country: 'Kazakhstan', locationName: 'Kazakhstan', language: 'ru', label: 'Kazakhstan · Русский (ru)' },
+          { key: 'united-arab-emirates-ar', country: 'United Arab Emirates', locationName: 'United Arab Emirates', language: 'ar', label: 'United Arab Emirates · العربية (ar)' },
+          { key: 'egypt-ar', country: 'Egypt', locationName: 'Egypt', language: 'ar', label: 'Egypt · العربية (ar)' },
+          { key: 'saudi-arabia-ar', country: 'Saudi Arabia', locationName: 'Saudi Arabia', language: 'ar', label: 'Saudi Arabia · العربية (ar)' },
+          { key: 'india-hi', country: 'India', locationName: 'India', language: 'hi', label: 'India · हिन्दी (hi)' },
+          { key: 'turkey-tr', country: 'Turkey', locationName: 'Turkey', language: 'tr', label: 'Turkey · Türkçe (tr)' },
+          { key: 'philippines-tl', country: 'Philippines', locationName: 'Philippines', language: 'tl', label: 'Philippines · Tagalog (tl)' },
+          { key: 'thailand-th', country: 'Thailand', locationName: 'Thailand', language: 'th', label: 'Thailand · ไทย (th)' },
+          { key: 'nigeria-pcm', country: 'Nigeria', locationName: 'Nigeria', language: 'pcm', label: 'Nigeria · Naijá / Pidgin (pcm)' },
+          { key: 'france-fr', country: 'France', locationName: 'France', language: 'fr', label: 'France · Français (fr)' },
+          { key: 'south-korea-ko', country: 'South Korea', locationName: 'South Korea', language: 'ko', label: 'South Korea · 한국어 (ko)' },
+          { key: 'japan-ja', country: 'Japan', locationName: 'Japan', language: 'ja', label: 'Japan · 日本語 (ja)' },
+          { key: 'malaysia-ms', country: 'Malaysia', locationName: 'Malaysia', language: 'ms', label: 'Malaysia · Bahasa Melayu (ms)' },
+          { key: 'singapore-ms', country: 'Singapore', locationName: 'Singapore', language: 'ms', label: 'Singapore · Bahasa Melayu (ms)' },
+          { key: 'brunei-ms', country: 'Brunei', locationName: 'Brunei', language: 'ms', label: 'Brunei · Bahasa Melayu (ms)' },
+          { key: 'pakistan-pa', country: 'Pakistan', locationName: 'Pakistan', language: 'pa', label: 'Pakistan · ਪੰਜਾਬੀ (pa)' },
+          { key: 'india-pa', country: 'India', locationName: 'India', language: 'pa', label: 'India · ਪੰਜਾਬੀ (pa)' },
+          { key: 'nigeria-ha', country: 'Nigeria', locationName: 'Nigeria', language: 'ha', label: 'Nigeria · Hausa (ha)' },
+          { key: 'niger-ha', country: 'Niger', locationName: 'Niger', language: 'ha', label: 'Niger · Hausa (ha)' },
+          { key: 'nigeria-yo', country: 'Nigeria', locationName: 'Nigeria', language: 'yo', label: 'Nigeria · Yorùbá (yo)' },
+          { key: 'nigeria-ig', country: 'Nigeria', locationName: 'Nigeria', language: 'ig', label: 'Nigeria · Igbo (ig)' },
+        ];
+      }
+
+      function normalizeLookup(value) {
+        return String(value || '')
+          .trim()
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[_-]/g, ' ')
+          .replace(/\\s+/g, ' ');
+      }
+
+      function marketOptionByKey(key) {
+        const normalized = normalizeLookup(key);
+        return marketLocationOptions().find((option) => normalizeLookup(option.key) === normalized) || null;
+      }
+
+      function marketOptionForPlacement(placement) {
+        const language = String(placement?.targetLanguage || '').toLowerCase();
+        const country = normalizeLookup(placement?.marketCountry || placement?.market_country || '');
+        if (country && language) {
+          const exact = marketLocationOptions().find((option) =>
+            option.language === language && normalizeLookup(option.country) === country
+          );
+          if (exact) return exact;
+        }
+        return marketLocationOptions().find((option) => option.language === language) || null;
+      }
+
+      function markerPlacementMarketLabel(placement) {
+        const option = marketOptionForPlacement(placement);
+        if (option) return option.label;
+        return languageLabel(placement?.targetLanguage || placement?.target_language || '');
       }
 
       function syncActiveMarker() {
@@ -2786,6 +2865,7 @@ ${renderDevConsoleStyles()}
           channelId: placement.channelId,
           dayKey: moscowDateKey(publishAt),
           originalTargetLanguage: placement.targetLanguage,
+          originalMarketKey: marketOptionForPlacement(placement)?.key || null,
           originalPublishAt: publishAt.toISOString(),
         };
 
@@ -2797,6 +2877,7 @@ ${renderDevConsoleStyles()}
             ' · ' +
             formatDayLabel(publishAt),
           targetLanguage: placement.targetLanguage,
+          marketCountry: placement.marketCountry || placement.market_country || null,
           timeValue: formatTimeInputValue(publishAt),
           saveLabel: 'Save changes',
           canDelete: true,
@@ -2829,11 +2910,14 @@ ${renderDevConsoleStyles()}
         document.getElementById('markerPlacementDeleteBtn').hidden = !options.canDelete;
 
         const languageSelect = document.getElementById('markerPlacementLanguage');
-        languageSelect.innerHTML = languageOptions().map((option) =>
-          '<option value="' + escapeHtml(option.language) + '">' + escapeHtml(option.label) + '</option>'
+        languageSelect.innerHTML = marketLocationOptions().map((option) =>
+          '<option value="' + escapeHtml(option.key) + '">' + escapeHtml(option.label) + '</option>'
         ).join('');
         if (options.targetLanguage) {
-          languageSelect.value = options.targetLanguage;
+          languageSelect.value = marketOptionForPlacement({
+            targetLanguage: options.targetLanguage,
+            marketCountry: options.marketCountry,
+          })?.key || options.targetLanguage;
         }
 
         const timeInput = document.getElementById('markerPlacementTime');
@@ -2852,7 +2936,9 @@ ${renderDevConsoleStyles()}
 
       async function saveMarkerPlacement() {
         const error = document.getElementById('markerPlacementError');
-        const targetLanguage = document.getElementById('markerPlacementLanguage').value.trim();
+        const marketKey = document.getElementById('markerPlacementLanguage').value.trim();
+        const marketOption = marketOptionByKey(marketKey);
+        const targetLanguage = marketOption?.language || '';
         const timeValue = document.getElementById('markerPlacementTime').value.trim();
 
         error.textContent = '';
@@ -2862,8 +2948,8 @@ ${renderDevConsoleStyles()}
           return;
         }
 
-        if (!targetLanguage || !timeValue) {
-          error.textContent = 'Choose language and time.';
+        if (!marketOption || !targetLanguage || !timeValue) {
+          error.textContent = 'Choose location and time.';
           return;
         }
 
@@ -2881,6 +2967,7 @@ ${renderDevConsoleStyles()}
           if (
             pendingMarkerPlacement.mode === 'edit' &&
             pendingMarkerPlacement.originalTargetLanguage === targetLanguage.toLowerCase() &&
+            pendingMarkerPlacement.originalMarketKey === marketOption.key &&
             pendingMarkerPlacement.originalPublishAt === publishAt.toISOString()
           ) {
             closeMarkerPlacementModal();
@@ -2896,6 +2983,8 @@ ${renderDevConsoleStyles()}
                 markerId: pendingMarkerPlacement.markerId,
                 channelId: pendingMarkerPlacement.channelId,
                 targetLanguage,
+                marketCountry: marketOption.country,
+                marketLocationName: marketOption.locationName,
                 publishAt: publishAt.toISOString(),
               }),
             },
@@ -2991,7 +3080,7 @@ ${renderDevConsoleStyles()}
                   '">' +
                     '<div class="week-marker-title">' + escapeHtml(item.title) + '</div>' +
                     '<div class="week-marker-meta">' +
-                      '<span>' + escapeHtml(languageCode(item.targetLanguage)) + '</span>' +
+                      '<span>' + escapeHtml(markerPlacementMarketLabel(item)) + '</span>' +
                       '<span>' + escapeHtml(formatTime(item.publishAt)) + '</span>' +
                     '</div>' +
                   '</div>'

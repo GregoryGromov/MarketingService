@@ -130,7 +130,7 @@ export class BuildDirtyKeywordPoolHandler
           'SERP themes are not included as keywords because they are content topics, not validated search queries.',
           'SERP domain concentration is calculated with unweighted HHI over organic result domains for the source hypothesis.',
           'Competitor keyword matches and Ranked Keywords are intentionally excluded from this candidate pool.',
-          'Product Fit filtering and final scoring happen in the next step.',
+          'AI clustering and Product Fit prioritization happen in the next step.',
         ],
         candidateCount: candidates.length,
         sourceCounts,

@@ -442,6 +442,38 @@ export class SeoBriefTestUiController {
       .context-panel[hidden] {
         display: none;
       }
+      .input-group-card {
+        grid-column: 1 / -1;
+        border: 1px solid rgba(20, 19, 17, 0.12);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.58);
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+      }
+      .input-group-head {
+        display: grid;
+        gap: 4px;
+      }
+      .input-group-head h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .input-group-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .input-group-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+      .input-group-grid > .full,
+      .input-group-card > .full {
+        grid-column: 1 / -1;
+      }
       .context-result {
         border: 1px dashed var(--line-strong);
         border-radius: 18px;
@@ -633,6 +665,41 @@ export class SeoBriefTestUiController {
       }
       .prompt-meta span {
         color: var(--muted);
+      }
+      .prompt-editor {
+        display: grid;
+        gap: 8px;
+      }
+      .prompt-editor label {
+        color: var(--text);
+        font-weight: 700;
+      }
+      .prompt-editor textarea {
+        width: 100%;
+        min-height: 116px;
+        resize: vertical;
+        border: 1px solid rgba(20, 19, 17, 0.14);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+        line-height: 1.45;
+      }
+      .prompt-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .prompt-contract {
+        border: 1px solid rgba(20, 19, 17, 0.1);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(20, 19, 17, 0.03);
+      }
+      .prompt-contract summary {
+        cursor: pointer;
+        font-weight: 700;
       }
       .cost-receipt {
         border-color: rgba(20, 19, 17, 0.16);
@@ -1686,202 +1753,95 @@ export class SeoBriefTestUiController {
             <div id="launchStatus" class="context-result full" hidden></div>
             <div id="launchPromptInventory"></div>
             <form id="launchForm" class="launch-grid" novalidate>
-              <label class="field full">
-                <span>Project</span>
-                <select id="projectId">
-                  <option value="">No project context</option>
-                </select>
-              </label>
-              <div class="field full">
-                <span>AI Model</span>
-                <input id="aiModelMode" type="hidden" value="pro" />
-                <div class="model-picker" role="radiogroup" aria-label="AI Model">
-                  <label class="model-option" data-model-option="flash">
-                    <input type="radio" name="aiModelModeChoice" value="flash" />
-                    <span>Fast</span>
-                    <strong>Flash</strong>
-                    <p>Cheaper and quicker. Good for drafts and low-risk checks.</p>
-                  </label>
-                  <label class="model-option is-selected" data-model-option="pro">
-                    <input type="radio" name="aiModelModeChoice" value="pro" checked />
-                    <span>Balanced</span>
-                    <strong>Pro</strong>
-                    <p>Default quality mode. Better reasoning without thinking mode.</p>
-                  </label>
-                  <label class="model-option" data-model-option="pro_thinking">
-                    <input type="radio" name="aiModelModeChoice" value="pro_thinking" />
-                    <span>Deep</span>
-                    <strong>Pro Thinking</strong>
-                    <p>Slowest and most expensive. Use for hard semantic decisions.</p>
-                  </label>
+              <section class="input-group-card">
+                <div class="input-group-head">
+                  <h3>Project & Brand Memory</h3>
+                  <p>Project-bound context. Brand Memory stays the source of truth for brand name, product facts, claims rules, CTA rules, banned/required phrases, SEO rules, and audience profiles.</p>
                 </div>
-              </div>
-              <div class="field full">
-                <span>DeepSeek Pricing</span>
-                <em>USD per 1M tokens. Used only for Log Audit cost estimates; marketers can override before launch.</em>
-                <div class="filters">
-                  <label class="field">
-                    <span>Input / 1M tokens</span>
-                    <input id="deepSeekInputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.435" />
-                  </label>
-                  <label class="field">
-                    <span>Output / 1M tokens</span>
-                    <input id="deepSeekOutputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.87" />
-                  </label>
-                </div>
-              </div>
-              <div class="field full">
-                <span>Workflow Mode</span>
-                <input id="workflowMode" type="hidden" value="manual" />
-                <div class="model-picker workflow-mode-picker" role="radiogroup" aria-label="Workflow Mode">
-                  <label class="model-option is-selected" data-workflow-mode-option="manual">
-                    <input type="radio" name="workflowModeChoice" value="manual" checked />
-                    <span>Controlled</span>
-                    <strong>Manual clicking</strong>
-                    <p>You run each semantic step yourself and inspect the output before moving on.</p>
-                  </label>
-                  <label class="model-option" data-workflow-mode-option="auto_until_selection">
-                    <input type="radio" name="workflowModeChoice" value="auto_until_selection" />
-                    <span>Auto</span>
-                    <strong>Auto to final brief</strong>
-                    <p>Runs the workflow automatically, selects the best cluster, and generates the final brief.</p>
-                  </label>
-                </div>
-              </div>
-              <div class="field full">
-                <span>Input Mode</span>
-                <div class="input-mode-tabs">
-                  <label><input type="radio" name="inputMode" value="manual" checked /> Manual fields</label>
-                  <label><input type="radio" name="inputMode" value="brief_text" /> One brief text</label>
-                  <label><input type="radio" name="inputMode" value="file" /> File</label>
-                </div>
-              </div>
-              <section id="briefTextPanel" class="context-panel full" hidden>
                 <label class="field full">
-                  <span>One Brief Text</span>
-                  <textarea id="briefContextText" placeholder="Paste the full SEO task brief here: topic, launch context, market, audience, product context, constraints, CTA."></textarea>
+                  <span>Project</span>
+                  <select id="projectId">
+                    <option value="">No project context</option>
+                  </select>
                 </label>
-                <div class="actions">
-                  <button type="button" id="extractBriefTextBtn">Extract Fields From Text</button>
+                <div class="actions full">
+                  <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
                 </div>
-              </section>
-              <section id="filePanel" class="context-panel full" hidden>
                 <label class="field full">
-                  <span>Brief File</span>
-                  <input id="briefContextFile" type="file" accept=".txt,.md,.json,.csv,text/plain,text/markdown,application/json" />
+                  <span>Target Audience</span>
+                  <em>Select one audience from Project Brand Memory. It will be used as the run audience in all SEO and article prompts.</em>
+                  <select id="targetAudienceSelect" disabled>
+                    <option value="">Select project first</option>
+                  </select>
                 </label>
-                <div class="actions">
-                  <button type="button" id="extractFileBtn">Extract Fields From File</button>
-                </div>
               </section>
-              <div id="contextExtractionResult" class="context-result full" hidden></div>
-              <div id="markerPlanContext" class="context-result full" hidden></div>
-              <textarea id="campaignContext" hidden></textarea>
-              <label class="field full">
-                <span>Topic Hint</span>
-                <em>Research direction from the marketer. This is not a final keyword and not an article title.</em>
-                <textarea id="topicHint" required>How people in emerging markets can make idle USDT productive</textarea>
-              </label>
-              <input id="country" type="hidden" value="United States" />
-              <label class="field full">
-                <span>Languages</span>
-                <em>Select one or more languages. Hold Cmd/Ctrl to select multiple; the UI will create one SEO brief run per language.</em>
-                <select id="language" required multiple size="8">
-                  <option value="English" selected>English (en)</option>
-                  <option value="Portuguese">Português (pt)</option>
-                  <option value="Indonesian">Bahasa Indonesia (id)</option>
-                  <option value="Spanish">Español (es)</option>
-                  <option value="Vietnamese">Tiếng Việt (vi)</option>
-                  <option value="Urdu">اردو (ur)</option>
-                  <option value="Tagalog">Tagalog (tl)</option>
-                  <option value="Pidgin">Naijá / Pidgin (pcm)</option>
-                  <option value="Hausa">Hausa (ha)</option>
-                  <option value="Punjabi">ਪੰਜਾਬੀ (pa)</option>
-                  <option value="Yoruba">Yorùbá (yo)</option>
-                  <option value="Pashto">پښتو (ps)</option>
-                  <option value="Zulu">isiZulu (zu)</option>
-                  <option value="Turkish">Türkçe (tr)</option>
-                  <option value="Arabic">العربية (ar)</option>
-                  <option value="Russian">Русский (ru)</option>
-                  <option value="Hindi">हिन्दी (hi)</option>
-                  <option value="Japanese">日本語 (ja)</option>
-                  <option value="Korean">한국어 (ko)</option>
-                  <option value="French">Français (fr)</option>
-                  <option value="German">Deutsch (de)</option>
-                  <option value="Italian">Italiano (it)</option>
-                  <option value="Dutch">Nederlands (nl)</option>
-                  <option value="Malay">Bahasa Melayu (ms)</option>
-                  <option value="Thai">ไทย (th)</option>
-                  <option value="Afrikaans">Afrikaans (af)</option>
-                  <option value="Xhosa">isiXhosa (xh)</option>
-                  <option value="Igbo">Igbo (ig)</option>
-                  <option value="Polish">Polski (pl)</option>
-                  <option value="Romanian">Română (ro)</option>
-                </select>
-              </label>
-              <div id="marketCountryPreview" class="context-result full"></div>
-              <label class="field full">
-                <span>Blog cover image URL</span>
-                <em>Optional. If this SEO run is published to Blog, this HTTPS image will be sent as the article cover.</em>
-                <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
-              </label>
-              <div id="languageBatchProgress" class="batch-progress full" hidden></div>
-              <label class="field full">
-                <span>User Pains</span>
-                <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
-                <textarea id="userPains" required>Save money in dollars
+
+              <section class="input-group-card">
+                <div class="input-group-head">
+                  <h3>Article Input</h3>
+                  <p>Fields that describe this concrete article/run: topic, location/language pair, cover, audience state, marketer pains, scenarios, and angle.</p>
+                </div>
+                <div class="field full">
+                  <span>Input Mode</span>
+                  <div class="input-mode-tabs">
+                    <label><input type="radio" name="inputMode" value="manual" checked /> Manual fields</label>
+                    <label><input type="radio" name="inputMode" value="brief_text" /> One brief text</label>
+                    <label><input type="radio" name="inputMode" value="file" /> File</label>
+                  </div>
+                </div>
+                <section id="briefTextPanel" class="context-panel full" hidden>
+                  <label class="field full">
+                    <span>One Brief Text</span>
+                    <textarea id="briefContextText" placeholder="Paste the full SEO task brief here: topic, launch context, market, audience, product context, constraints, CTA."></textarea>
+                  </label>
+                  <div class="actions">
+                    <button type="button" id="extractBriefTextBtn">Extract Fields From Text</button>
+                  </div>
+                </section>
+                <section id="filePanel" class="context-panel full" hidden>
+                  <label class="field full">
+                    <span>Brief File</span>
+                    <input id="briefContextFile" type="file" accept=".txt,.md,.json,.csv,text/plain,text/markdown,application/json" />
+                  </label>
+                  <div class="actions">
+                    <button type="button" id="extractFileBtn">Extract Fields From File</button>
+                  </div>
+                </section>
+                <div id="contextExtractionResult" class="context-result full" hidden></div>
+                <div id="markerPlanContext" class="context-result full" hidden></div>
+                <textarea id="campaignContext" hidden></textarea>
+                <label class="field full">
+                  <span>Topic Hint</span>
+                  <em>Research direction from the marketer. This is not a final keyword and not an article title.</em>
+                  <textarea id="topicHint" required>How people in emerging markets can make idle USDT productive</textarea>
+                </label>
+                <input id="country" type="hidden" value="United States" />
+                <label class="field full">
+                  <span>Locations</span>
+                  <em>Select one or more Reinforce markets. Each location defines both the content language and the DataForSEO country.</em>
+                  <select id="language" required multiple size="8"></select>
+                </label>
+                <div id="marketCountryPreview" class="context-result full"></div>
+                <label class="field full">
+                  <span>Blog cover image URL</span>
+                  <em>Optional. If this SEO run is published to Blog, this HTTPS image will be sent as the article cover.</em>
+                  <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+                </label>
+                <div id="languageBatchProgress" class="batch-progress full" hidden></div>
+                <label class="field full">
+                  <span>User Pains</span>
+                  <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
+                  <textarea id="userPains" required>Save money in dollars
 Avoid naira devaluation
 Make idle USDT useful without hype</textarea>
-              </label>
-              <details class="field full advanced-field">
-                <summary>Advanced overrides and additional run context</summary>
-                <p>Brand Memory override fields are filled from the selected project and can be changed for this one SEO brief. Additional fields are run-specific extras.</p>
-                <div class="advanced-grid">
-                  <label class="field full">
-                    <span>Audience Override</span>
-                    <em>Brand Memory override. Leave as-is unless this run needs a different audience.</em>
-                    <textarea id="audience">Beginners holding USDT who want simple earning options.</textarea>
-                  </label>
+                </label>
+                <div class="input-group-grid">
                   <label class="field full">
                     <span>User Scenarios</span>
                     <em>Run-specific additional context. Optional search, behavior, ecosystem, comparison, or action scenarios.</em>
                     <textarea id="userScenarios">Uses Binance P2P
 Stores USDT in Trust Wallet
 Needs to understand TRC20 vs BEP20</textarea>
-                  </label>
-                  <label class="field">
-                    <span>Product Name Override</span>
-                    <em>Brand Memory override.</em>
-                    <input id="productName" required value="Reinforce" />
-                  </label>
-                  <label class="field full">
-                    <span>Product Description Override</span>
-                    <em>Brand Memory override.</em>
-                    <textarea id="productDescription">Reinforce helps users make idle USDT productive without relying on hype or vague promises.</textarea>
-                  </label>
-                  <label class="field">
-                    <span>CTA Override</span>
-                    <em>Brand Memory override.</em>
-                    <input id="cta" value="See how Reinforce works" />
-                  </label>
-                  <label class="field full">
-                    <span>Key Message Override</span>
-                    <em>Brand Memory override.</em>
-                    <textarea id="keyMessage">Idle USDT can become productive if users understand the options and risks clearly.</textarea>
-                  </label>
-                  <label class="field full">
-                    <span>Brand Constraints Override</span>
-                    <em>Brand Memory override.</em>
-                    <textarea id="brandConstraints">No hype
-No get-rich-quick framing
-Keep trust and proof central</textarea>
-                  </label>
-                  <label class="field full">
-                    <span>Claims / Compliance Constraints Override</span>
-                    <em>Brand Memory override.</em>
-                    <textarea id="claimsConstraints">Do not promise guaranteed returns
-Explain risks clearly
-Do not present yield as risk-free</textarea>
                   </label>
                   <label class="field full">
                     <span>Preferred Angle</span>
@@ -1905,6 +1865,57 @@ High-risk leverage</textarea>
                     <em>Run-specific additional context.</em>
                     <input id="audienceAfter" value="User understands the options and sees Reinforce as one practical next step." />
                   </label>
+                </div>
+              </section>
+
+              <section class="input-group-card">
+                <div class="input-group-head">
+                  <h3>Technical Parameters</h3>
+                  <p>Execution controls: model mode, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
+                </div>
+                <div class="field full">
+                  <span>AI Model</span>
+                  <input id="aiModelMode" type="hidden" value="pro" />
+                  <div class="model-picker" role="radiogroup" aria-label="AI Model">
+                    <label class="model-option" data-model-option="flash">
+                      <input type="radio" name="aiModelModeChoice" value="flash" />
+                      <span>Fast</span>
+                      <strong>Flash</strong>
+                      <p>Cheaper and quicker. Good for drafts and low-risk checks.</p>
+                    </label>
+                    <label class="model-option is-selected" data-model-option="pro">
+                      <input type="radio" name="aiModelModeChoice" value="pro" checked />
+                      <span>Balanced</span>
+                      <strong>Pro</strong>
+                      <p>Default quality mode. Better reasoning without thinking mode.</p>
+                    </label>
+                    <label class="model-option" data-model-option="pro_thinking">
+                      <input type="radio" name="aiModelModeChoice" value="pro_thinking" />
+                      <span>Deep</span>
+                      <strong>Pro Thinking</strong>
+                      <p>Slowest and most expensive. Use for hard semantic decisions.</p>
+                    </label>
+                  </div>
+                </div>
+                <div class="field full">
+                  <span>Workflow Mode</span>
+                  <input id="workflowMode" type="hidden" value="manual" />
+                  <div class="model-picker workflow-mode-picker" role="radiogroup" aria-label="Workflow Mode">
+                    <label class="model-option is-selected" data-workflow-mode-option="manual">
+                      <input type="radio" name="workflowModeChoice" value="manual" checked />
+                      <span>Controlled</span>
+                      <strong>Manual clicking</strong>
+                      <p>You run each semantic step yourself and inspect the output before moving on.</p>
+                    </label>
+                    <label class="model-option" data-workflow-mode-option="auto_until_selection">
+                      <input type="radio" name="workflowModeChoice" value="auto_until_selection" />
+                      <span>Auto</span>
+                      <strong>Auto to final brief</strong>
+                      <p>Runs the workflow automatically, selects the best cluster, and generates the final brief.</p>
+                    </label>
+                  </div>
+                </div>
+                <div class="input-group-grid">
                   <label class="field">
                     <span>Hypotheses Count</span>
                     <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="10" />
@@ -1928,16 +1939,27 @@ High-risk leverage</textarea>
                     <input id="seoWeight" type="hidden" value="0.6" />
                     <input id="productWeight" type="hidden" value="0.4" />
                   </label>
-                  <label class="field full">
-                    <span>Operator Prompt Override</span>
-                    <em>This is not marketer context. It only tunes how AI generates initial keyword hypotheses.</em>
-                    <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
-                  </label>
                 </div>
-              </details>
-              <div class="actions full">
-                <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
-              </div>
+                <div class="field full">
+                  <span>DeepSeek Pricing</span>
+                  <em>USD per 1M tokens. Used only for Log Audit cost estimates; marketers can override before launch.</em>
+                  <div class="filters">
+                    <label class="field">
+                      <span>Input / 1M tokens</span>
+                      <input id="deepSeekInputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.435" />
+                    </label>
+                    <label class="field">
+                      <span>Output / 1M tokens</span>
+                      <input id="deepSeekOutputUsdPerMillionTokens" type="number" min="0" step="0.000001" value="0.87" />
+                    </label>
+                  </div>
+                </div>
+                <label class="field full">
+                  <span>Operator Prompt Override</span>
+                  <em>This is not marketer context. It only tunes how AI generates initial keyword hypotheses.</em>
+                  <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
+                </label>
+              </section>
             </form>
           </section>
         </aside>
@@ -1989,6 +2011,7 @@ High-risk leverage</textarea>
       const initialState = ${initialState};
       const appState = {
         projects: [],
+        selectedBrandMemory: null,
         runs: [],
         selectedRun: null,
         selectedRunId: null,
@@ -2034,38 +2057,51 @@ High-risk leverage</textarea>
       let clientFetchSeq = 0;
       const CLIENT_DEV_LOG_LIMIT = 120;
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
-      const SEO_BRIEF_LANGUAGE_PRESETS = [
-        { code: 'en', name: 'English', label: 'English', country: 'United States' },
-        { code: 'pt', name: 'Portuguese', label: 'Português', country: 'Brazil' },
-        { code: 'id', name: 'Indonesian', label: 'Bahasa Indonesia', country: 'Indonesia' },
-        { code: 'es', name: 'Spanish', label: 'Español', country: 'Mexico' },
-        { code: 'vi', name: 'Vietnamese', label: 'Tiếng Việt', country: 'Vietnam' },
-        { code: 'ur', name: 'Urdu', label: 'اردو', country: 'Pakistan' },
-        { code: 'tl', name: 'Tagalog', label: 'Tagalog', country: 'Philippines' },
-        { code: 'pcm', name: 'Pidgin', label: 'Naijá / Pidgin', country: 'Nigeria' },
-        { code: 'ha', name: 'Hausa', label: 'Hausa', country: 'Nigeria' },
-        { code: 'pa', name: 'Punjabi', label: 'ਪੰਜਾਬੀ', country: 'India' },
-        { code: 'yo', name: 'Yoruba', label: 'Yorùbá', country: 'Nigeria' },
-        { code: 'ps', name: 'Pashto', label: 'پښتو', country: 'Afghanistan' },
-        { code: 'zu', name: 'Zulu', label: 'isiZulu', country: 'South Africa' },
-        { code: 'tr', name: 'Turkish', label: 'Türkçe', country: 'Turkiye' },
-        { code: 'ar', name: 'Arabic', label: 'العربية', country: 'Saudi Arabia' },
-        { code: 'ru', name: 'Russian', label: 'Русский', country: 'Kazakhstan' },
-        { code: 'hi', name: 'Hindi', label: 'हिन्दी', country: 'India' },
-        { code: 'ja', name: 'Japanese', label: '日本語', country: 'Japan' },
-        { code: 'ko', name: 'Korean', label: '한국어', country: 'South Korea' },
-        { code: 'fr', name: 'French', label: 'Français', country: 'France' },
-        { code: 'de', name: 'German', label: 'Deutsch', country: 'Germany' },
-        { code: 'it', name: 'Italian', label: 'Italiano', country: 'Italy' },
-        { code: 'nl', name: 'Dutch', label: 'Nederlands', country: 'Netherlands' },
-        { code: 'ms', name: 'Malay', label: 'Bahasa Melayu', country: 'Malaysia' },
-        { code: 'th', name: 'Thai', label: 'ไทย', country: 'Thailand' },
-        { code: 'af', name: 'Afrikaans', label: 'Afrikaans', country: 'South Africa' },
-        { code: 'xh', name: 'Xhosa', label: 'isiXhosa', country: 'South Africa' },
-        { code: 'ig', name: 'Igbo', label: 'Igbo', country: 'Nigeria' },
-        { code: 'pl', name: 'Polish', label: 'Polski', country: 'Poland' },
-        { code: 'ro', name: 'Romanian', label: 'Română', country: 'Romania' },
-      ];
+      const SEO_BRIEF_MARKET_PRESETS = [
+        { marketKey: 'india-en', country: 'India', locationName: 'India', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'nigeria-en', country: 'Nigeria', locationName: 'Nigeria', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'pakistan-en', country: 'Pakistan', locationName: 'Pakistan', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'philippines-en', country: 'Philippines', locationName: 'Philippines', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'singapore-en', country: 'Singapore', locationName: 'Singapore', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'united-arab-emirates-en', country: 'United Arab Emirates', locationName: 'United Arab Emirates', code: 'en', name: 'English', languageLabel: 'English' },
+        { marketKey: 'indonesia-id', country: 'Indonesia', locationName: 'Indonesia', code: 'id', name: 'Indonesian', languageLabel: 'Bahasa Indonesia' },
+        { marketKey: 'pakistan-ur', country: 'Pakistan', locationName: 'Pakistan', code: 'ur', name: 'Urdu', languageLabel: 'اردو' },
+        { marketKey: 'brazil-pt', country: 'Brazil', locationName: 'Brazil', code: 'pt', name: 'Portuguese', languageLabel: 'Português' },
+        { marketKey: 'vietnam-vi', country: 'Vietnam', locationName: 'Vietnam', code: 'vi', name: 'Vietnamese', languageLabel: 'Tiếng Việt' },
+        { marketKey: 'argentina-es', country: 'Argentina', locationName: 'Argentina', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'mexico-es', country: 'Mexico', locationName: 'Mexico', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'venezuela-es', country: 'Venezuela', locationName: 'Venezuela', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'colombia-es', country: 'Colombia', locationName: 'Colombia', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'peru-es', country: 'Peru', locationName: 'Peru', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'chile-es', country: 'Chile', locationName: 'Chile', code: 'es', name: 'Spanish', languageLabel: 'Español' },
+        { marketKey: 'russia-ru', country: 'Russia', locationName: 'Russia', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
+        { marketKey: 'ukraine-ru', country: 'Ukraine', locationName: 'Ukraine', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
+        { marketKey: 'kazakhstan-ru', country: 'Kazakhstan', locationName: 'Kazakhstan', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
+        { marketKey: 'united-arab-emirates-ar', country: 'United Arab Emirates', locationName: 'United Arab Emirates', code: 'ar', name: 'Arabic', languageLabel: 'العربية' },
+        { marketKey: 'egypt-ar', country: 'Egypt', locationName: 'Egypt', code: 'ar', name: 'Arabic', languageLabel: 'العربية' },
+        { marketKey: 'saudi-arabia-ar', country: 'Saudi Arabia', locationName: 'Saudi Arabia', code: 'ar', name: 'Arabic', languageLabel: 'العربية' },
+        { marketKey: 'india-hi', country: 'India', locationName: 'India', code: 'hi', name: 'Hindi', languageLabel: 'हिन्दी' },
+        { marketKey: 'turkey-tr', country: 'Turkey', locationName: 'Turkey', code: 'tr', name: 'Turkish', languageLabel: 'Türkçe' },
+        { marketKey: 'philippines-tl', country: 'Philippines', locationName: 'Philippines', code: 'tl', name: 'Tagalog', languageLabel: 'Tagalog' },
+        { marketKey: 'thailand-th', country: 'Thailand', locationName: 'Thailand', code: 'th', name: 'Thai', languageLabel: 'ไทย' },
+        { marketKey: 'nigeria-pcm', country: 'Nigeria', locationName: 'Nigeria', code: 'pcm', name: 'Pidgin', languageLabel: 'Naijá / Pidgin' },
+        { marketKey: 'france-fr', country: 'France', locationName: 'France', code: 'fr', name: 'French', languageLabel: 'Français' },
+        { marketKey: 'south-korea-ko', country: 'South Korea', locationName: 'South Korea', code: 'ko', name: 'Korean', languageLabel: '한국어' },
+        { marketKey: 'japan-ja', country: 'Japan', locationName: 'Japan', code: 'ja', name: 'Japanese', languageLabel: '日本語' },
+        { marketKey: 'malaysia-ms', country: 'Malaysia', locationName: 'Malaysia', code: 'ms', name: 'Malay', languageLabel: 'Bahasa Melayu' },
+        { marketKey: 'singapore-ms', country: 'Singapore', locationName: 'Singapore', code: 'ms', name: 'Malay', languageLabel: 'Bahasa Melayu' },
+        { marketKey: 'brunei-ms', country: 'Brunei', locationName: 'Brunei', code: 'ms', name: 'Malay', languageLabel: 'Bahasa Melayu' },
+        { marketKey: 'pakistan-pa', country: 'Pakistan', locationName: 'Pakistan', code: 'pa', name: 'Punjabi', languageLabel: 'ਪੰਜਾਬੀ' },
+        { marketKey: 'india-pa', country: 'India', locationName: 'India', code: 'pa', name: 'Punjabi', languageLabel: 'ਪੰਜਾਬੀ' },
+        { marketKey: 'nigeria-ha', country: 'Nigeria', locationName: 'Nigeria', code: 'ha', name: 'Hausa', languageLabel: 'Hausa' },
+        { marketKey: 'niger-ha', country: 'Niger', locationName: 'Niger', code: 'ha', name: 'Hausa', languageLabel: 'Hausa' },
+        { marketKey: 'nigeria-yo', country: 'Nigeria', locationName: 'Nigeria', code: 'yo', name: 'Yoruba', languageLabel: 'Yorùbá' },
+        { marketKey: 'nigeria-ig', country: 'Nigeria', locationName: 'Nigeria', code: 'ig', name: 'Igbo', languageLabel: 'Igbo' },
+      ].map((market) => ({
+        ...market,
+        label: market.country + ' · ' + market.languageLabel + ' (' + market.code + ')',
+      }));
+      const SEO_BRIEF_LANGUAGE_PRESETS = dedupeLanguagePresets(SEO_BRIEF_MARKET_PRESETS);
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const CLIENT_DEV_PANEL_OPEN_STORAGE_KEY = 'seoBriefing.clientDevPanelOpen';
@@ -2073,18 +2109,16 @@ High-risk leverage</textarea>
         { id: 'input', label: 'Input', number: '0' },
         { id: 'keywords', label: 'Keywords', number: '1' },
         { id: 'serpGroup', label: 'SERP', number: '2' },
-        { id: 'competitionGroup', label: 'Competition', number: '3' },
-        { id: 'clusterGroup', label: 'Clusters', number: '4' },
-        { id: 'onPageGroup', label: 'OnPage', number: '5' },
-        { id: 'finalBrief', label: 'Final Brief', number: '6' },
-        { id: 'articleGroup', label: 'Article', number: '7', kind: 'article' },
+        { id: 'clusterGroup', label: 'Clusters', number: '3' },
+        { id: 'onPageGroup', label: 'OnPage', number: '4' },
+        { id: 'finalBrief', label: 'Final Brief', number: '5' },
+        { id: 'articleGroup', label: 'Article', number: '6', kind: 'article' },
         { id: 'audit', label: 'Audit', number: 'Log', kind: 'audit' },
       ];
       const SEO_STEP_GROUPS = {
         input: ['input'],
         keywords: ['keywords'],
-        serpGroup: ['serp', 'candidates'],
-        competitionGroup: ['rankedKeywords', 'competitorMatching', 'dirtyPool', 'candidateScoring'],
+        serpGroup: ['serp', 'candidates', 'dirtyPool'],
         clusterGroup: ['clusters', 'productFit', 'selection'],
         onPageGroup: ['onPage', 'onPageSynthesis'],
         finalBrief: ['finalBrief'],
@@ -2098,6 +2132,7 @@ High-risk leverage</textarea>
         });
         return acc;
       }, {});
+      const PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY = 'seoBriefing.promptInstructionOverrides.v1';
       const AI_PROMPT_INVENTORY = [
         {
           group: 'Main SEO brief flow',
@@ -2107,94 +2142,61 @@ High-risk leverage</textarea>
               operation: 'extractContext',
               version: 'seo-brief.extract-context.v1',
               why: 'Used only when the marketer pastes one big brief text or uploads a file. AI extracts fields into the normal form.',
+              instruction: 'Extract only facts explicitly present in the marketer input. Do not invent product facts, market, claims, audience, or CTA.',
               input: 'Raw marketer text/file content.',
               output: 'Topic hint, market, audience, product facts, manual pains/scenarios, constraints, competitors, missing fields.',
             },
             {
               step: 'Step 1 · Search hypotheses',
               operation: 'expandKeywords',
-              version: 'seo-brief.expand-keywords.v6',
+              version: 'seo-brief.expand-keywords.v7-topic-scope',
               why: 'Turns marketer context, manual pains, scenarios, product facts, and Brand Memory into Google-like keyword hypotheses.',
-              input: 'Topic hint, audience, manual pains/scenarios, product context, constraints, optional operator prompt.',
+              instruction: 'Generate realistic Google-like search hypotheses from the topic, manual pains/scenarios, market, product context, and Brand Memory. Keep the topic scope concrete and avoid branded/product-forced queries unless requested.',
+              input: 'Topic hint, manual pains/scenarios, selected market, Brand Memory, optional operator prompt.',
               output: 'Initial keyword hypotheses grouped by search intent / scenario.',
             },
             {
-              step: 'Step 5 · AI competitor matching',
-              operation: 'groupCompetitorKeywordEvidence',
-              version: 'seo-brief.group-competitor-keyword-evidence.v1',
-              why: 'First AI pass for AI Evidence Matching. AI groups competitor ranked keywords into market themes.',
-              input: 'Ranked keywords from competitor domains with DataForSEO metrics.',
-              output: 'Competitor evidence buckets with evidence IDs.',
-            },
-            {
-              step: 'Step 5 · AI competitor matching',
-              operation: 'groupCandidateKeywords',
-              version: 'seo-brief.group-candidate-keywords.v1',
-              why: 'Second AI pass for AI Evidence Matching. AI groups our candidate keywords by meaning.',
-              input: 'Our hypotheses and SERP-derived candidates.',
-              output: 'Candidate buckets with candidate IDs.',
-            },
-            {
-              step: 'Step 5 · AI competitor matching',
-              operation: 'matchKeywordGroups',
-              version: 'seo-brief.match-keyword-groups.v1',
-              why: 'Third AI pass for AI Evidence Matching. AI links our candidate groups to competitor evidence groups.',
-              input: 'Candidate buckets and competitor evidence buckets.',
-              output: 'Group-to-group matches and match strength.',
-            },
-            {
-              step: 'Step 5 · AI competitor matching',
-              operation: 'scoreCompetitorKeywordCandidateGroup',
-              version: 'seo-brief.score-competitor-keyword-candidate-group.v1',
-              why: 'Fourth AI pass for AI Evidence Matching. AI scores candidate keywords only against provided competitor evidence.',
-              input: 'One candidate bucket plus relevant competitor evidence rows.',
-              output: 'Proxy demand score, match type, matched evidence IDs, risk label, reason.',
-            },
-            {
-              step: 'Step 7 · AI filtering',
-              operation: 'scoreDirtyKeywordCandidates',
-              version: 'seo-brief.score-dirty-keyword-candidates.v1',
-              why: 'Used three times: eligibility, fit scoring, and final calibration of the dirty keyword pool.',
-              input: 'Dirty-pool candidates with SERP evidence, competitor match signals, metrics, product context, Brand Memory.',
-              output: 'Accepted / maybe / rejected candidates with topic/product/audience/intent/risk/evidence scores.',
-            },
-            {
-              step: 'Step 8 · Clusters',
+              step: 'Step 3 · Clusters',
               operation: 'clusterKeywords',
-              version: 'seo-brief.cluster-keywords.v2',
-              why: 'AI groups accepted/maybe keywords into article-level SEO clusters.',
-              input: 'Scored accepted/maybe candidates, rejected keywords, market, product, Brand Memory.',
+              version: 'seo-brief.cluster-keywords.v4-compact',
+              why: 'AI clusters and prioritizes dirty-pool candidates after SERP expansion.',
+              instruction: 'Cluster candidates by user intent, not exact wording. Use only provided candidate ids/keywords and prioritize clusters that preserve topic scope and useful search intent.',
+              input: 'Dirty-pool candidates, selected market, product context, Brand Memory.',
               output: 'Clusters with primary keyword, secondary keywords, questions, intent, competitor URLs, rationale.',
             },
             {
-              step: 'Step 9 · Product Fit',
+              step: 'Step 3 · Product Fit',
               operation: 'reviewClusterProductFit',
-              version: 'seo-brief.review-cluster-product-fit.v1',
+              version: 'seo-brief.review-cluster-product-fit.v3-compact',
               why: 'AI checks which clusters can honestly connect to the product and which should be rejected or supporting only.',
-              input: 'Clusters, supporting keywords, product facts, audience, Brand Memory, constraints.',
+              instruction: 'Approve only clusters where the product can naturally help answer the search intent. Treat Brand Memory and claims constraints as hard boundaries.',
+              input: 'Clusters, product facts, selected market, Brand Memory.',
               output: 'Cluster decisions, product fit score/type, insertion angle, what not to claim.',
             },
             {
-              step: 'Step 10 · Selection',
+              step: 'Step 3 · Selection',
               operation: 'explainClusterSelection',
               version: 'seo-brief.cluster-selection.v1',
               why: 'AI explains why the selected main cluster won and why others were rejected/supporting.',
+              instruction: 'Explain the selected cluster decision in simple marketer-readable language using SEO fit, product fit, evidence, and risk tradeoffs.',
               input: 'Cluster candidates with SEO/product/total scores.',
               output: 'Human-readable selection summary and rejected cluster reasons.',
             },
             {
-              step: 'Step 12 · OnPage synthesis',
+              step: 'Step 4 · OnPage synthesis',
               operation: 'synthesizeOnPage',
-              version: 'seo-brief.synthesize-onpage.v1',
+              version: 'seo-brief.synthesize-onpage.v3-compact',
               why: 'AI summarizes competitor on-page structure for the selected cluster.',
+              instruction: 'Summarize competitor page structure into actionable article requirements. Preserve market language, topic scope, content gaps, FAQ ideas, and safe product insertion guidance.',
               input: 'Fetched competitor pages, headings, text blocks, links, selected cluster, product context.',
               output: 'Common content blocks, H2 patterns, FAQ, content gaps, recommended structure.',
             },
             {
-              step: 'Step 13 · Final SEO brief',
+              step: 'Step 5 · Final SEO brief',
               operation: 'generateSeoBrief',
-              version: 'seo-brief.generate-brief.v1',
+              version: 'seo-brief.generate-brief.v3-compact',
               why: 'AI creates the production-ready SEO brief from all approved evidence.',
+              instruction: 'Create a writer-ready SEO brief from selected cluster, on-page synthesis, product fit, and Brand Memory. Answer search intent first and keep product insertion natural and compliant.',
               input: 'Selected cluster, keyword evidence, product fit, on-page synthesis, Brand Memory, constraints.',
               output: 'Final SEO brief: title/H1, meta, outline, FAQs, SERP insights, product placement, compliance notes.',
             },
@@ -2204,81 +2206,31 @@ High-risk leverage</textarea>
           group: 'Article generation extension',
           prompts: [
             {
-              step: 'Step 14 · Draft Article',
+              step: 'Step 6 · Draft Article',
               operation: 'draftLongreadArticle',
-              version: 'article-generation.draft.v1',
+              version: 'article-generation.draft.v2-compact',
               why: 'AI writes the first longread draft from the final SEO brief.',
+              instruction: 'Write a complete longread article from the final SEO brief. Follow the brief structure, selected market language, natural keyword usage, and safe product insertion rules.',
               input: 'Final SEO brief, selected cluster, product context, audience, constraints.',
               output: 'Draft longread article with sections, intro, body, conclusion, FAQ/product mentions.',
             },
             {
-              step: 'Step 15 · Safety Cleanup',
+              step: 'Step 6 · Safety Cleanup',
               operation: 'cleanupLongreadArticle',
-              version: 'article-generation.cleanup.v1',
+              version: 'article-generation.cleanup.v2-compact',
               why: 'AI edits the draft for clarity, compliance, brand safety, and unsupported claims.',
+              instruction: 'Edit the draft into a safer publishable article. Remove or soften unsupported claims, hype, forced product mentions, and compliance risks while preserving useful content.',
               input: 'Draft article plus final SEO brief and claims/brand constraints.',
               output: 'Cleaned article, warnings, removed/changed claims, editorial notes.',
             },
             {
-              step: 'Step 16 · Final Package',
+              step: 'Step 6 · Final Package',
               operation: 'packageLongreadArticle',
-              version: 'article-generation.package.v1',
+              version: 'article-generation.package.v2-compact',
               why: 'AI packages the reviewed article into a CMS-ready object.',
+              instruction: 'Package the reviewed article into clean CMS fields. Preserve SEO metadata, checklist, product insertion summary, claims status, and selected market language.',
               input: 'Cleaned article, SEO brief, safety notes, product placement plan.',
               output: 'Final article package with SEO fields, article body, metadata, checklist.',
-            },
-          ],
-        },
-        {
-          group: 'Auxiliary / legacy AI tools',
-          prompts: [
-            {
-              step: 'Optional · Related queries',
-              operation: 'selectRelatedKeywords',
-              version: 'seo-brief.select-related-keywords.v1',
-              why: 'Selects the best related queries from SERP People Also Ask / related searches. Not part of the current main 13-step flow.',
-              input: 'Seed keyword and SERP-derived related query candidates.',
-              output: 'Selected and rejected related queries with reasons.',
-            },
-            {
-              step: 'Optional · SERP domain classification',
-              operation: 'classifySerpDomains',
-              version: 'seo-brief.classify-serp-domains.v1',
-              why: 'Classifies aggregated SERP domains into ranked-keyword targets, on-page targets, pain signals, or ignored domains. Not part of the simplified current flow.',
-              input: 'Aggregated SERP domains and URL examples.',
-              output: 'Domain classes and priorities.',
-            },
-            {
-              step: 'Legacy · User pain generation',
-              operation: 'extractUserPainScenarios',
-              version: 'seo-brief.extract-user-pain-scenarios.v1',
-              why: 'Older flow generated user pains from topic hint. Current flow expects marketer-provided pains in Step 0.',
-              input: 'Topic hint, market, audience, product context, Brand Memory.',
-              output: 'Generated user pains and scenarios.',
-            },
-            {
-              step: 'Legacy · Keyword triage',
-              operation: 'triageKeywords',
-              version: 'seo-brief.triage-keywords.v1',
-              why: 'Older flow triaged keyword suggestions. Current flow uses dirty pool, competitor matching, and Step 7 filtering.',
-              input: 'Keyword suggestions with volume/competition.',
-              output: 'Accepted/rejected keyword candidates.',
-            },
-            {
-              step: 'Legacy · Product bridge',
-              operation: 'buildProductBridge',
-              version: 'seo-brief.product-bridge.v1',
-              why: 'Older helper for explaining product connection to one cluster. Current Step 9 product fit covers this more completely.',
-              input: 'Cluster label, primary keyword, product context, Brand Memory.',
-              output: 'Fit, positioning angle, CTA, talking points, risks.',
-            },
-            {
-              step: 'Legacy · One-shot competitor matching',
-              operation: 'evaluateCompetitorKeywordMatches',
-              version: 'seo-brief.evaluate-competitor-keyword-matches.v1',
-              why: 'Older one-shot AI competitor matching prompt. Current Step 5 uses the safer four-pass AI matching flow.',
-              input: 'Candidate keywords and competitor ranked keyword evidence.',
-              output: 'Candidate scores, buckets, matched evidence IDs.',
             },
           ],
         },
@@ -2291,8 +2243,10 @@ High-risk leverage</textarea>
       function openClusterDetailModal(templateId) {
         const template = qs(templateId);
         const modal = qs('clusterDetailModal');
+        const title = qs('clusterDetailModalTitle');
         const body = qs('clusterDetailModalBody');
         if (!template || !modal || !body) return;
+        if (title) title.textContent = 'Cluster Details';
         body.innerHTML = template.innerHTML;
         modal.hidden = false;
       }
@@ -2304,6 +2258,26 @@ High-risk leverage</textarea>
         if (modal) modal.hidden = true;
       }
 
+      function openPromptContractModal(operation) {
+        const prompt = findPromptByOperation(operation);
+        const modal = qs('clusterDetailModal');
+        const title = qs('clusterDetailModalTitle');
+        const body = qs('clusterDetailModalBody');
+        if (!prompt || !modal || !title || !body) return;
+        title.textContent = prompt.operation + ' contract';
+        body.innerHTML =
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Read-only prompt contract</div><h3>' + escapeHtmlClient(prompt.step) + '</h3></div><code>' + escapeHtmlClient(prompt.version) + '</code></div>' +
+            '<p>' + escapeHtmlClient(prompt.why) + '</p>' +
+            '<div class="prompt-meta">' +
+              '<span><strong>Input:</strong> ' + escapeHtmlClient(prompt.input) + '</span>' +
+              '<span><strong>Output:</strong> ' + escapeHtmlClient(prompt.output) + '</span>' +
+              '<span><strong>Contract:</strong> JSON schema, required fields, allowed enum values, selected market language, and compliance constraints are fixed in backend prompt code. Marketer instruction can guide behavior but cannot change this contract.</span>' +
+            '</div>' +
+          '</section>';
+        modal.hidden = false;
+      }
+
       function escapeHtmlClient(value) {
         return String(value ?? '')
           .replace(/&/g, '&amp;')
@@ -2311,6 +2285,59 @@ High-risk leverage</textarea>
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function readPromptInstructionOverrides() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY) || '{}');
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+          return Object.fromEntries(
+            Object.entries(parsed)
+              .map(([key, value]) => [String(key).trim(), typeof value === 'string' ? value.trim() : ''])
+              .filter(([key, value]) => key && value),
+          );
+        } catch (_error) {
+          return {};
+        }
+      }
+
+      function writePromptInstructionOverrides(overrides) {
+        localStorage.setItem(
+          PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY,
+          JSON.stringify(overrides || {}, null, 2),
+        );
+      }
+
+      function findPromptByOperation(operation) {
+        for (const group of AI_PROMPT_INVENTORY) {
+          const prompt = group.prompts.find((item) => item.operation === operation);
+          if (prompt) return prompt;
+        }
+        return null;
+      }
+
+      function getPromptInstructionValue(prompt) {
+        const overrides = readPromptInstructionOverrides();
+        return overrides[prompt.operation] || prompt.instruction || '';
+      }
+
+      function savePromptInstructionOverride(operation, value) {
+        const prompt = findPromptByOperation(operation);
+        if (!prompt) return;
+        const overrides = readPromptInstructionOverrides();
+        const normalized = String(value || '').trim();
+        if (!normalized || normalized === prompt.instruction) {
+          delete overrides[operation];
+        } else {
+          overrides[operation] = normalized;
+        }
+        writePromptInstructionOverrides(overrides);
+      }
+
+      function resetPromptInstructionOverride(operation) {
+        const overrides = readPromptInstructionOverrides();
+        delete overrides[operation];
+        writePromptInstructionOverrides(overrides);
       }
 
       function prettyDate(value) {
@@ -2563,6 +2590,37 @@ High-risk leverage</textarea>
         );
       });
 
+      document.addEventListener('click', (event) => {
+        const saveButton = event.target?.closest?.('[data-prompt-save]');
+        if (saveButton) {
+          const operation = saveButton.dataset.promptSave;
+          const textarea = qs('promptInstruction_' + operation);
+          savePromptInstructionOverride(operation, textarea?.value || '');
+          appendClientDevLog('Saved prompt instruction override', { operation });
+          showToast('Prompt instruction saved');
+          return;
+        }
+
+        const resetButton = event.target?.closest?.('[data-prompt-reset]');
+        if (resetButton) {
+          const operation = resetButton.dataset.promptReset;
+          const prompt = findPromptByOperation(operation);
+          const textarea = qs('promptInstruction_' + operation);
+          resetPromptInstructionOverride(operation);
+          if (textarea && prompt) {
+            textarea.value = prompt.instruction || '';
+          }
+          appendClientDevLog('Reset prompt instruction override', { operation });
+          showToast('Prompt instruction reset');
+          return;
+        }
+
+        const contractButton = event.target?.closest?.('[data-prompt-contract]');
+        if (contractButton) {
+          openPromptContractModal(contractButton.dataset.promptContract);
+        }
+      });
+
       function renderAiPromptInventory() {
         return (
           '<details class="prompt-inventory">' +
@@ -2579,9 +2637,14 @@ High-risk leverage</textarea>
                         '<code>' + escapeHtmlClient(prompt.version) + '</code>' +
                       '</div>' +
                       '<p><strong>' + escapeHtmlClient(prompt.operation) + '</strong> — ' + escapeHtmlClient(prompt.why) + '</p>' +
-                      '<div class="prompt-meta">' +
-                        '<span><strong>Input:</strong> ' + escapeHtmlClient(prompt.input) + '</span>' +
-                        '<span><strong>Output:</strong> ' + escapeHtmlClient(prompt.output) + '</span>' +
+                      '<div class="prompt-editor">' +
+                        '<label for="promptInstruction_' + escapeHtmlClient(prompt.operation) + '">Editable instruction</label>' +
+                        '<textarea id="promptInstruction_' + escapeHtmlClient(prompt.operation) + '" spellcheck="true">' + escapeHtmlClient(getPromptInstructionValue(prompt)) + '</textarea>' +
+                        '<div class="prompt-actions">' +
+                          '<button class="secondary" type="button" data-prompt-save="' + escapeHtmlClient(prompt.operation) + '">Save instruction</button>' +
+                          '<button class="ghost" type="button" data-prompt-reset="' + escapeHtmlClient(prompt.operation) + '">Reset to default</button>' +
+                          '<button class="ghost" type="button" data-prompt-contract="' + escapeHtmlClient(prompt.operation) + '">View input/output contract</button>' +
+                        '</div>' +
                       '</div>' +
                     '</article>'
                   )).join('') +
@@ -2667,13 +2730,65 @@ High-risk leverage</textarea>
 
       function setLanguageIfPresent(value) {
         if (typeof value !== 'string' || !value.trim()) return;
-        const preset = resolveLanguagePreset(value);
+        const preset = resolveMarketPreset(value) || resolveLanguagePreset(value);
         const languageSelect = qs('language');
-        const targetValue = preset?.name || value.trim();
+        const targetValue = preset?.marketKey || preset?.name || value.trim();
         [...languageSelect.options].forEach((option) => {
           option.selected = option.value === targetValue;
         });
         syncCountryFromSelectedLanguages();
+      }
+
+      function hydrateMarketSelect() {
+        const select = qs('language');
+        if (!select) return;
+        select.innerHTML = SEO_BRIEF_MARKET_PRESETS.map((market, index) =>
+          '<option value="' + escapeHtmlClient(market.marketKey) + '" ' + (index === 0 ? 'selected' : '') + '>' +
+            escapeHtmlClient(market.label) +
+          '</option>'
+        ).join('');
+      }
+
+      function dedupeLanguagePresets(markets) {
+        const byCode = new Map();
+        markets.forEach((market) => {
+          if (!byCode.has(market.code)) {
+            byCode.set(market.code, {
+              code: market.code,
+              name: market.name,
+              label: market.languageLabel,
+              country: market.country,
+              locationName: market.locationName,
+            });
+          }
+        });
+        return [...byCode.values()];
+      }
+
+      function resolveMarketPreset(value) {
+        const normalized = normalizeLanguageLookup(value);
+        const candidatesByMarket = SEO_BRIEF_MARKET_PRESETS.map((market) => ({
+          market,
+          candidates: [
+            market.marketKey,
+            market.country,
+            market.locationName,
+            market.label,
+            market.code,
+            market.name,
+            market.languageLabel,
+            market.country + ' ' + market.code,
+            market.country + ' ' + market.name,
+          ].map(normalizeLanguageLookup),
+        }));
+        const exactMatch = candidatesByMarket.find((entry) => entry.candidates.includes(normalized));
+        if (exactMatch) return exactMatch.market;
+        if (normalized.length > 2) {
+          return candidatesByMarket.find((entry) =>
+            entry.candidates.some((candidate) => candidate.length > 2 && (candidate.includes(normalized) || normalized.includes(candidate)))
+          )?.market || null;
+        }
+        return null;
       }
 
       function resolveLanguagePreset(value) {
@@ -2728,14 +2843,17 @@ High-risk leverage</textarea>
       function getSelectedLanguagePresets() {
         const selectedValues = [...qs('language').selectedOptions].map((option) => option.value);
         const selected = selectedValues
-          .map((value) => resolveLanguagePreset(value) || {
+          .map((value) => resolveMarketPreset(value) || resolveLanguagePreset(value) || {
             code: value.toLowerCase(),
             country: qs('country').value || 'United States',
+            locationName: qs('country').value || 'United States',
             name: value,
             label: value,
+            marketKey: value,
+            languageLabel: value,
           })
           .filter((language) => language.name);
-        return selected.length > 0 ? selected : [SEO_BRIEF_LANGUAGE_PRESETS[0]];
+        return selected.length > 0 ? selected : [SEO_BRIEF_MARKET_PRESETS[0]];
       }
 
       function resolveRunLanguagePreset(language) {
@@ -2743,11 +2861,14 @@ High-risk leverage</textarea>
           return language;
         }
         const value = String(language || 'English');
-        return resolveLanguagePreset(value) || {
+        return resolveMarketPreset(value) || resolveLanguagePreset(value) || {
           code: value.toLowerCase(),
           country: qs('country').value || 'United States',
+          locationName: qs('country').value || 'United States',
           name: value,
           label: value,
+          marketKey: value,
+          languageLabel: value,
         };
       }
 
@@ -2768,9 +2889,9 @@ High-risk leverage</textarea>
         node.hidden = false;
         node.innerHTML =
           '<strong>DataForSEO markets</strong>' +
-          '<p>Each selected language creates its own SEO brief run with its own supported Google SERP country.</p>' +
+          '<p>Each selected location creates its own SEO brief run. The location determines both language and Google SERP country.</p>' +
           '<ul>' + languages.map((language) =>
-            '<li>' + escapeHtmlClient(language.label + ' (' + language.code + ') → ' + language.country) + '</li>'
+            '<li>' + escapeHtmlClient(language.country + ' → ' + (language.languageLabel || language.label) + ' (' + language.code + ')') + '</li>'
           ).join('') + '</ul>';
       }
 
@@ -2778,7 +2899,6 @@ High-risk leverage</textarea>
         const requiredFields = [
           { id: 'topicHint', label: 'Topic Hint' },
           { id: 'userPains', label: 'User Pains' },
-          { id: 'productName', label: 'Product Name Override' },
         ];
         const invalidField = requiredFields.find((field) => !String(qs(field.id)?.value || '').trim());
         if (invalidField) {
@@ -2805,17 +2925,10 @@ High-risk leverage</textarea>
         setIfPresent('topicHint', result.topicHint || result.topicSeed);
         setIfPresent('country', result.country);
         setLanguageIfPresent(result.language);
-        setIfPresent('audience', result.audience);
         setListIfPresent('userPains', result.userPains);
         setListIfPresent('userScenarios', result.userScenarios);
-        setIfPresent('productName', result.productName);
-        setIfPresent('productDescription', result.productDescription);
-        setIfPresent('keyMessage', result.keyMessage);
         setIfPresent('audienceBefore', result.audienceBefore);
         setIfPresent('audienceAfter', result.audienceAfter);
-        setIfPresent('cta', result.cta);
-        setListIfPresent('brandConstraints', result.brandConstraints);
-        setListIfPresent('claimsConstraints', result.claimsConstraints);
         setIfPresent('preferredAngle', result.preferredAngle);
         setListIfPresent('excludedTopics', result.excludedTopics);
         const contextLines = []
@@ -2855,6 +2968,7 @@ High-risk leverage</textarea>
           body: JSON.stringify({
             aiModelMode: qs('aiModelMode').value,
             requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
+            promptInstructionOverrides: readPromptInstructionOverrides(),
             contextText: trimmed,
           }),
         });
@@ -4743,7 +4857,13 @@ High-risk leverage</textarea>
 
       function renderLongreadCleanup(run) {
         const artifact = findArtifact(run, 'longread_cleanup');
+        const draftArtifact = findArtifact(run, 'longread_draft_article');
         const payload = artifact?.payload || null;
+        const draftPayload = draftArtifact?.payload || null;
+        const rawDraftMarkdown =
+          typeof draftPayload?.draftArticleMarkdown === 'string'
+            ? draftPayload.draftArticleMarkdown
+            : '';
         const markdown = typeof payload?.articleMarkdown === 'string' ? payload.articleMarkdown : '';
         const warnings = Array.isArray(payload?.warnings) ? payload.warnings : [];
         const changesMade = Array.isArray(payload?.changesMade) ? payload.changesMade : [];
@@ -4767,7 +4887,10 @@ High-risk leverage</textarea>
             renderCleanupAttempts(reviewAttempts) +
             renderCleanupWarnings(warnings) +
             renderCompactStringList('Changes made', changesMade) +
-            '<details open><summary>Reviewed Markdown</summary><div><pre>' + escapeHtmlClient(markdown) + '</pre></div></details>' +
+            (rawDraftMarkdown
+              ? '<details open><summary>Raw draft before AI review loop</summary><div><pre>' + escapeHtmlClient(rawDraftMarkdown) + '</pre></div></details>'
+              : '') +
+            '<details open><summary>Reviewed Markdown after AI loop</summary><div><pre>' + escapeHtmlClient(markdown) + '</pre></div></details>' +
             '<details><summary>Raw cleanup artifact</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
           '</section>'
         );
@@ -4942,17 +5065,37 @@ High-risk leverage</textarea>
 
       function setLanguagesIfPresent(values) {
         const languageSelect = qs('language');
-        const codes = new Set(
+        const marketKeys = new Set(
           values
-            .map((value) => resolveLanguagePreset(value)?.code || normalizeTargetLanguage(value))
+            .map((value) => {
+              if (value && typeof value === 'object') {
+                const placementMarket = resolveMarketPresetFromPlacement(value);
+                return placementMarket?.marketKey || null;
+              }
+              return resolveMarketPreset(value)?.marketKey || resolveLanguagePreset(value)?.code || normalizeTargetLanguage(value);
+            })
             .filter(Boolean),
         );
-        if (codes.size === 0) return;
+        if (marketKeys.size === 0) return;
         [...languageSelect.options].forEach((option) => {
-          const optionCode = resolveLanguagePreset(option.value)?.code || normalizeTargetLanguage(option.value);
-          option.selected = codes.has(optionCode);
+          const optionMarket = resolveMarketPreset(option.value);
+          const optionCode = optionMarket?.code || resolveLanguagePreset(option.value)?.code || normalizeTargetLanguage(option.value);
+          option.selected = marketKeys.has(option.value) || marketKeys.has(optionMarket?.marketKey) || marketKeys.has(optionCode);
         });
         syncCountryFromSelectedLanguages();
+      }
+
+      function resolveMarketPresetFromPlacement(placement) {
+        const country = String(placement?.marketCountry || placement?.country || '').trim();
+        const language = normalizeTargetLanguage(placement?.targetLanguage || placement?.language || '');
+        if (country && language) {
+          const exact = SEO_BRIEF_MARKET_PRESETS.find((market) =>
+            normalizeLanguageLookup(market.country) === normalizeLanguageLookup(country) &&
+            market.code === language
+          );
+          if (exact) return exact;
+        }
+        return resolveMarketPreset(language) || null;
       }
 
       function channelDisplayName(channelId) {
@@ -4969,11 +5112,20 @@ High-risk leverage</textarea>
         const publishAtDate = publishAt ? new Date(publishAt) : null;
         const channelId = normalizePublicationChannelId(placement?.channelId || placement?.channel_id || '');
         const targetLanguage = normalizeTargetLanguage(placement?.targetLanguage || placement?.target_language || '');
+        const marketCountry = String(placement?.marketCountry || placement?.market_country || '').trim() || null;
+        const marketLocationName = String(placement?.marketLocationName || placement?.market_location_name || '').trim() || marketCountry;
+        const marketPreset = resolveMarketPresetFromPlacement({
+          targetLanguage,
+          marketCountry,
+        });
         return {
           id: String(placement?.id || ''),
           markerId: String(placement?.markerId || placement?.marker_id || ''),
           channelId,
           targetLanguage,
+          marketCountry: marketCountry || marketPreset?.country || null,
+          marketLocationName: marketLocationName || marketPreset?.locationName || null,
+          marketKey: marketPreset?.marketKey || null,
           publishAt:
             publishAtDate && !Number.isNaN(publishAtDate.getTime())
               ? publishAtDate.toISOString()
@@ -4990,15 +5142,17 @@ High-risk leverage</textarea>
           node.innerHTML = '';
           return;
         }
-        const languages = [...new Set(markerPlan.placements.map((placement) => placement.targetLanguage))];
+        const markets = [...new Set(markerPlan.placements.map((placement) =>
+          (placement.marketCountry || 'Default market') + ' / ' + placement.targetLanguage,
+        ))];
         const channels = [...new Set(markerPlan.placements.map((placement) => channelDisplayName(placement.channelId)))];
         node.hidden = false;
         node.innerHTML =
           '<strong>Marker plan loaded: ' + escapeHtmlClient(markerPlan.markerTitle) + '</strong>' +
-          '<p>' + escapeHtmlClient(String(markerPlan.placements.length) + ' placement(s), ' + languages.join(', ') + ', channels: ' + channels.join(', ')) + '</p>' +
+          '<p>' + escapeHtmlClient(String(markerPlan.placements.length) + ' placement(s), ' + markets.join(', ') + ', channels: ' + channels.join(', ')) + '</p>' +
           '<ul>' + markerPlan.placements.map((placement) =>
             '<li>' +
-              escapeHtmlClient(new Date(placement.publishAt).toLocaleString() + ' · ' + channelDisplayName(placement.channelId) + ' · ' + placement.targetLanguage) +
+              escapeHtmlClient(new Date(placement.publishAt).toLocaleString() + ' · ' + channelDisplayName(placement.channelId) + ' · ' + (placement.marketCountry || 'Default market') + ' · ' + placement.targetLanguage) +
             '</li>'
           ).join('') + '</ul>';
       }
@@ -5011,7 +5165,7 @@ High-risk leverage</textarea>
         if (markerPlan.markerNotes) {
           lines.push('Marker notes: ' + markerPlan.markerNotes);
         }
-        lines.push('Use the selected language for SEO research, SEO brief, longread, and adaptations.');
+        lines.push('Use each selected location for SEO research and its mapped language for SEO brief, longread, and adaptations.');
         lines.push('Final dashboard adaptations must follow this publication plan:');
         markerPlan.placements.forEach((placement) => {
           lines.push(
@@ -5021,6 +5175,8 @@ High-risk leverage</textarea>
               channelDisplayName(placement.channelId) +
               ' | ' +
               placement.channelId +
+              ' | ' +
+              (placement.marketCountry || 'default market') +
               ' | ' +
               placement.targetLanguage,
           );
@@ -5065,7 +5221,7 @@ High-risk leverage</textarea>
         qs('topicHint').value = appState.markerPlan.markerTitle;
         qs('campaignContext').value = buildMarkerPlanCampaignContext(appState.markerPlan);
         if (placements.length > 0) {
-          setLanguagesIfPresent(placements.map((placement) => placement.targetLanguage));
+          setLanguagesIfPresent(placements);
         }
         await fillFromBrandMemory({ silent: true }).catch(() => undefined);
         renderMarkerPlanContext();
@@ -5080,7 +5236,12 @@ High-risk leverage</textarea>
         const markerPlan = appState.markerPlan;
         if (!markerPlan?.placements?.length) return [];
         const runLanguage = normalizeTargetLanguage(run?.market?.language || qs('language')?.value || 'en');
-        return markerPlan.placements.filter((placement) => placement.targetLanguage === runLanguage);
+        const runCountry = normalizeLanguageLookup(run?.market?.country || run?.market?.locationName || '');
+        return markerPlan.placements.filter((placement) => {
+          if (placement.targetLanguage !== runLanguage) return false;
+          if (!placement.marketCountry || !runCountry) return true;
+          return normalizeLanguageLookup(placement.marketCountry) === runCountry;
+        });
       }
 
       function markerPlanBlogPlacementsForRun(run) {
@@ -5451,32 +5612,49 @@ High-risk leverage</textarea>
         }
       }
 
+      function readBrandMemoryAudiences(brandMemory) {
+        const audiences = Array.isArray(brandMemory?.targetAudiences) && brandMemory.targetAudiences.length > 0
+          ? brandMemory.targetAudiences
+          : (brandMemory?.targetAudience ? [brandMemory.targetAudience] : []);
+        return audiences
+          .map((audience) => String(audience || '').trim())
+          .filter((audience, index, values) => audience.length > 0 && values.indexOf(audience) === index);
+      }
+
+      function renderTargetAudienceSelect(brandMemory, options = {}) {
+        const select = qs('targetAudienceSelect');
+        if (!select) return;
+        const previousValue = options.preserveSelection ? select.value : '';
+        const audiences = readBrandMemoryAudiences(brandMemory);
+        if (!audiences.length) {
+          select.innerHTML = '<option value="">No audiences in Brand Memory</option>';
+          select.disabled = true;
+          return;
+        }
+
+        select.innerHTML = audiences
+          .map((audience) => '<option value="' + escapeHtmlClient(audience) + '">' + escapeHtmlClient(audience) + '</option>')
+          .join('');
+        select.disabled = false;
+        if (previousValue && audiences.includes(previousValue)) {
+          select.value = previousValue;
+        }
+      }
+
       async function fillFromBrandMemory(options = {}) {
         const silent = Boolean(options.silent);
         const projectId = qs('projectId').value;
         if (!projectId) {
+          appState.selectedBrandMemory = null;
+          renderTargetAudienceSelect(null);
           if (!silent) showToast('Select a project first');
           return;
         }
 
-        const payload = await fetchJson('/projects/' + encodeURIComponent(projectId) + '/brand-memory');
-        const brandMemory = payload.brandMemory || {};
-        if (brandMemory.brandName) qs('productName').value = brandMemory.brandName;
-        if (brandMemory.productDescription) qs('productDescription').value = brandMemory.productDescription;
-        if (brandMemory.targetAudience) qs('audience').value = brandMemory.targetAudience;
-        if (brandMemory.keyMessage) qs('keyMessage').value = brandMemory.keyMessage;
-        if (brandMemory.defaultCta) qs('cta').value = brandMemory.defaultCta;
-        if (Array.isArray(brandMemory.brandConstraints) && brandMemory.brandConstraints.length > 0) {
-          qs('brandConstraints').value = brandMemory.brandConstraints.join('\\n');
-        }
-        const claimDefaults =
-          Array.isArray(brandMemory.claimsConstraints) && brandMemory.claimsConstraints.length > 0
-            ? brandMemory.claimsConstraints
-            : brandMemory.forbiddenClaims;
-        if (Array.isArray(claimDefaults) && claimDefaults.length > 0) {
-          qs('claimsConstraints').value = claimDefaults.join('\\n');
-        }
-        if (!silent) showToast('Brand memory loaded');
+        const memoryPayload = await fetchJson('/projects/' + encodeURIComponent(projectId) + '/brand-memory');
+        appState.selectedBrandMemory = memoryPayload?.brandMemory || null;
+        renderTargetAudienceSelect(appState.selectedBrandMemory, { preserveSelection: true });
+        if (!silent) showToast('Brand memory will be used from the selected project');
       }
 
       function buildListUrl() {
@@ -5789,11 +5967,11 @@ High-risk leverage</textarea>
           },
           clusters: {
             title: 'Intent Clusters',
-            message: flags.candidateScoring
-              ? 'Group accepted and maybe candidates into intent-based SEO clusters.'
-              : 'Filter and score candidates first.',
+            message: flags.dirtyPool
+              ? 'Cluster and prioritize dirty-pool candidates by user intent.'
+              : 'Build the dirty keyword pool first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.candidateScoring ? 'primary ' : '') + (appState.keywordClusteringLoading ? 'is-loading' : '')) + '" id="clusterKeywordCandidatesBtn" ' + (!flags.candidateScoring || appState.keywordClusteringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordClusteringLoading ? 'Building clusters...' : flags.clusters ? 'Refresh Intent Clusters' : 'Build Intent Clusters') + '</button>',
+              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.keywordClusteringLoading ? 'is-loading' : '')) + '" id="clusterKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.keywordClusteringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordClusteringLoading ? 'Building clusters...' : flags.clusters ? 'Refresh Intent Clusters' : 'Build Intent Clusters') + '</button>',
             progress: appState.keywordClusteringLoading
               ? '<div class="inline-progress"><p>Grouping viable candidates by user intent and preserving evidence.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
@@ -5862,12 +6040,12 @@ High-risk leverage</textarea>
           longreadDraft: {
             title: 'Longread Draft',
             message: flags.finalBrief
-              ? 'AI writes the first full Markdown longread from the final SEO brief, product profile, claims policy, and brand voice.'
+              ? 'AI writes the raw Markdown longread and then automatically runs the AI review loop.'
               : 'Generate the final SEO brief first.',
             button:
-              '<button type="button" class="' + escapeHtmlClient((flags.finalBrief ? 'primary ' : '') + (appState.longreadDraftLoading ? 'is-loading' : '')) + '" id="generateLongreadDraftBtn" ' + (!flags.finalBrief || appState.longreadDraftLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadDraftLoading ? 'Writing draft...' : flags.longreadDraft ? 'Refresh Draft Article' : 'Generate Draft Article') + '</button>',
-            progress: appState.longreadDraftLoading
-              ? '<div class="inline-progress"><p>AI is writing the full Markdown article from the approved brief.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
+              '<button type="button" class="' + escapeHtmlClient((flags.finalBrief ? 'primary ' : '') + (appState.longreadDraftLoading || appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="generateLongreadDraftBtn" ' + (!flags.finalBrief || appState.longreadDraftLoading || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadDraftLoading ? 'Writing raw draft...' : appState.longreadCleanupLoading ? 'Running AI review loop...' : flags.longreadDraft ? 'Refresh Draft + Review Loop' : 'Generate Draft + Review Loop') + '</button>',
+            progress: appState.longreadDraftLoading || appState.longreadCleanupLoading
+              ? '<div class="inline-progress"><p>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Raw draft is saved. AI is reviewing, revising, and rechecking it automatically.' : 'AI is writing the raw Markdown article from the approved brief.') + '</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
               : '',
           },
           longreadCleanup: {
@@ -5955,8 +6133,11 @@ High-risk leverage</textarea>
               ? '<section class="card full"><div class="section-head"><div class="stack"><div class="eyebrow">Output</div><h3>Search Hypotheses From Manual Input</h3></div></div>' + renderKeywordHypotheses(run) + '</section>'
               : '<section class="card full"><div class="empty">No keyword hypotheses generated yet.</div></section>';
           case 'serpGroup':
-            return (flags.serp || flags.candidates)
-              ? renderFirstKeywordSerpPreview(run)
+            return (flags.serp || flags.candidates || flags.dirtyPool)
+              ? [
+                  renderFirstKeywordSerpPreview(run),
+                  renderDirtyKeywordPool(run),
+                ].join('')
               : '<section class="card full"><div class="empty">No SERP snapshots or SERP candidates saved yet.</div></section>';
           case 'serp':
             return flags.serp
@@ -5966,13 +6147,6 @@ High-risk leverage</textarea>
             return flags.candidates
               ? renderFirstKeywordSerpPreview(run)
               : '<section class="card full"><div class="empty">No SERP candidates extracted yet.</div></section>';
-          case 'competitionGroup':
-            return [
-              renderRankedKeywordsUniverse(run),
-              renderCompetitorKeywordMatches(run),
-              renderDirtyKeywordPool(run),
-              renderKeywordCandidateScoring(run),
-            ].join('');
           case 'rankedKeywords':
             return renderRankedKeywordsUniverse(run);
           case 'competitorMatching':
@@ -6060,18 +6234,10 @@ High-risk leverage</textarea>
         },
         {
           label: 'Building dirty keyword pool',
-          step: 'competitionGroup',
+          step: 'serpGroup',
           loadingKey: 'dirtyKeywordPoolLoading',
           path: '/build-dirty-keyword-pool',
           readyFlag: 'dirtyPool',
-          payload: {},
-        },
-        {
-          label: 'Filtering and scoring candidates',
-          step: 'competitionGroup',
-          loadingKey: 'candidateScoringLoading',
-          path: '/score-keyword-candidates',
-          readyFlag: 'candidateScoring',
           payload: {},
         },
         {
@@ -6123,6 +6289,43 @@ High-risk leverage</textarea>
           path: '/generate-final-brief',
           readyFlag: 'finalBrief',
           payload: {},
+        },
+      ];
+      const AUTO_FLOW_ARTICLE_STEPS = [
+        {
+          label: 'Generating raw longread draft',
+          step: 'articleGroup',
+          loadingKey: 'longreadDraftLoading',
+          path: '/generate-longread-draft',
+          readyFlag: 'longreadDraft',
+          payload: {},
+        },
+        {
+          label: 'Running AI article review loop',
+          step: 'articleGroup',
+          loadingKey: 'longreadCleanupLoading',
+          path: '/cleanup-longread-article',
+          readyFlag: 'longreadCleanup',
+          payload: {},
+        },
+        {
+          label: 'Packaging reviewed article',
+          step: 'articleGroup',
+          loadingKey: 'longreadPackageLoading',
+          path: '/package-longread-article',
+          readyFlag: 'longreadPackage',
+          payload: {},
+        },
+        {
+          label: 'Creating dashboard adaptations',
+          step: 'articleGroup',
+          loadingKey: 'longreadAdaptationsLoading',
+          path: '/create-longread-adaptations',
+          readyFlag: 'longreadAdaptations',
+          payload: () => {
+            const channels = markerPlanChannelsForRun(appState.selectedRun || {});
+            return channels.length ? { channels } : {};
+          },
         },
       ];
 
@@ -6266,7 +6469,11 @@ High-risk leverage</textarea>
       }
 
       function clearAutoFlowStepLoading() {
-        [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS].forEach((stepConfig) => {
+        [
+          ...AUTO_FLOW_STEPS,
+          ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS,
+          ...AUTO_FLOW_ARTICLE_STEPS,
+        ].forEach((stepConfig) => {
           appState[stepConfig.loadingKey] = false;
         });
       }
@@ -6366,24 +6573,65 @@ High-risk leverage</textarea>
         }
       }
 
+      async function autoScheduleLatestRunMarkerPlan(runId) {
+        const run = await fetchRunSnapshot(runId);
+        const adaptationArtifact = findArtifact(run, 'longread_adaptations_export');
+        const adaptationPayload = adaptationArtifact?.payload || null;
+        if (!adaptationPayload?.articleId) {
+          return;
+        }
+
+        const scheduleResult = await autoScheduleMarkerPlanAdaptations(run, adaptationPayload);
+        if (
+          scheduleResult.scheduled > 0 ||
+          scheduleResult.skipped > 0 ||
+          scheduleResult.failed > 0
+        ) {
+          pushAutoFlowDebugEvent({
+            status: scheduleResult.failed > 0 ? 'error' : 'done',
+            label: 'Calendar scheduling',
+            path: '/publishing/*/schedule',
+            message:
+              'scheduled=' +
+              String(scheduleResult.scheduled) +
+              ', skipped=' +
+              String(scheduleResult.skipped) +
+              ', failed=' +
+              String(scheduleResult.failed),
+          });
+          showToast(
+            'Calendar scheduled ' +
+              String(scheduleResult.scheduled) +
+              ', skipped ' +
+              String(scheduleResult.skipped) +
+              ', failed ' +
+              String(scheduleResult.failed),
+          );
+        }
+        await loadRuns();
+        await selectRun(runId, false);
+      }
+
       async function runAutoFlowUntilClusterSelection(runId) {
-        await runAutoFlowSequence(runId, [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS], {
-          title: 'Running to final brief',
-          description: 'The UI is calling the same step endpoints automatically, including cluster selection, OnPage evidence, and final brief generation.',
-          finalStep: 'finalBrief',
+        await runAutoFlowSequence(runId, [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS, ...AUTO_FLOW_ARTICLE_STEPS], {
+          title: 'Running full SEO brief and article flow',
+          description: 'The UI is calling all step endpoints automatically: SEO brief, longread draft, AI review loop, final package, adaptations, and calendar scheduling.',
+          finalStep: 'articleGroup',
           startedToast: 'Auto workflow started',
-          finishedToast: 'Final SEO brief generated automatically',
+          finishedToast: 'SEO brief, article, and adaptations generated automatically',
         });
+        await autoScheduleLatestRunMarkerPlan(runId);
       }
 
       async function runAutoFlowToFinalBrief(runId) {
-        await runAutoFlowSequence(runId, AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS, {
-          title: 'Running from selected topic to final brief',
-          description: 'The UI will fetch selected-cluster OnPage evidence, synthesize requirements, and generate the final SEO brief.',
-          finalStep: 'finalBrief',
+        await runAutoFlowSequence(runId, [...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS, ...AUTO_FLOW_ARTICLE_STEPS], {
+          title: 'Running from selected topic to final article',
+          description: 'The UI will generate OnPage evidence, final SEO brief, reviewed longread, final package, adaptations, and calendar schedule.',
+          finalStep: 'articleGroup',
           startedToast: 'Auto workflow resumed after topic selection',
-          finishedToast: 'Final SEO brief generated automatically',
+          finishedToast: 'Final article generated automatically',
         });
+        await autoScheduleLatestRunMarkerPlan(runId);
       }
 
       async function runAutoFlowHeadless(runId, onProgress) {
@@ -6487,7 +6735,7 @@ High-risk leverage</textarea>
           serp_research: 'SERP domains',
           domain_metrics_research: 'Domain metrics',
           onpage_research: 'OnPage evidence',
-          keyword_triage: 'Filtering',
+          keyword_triage: 'Legacy filtering',
           clustering: 'Clusters',
           cluster_scoring: 'Product Fit',
           cluster_selection: 'Selection',
@@ -7203,7 +7451,7 @@ High-risk leverage</textarea>
           }
         });
         qs('generateLongreadDraftBtn')?.addEventListener('click', async () => {
-          if (appState.longreadDraftLoading) return;
+          if (appState.longreadDraftLoading || appState.longreadCleanupLoading) return;
           appState.longreadDraftLoading = true;
           renderDetail(run);
           try {
@@ -7217,16 +7465,33 @@ High-risk leverage</textarea>
                 body: JSON.stringify({}),
               },
             );
-            showToast('Longread draft generated');
             appState.longreadDraftLoading = false;
-            appState.activeSeoStep = 'longreadDraft';
+            appState.longreadCleanupLoading = true;
+            appState.activeSeoStep = 'longreadCleanup';
+            await loadRuns();
+            await selectRun(run.id, false);
+            showToast('Raw draft saved; running AI review loop');
+            await fetchJson(
+              '/seo-briefing/runs/' +
+                encodeURIComponent(run.id) +
+                '/cleanup-longread-article',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+              },
+            );
+            showToast('Longread draft generated and reviewed');
+            appState.longreadCleanupLoading = false;
+            appState.activeSeoStep = 'longreadCleanup';
             await loadRuns();
             await selectRun(run.id, false);
           } catch (error) {
             appState.longreadDraftLoading = false;
+            appState.longreadCleanupLoading = false;
             renderDetail(run);
             showToast(
-              error instanceof Error ? error.message : 'Failed to generate longread draft',
+              error instanceof Error ? error.message : 'Failed to generate and review longread draft',
             );
           }
         });
@@ -7497,16 +7762,17 @@ High-risk leverage</textarea>
               code: language.code,
               name: language.name,
               country: language.country,
+              locationName: language.locationName,
             })),
           });
           setLaunchStatus(
             selectedLanguages.length > 1
-              ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs in parallel...'
+              ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs by location...'
               : 'Creating one SEO brief run...',
           );
           showToast(
             selectedLanguages.length > 1
-              ? 'Creating ' + String(selectedLanguages.length) + ' SEO brief runs'
+              ? 'Creating ' + String(selectedLanguages.length) + ' market runs'
               : 'Creating SEO brief run',
           );
           if (selectedLanguages.length > 1) {
@@ -7514,7 +7780,7 @@ High-risk leverage</textarea>
             return;
           }
           appendClientDevLog('Creating single SEO brief run');
-          const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_LANGUAGE_PRESETS[0], workflowMode);
+          const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_MARKET_PRESETS[0], workflowMode);
           appendClientDevLog('Create SEO brief run returned', result);
           setLaunchStatus('Run created: ' + result.runId);
           appState.selectedRunId = result.runId;
@@ -7556,6 +7822,7 @@ High-risk leverage</textarea>
           serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
           requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
           coverImageUrl: qs('blogCoverImageUrl').value.trim() || null,
+          promptInstructionOverrides: readPromptInstructionOverrides(),
           deepSeekPricing: {
             inputUsdPerMillionTokens: Number(qs('deepSeekInputUsdPerMillionTokens').value || '0'),
             outputUsdPerMillionTokens: Number(qs('deepSeekOutputUsdPerMillionTokens').value || '0'),
@@ -7563,25 +7830,18 @@ High-risk leverage</textarea>
           market: {
             country: country || qs('country').value,
             language,
+            locationName: country || qs('country').value,
           },
-          audience: qs('audience').value,
+          audience: qs('targetAudienceSelect')?.value || null,
           userPains: parseListInput('userPains'),
           userScenarios: parseListInput('userScenarios'),
           keywordExpansionPrompt: qs('keywordExpansionPrompt').value || null,
-          product: {
-            name: qs('productName').value,
-            description: qs('productDescription').value,
-          },
-          keyMessage: qs('keyMessage').value || null,
-          brandConstraints: parseListInput('brandConstraints'),
-          claimsConstraints: parseListInput('claimsConstraints'),
           preferredAngle: qs('preferredAngle').value || null,
           excludedTopics: parseListInput('excludedTopics'),
           campaignContext: qs('campaignContext').value || null,
           audienceShift: qs('audienceBefore').value && qs('audienceAfter').value
             ? { before: qs('audienceBefore').value, after: qs('audienceAfter').value }
             : null,
-          cta: qs('cta').value || null,
           seoProductBalance: {
             seoWeight: Number(qs('seoWeight').value || '0.5'),
             productWeight: Number(qs('productWeight').value || '0.5'),
@@ -7591,7 +7851,7 @@ High-risk leverage</textarea>
 
       async function createSeoBriefRunForLanguage(language, workflowMode) {
         const preset = resolveRunLanguagePreset(language);
-        const payload = buildCreateRunPayload(preset.name, workflowMode, preset.country);
+        const payload = buildCreateRunPayload(preset.name, workflowMode, preset.locationName || preset.country);
         appendClientDevLog('POST /seo-briefing/runs payload ready', summarizeCreateRunPayload(payload));
         return fetchJson('/seo-briefing/runs', {
           method: 'POST',
@@ -7610,7 +7870,10 @@ High-risk leverage</textarea>
         const batchItems = languages.map((language) => ({
           code: language.code,
           country: language.country,
+          locationName: language.locationName || language.country,
           label: language.label,
+          languageLabel: language.languageLabel || language.label,
+          marketKey: language.marketKey || language.code,
           name: language.name,
           runId: null,
           readyForFinalize: false,
@@ -7621,7 +7884,7 @@ High-risk leverage</textarea>
         }));
         appState.languageBatchItems = batchItems;
         appState.languageBatchWorkflowMode = workflowMode;
-        setLaunchStatus('Language batch queued: ' + batchItems.map((item) => item.label + ' → ' + item.country).join(', '));
+        setLaunchStatus('Location batch queued: ' + batchItems.map((item) => item.country + ' → ' + item.languageLabel).join(', '));
         renderLanguageBatchProgress();
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         showToast('Creating ' + String(batchItems.length) + ' language runs');
@@ -7632,10 +7895,10 @@ High-risk leverage</textarea>
           item.message = 'Creating run';
           renderLanguageBatchProgress();
           try {
-            setLaunchStatus('Sending create-run request for ' + item.label + ' → ' + item.country);
+            setLaunchStatus('Sending create-run request for ' + item.country + ' → ' + item.languageLabel);
             const result = await createSeoBriefRunForLanguage(item, workflowMode);
             item.runId = result.runId;
-            setLaunchStatus('Run created for ' + item.label + ': ' + result.runId);
+            setLaunchStatus('Run created for ' + item.country + ': ' + result.runId);
             setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
             item.status = workflowMode === 'auto_until_selection' ? 'running' : 'done';
             item.stage = workflowMode === 'auto_until_selection' ? 'Auto flow' : 'Run created';
@@ -7674,8 +7937,8 @@ High-risk leverage</textarea>
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         const failedCount = batchItems.filter((item) => item.status === 'failed').length;
         showToast(failedCount > 0
-          ? 'Language batch finished with ' + String(failedCount) + ' failed run(s)'
-          : 'Language batch finished');
+          ? 'Location batch finished with ' + String(failedCount) + ' failed run(s)'
+          : 'Location batch finished');
       }
 
       async function postRunAction(runId, path, payload = {}) {
@@ -7828,11 +8091,11 @@ High-risk leverage</textarea>
         if (stage.includes('onpage')) {
           return 'onPageGroup';
         }
-        if (stage.includes('cluster') || stage.includes('product fit') || stage.includes('selecting')) {
+        if (stage.includes('cluster') || stage.includes('product fit') || stage.includes('selecting') || stage.includes('filtering') || stage.includes('scoring')) {
           return 'clusterGroup';
         }
-        if (stage.includes('competitor') || stage.includes('dirty') || stage.includes('filtering') || stage.includes('scoring')) {
-          return 'competitionGroup';
+        if (stage.includes('competitor') || stage.includes('dirty')) {
+          return 'serpGroup';
         }
         if (stage.includes('serp')) {
           return 'serpGroup';
@@ -7900,10 +8163,10 @@ High-risk leverage</textarea>
           '<section class="' + escapeHtmlClient(className) + '">' +
             '<div class="batch-workflow-head">' +
               '<div>' +
-                '<div class="eyebrow">Language Workflow</div>' +
-                '<h4>' + escapeHtmlClient(item.label + ' (' + item.code + ')') + '</h4>' +
+                '<div class="eyebrow">Location Workflow</div>' +
+                '<h4>' + escapeHtmlClient(item.country + ' · ' + (item.languageLabel || item.label) + ' (' + item.code + ')') + '</h4>' +
                 '<div class="batch-workflow-meta">' +
-                  '<span>DataForSEO: ' + escapeHtmlClient(item.country) + '</span>' +
+                  '<span>DataForSEO: ' + escapeHtmlClient(item.locationName || item.country) + '</span>' +
                   (item.runId ? '<span class="mono">' + escapeHtmlClient(item.runId) + '</span>' : '<span>No run yet</span>') +
                 '</div>' +
               '</div>' +
@@ -7940,7 +8203,7 @@ High-risk leverage</textarea>
           items.every((item) => item.status === 'done' && item.runId && item.readyForFinalize);
         node.hidden = false;
         node.innerHTML =
-          '<div class="inline-meta"><strong>Language batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to final brief' : 'create runs only') + '</span></div>' +
+          '<div class="inline-meta"><strong>Location batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to final brief' : 'create runs only') + '</span></div>' +
           '<p>' + escapeHtmlClient(String(counts.running) + ' running / ' + String(counts.queued) + ' queued / ' + String(counts.done) + ' done / ' + String(counts.failed) + ' failed') + '</p>' +
           '<div class="batch-progress-list">' + items.map(renderLanguageBatchItem).join('') + '</div>' +
           (canFinalize
@@ -8041,6 +8304,7 @@ High-risk leverage</textarea>
         syncClientDevPanelOpenState();
         updateClientDevStatus();
         appendClientDevLog('UI boot started', initialState);
+        hydrateMarketSelect();
         bindLaunchFormActions();
         appendClientDevLog('Launch form actions bound');
         renderLaunchPromptInventory();
@@ -8079,6 +8343,11 @@ High-risk leverage</textarea>
           hasMarkerPlan: Boolean(appState.markerPlan),
           placements: appState.markerPlan?.placements?.length || 0,
         });
+        if (qs('projectId')?.value) {
+          await fillFromBrandMemory({ silent: true });
+        } else {
+          renderTargetAudienceSelect(null);
+        }
         await loadRuns();
         appendClientDevLog('Runs loaded', { count: appState.runs.length });
       }

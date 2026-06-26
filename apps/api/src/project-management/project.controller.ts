@@ -62,6 +62,12 @@ const CreateProjectMarkerPlacementSchema = v.object({
   markerId: v.pipe(v.string(), v.trim(), v.minLength(1)),
   channelId: v.pipe(v.string(), v.trim(), v.minLength(1)),
   targetLanguage: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(16)),
+  marketCountry: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120))),
+  ),
+  marketLocationName: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120))),
+  ),
   publishAt: v.pipe(v.string(), v.trim(), v.minLength(1)),
 });
 
@@ -98,6 +104,9 @@ const UpdateProjectBrandMemorySchema = v.object({
   brandName: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(120)))),
   productDescription: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
   targetAudience: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(2000)))),
+  targetAudiences: v.optional(
+    v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
+  ),
   keyMessage: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(4000)))),
   defaultCta: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.maxLength(1000)))),
   brandConstraints: v.optional(
@@ -238,6 +247,7 @@ function normalizeBrandMemoryUpdate(dto: UpdateProjectBrandMemoryDto): Partial<B
     ...(dto.brandName !== undefined ? { brandName: dto.brandName } : {}),
     ...(dto.productDescription !== undefined ? { productDescription: dto.productDescription } : {}),
     ...(dto.targetAudience !== undefined ? { targetAudience: dto.targetAudience } : {}),
+    ...(dto.targetAudiences !== undefined ? { targetAudiences: dto.targetAudiences ?? [] } : {}),
     ...(dto.keyMessage !== undefined ? { keyMessage: dto.keyMessage } : {}),
     ...(dto.defaultCta !== undefined ? { defaultCta: dto.defaultCta } : {}),
     ...(dto.brandConstraints !== undefined ? { brandConstraints: dto.brandConstraints ?? [] } : {}),
@@ -937,6 +947,8 @@ export class ProjectController {
         dto.channelId,
         dto.targetLanguage,
         new Date(dto.publishAt),
+        dto.marketCountry,
+        dto.marketLocationName,
       ),
     );
   }

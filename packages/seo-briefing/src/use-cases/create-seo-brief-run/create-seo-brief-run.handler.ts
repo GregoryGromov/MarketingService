@@ -55,6 +55,7 @@ interface NormalizedCreateSeoBriefRunInput {
   userPains: string[];
   userScenarios: string[];
   keywordExpansionPrompt: string;
+  promptInstructionOverrides: Record<string, string>;
   productName: string;
   productDescription: string;
   keyMessage: string | null;
@@ -63,6 +64,10 @@ interface NormalizedCreateSeoBriefRunInput {
   knownCompetitorsExclude: string[];
   brandConstraints: string[];
   claimsConstraints: string[];
+  approvedFacts: string[];
+  forbiddenClaims: string[];
+  bannedPhrases: string[];
+  requiredPhrases: string[];
   preferredAngle: string | null;
   excludedTopics: string[];
   campaignContext: string | null;
@@ -111,6 +116,18 @@ function normalizeRequiredInputText(value?: string | null): string {
 function normalizeTextList(value?: string[] | null): string[] {
   return Array.from(
     new Set((value ?? []).map((item) => item.trim()).filter((item) => item.length > 0)),
+  );
+}
+
+function normalizePromptInstructionOverrides(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, item]) => [key.trim(), typeof item === 'string' ? item.trim() : ''] as const)
+      .filter(([key, item]) => key.length > 0 && item.length > 0),
   );
 }
 
@@ -206,14 +223,21 @@ function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBrief
     userPains: normalizeTextList(input.userPains),
     userScenarios: normalizeTextList(input.userScenarios),
     keywordExpansionPrompt: resolveSeoBriefKeywordExpansionPrompt(input.keywordExpansionPrompt),
-    productName: normalizeText(input.product.name) ?? '',
-    productDescription: normalizeText(input.product.description) ?? '',
+    promptInstructionOverrides: normalizePromptInstructionOverrides(
+      input.promptInstructionOverrides,
+    ),
+    productName: normalizeText(input.product?.name) ?? '',
+    productDescription: normalizeText(input.product?.description) ?? '',
     keyMessage: normalizeText(input.keyMessage),
     knownCompetitorsMustInclude: normalizeTextList(input.knownCompetitors?.mustInclude),
     knownCompetitorsOptional: normalizeTextList(input.knownCompetitors?.optional),
     knownCompetitorsExclude: normalizeTextList(input.knownCompetitors?.exclude),
     brandConstraints: normalizeTextList(input.brandConstraints),
     claimsConstraints: normalizeTextList(input.claimsConstraints),
+    approvedFacts: normalizeTextList(input.approvedFacts),
+    forbiddenClaims: normalizeTextList(input.forbiddenClaims),
+    bannedPhrases: normalizeTextList(input.bannedPhrases),
+    requiredPhrases: normalizeTextList(input.requiredPhrases),
     preferredAngle: normalizeText(input.preferredAngle),
     excludedTopics: normalizeTextList(input.excludedTopics),
     campaignContext: normalizeText(input.campaignContext),
@@ -232,15 +256,16 @@ function createInputBackedBrandMemorySnapshot(
     brandName: input.productName,
     productDescription: input.productDescription,
     targetAudience: input.audience,
+    targetAudiences: input.audience ? [input.audience] : [],
     keyMessage: input.keyMessage,
     defaultCta: input.cta,
     brandConstraints: input.brandConstraints,
     claimsConstraints: input.claimsConstraints,
-    approvedFacts: [],
-    forbiddenClaims: [],
+    approvedFacts: input.approvedFacts,
+    forbiddenClaims: input.forbiddenClaims,
     glossary: {},
-    bannedPhrases: [],
-    requiredPhrases: [],
+    bannedPhrases: input.bannedPhrases,
+    requiredPhrases: input.requiredPhrases,
     brandDocs: [],
     adaptationPromptRules: null,
     seoCompetitors: {
@@ -266,6 +291,11 @@ function mergeBrandMemorySnapshot(
     productDescription:
       source.brandMemorySnapshot.productDescription ?? inputBackedSnapshot.productDescription,
     targetAudience: source.brandMemorySnapshot.targetAudience ?? inputBackedSnapshot.targetAudience,
+    targetAudiences:
+      source.brandMemorySnapshot.targetAudiences ??
+      (source.brandMemorySnapshot.targetAudience
+        ? [source.brandMemorySnapshot.targetAudience]
+        : inputBackedSnapshot.targetAudiences),
     keyMessage: source.brandMemorySnapshot.keyMessage ?? inputBackedSnapshot.keyMessage,
     defaultCta: source.brandMemorySnapshot.defaultCta ?? inputBackedSnapshot.defaultCta,
     brandConstraints:
@@ -290,28 +320,24 @@ function applyBrandMemoryDefaults(
   input: NormalizedCreateSeoBriefRunInput,
   brandMemorySnapshot: SeoBriefBrandMemorySnapshot,
 ): NormalizedCreateSeoBriefRunInput {
-  const audience = input.audience || brandMemorySnapshot.targetAudience || '';
-  const productName = input.productName || brandMemorySnapshot.brandName || '';
+  const audience =
+    input.audience ||
+    brandMemorySnapshot.targetAudience ||
+    brandMemorySnapshot.targetAudiences?.[0] ||
+    '';
+  const productName = brandMemorySnapshot.brandName || input.productName || '';
   const productDescription =
-    input.productDescription || brandMemorySnapshot.productDescription || '';
+    brandMemorySnapshot.productDescription || input.productDescription || '';
 
   return {
     ...input,
     audience: normalizeRequiredText(audience),
     productName: normalizeRequiredText(productName),
     productDescription: normalizeRequiredText(productDescription),
-    keyMessage: input.keyMessage ?? brandMemorySnapshot.keyMessage ?? null,
-    cta: input.cta ?? brandMemorySnapshot.defaultCta ?? null,
-    brandConstraints:
-      input.brandConstraints.length > 0
-        ? input.brandConstraints
-        : (brandMemorySnapshot.brandConstraints ?? []),
-    claimsConstraints:
-      input.claimsConstraints.length > 0
-        ? input.claimsConstraints
-        : (brandMemorySnapshot.claimsConstraints?.length ?? 0) > 0
-          ? (brandMemorySnapshot.claimsConstraints ?? [])
-          : brandMemorySnapshot.forbiddenClaims,
+    keyMessage: brandMemorySnapshot.keyMessage ?? input.keyMessage ?? null,
+    cta: brandMemorySnapshot.defaultCta ?? input.cta ?? null,
+    brandConstraints: brandMemorySnapshot.brandConstraints ?? input.brandConstraints,
+    claimsConstraints: brandMemorySnapshot.claimsConstraints ?? input.claimsConstraints,
   };
 }
 
@@ -346,6 +372,7 @@ function createNormalizedInputArtifactPayload(
     userPains: input.userPains,
     userScenarios: input.userScenarios,
     keywordExpansionPrompt: input.keywordExpansionPrompt,
+    promptInstructionOverrides: input.promptInstructionOverrides as unknown as SeoBriefJsonValue,
     product: {
       name: input.productName,
       description: input.productDescription,
@@ -358,6 +385,10 @@ function createNormalizedInputArtifactPayload(
     },
     brandConstraints: input.brandConstraints,
     claimsConstraints: input.claimsConstraints,
+    approvedFacts: input.approvedFacts,
+    forbiddenClaims: input.forbiddenClaims,
+    bannedPhrases: input.bannedPhrases,
+    requiredPhrases: input.requiredPhrases,
     preferredAngle: input.preferredAngle,
     excludedTopics: input.excludedTopics,
     campaignContext: input.campaignContext,
@@ -485,6 +516,10 @@ function createSeoProductContextArtifactPayload(
     marketerConstraints: {
       brandConstraints: input.brandConstraints,
       claimsConstraints: input.claimsConstraints,
+      approvedFacts: input.approvedFacts,
+      forbiddenClaims: input.forbiddenClaims,
+      bannedPhrases: input.bannedPhrases,
+      requiredPhrases: input.requiredPhrases,
       excludedTopics: input.excludedTopics,
     },
     brandMemoryContext: {
@@ -545,6 +580,11 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
     language: input.language.trim().toLowerCase(),
     audience: input.audience.trim().toLowerCase(),
     keywordExpansionPrompt: input.keywordExpansionPrompt.trim().toLowerCase(),
+    promptInstructionOverrides: Object.fromEntries(
+      Object.entries(input.promptInstructionOverrides)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, value]) => [key, value.trim().toLowerCase()]),
+    ),
     productName: input.productName.trim().toLowerCase(),
     productDescription: input.productDescription.trim().toLowerCase(),
     keyMessage: input.keyMessage?.trim().toLowerCase() ?? null,
@@ -564,6 +604,10 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
     competitorKeywordsJsonId: input.competitorKeywordsJsonId?.trim().toLowerCase() ?? null,
     brandConstraints: input.brandConstraints.map((item) => item.trim().toLowerCase()),
     claimsConstraints: input.claimsConstraints.map((item) => item.trim().toLowerCase()),
+    approvedFacts: input.approvedFacts.map((item) => item.trim().toLowerCase()),
+    forbiddenClaims: input.forbiddenClaims.map((item) => item.trim().toLowerCase()),
+    bannedPhrases: input.bannedPhrases.map((item) => item.trim().toLowerCase()),
+    requiredPhrases: input.requiredPhrases.map((item) => item.trim().toLowerCase()),
     preferredAngle: input.preferredAngle?.trim().toLowerCase() ?? null,
     excludedTopics: input.excludedTopics.map((item) => item.trim().toLowerCase()),
     campaignContext: input.campaignContext?.trim().toLowerCase() ?? null,
@@ -595,6 +639,16 @@ function extractCampaignContextFromArtifacts(artifacts: SeoBriefArtifact[]): str
   return typeof payload.campaignContext === 'string' && payload.campaignContext.trim()
     ? payload.campaignContext.trim()
     : null;
+}
+
+function extractPromptInstructionOverridesFromPayload(
+  payload: SeoBriefJsonValue | null,
+): Record<string, string> {
+  if (!payload || Array.isArray(payload) || typeof payload !== 'object') {
+    return {};
+  }
+
+  return normalizePromptInstructionOverrides(payload.promptInstructionOverrides);
 }
 
 function extractNormalizedInputPayload(artifacts: SeoBriefArtifact[]): SeoBriefJsonValue | null {
@@ -899,6 +953,8 @@ export class CreateSeoBriefRunHandler
               'competitorKeywordsJsonId',
             ),
             keywordExpansionPrompt: extractKeywordExpansionPromptFromArtifacts(candidateArtifacts),
+            promptInstructionOverrides:
+              extractPromptInstructionOverridesFromPayload(candidateInputPayload),
             productName: candidate.productName,
             productDescription: candidate.productDescription,
             keyMessage: candidate.keyMessage,
@@ -910,6 +966,16 @@ export class CreateSeoBriefRunHandler
             claimsConstraints: extractStringArrayFromPayload(
               candidateInputPayload,
               'claimsConstraints',
+            ),
+            approvedFacts: extractStringArrayFromPayload(candidateInputPayload, 'approvedFacts'),
+            forbiddenClaims: extractStringArrayFromPayload(
+              candidateInputPayload,
+              'forbiddenClaims',
+            ),
+            bannedPhrases: extractStringArrayFromPayload(candidateInputPayload, 'bannedPhrases'),
+            requiredPhrases: extractStringArrayFromPayload(
+              candidateInputPayload,
+              'requiredPhrases',
             ),
             preferredAngle: extractTextFromPayload(candidateInputPayload, 'preferredAngle'),
             excludedTopics: extractStringArrayFromPayload(candidateInputPayload, 'excludedTopics'),

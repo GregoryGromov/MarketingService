@@ -5,8 +5,8 @@ export interface CreateSeoBriefRunMarketInput {
 }
 
 export interface CreateSeoBriefRunProductInput {
-  name: string;
-  description: string;
+  name?: string | null;
+  description?: string | null;
 }
 
 export interface CreateSeoBriefRunAudienceShiftInput {
@@ -47,15 +47,20 @@ export interface CreateSeoBriefRunInput {
   deepSeekPricing?: CreateSeoBriefRunDeepSeekPricingInput | null;
   competitorKeywordsJsonId?: string | null;
   market: CreateSeoBriefRunMarketInput;
-  audience: string;
+  audience?: string | null;
   userPains?: string[] | null;
   userScenarios?: string[] | null;
-  product: CreateSeoBriefRunProductInput;
+  product?: CreateSeoBriefRunProductInput | null;
   keywordExpansionPrompt?: string | null;
+  promptInstructionOverrides?: Record<string, string> | null;
   keyMessage?: string | null;
   knownCompetitors?: CreateSeoBriefRunKnownCompetitorsInput | null;
   brandConstraints?: string[] | null;
   claimsConstraints?: string[] | null;
+  approvedFacts?: string[] | null;
+  forbiddenClaims?: string[] | null;
+  bannedPhrases?: string[] | null;
+  requiredPhrases?: string[] | null;
   preferredAngle?: string | null;
   excludedTopics?: string[] | null;
   campaignContext?: string | null;

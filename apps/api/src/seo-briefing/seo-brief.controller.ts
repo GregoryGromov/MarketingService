@@ -73,6 +73,8 @@ import {
   type SeoBriefJsonObject,
   type SeoBriefJsonValue,
   SeoBriefKeywordHypothesesNotFoundError,
+  SeoBriefLlmCallLog,
+  SeoBriefLlmLogRepository,
   SeoBriefProjectNotFoundError,
   SeoBriefRunAttemptLimitError,
   SeoBriefRunBusyError,
@@ -98,6 +100,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandBus, type ICommand, QueryBus } from '@nestjs/cqrs';
 import { ValibotPipe } from '../infrastructure/common/valibot-validation.pipe';
 import {
@@ -183,7 +186,97 @@ export class SeoBriefController {
     private readonly ai: SeoBriefAiPort,
     @Inject(SeoBriefArtifactRepository)
     private readonly artifactRepository: SeoBriefArtifactRepository,
+    @Inject(SeoBriefLlmLogRepository)
+    private readonly llmLogRepository: SeoBriefLlmLogRepository,
+    @Inject(ConfigService)
+    private readonly config: ConfigService,
   ) {}
+
+  private async startAdaptationLlmLog(params: {
+    adaptationId: AdaptationId;
+    articleContent: string;
+    articleId: ArticleId;
+    channel: NormalizedAdaptationChannel;
+    promptInstructions: string;
+    runId: SeoBriefRunId;
+  }): Promise<SeoBriefLlmCallLog> {
+    const log = SeoBriefLlmCallLog.start({
+      runId: params.runId,
+      stepId: null,
+      operation: `generateLongreadAdaptation:${params.channel.channelId}`,
+      model: resolveEditorialDeepSeekModel(this.config),
+      promptVersion: 'editorial.generate-adaptation.v1',
+      requestPayload: {
+        articleId: params.articleId,
+        adaptationId: params.adaptationId,
+        channelId: params.channel.channelId,
+        displayName: params.channel.displayName,
+        sourceContentChars: params.articleContent.length,
+        promptInstructionsChars: params.promptInstructions.length,
+      },
+    });
+    await this.llmLogRepository.save(log);
+    return log;
+  }
+
+  private async completeAdaptationLlmLog(
+    logId: SeoBriefLlmCallLog['id'],
+    params: {
+      adaptedContent: string;
+      articleContent: string;
+      normalizedInputPayload: SeoBriefJsonObject | null;
+    },
+  ): Promise<void> {
+    const log = await this.llmLogRepository.findById(logId);
+    if (!log) {
+      return;
+    }
+
+    const tokenUsageInput = estimateTokenCount(params.articleContent);
+    const tokenUsageOutput = estimateTokenCount(params.adaptedContent);
+    log.complete({
+      responsePayload: {
+        adaptedContentPreview: createPreview(params.adaptedContent),
+        adaptedContentChars: params.adaptedContent.length,
+      },
+      tokenUsageInput,
+      tokenUsageOutput,
+      estimatedCost: estimateDeepSeekCost(
+        tokenUsageInput,
+        tokenUsageOutput,
+        readDeepSeekPricing(params.normalizedInputPayload),
+      ),
+    });
+    await this.llmLogRepository.save(log);
+  }
+
+  private async failAdaptationLlmLog(
+    logId: SeoBriefLlmCallLog['id'],
+    params: {
+      articleContent: string;
+      error: unknown;
+      normalizedInputPayload: SeoBriefJsonObject | null;
+    },
+  ): Promise<void> {
+    const log = await this.llmLogRepository.findById(logId);
+    if (!log || log.status !== 'running') {
+      return;
+    }
+
+    const tokenUsageInput = estimateTokenCount(params.articleContent);
+    log.fail({
+      errorMessage:
+        params.error instanceof Error ? params.error.message : 'Adaptation generation failed',
+      tokenUsageInput,
+      tokenUsageOutput: null,
+      estimatedCost: estimateDeepSeekCost(
+        tokenUsageInput,
+        0,
+        readDeepSeekPricing(params.normalizedInputPayload),
+      ),
+    });
+    await this.llmLogRepository.save(log);
+  }
 
   @Get('health')
   getHealth(): { module: 'seo-briefing'; status: 'ok' } {
@@ -201,6 +294,7 @@ export class SeoBriefController {
     return this.ai.extractContext({
       contextText: dto.contextText,
       modelMode: dto.aiModelMode ?? null,
+      promptInstructionOverrides: dto.promptInstructionOverrides ?? null,
       timeoutMs: dto.requestTimeoutMs ?? null,
     });
   }
@@ -813,9 +907,32 @@ export class SeoBriefController {
           promptInstructions,
         ),
       )) as AdaptationId;
-      const adaptedContent = (await this.commandBus.execute(
-        new GenerateAdaptationCommand(articleId, adaptationId),
-      )) as string;
+      const adaptationLog = await this.startAdaptationLlmLog({
+        runId: run.id as SeoBriefRunId,
+        articleId,
+        adaptationId,
+        channel,
+        articleContent,
+        promptInstructions,
+      });
+      let adaptedContent = '';
+      try {
+        adaptedContent = (await this.commandBus.execute(
+          new GenerateAdaptationCommand(articleId, adaptationId),
+        )) as string;
+        await this.completeAdaptationLlmLog(adaptationLog.id, {
+          articleContent,
+          adaptedContent,
+          normalizedInputPayload,
+        });
+      } catch (error) {
+        await this.failAdaptationLlmLog(adaptationLog.id, {
+          error,
+          articleContent,
+          normalizedInputPayload,
+        });
+        throw error;
+      }
       await this.commandBus.execute(new ApproveAdaptationCommand(articleId, adaptationId));
       adaptations.push({
         adaptationId,
@@ -1085,6 +1202,59 @@ interface NormalizedAdaptationChannel {
   channelId: string;
   displayName: string;
   promptInstructions: string | null;
+}
+
+interface DeepSeekPricing {
+  inputUsdPerMillionTokens: number;
+  outputUsdPerMillionTokens: number;
+}
+
+function resolveEditorialDeepSeekModel(config: ConfigService): string {
+  return (
+    config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
+    config.get<string>('DEEPSEEK_CONTENT_MODEL')?.trim() ||
+    config.get<string>('DEEPSEEK_MODEL')?.trim() ||
+    'deepseek-v4-pro'
+  );
+}
+
+function estimateTokenCount(value: string): number {
+  return Math.max(1, Math.ceil(value.length / 4));
+}
+
+function readDeepSeekPricing(payload: SeoBriefJsonObject | null): DeepSeekPricing | null {
+  const pricing = readSeoBriefObject(payload?.deepSeekPricing);
+  const inputUsdPerMillionTokens = pricing?.inputUsdPerMillionTokens;
+  const outputUsdPerMillionTokens = pricing?.outputUsdPerMillionTokens;
+  if (
+    typeof inputUsdPerMillionTokens !== 'number' ||
+    !Number.isFinite(inputUsdPerMillionTokens) ||
+    inputUsdPerMillionTokens < 0 ||
+    typeof outputUsdPerMillionTokens !== 'number' ||
+    !Number.isFinite(outputUsdPerMillionTokens) ||
+    outputUsdPerMillionTokens < 0
+  ) {
+    return null;
+  }
+
+  return { inputUsdPerMillionTokens, outputUsdPerMillionTokens };
+}
+
+function estimateDeepSeekCost(
+  inputTokens: number,
+  outputTokens: number,
+  pricing: DeepSeekPricing | null,
+): number | null {
+  if (!pricing) {
+    return null;
+  }
+
+  return Number(
+    (
+      (inputTokens / 1_000_000) * pricing.inputUsdPerMillionTokens +
+      (outputTokens / 1_000_000) * pricing.outputUsdPerMillionTokens
+    ).toFixed(8),
+  );
 }
 
 function findLatestSeoBriefArtifact(

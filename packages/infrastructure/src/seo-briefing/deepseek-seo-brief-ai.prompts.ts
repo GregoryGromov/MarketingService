@@ -60,6 +60,27 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   packageLongreadArticle: 'article-generation.package.v2-compact',
 } as const;
 
+function applyInstructionOverride(
+  operation: keyof typeof SEO_BRIEF_AI_PROMPT_VERSIONS,
+  systemPrompt: string,
+  overrides?: Record<string, string> | null,
+): string {
+  const override = overrides?.[operation]?.trim();
+  if (!override) {
+    return systemPrompt;
+  }
+
+  return [
+    systemPrompt,
+    '',
+    'Marketer editable instruction override:',
+    override,
+    '',
+    'The override can guide style, prioritization, selection criteria, and editorial preferences.',
+    'The override must not change required JSON schema, allowed enum values, selected market language, or safety/compliance constraints.',
+  ].join('\n');
+}
+
 export function buildExtractContextPrompt(
   params: ExtractSeoBriefContextParams,
 ): SeoBriefStructuredPrompt {
@@ -67,28 +88,32 @@ export function buildExtractContextPrompt(
     operation: 'extractContext',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.extractContext,
     temperature: 0.1,
-    systemPrompt: [
-      'You are an SEO brief intake parser.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"topicHint":"string|null","topicSeed":"string|null","country":"string|null","language":"string|null","audience":"string|null","userPains":["string"],"userScenarios":["string"],"productName":"string|null","productDescription":"string|null","keyMessage":"string|null","audienceBefore":"string|null","audienceAfter":"string|null","cta":"string|null","brandConstraints":["string"],"claimsConstraints":["string"],"preferredAngle":"string|null","excludedTopics":["string"],"temporaryConstraints":["string"],"missingFields":["string"],"notes":["string"]}',
-      'Extract only information clearly present in the input.',
-      'Do not invent product facts, country, language, audience, CTA, or claims.',
-      'Use null when a field is not present.',
-      'topicHint is the SEO research direction or launch theme, not a final keyword and not an article title.',
-      'topicSeed is deprecated; mirror topicHint there only for compatibility.',
-      'userPains are explicit user problems, fears, needs, or jobs-to-be-done mentioned by the marketer.',
-      'userScenarios are explicit search, behavior, tool, ecosystem, comparison, or action scenarios mentioned by the marketer.',
-      'brandConstraints are tone, positioning, wording, or brand-safety constraints explicitly mentioned in the task.',
-      'claimsConstraints are legal, compliance, proof, risk, or forbidden-claim constraints explicitly mentioned in the task.',
-      'preferredAngle is the requested content/research angle when explicitly stated.',
-      'excludedTopics are explicit topics or angles the marketer says to avoid.',
-      'Put campaign-specific warnings, restrictions, and must-not-say items into temporaryConstraints.',
-      'Put any required-but-missing fields into missingFields.',
-      'Required fields: topicHint, country, language, audience, productName, productDescription.',
-      'Do not include persistent brand memory unless the input explicitly contains task-specific brand facts.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'extractContext',
+      [
+        'You are an SEO brief intake parser.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"topicHint":"string|null","topicSeed":"string|null","country":"string|null","language":"string|null","audience":"string|null","userPains":["string"],"userScenarios":["string"],"productName":"string|null","productDescription":"string|null","keyMessage":"string|null","audienceBefore":"string|null","audienceAfter":"string|null","cta":"string|null","brandConstraints":["string"],"claimsConstraints":["string"],"preferredAngle":"string|null","excludedTopics":["string"],"temporaryConstraints":["string"],"missingFields":["string"],"notes":["string"]}',
+        'Extract only information clearly present in the input.',
+        'Do not invent product facts, country, language, audience, CTA, or claims.',
+        'Use null when a field is not present.',
+        'topicHint is the SEO research direction or launch theme, not a final keyword and not an article title.',
+        'topicSeed is deprecated; mirror topicHint there only for compatibility.',
+        'userPains are explicit user problems, fears, needs, or jobs-to-be-done mentioned by the marketer.',
+        'userScenarios are explicit search, behavior, tool, ecosystem, comparison, or action scenarios mentioned by the marketer.',
+        'brandConstraints are tone, positioning, wording, or brand-safety constraints explicitly mentioned in the task.',
+        'claimsConstraints are legal, compliance, proof, risk, or forbidden-claim constraints explicitly mentioned in the task.',
+        'preferredAngle is the requested content/research angle when explicitly stated.',
+        'excludedTopics are explicit topics or angles the marketer says to avoid.',
+        'Put campaign-specific warnings, restrictions, and must-not-say items into temporaryConstraints.',
+        'Put any required-but-missing fields into missingFields.',
+        'Required fields: topicHint, country, language, audience, productName, productDescription.',
+        'Do not include persistent brand memory unless the input explicitly contains task-specific brand facts.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createUserPrompt({
       contextText: params.contextText,
     }),
@@ -143,46 +168,50 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
     operation: 'expandKeywords',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.expandKeywords,
     temperature: 0.2,
-    systemPrompt: [
-      'You are an SEO research strategist.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"search_hypotheses":[{"query":"string","hypothesis_type":"pain|action|ecosystem|comparison|education|risk","why_generated":"string","product_fit_hypothesis":"direct_solution|alternative_solution|workflow_bridge|education_bridge|weak","risk_flags":["string"]}]}',
-      `Generate exactly ${String(params.limit ?? 10)} Google-like search hypotheses for SERP discovery.`,
-      'Return search_hypotheses only. Do not return groups.',
-      'Generate realistic Google search queries, not article titles.',
-      'Use manual userPainScenarios from the marketer input as the main source.',
-      'topic_hint is a hard scope signal for concrete entities, ecosystems, chains, geographies, and product categories.',
-      'requiredTopicTerms are extracted from topic_hint and must be preserved when they are concrete.',
-      'If requiredTopicTerms contains a chain, ecosystem, protocol, product category, or named entity, at least half of the hypotheses must explicitly target that scope or a direct synonym.',
-      'Generic adjacent queries may support discovery, but they must not dominate or replace the required topic scope.',
-      'Prefer seoProductContext when it is provided; use legacy fields only as fallback.',
-      'seoProductContext.researchFrame defines the SEO direction and market.',
-      'seoProductContext.brandMemoryContext defines product facts and claim boundaries.',
-      'seoProductContext.marketerConstraints and generationGuardrails are hard constraints.',
-      'Cover a useful mix of pain, action, ecosystem, comparison, education, and risk hypotheses when supported by the input.',
-      'Do not force every hypothesis_type if the marketer input does not support it.',
-      'Use the target language from the input.',
-      'Treat country as market context, not as a required keyword suffix.',
-      'Do not append the country name to most keywords.',
-      'Only include a geo modifier when local intent is clearly natural and realistic.',
-      'No more than 2 keywords may contain a country or city modifier.',
-      'Use campaign context to understand the topic, audience problem, and constraints.',
-      'Do not turn product name, brand name, or CTA into keyword text unless branded SEO is explicitly requested.',
-      'Product and brand context should influence relevance, not force branded queries.',
-      'Include queries that can reveal competitors in both crypto and non-crypto dollar-saving spaces.',
-      'When topic_hint names a blockchain or network, include realistic queries that use that network name and common network aliases.',
-      'Avoid pure navigational queries.',
-      'Avoid login, download, logo, support, API, APK, fake screenshot, seed phrase, private key, flasher.',
-      'Avoid duplicated or near-duplicated keywords.',
-      'Avoid awkward geo phrasing, year modifiers, brand names, hype, and scammy wording.',
-      'Do not estimate search volume, competition, CPC, or ranking difficulty.',
-      'why_generated must be short and grounded in topic_hint, manual user pains, manual user scenarios, market, or product context.',
-      'product_fit_hypothesis is only a hypothesis for later validation, not a final scoring decision.',
-      'risk_flags should be empty unless the query has compliance, hype, scam, guarantee, unsupported-claim, or unsafe-user-intent risk.',
-      `Default operator guidance:\n${DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT}`,
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'expandKeywords',
+      [
+        'You are an SEO research strategist.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"search_hypotheses":[{"query":"string","hypothesis_type":"pain|action|ecosystem|comparison|education|risk","why_generated":"string","product_fit_hypothesis":"direct_solution|alternative_solution|workflow_bridge|education_bridge|weak","risk_flags":["string"]}]}',
+        `Generate exactly ${String(params.limit ?? 10)} Google-like search hypotheses for SERP discovery.`,
+        'Return search_hypotheses only. Do not return groups.',
+        'Generate realistic Google search queries, not article titles.',
+        'Use manual userPainScenarios from the marketer input as the main source.',
+        'topic_hint is a hard scope signal for concrete entities, ecosystems, chains, geographies, and product categories.',
+        'requiredTopicTerms are extracted from topic_hint and must be preserved when they are concrete.',
+        'If requiredTopicTerms contains a chain, ecosystem, protocol, product category, or named entity, at least half of the hypotheses must explicitly target that scope or a direct synonym.',
+        'Generic adjacent queries may support discovery, but they must not dominate or replace the required topic scope.',
+        'Prefer seoProductContext when it is provided; use legacy fields only as fallback.',
+        'seoProductContext.researchFrame defines the SEO direction and market.',
+        'seoProductContext.brandMemoryContext defines product facts and claim boundaries.',
+        'seoProductContext.marketerConstraints and generationGuardrails are hard constraints.',
+        'Cover a useful mix of pain, action, ecosystem, comparison, education, and risk hypotheses when supported by the input.',
+        'Do not force every hypothesis_type if the marketer input does not support it.',
+        'Use the target language from the input.',
+        'Treat country as market context, not as a required keyword suffix.',
+        'Do not append the country name to most keywords.',
+        'Only include a geo modifier when local intent is clearly natural and realistic.',
+        'No more than 2 keywords may contain a country or city modifier.',
+        'Use campaign context to understand the topic, audience problem, and constraints.',
+        'Do not turn product name, brand name, or CTA into keyword text unless branded SEO is explicitly requested.',
+        'Product and brand context should influence relevance, not force branded queries.',
+        'Include queries that can reveal competitors in both crypto and non-crypto dollar-saving spaces.',
+        'When topic_hint names a blockchain or network, include realistic queries that use that network name and common network aliases.',
+        'Avoid pure navigational queries.',
+        'Avoid login, download, logo, support, API, APK, fake screenshot, seed phrase, private key, flasher.',
+        'Avoid duplicated or near-duplicated keywords.',
+        'Avoid awkward geo phrasing, year modifiers, brand names, hype, and scammy wording.',
+        'Do not estimate search volume, competition, CPC, or ranking difficulty.',
+        'why_generated must be short and grounded in topic_hint, manual user pains, manual user scenarios, market, or product context.',
+        'product_fit_hypothesis is only a hypothesis for later validation, not a final scoring decision.',
+        'risk_flags should be empty unless the query has compliance, hype, scam, guarantee, unsupported-claim, or unsafe-user-intent risk.',
+        `Default operator guidance:\n${DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT}`,
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createExpandKeywordsUserPrompt(params, keywordExpansionPrompt, topicHintScope),
   };
 }
@@ -213,30 +242,34 @@ export function buildClusterKeywordsPrompt(
     operation: 'clusterKeywords',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.clusterKeywords,
     temperature: 0.2,
-    systemPrompt: [
-      'You are an SEO clustering agent.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"clusters":[{"name":"string","user_intent":"string","intent":"informational|commercial|transactional|navigational","primary_id":1,"secondary_ids":[2],"question_ids":[3],"supporting_ids":[4],"confidence":"low|medium|high","reason":"string"}]}',
-      'Group items into intent-based SEO clusters.',
-      'Cluster by user intent, not exact word overlap.',
-      'Use the full cleaned pool of accepted and maybe candidates, not only the top-scored candidates.',
-      'Use candidate ids from the input rows. Do not output keyword strings except inside name/user_intent/reason.',
-      'Do not invent new keywords, questions, domains, URLs, or ids.',
-      'Every primary_id, secondary_id, question_id, and supporting_id must refer to an input candidate id.',
-      'Do not create clusters around login, logo, download, API, support, seed phrase, scam, flasher, fake screenshot, unrelated coin news, or rejected keywords.',
-      'PAA-style questions should support clusters as questions/subintent unless they clearly represent a standalone topic.',
-      'topic_hint is a scope boundary, not an exact article title.',
-      'Prefer 3-7 clusters for a normal pool.',
-      'Each cluster must have primary_id from accepted candidates when possible.',
-      'Use maybe candidates only as supporting_ids, question_ids, or secondary_ids unless they are clearly the best primary.',
-      'Competitor metrics and proxyDemandScore are evidence signals, not automatic reasons to create or prioritize a cluster.',
-      'confidence should reflect evidence depth: accepted status, strong scores, multiple sources, or SERP diversity signals = higher confidence.',
-      hasScoredCandidates
-        ? 'The input contains scored candidates with accepted/maybe status. Exclude rejected keywords entirely.'
-        : 'The input contains a legacy keyword list. Cluster only the provided keywords.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'clusterKeywords',
+      [
+        'You are an SEO clustering agent.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"clusters":[{"name":"string","user_intent":"string","intent":"informational|commercial|transactional|navigational","primary_id":1,"secondary_ids":[2],"question_ids":[3],"supporting_ids":[4],"confidence":"low|medium|high","reason":"string"}]}',
+        'Group items into intent-based SEO clusters.',
+        'Cluster by user intent, not exact word overlap.',
+        'Use the full cleaned pool of accepted and maybe candidates, not only the top-scored candidates.',
+        'Use candidate ids from the input rows. Do not output keyword strings except inside name/user_intent/reason.',
+        'Do not invent new keywords, questions, domains, URLs, or ids.',
+        'Every primary_id, secondary_id, question_id, and supporting_id must refer to an input candidate id.',
+        'Do not create clusters around login, logo, download, API, support, seed phrase, scam, flasher, fake screenshot, unrelated coin news, or rejected keywords.',
+        'PAA-style questions should support clusters as questions/subintent unless they clearly represent a standalone topic.',
+        'topic_hint is a scope boundary, not an exact article title.',
+        'Prefer 3-7 clusters for a normal pool.',
+        'Each cluster must have primary_id from accepted candidates when possible.',
+        'Use maybe candidates only as supporting_ids, question_ids, or secondary_ids unless they are clearly the best primary.',
+        'Competitor metrics and proxyDemandScore are evidence signals, not automatic reasons to create or prioritize a cluster.',
+        'confidence should reflect evidence depth: accepted status, strong scores, multiple sources, or SERP diversity signals = higher confidence.',
+        hasScoredCandidates
+          ? 'The input contains scored candidates with accepted/maybe status. Exclude rejected keywords entirely.'
+          : 'The input contains a legacy keyword list. Cluster only the provided keywords.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createClusterKeywordsUserPrompt(params),
   };
 }
@@ -592,31 +625,35 @@ export function buildReviewClusterProductFitPrompt(
     operation: 'reviewClusterProductFit',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.reviewClusterProductFit,
     temperature: 0.1,
-    systemPrompt: [
-      'You are a Product Fit reviewer for SEO content.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"cluster_product_fit":[{"cluster_name":"string","product_fit_score":0,"product_fit_type":"direct_solution|alternative_solution|workflow_bridge|education_bridge|no_fit","decision":"approve|reject|supporting_only","product_insertion_angle":"string","where_to_insert":"string","what_not_to_claim":["string"],"reason":"string"}]}',
-      'Evaluate every input cluster exactly once.',
-      'cluster_name must exactly copy the name= value from one input CLUSTERS row.',
-      'Do not invent clusters, keywords, product facts, claims, or competitor evidence.',
-      'Product Fit is not whether the product can be mentioned; it is whether the product can naturally help answer the user intent.',
-      'Also verify topic-scope fit. If requiredTopicTerms are concrete and the cluster ignores them, do not approve it as a main-topic cluster.',
-      'A broad generic cluster can be supporting_only, but it should not displace a viable topic-specific cluster.',
-      'Do not approve a cluster just because it has search volume, ranked keyword evidence, or strong competitors.',
-      'Use compact evidence rows, source metrics, and URL hints as evidence only.',
-      'Do not treat proxyDemandScore, competitorMatchScore, or searchVolume as Product Fit by themselves.',
-      'Reject clusters where product insertion would feel forced.',
-      'Approve only when the product can be a direct solution, natural alternative, workflow bridge, or education bridge.',
-      'Use supporting_only when the cluster can support internal links or education but should not be the main article.',
-      'Use no_fit and reject when the product cannot be naturally inserted or when the cluster is unsafe/off-topic.',
-      'Scoring guidance: 0-20 no fit, 21-50 weak, 51-70 medium, 71-85 high, 86-100 very high.',
-      'Do not allow prohibited claims: guaranteed profit, risk-free yield, guaranteed return, fixed guaranteed APY, no-risk income.',
-      'Use Brand Memory, product profile, marketer constraints, and claim constraints as hard boundaries.',
-      'Keep product_insertion_angle, where_to_insert, what_not_to_claim, and reason concrete and short.',
-      'Never return empty strings. If the product should not be inserted, say "Do not insert product for this cluster."',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'reviewClusterProductFit',
+      [
+        'You are a Product Fit reviewer for SEO content.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"cluster_product_fit":[{"cluster_name":"string","product_fit_score":0,"product_fit_type":"direct_solution|alternative_solution|workflow_bridge|education_bridge|no_fit","decision":"approve|reject|supporting_only","product_insertion_angle":"string","where_to_insert":"string","what_not_to_claim":["string"],"reason":"string"}]}',
+        'Evaluate every input cluster exactly once.',
+        'cluster_name must exactly copy the name= value from one input CLUSTERS row.',
+        'Do not invent clusters, keywords, product facts, claims, or competitor evidence.',
+        'Product Fit is not whether the product can be mentioned; it is whether the product can naturally help answer the user intent.',
+        'Also verify topic-scope fit. If requiredTopicTerms are concrete and the cluster ignores them, do not approve it as a main-topic cluster.',
+        'A broad generic cluster can be supporting_only, but it should not displace a viable topic-specific cluster.',
+        'Do not approve a cluster just because it has search volume, ranked keyword evidence, or strong competitors.',
+        'Use compact evidence rows, source metrics, and URL hints as evidence only.',
+        'Do not treat proxyDemandScore, competitorMatchScore, or searchVolume as Product Fit by themselves.',
+        'Reject clusters where product insertion would feel forced.',
+        'Approve only when the product can be a direct solution, natural alternative, workflow bridge, or education bridge.',
+        'Use supporting_only when the cluster can support internal links or education but should not be the main article.',
+        'Use no_fit and reject when the product cannot be naturally inserted or when the cluster is unsafe/off-topic.',
+        'Scoring guidance: 0-20 no fit, 21-50 weak, 51-70 medium, 71-85 high, 86-100 very high.',
+        'Do not allow prohibited claims: guaranteed profit, risk-free yield, guaranteed return, fixed guaranteed APY, no-risk income.',
+        'Use Brand Memory, product profile, marketer constraints, and claim constraints as hard boundaries.',
+        'Keep product_insertion_angle, where_to_insert, what_not_to_claim, and reason concrete and short.',
+        'Never return empty strings. If the product should not be inserted, say "Do not insert product for this cluster."',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createReviewClusterProductFitUserPrompt(params, topicHintScope),
   };
 }
@@ -628,14 +665,18 @@ export function buildExplainClusterSelectionPrompt(
     operation: 'explainClusterSelection',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.explainClusterSelection,
     temperature: 0.1,
-    systemPrompt: [
-      'You explain why one SEO cluster was selected over others.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"summary":"string","reasons":["string"],"rejectedClusters":[{"label":"string","reason":"string"}]}',
-      'Explain the selection clearly and concisely.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'explainClusterSelection',
+      [
+        'You explain why one SEO cluster was selected over others.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"summary":"string","reasons":["string"],"rejectedClusters":[{"label":"string","reason":"string"}]}',
+        'Explain the selection clearly and concisely.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createUserPrompt(params),
   };
 }
@@ -649,27 +690,31 @@ export function buildGenerateSeoBriefPrompt(
     operation: 'generateSeoBrief',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.generateSeoBrief,
     temperature: 0.3,
-    systemPrompt: [
-      'You are an SEO content brief generator.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"topic_hint":"string","main_cluster":"string","supporting_clusters":["string"],"primary_keyword":"string","secondary_keywords":["string"],"search_intent":"string","target_reader":"string","content_type":"pillar guide|comparison|how-to|educational guide","recommended_title":"string","recommended_h1":"string","recommended_meta_title":"string","recommended_meta_description":"string","outline":[{"h2":"string","h3":["string"],"notes":"string"}],"faq":[{"question":"string","answer_direction":"string"}],"product_insertion":{"where":"string","how":"string","sample_angle":"string","avoid":["string"]},"competitor_gaps_to_fill":["string"],"risk_notes":["string"],"cta":"string","internal_links":["string"],"external_sources_needed":["string"]}',
-      'Generate a production-ready SEO content brief.',
-      'Write all user-facing brief fields in market.language, including title, H1, meta fields, outline headings, FAQ, CTA, and keyword recommendations.',
-      'The brief must be actionable for a writer.',
-      'The article must answer user intent first.',
-      'Product insertion must be natural, not forced.',
-      'Do not promise guaranteed yield or risk-free returns.',
-      'Include H1, H2/H3 structure, FAQ, content blocks, CTA, and internal link suggestions.',
-      'topic_hint should be respected as scope, but not blindly copied as title or keyword.',
-      'requiredTopicTerms are hard scope anchors. If they are present, the recommended title, H1, intro direction, and outline must explicitly cover at least one concrete required term.',
-      'Do not let generic high-volume adjacent keywords replace the topic requested in topic_hint.',
-      'Use Competitor OnPage synthesis as the main structure evidence.',
-      'Input evidence is compact. Do not assume omitted raw SERP/page text is unavailable proof; use only summarized facts provided.',
-      'Use Product Fit decision and Brand Memory as hard boundaries.',
-      'Do not invent unsupported product facts, APY, safety guarantees, or risk-free claims.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'generateSeoBrief',
+      [
+        'You are an SEO content brief generator.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"topic_hint":"string","main_cluster":"string","supporting_clusters":["string"],"primary_keyword":"string","secondary_keywords":["string"],"search_intent":"string","target_reader":"string","content_type":"pillar guide|comparison|how-to|educational guide","recommended_title":"string","recommended_h1":"string","recommended_meta_title":"string","recommended_meta_description":"string","outline":[{"h2":"string","h3":["string"],"notes":"string"}],"faq":[{"question":"string","answer_direction":"string"}],"product_insertion":{"where":"string","how":"string","sample_angle":"string","avoid":["string"]},"competitor_gaps_to_fill":["string"],"risk_notes":["string"],"cta":"string","internal_links":["string"],"external_sources_needed":["string"]}',
+        'Generate a production-ready SEO content brief.',
+        'Write all user-facing brief fields in market.language, including title, H1, meta fields, outline headings, FAQ, CTA, and keyword recommendations.',
+        'The brief must be actionable for a writer.',
+        'The article must answer user intent first.',
+        'Product insertion must be natural, not forced.',
+        'Do not promise guaranteed yield or risk-free returns.',
+        'Include H1, H2/H3 structure, FAQ, content blocks, CTA, and internal link suggestions.',
+        'topic_hint should be respected as scope, but not blindly copied as title or keyword.',
+        'requiredTopicTerms are hard scope anchors. If they are present, the recommended title, H1, intro direction, and outline must explicitly cover at least one concrete required term.',
+        'Do not let generic high-volume adjacent keywords replace the topic requested in topic_hint.',
+        'Use Competitor OnPage synthesis as the main structure evidence.',
+        'Input evidence is compact. Do not assume omitted raw SERP/page text is unavailable proof; use only summarized facts provided.',
+        'Use Product Fit decision and Brand Memory as hard boundaries.',
+        'Do not invent unsupported product facts, APY, safety guarantees, or risk-free claims.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createGenerateSeoBriefUserPrompt(params, topicHintScope),
   };
 }
@@ -683,30 +728,34 @@ export function buildSynthesizeOnPagePrompt(
     operation: 'synthesizeOnPage',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.synthesizeOnPage,
     temperature: 0.15,
-    systemPrompt: [
-      'You are an SEO brief on-page synthesis analyst.',
-      'Return only valid JSON.',
-      'Do not use markdown or code fences.',
-      'Schema:',
-      '{"competitor_structure_summary":{"common_h2_patterns":["string"],"common_content_blocks":["string"],"common_faq_questions":["string"],"common_tables_or_comparisons":["string"],"content_gaps":["string"]},"recommended_article_structure":{"h1":"string","h2":[{"heading":"string","purpose":"string","subpoints":["string"]}],"faq":["string"]},"product_insertion":{"section":"string","angle":"string","do":["string"],"avoid":["string"]},"risk_and_compliance_notes":["string"]}',
-      'Analyze competitor page structures and produce brief requirements.',
-      'Write all user-facing synthesis fields in market.language, including H1, H2 headings, FAQ, gaps, and product insertion guidance.',
-      'Use parsed competitor pages as evidence only.',
-      'Input pages are compact evidence rows: use headings, meta, snippets, and page roles; do not expect full article text.',
-      'Do not copy competitor text.',
-      'Identify repeated structural patterns across competitors.',
-      'Identify content gaps that a better article can cover.',
-      'Identify where the product can be inserted naturally without forcing it.',
-      'Respect Brand Memory, product facts, marketer constraints, and claim restrictions.',
-      'topic_hint is a scope boundary; final H1 and angle may be adjusted based on evidence.',
-      'requiredTopicTerms are hard scope anchors. If they are present, recommended H1/H2 and content gaps must preserve the concrete topic scope when page evidence allows it.',
-      'Do not turn a scoped topic into a generic adjacent article just because competitors cover broad terms.',
-      'Do not invent unsupported product capabilities, returns, safety guarantees, APY, or risk-free claims.',
-      'Do not use YouTube/social/video pages as authority unless they are present in parsed pages; even then, treat them only as format/context evidence.',
-      'Keep output concise and actionable for a final SEO brief writer.',
-      'Return at least 3 common_h2_patterns when evidence supports them.',
-      'Return at least 3 recommended h2 sections.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'synthesizeOnPage',
+      [
+        'You are an SEO brief on-page synthesis analyst.',
+        'Return only valid JSON.',
+        'Do not use markdown or code fences.',
+        'Schema:',
+        '{"competitor_structure_summary":{"common_h2_patterns":["string"],"common_content_blocks":["string"],"common_faq_questions":["string"],"common_tables_or_comparisons":["string"],"content_gaps":["string"]},"recommended_article_structure":{"h1":"string","h2":[{"heading":"string","purpose":"string","subpoints":["string"]}],"faq":["string"]},"product_insertion":{"section":"string","angle":"string","do":["string"],"avoid":["string"]},"risk_and_compliance_notes":["string"]}',
+        'Analyze competitor page structures and produce brief requirements.',
+        'Write all user-facing synthesis fields in market.language, including H1, H2 headings, FAQ, gaps, and product insertion guidance.',
+        'Use parsed competitor pages as evidence only.',
+        'Input pages are compact evidence rows: use headings, meta, snippets, and page roles; do not expect full article text.',
+        'Do not copy competitor text.',
+        'Identify repeated structural patterns across competitors.',
+        'Identify content gaps that a better article can cover.',
+        'Identify where the product can be inserted naturally without forcing it.',
+        'Respect Brand Memory, product facts, marketer constraints, and claim restrictions.',
+        'topic_hint is a scope boundary; final H1 and angle may be adjusted based on evidence.',
+        'requiredTopicTerms are hard scope anchors. If they are present, recommended H1/H2 and content gaps must preserve the concrete topic scope when page evidence allows it.',
+        'Do not turn a scoped topic into a generic adjacent article just because competitors cover broad terms.',
+        'Do not invent unsupported product capabilities, returns, safety guarantees, APY, or risk-free claims.',
+        'Do not use YouTube/social/video pages as authority unless they are present in parsed pages; even then, treat them only as format/context evidence.',
+        'Keep output concise and actionable for a final SEO brief writer.',
+        'Return at least 3 common_h2_patterns when evidence supports them.',
+        'Return at least 3 recommended h2 sections.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createSynthesizeOnPageUserPrompt(params, topicHintScope),
   };
 }
@@ -718,35 +767,39 @@ export function buildDraftLongreadArticlePrompt(
     operation: 'draftLongreadArticle',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.draftLongreadArticle,
     temperature: 0.35,
-    systemPrompt: [
-      'You are an expert SEO writer.',
-      'Return only valid JSON.',
-      'Do not use markdown fences.',
-      'Schema:',
-      '{"draftArticleMarkdown":"string"}',
-      'Write a complete publish-ready longread article in Markdown based on the SEO brief.',
-      'Write the entire article in finalSeoBrief.market.language. Do not switch to English unless that is the selected market language.',
-      'The SEO brief is the source of truth for structure, intent, keywords, product insertion, risks, and CTA.',
-      'Follow recommendedH1 and outline from the brief.',
-      'Answer search intent first.',
-      'Write for targetReader.',
-      'Use the primary keyword naturally in title/H1/intro.',
-      'Use secondary keywords only when relevant and natural; do not force all of them.',
-      'Include FAQ from the brief.',
-      'Insert the product only where productInsertion says it belongs.',
-      'Do not mention the product in every section.',
-      'Do not present the product as guaranteed or risk-free.',
-      'Do not promise guaranteed returns, guaranteed profit, no-risk savings, or risk-free yield.',
-      'If APY or rates are mentioned, say they vary and require current source verification.',
-      'Keep paragraphs short.',
-      'Use clear, beginner-friendly language.',
-      'Avoid hype, trader slang, and get-rich-quick language.',
-      'Include risk explanations where riskNotes require them.',
-      'Include the CTA from the brief naturally near the end.',
-      'Do not mention that the article was generated from a brief.',
-      'Markdown must start with the article title as H1, use H2/H3 headings, and include FAQ as an H2 section.',
-      'Do not include JSON inside draftArticleMarkdown.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'draftLongreadArticle',
+      [
+        'You are an expert SEO writer.',
+        'Return only valid JSON.',
+        'Do not use markdown fences.',
+        'Schema:',
+        '{"draftArticleMarkdown":"string"}',
+        'Write a complete publish-ready longread article in Markdown based on the SEO brief.',
+        'Write the entire article in finalSeoBrief.market.language. Do not switch to English unless that is the selected market language.',
+        'The SEO brief is the source of truth for structure, intent, keywords, product insertion, risks, and CTA.',
+        'Follow recommendedH1 and outline from the brief.',
+        'Answer search intent first.',
+        'Write for targetReader.',
+        'Use the primary keyword naturally in title/H1/intro.',
+        'Use secondary keywords only when relevant and natural; do not force all of them.',
+        'Include FAQ from the brief.',
+        'Insert the product only where productInsertion says it belongs.',
+        'Do not mention the product in every section.',
+        'Do not present the product as guaranteed or risk-free.',
+        'Do not promise guaranteed returns, guaranteed profit, no-risk savings, or risk-free yield.',
+        'If APY or rates are mentioned, say they vary and require current source verification.',
+        'Keep paragraphs short.',
+        'Use clear, beginner-friendly language.',
+        'Avoid hype, trader slang, and get-rich-quick language.',
+        'Include risk explanations where riskNotes require them.',
+        'Include the CTA from the brief naturally near the end.',
+        'Do not mention that the article was generated from a brief.',
+        'Markdown must start with the article title as H1, use H2/H3 headings, and include FAQ as an H2 section.',
+        'Do not include JSON inside draftArticleMarkdown.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createDraftLongreadArticleUserPrompt(params),
   };
 }
@@ -758,35 +811,39 @@ export function buildCleanupLongreadArticlePrompt(
     operation: 'cleanupLongreadArticle',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.cleanupLongreadArticle,
     temperature: 0.15,
-    systemPrompt: [
-      'You are an SEO editor and crypto/finance claims reviewer.',
-      'Return only valid JSON.',
-      'Do not use markdown fences.',
-      'Schema:',
-      '{"status":"passed|passed_with_warnings|revised|needs_human_review","warnings":[{"type":"claims|compliance|seo|product_insertion|factual_check|tone|structure","severity":"blocker|warning|note","message":"string"}],"changesMade":["string"],"articleMarkdown":"string"}',
-      'Review and revise the draft article. This may be an iterative review attempt after earlier findings.',
-      'Return a revised article, not just comments.',
-      'Edits are not failures. If you fixed all publish-blocking issues, return passed or passed_with_warnings, not revised.',
-      'Do not ask for human approval. If a sentence or paragraph cannot be made safe, remove it or replace it with conservative educational wording.',
-      'Your priority is an automatically publishable safe article, even if that means simplifying, removing specificity, removing product claims, or weakening promotional language.',
-      'Preserve finalSeoBrief.market.language throughout the revised article. Do not translate the article to English unless English is the selected market language.',
-      'Use severity blocker only for issues that make the article unsafe or impossible to publish automatically.',
-      'Examples of blockers: prohibited financial claim, guaranteed return/safety wording, wrong product/company after correction, contradiction with the SEO brief, unsupported factual claim that cannot be softened, or unresolved legal/compliance uncertainty.',
-      'Use severity warning for non-blocking quality/compliance cautions that are already mitigated in the article.',
-      'Use severity note for informational observations that should not block publication.',
-      'Check and fix: no guaranteed returns, no risk-free yield claims, no unsupported APY promises, no direct financial advice framed as certainty.',
-      'Check US compliance risk for crypto/stablecoin/financial content: no misleading investment advice, no implied bank-like insurance, no guaranteed yield, no unsupported safety claims, and no promotional certainty around returns.',
-      'Remove hype, get-rich-quick language, irrelevant keyword usage, and unnatural product insertion.',
-      'Ensure the article answers searchIntent before promoting the product.',
-      'Ensure primaryKeyword appears naturally in title/H1/intro.',
-      'Ensure H2/H3 structure follows the brief and FAQ is included.',
-      'Ensure risk explanations are clear and not hidden.',
-      'If previousReviewFindings are provided, verify each issue is fixed before returning passed.',
-      'Use status passed when there are no remaining warnings.',
-      'Use status passed_with_warnings when only non-blocking warnings or notes remain.',
-      'Use status revised only when you made edits and another automated review pass is needed.',
-      'Use status needs_human_review only when at least one blocker remains after you tried to remove, generalize, or neutralize the blocked content.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'cleanupLongreadArticle',
+      [
+        'You are an SEO editor and crypto/finance claims reviewer.',
+        'Return only valid JSON.',
+        'Do not use markdown fences.',
+        'Schema:',
+        '{"status":"passed|passed_with_warnings|revised|needs_human_review","warnings":[{"type":"claims|compliance|seo|product_insertion|factual_check|tone|structure","severity":"blocker|warning|note","message":"string"}],"changesMade":["string"],"articleMarkdown":"string"}',
+        'Review and revise the draft article. This may be an iterative review attempt after earlier findings.',
+        'Return a revised article, not just comments.',
+        'Edits are not failures. If you fixed all publish-blocking issues, return passed or passed_with_warnings, not revised.',
+        'Do not ask for human approval. If a sentence or paragraph cannot be made safe, remove it or replace it with conservative educational wording.',
+        'Your priority is an automatically publishable safe article, even if that means simplifying, removing specificity, removing product claims, or weakening promotional language.',
+        'Preserve finalSeoBrief.market.language throughout the revised article. Do not translate the article to English unless English is the selected market language.',
+        'Use severity blocker only for issues that make the article unsafe or impossible to publish automatically.',
+        'Examples of blockers: prohibited financial claim, guaranteed return/safety wording, wrong product/company after correction, contradiction with the SEO brief, unsupported factual claim that cannot be softened, or unresolved legal/compliance uncertainty.',
+        'Use severity warning for non-blocking quality/compliance cautions that are already mitigated in the article.',
+        'Use severity note for informational observations that should not block publication.',
+        'Check and fix: no guaranteed returns, no risk-free yield claims, no unsupported APY promises, no direct financial advice framed as certainty.',
+        'Check US compliance risk for crypto/stablecoin/financial content: no misleading investment advice, no implied bank-like insurance, no guaranteed yield, no unsupported safety claims, and no promotional certainty around returns.',
+        'Remove hype, get-rich-quick language, irrelevant keyword usage, and unnatural product insertion.',
+        'Ensure the article answers searchIntent before promoting the product.',
+        'Ensure primaryKeyword appears naturally in title/H1/intro.',
+        'Ensure H2/H3 structure follows the brief and FAQ is included.',
+        'Ensure risk explanations are clear and not hidden.',
+        'If previousReviewFindings are provided, verify each issue is fixed before returning passed.',
+        'Use status passed when there are no remaining warnings.',
+        'Use status passed_with_warnings when only non-blocking warnings or notes remain.',
+        'Use status revised only when you made edits and another automated review pass is needed.',
+        'Use status needs_human_review only when at least one blocker remains after you tried to remove, generalize, or neutralize the blocked content.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createCleanupLongreadArticleUserPrompt(params),
   };
 }
@@ -798,23 +855,27 @@ export function buildPackageLongreadArticlePrompt(
     operation: 'packageLongreadArticle',
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.packageLongreadArticle,
     temperature: 0.1,
-    systemPrompt: [
-      'You are a CMS packaging assistant.',
-      'Return only valid JSON.',
-      'Do not use markdown fences.',
-      'Schema:',
-      '{"article":{"title":"string","slug":"string","metaTitle":"string","metaDescription":"string","h1":"string","bodyMarkdown":"string"},"seo":{"primaryKeyword":"string","secondaryKeywordsUsed":["string"],"searchIntent":"string","contentType":"string","faqIncluded":true,"internalLinks":["string"],"externalSourcesNeeded":["string"]},"productInsertion":{"whereInserted":"string","angleUsed":"string","forced":false},"claimsReview":{"status":"passed|passed_with_warnings|revised|needs_human_review","warnings":["string"]},"publishingChecklist":{"readyToPublish":true,"needsExternalFactCheck":false,"needsComplianceReview":false,"notes":["string"]}}',
-      'Create a publish-ready article package from the reviewed article and SEO brief.',
-      'Preserve finalSeoBrief.market.language in title, H1, meta fields, bodyMarkdown, FAQ, checklist notes, and all user-facing fields.',
-      'Do not rewrite heavily unless needed for formatting consistency.',
-      'Extract or create a clean slug.',
-      'Use recommendedMetaTitle and recommendedMetaDescription from the brief unless they conflict with claims safety.',
-      'Ensure H1 matches the article.',
-      'Extract FAQ items from the article.',
-      'Preserve internalLinks and externalSourcesNeeded from the brief.',
-      'Preserve claims warnings from cleanup.',
-      'If externalSourcesNeeded is non-empty or cleanup warnings require factual verification, readyToPublish must be false and needsExternalFactCheck should usually be true.',
-    ].join('\n'),
+    systemPrompt: applyInstructionOverride(
+      'packageLongreadArticle',
+      [
+        'You are a CMS packaging assistant.',
+        'Return only valid JSON.',
+        'Do not use markdown fences.',
+        'Schema:',
+        '{"article":{"title":"string","slug":"string","metaTitle":"string","metaDescription":"string","h1":"string","bodyMarkdown":"string"},"seo":{"primaryKeyword":"string","secondaryKeywordsUsed":["string"],"searchIntent":"string","contentType":"string","faqIncluded":true,"internalLinks":["string"],"externalSourcesNeeded":["string"]},"productInsertion":{"whereInserted":"string","angleUsed":"string","forced":false},"claimsReview":{"status":"passed|passed_with_warnings|revised|needs_human_review","warnings":["string"]},"publishingChecklist":{"readyToPublish":true,"needsExternalFactCheck":false,"needsComplianceReview":false,"notes":["string"]}}',
+        'Create a publish-ready article package from the reviewed article and SEO brief.',
+        'Preserve finalSeoBrief.market.language in title, H1, meta fields, bodyMarkdown, FAQ, checklist notes, and all user-facing fields.',
+        'Do not rewrite heavily unless needed for formatting consistency.',
+        'Extract or create a clean slug.',
+        'Use recommendedMetaTitle and recommendedMetaDescription from the brief unless they conflict with claims safety.',
+        'Ensure H1 matches the article.',
+        'Extract FAQ items from the article.',
+        'Preserve internalLinks and externalSourcesNeeded from the brief.',
+        'Preserve claims warnings from cleanup.',
+        'If externalSourcesNeeded is non-empty or cleanup warnings require factual verification, readyToPublish must be false and needsExternalFactCheck should usually be true.',
+      ].join('\n'),
+      params.promptInstructionOverrides,
+    ),
     userPrompt: createPackageLongreadArticleUserPrompt(params),
   };
 }
@@ -870,16 +931,14 @@ function createGenerateSeoBriefContext(
       }),
     },
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
-    forbiddenClaims: uniqueCompactStrings(
-      [
-        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
-        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
-        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 8, 90),
-      ],
-      16,
-    ),
-    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    brandMemory: fullPromptJson(brandMemory),
+    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
+    forbiddenClaims: uniqueStringsPreserveFullText([
+      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
+      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
+      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 8, 90),
+    ]),
+    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
     constraints: uniqueCompactStrings(
       [
         ...(params.constraints ?? []).map((item) => compactRowValue(item, 120)),
@@ -1177,16 +1236,14 @@ function createSynthesizeOnPageContext(
     ),
     keyMessage: compactText(params.keyMessage, 200),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
-    forbiddenClaims: uniqueCompactStrings(
-      [
-        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
-        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
-        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-      ],
-      14,
-    ),
-    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    brandMemory: fullPromptJson(brandMemory),
+    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
+    forbiddenClaims: uniqueStringsPreserveFullText([
+      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
+      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
+      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+    ]),
+    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
     constraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
@@ -1302,16 +1359,14 @@ function createProductFitReviewContext(
     ),
     keyMessage: compactText(params.keyMessage, 200),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
-    forbiddenClaims: uniqueCompactStrings(
-      [
-        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
-        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
-        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-      ],
-      14,
-    ),
-    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 80),
+    brandMemory: fullPromptJson(brandMemory),
+    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
+    forbiddenClaims: uniqueStringsPreserveFullText([
+      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
+      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
+      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+    ]),
+    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
     constraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
@@ -1460,14 +1515,12 @@ function createClusterKeywordsContext(params: ClusterKeywordsParams): Record<str
       240,
     ),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    allowedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 5, 110),
-    forbiddenClaims: uniqueCompactStrings(
-      [
-        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 6, 90),
-        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 6, 70),
-      ],
-      10,
-    ),
+    brandMemory: fullPromptJson(brandMemory),
+    allowedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
+    forbiddenClaims: uniqueStringsPreserveFullText([
+      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
+      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
+    ]),
     userPains: compactStringArray(params.userPainScenarios, 8, 110),
     instruction:
       'Cluster only listed candidate ids. Rejected keywords are already removed and must not be reintroduced.',
@@ -1553,16 +1606,14 @@ function createKeywordScoringContext(
       260,
     ),
     keyMessage: compactText(params.keyMessage, 180),
-    allowedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 6, 120),
-    forbiddenClaims: uniqueCompactStrings(
-      [
-        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 90),
-        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 70),
-        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-      ],
-      14,
-    ),
-    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 6, 70),
+    brandMemory: fullPromptJson(brandMemory),
+    allowedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
+    forbiddenClaims: uniqueStringsPreserveFullText([
+      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
+      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
+      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+    ]),
+    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
     marketerConstraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 8, 110),
@@ -1724,6 +1775,37 @@ function compactPromptJson(
   return null;
 }
 
+function fullPromptJson(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => fullPromptJson(item, depth + 1));
+  }
+  if (typeof value === 'object') {
+    if (depth > 8) {
+      return '[max-depth]';
+    }
+
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (isRawPromptField(key)) {
+        continue;
+      }
+      output[key] = fullPromptJson(item, depth + 1);
+    }
+    return output;
+  }
+
+  return null;
+}
+
 function isRawPromptField(key: string): boolean {
   return [
     'markdownPreview',
@@ -1746,6 +1828,10 @@ function compactStringArray(value: unknown, limit: number, itemLimit: number): s
     .slice(0, limit);
 }
 
+function fullStringArray(value: unknown): string[] {
+  return collectPromptStrings(value);
+}
+
 function collectPromptStrings(value: unknown): string[] {
   if (typeof value === 'string') {
     return value.trim() ? [value.trim()] : [];
@@ -1759,6 +1845,21 @@ function collectPromptStrings(value: unknown): string[] {
     );
   }
   return [];
+}
+
+function uniqueStringsPreserveFullText(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim();
+    const key = trimmed.toLowerCase();
+    if (!trimmed || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
 }
 
 function uniqueCompactStrings(values: string[], limit: number): string[] {

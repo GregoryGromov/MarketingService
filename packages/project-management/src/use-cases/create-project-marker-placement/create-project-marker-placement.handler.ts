@@ -37,6 +37,7 @@ export class CreateProjectMarkerPlacementHandler
       command.channelId,
       command.targetLanguage,
       command.publishAt,
+      command.marketCountry,
     );
 
     if (existing) {
@@ -48,6 +49,8 @@ export class CreateProjectMarkerPlacementHandler
       projectId: command.projectId,
       channelId: command.channelId,
       targetLanguage: command.targetLanguage,
+      marketCountry: command.marketCountry,
+      marketLocationName: command.marketLocationName,
       publishAt: command.publishAt,
     });
 

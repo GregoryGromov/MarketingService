@@ -3646,8 +3646,8 @@ export class CampaignTestUiController {
                 <input id="brandName" type="text" maxlength="120" />
               </label>
               <label class="field">
-                Target audience
-                <input id="targetAudience" type="text" maxlength="2000" />
+                Target audiences
+                <textarea id="targetAudiences" placeholder="One audience per line"></textarea>
               </label>
               <label class="field">
                 Default CTA
@@ -3795,7 +3795,11 @@ export class CampaignTestUiController {
         function fillForm(brandMemory) {
           document.getElementById('brandName').value = brandMemory.brandName || '';
           document.getElementById('productDescription').value = brandMemory.productDescription || '';
-          document.getElementById('targetAudience').value = brandMemory.targetAudience || '';
+          document.getElementById('targetAudiences').value = linesToText(
+            Array.isArray(brandMemory.targetAudiences) && brandMemory.targetAudiences.length > 0
+              ? brandMemory.targetAudiences
+              : (brandMemory.targetAudience ? [brandMemory.targetAudience] : []),
+          );
           document.getElementById('keyMessage').value = brandMemory.keyMessage || '';
           document.getElementById('defaultCta').value = brandMemory.defaultCta || '';
           document.getElementById('brandConstraints').value = linesToText(brandMemory.brandConstraints);
@@ -3857,10 +3861,12 @@ export class CampaignTestUiController {
         }
 
         function buildPayload() {
+          const targetAudiences = splitLines(document.getElementById('targetAudiences').value);
           return {
             brandName: document.getElementById('brandName').value || null,
             productDescription: document.getElementById('productDescription').value || null,
-            targetAudience: document.getElementById('targetAudience').value || null,
+            targetAudience: targetAudiences[0] || null,
+            targetAudiences,
             keyMessage: document.getElementById('keyMessage').value || null,
             defaultCta: document.getElementById('defaultCta').value || null,
             brandConstraints: splitLines(document.getElementById('brandConstraints').value),

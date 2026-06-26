@@ -57,6 +57,7 @@ export class GenerateLongreadDraftHandler
         stepId: step.id,
         modelMode: context.modelMode,
         timeoutMs: context.requestTimeoutMs,
+        promptInstructionOverrides: context.promptInstructionOverrides,
         finalSeoBrief: context.finalSeoBrief,
         productProfile: context.productProfile,
         claimsPolicy: context.claimsPolicy,

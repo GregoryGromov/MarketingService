@@ -16,6 +16,7 @@ function toSnapshot(brandMemory: BrandMemory): SeoBriefBrandMemorySnapshot {
     brandName: brandMemory.brandName,
     productDescription: brandMemory.productDescription,
     targetAudience: brandMemory.targetAudience,
+    targetAudiences: brandMemory.targetAudiences,
     keyMessage: brandMemory.keyMessage,
     defaultCta: brandMemory.defaultCta,
     brandConstraints: brandMemory.brandConstraints,

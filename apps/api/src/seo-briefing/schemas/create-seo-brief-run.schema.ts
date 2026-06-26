@@ -3,6 +3,9 @@ import * as v from 'valibot';
 const OptionalTextListSchema = v.optional(
   v.nullish(v.array(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(500)))),
 );
+const PromptInstructionOverridesSchema = v.optional(
+  v.nullish(v.record(v.string(), v.pipe(v.string(), v.trim(), v.maxLength(8000)))),
+);
 
 const OptionalHttpsUrlSchema = v.optional(
   v.nullish(
@@ -52,16 +55,23 @@ export const CreateSeoBriefRunSchema = v.object({
       v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120))),
     ),
   }),
-  audience: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(1000)),
+  audience: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(1000)))),
   userPains: OptionalTextListSchema,
   userScenarios: OptionalTextListSchema,
   keywordExpansionPrompt: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(8000))),
   ),
-  product: v.object({
-    name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)),
-    description: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(4000)),
-  }),
+  promptInstructionOverrides: PromptInstructionOverridesSchema,
+  product: v.optional(
+    v.nullish(
+      v.object({
+        name: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)))),
+        description: v.optional(
+          v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(4000))),
+        ),
+      }),
+    ),
+  ),
   keyMessage: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000))),
   ),
@@ -76,6 +86,10 @@ export const CreateSeoBriefRunSchema = v.object({
   ),
   brandConstraints: OptionalTextListSchema,
   claimsConstraints: OptionalTextListSchema,
+  approvedFacts: OptionalTextListSchema,
+  forbiddenClaims: OptionalTextListSchema,
+  bannedPhrases: OptionalTextListSchema,
+  requiredPhrases: OptionalTextListSchema,
   preferredAngle: v.optional(
     v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000))),
   ),

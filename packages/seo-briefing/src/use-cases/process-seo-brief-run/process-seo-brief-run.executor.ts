@@ -29,6 +29,7 @@ import { FinalClusterScoreService } from '../../services/final-cluster-score.ser
 import { ProductScoreService } from '../../services/product-score.service.js';
 import { SeoBriefScoreLoggerService } from '../../services/seo-brief-score-logger.service.js';
 import { SeoScoreService } from '../../services/seo-score.service.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 
 const RELATED_KEYWORD_LIMIT = SEO_BRIEF_OPERATIONAL_LIMITS.relatedKeywordLimit;
@@ -65,7 +66,6 @@ export interface ProcessSeoBriefRunOptions {
 }
 
 type KeywordExpansionResult = Awaited<ReturnType<SeoBriefAiPort['expandKeywords']>>;
-type KeywordTriageResult = Awaited<ReturnType<SeoBriefAiPort['triageKeywords']>>;
 type ClusterSelectionExplanationResult = Awaited<
   ReturnType<SeoBriefAiPort['explainClusterSelection']>
 >;
@@ -239,6 +239,7 @@ export class ProcessSeoBriefRunExecutor {
     const seoProductContext = readSeoProductContext(priorArtifacts);
     const hypothesesCount = readHypothesesCount(priorArtifacts);
     const requestTimeoutMs = readRequestTimeoutMsFromArtifacts(priorArtifacts);
+    const promptInstructionOverrides = readPromptInstructionOverridesFromArtifacts(priorArtifacts);
 
     run.start();
     await this.runRepository.save(run);
@@ -254,6 +255,7 @@ export class ProcessSeoBriefRunExecutor {
                 stepId: step.id,
                 modelMode: aiModelMode,
                 timeoutMs: requestTimeoutMs,
+                promptInstructionOverrides,
                 topicSeed: run.topicSeed,
                 market: {
                   country: run.country,
@@ -274,9 +276,7 @@ export class ProcessSeoBriefRunExecutor {
                 artifactType: 'user_pain_scenarios',
                 payload: {
                   artifactVersion: 'user_pain_scenarios_v1',
-                  generatedFrom: seoProductContext
-                    ? 'seo_product_context'
-                    : 'legacy_run_fields',
+                  generatedFrom: seoProductContext ? 'seo_product_context' : 'legacy_run_fields',
                   topicSeed: run.topicSeed,
                   seoProductContext: seoProductContext as SeoBriefJsonValue | null,
                   topicHintInterpretation: userPainScenarios.topicHintInterpretation,
@@ -292,6 +292,7 @@ export class ProcessSeoBriefRunExecutor {
               stepId: step.id,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
+              promptInstructionOverrides,
               topicSeed: run.topicSeed,
               market: {
                 country: run.country,
@@ -688,58 +689,13 @@ export class ProcessSeoBriefRunExecutor {
         MAX_KEYWORD_UNIVERSE_ITEMS,
       );
 
-      const triage = shouldExecuteStage(options.startStage, 'keyword_triage')
-        ? await this.executeStage(run.id, 'keyword_triage', async (step) => {
-            const triageResult = await this.ai.triageKeywords({
-              runId: run.id,
-              stepId: step.id,
-              modelMode: aiModelMode,
-              timeoutMs: requestTimeoutMs,
-              topicSeed: run.topicSeed,
-              audience: run.audience,
-              productName: run.productName,
-              productDescription: run.productDescription,
-              brandMemorySnapshot: run.brandMemorySnapshot,
-              keywords: keywordUniverse.map((item) => ({
-                keyword: item.keyword,
-                searchVolume: item.searchVolume,
-                competition: item.competition,
-              })),
-            });
-
-            const accepted = triageResult.accepted.map((item) => {
-              const candidate = findKeywordUniverseEntry(keywordUniverse, item.keyword);
-              return {
-                keyword: item.keyword,
-                intent: item.intent,
-                stage: item.stage,
-                reason: item.reason,
-                searchVolume: candidate?.searchVolume ?? null,
-                competition: candidate?.competition ?? null,
-                cpc: candidate?.cpc ?? null,
-              };
-            });
-
-            await this.saveArtifact({
-              runId: run.id,
-              stage: 'keyword_triage',
-              artifactType: 'keyword_triage_snapshot',
-              payload: {
-                accepted: accepted as unknown as SeoBriefJsonValue,
-                rejected: triageResult.rejected as unknown as SeoBriefJsonValue,
-              },
-              attempt: step.attemptNumber,
-            });
-
-            return {
-              accepted,
-              rejected: triageResult.rejected,
-            };
-          })
-        : restoreKeywordTriage(priorArtifacts);
+      const triage = {
+        accepted: buildClusterInputCandidates(keywordUniverse, run.topicSeed),
+        rejected: [],
+      };
 
       if (triage.accepted.length === 0) {
-        run.reject('No viable keywords remained after AI triage');
+        run.reject('No viable keywords remained after SERP expansion');
         await this.runRepository.save(run);
 
         return {
@@ -780,6 +736,7 @@ export class ProcessSeoBriefRunExecutor {
               stepId: step.id,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
+              promptInstructionOverrides,
               topicSeed: run.topicSeed,
               keywords: triage.accepted.map((item) => item.keyword),
             });
@@ -1186,6 +1143,7 @@ export class ProcessSeoBriefRunExecutor {
               stepId: step.id,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
+              promptInstructionOverrides,
               primaryKeyword: selectedCluster.representativeKeyword,
               clusterLabel: selectedCluster.label,
               intent: selectedCluster.intent,
@@ -1569,14 +1527,16 @@ function restoreUserPainScenariosOrNull(
   const payload = asObjectRecord(artifact.payload, 'user_pain_scenarios');
   return {
     topicHintInterpretation: asNullableString(payload.topicHintInterpretation, '') ?? '',
-    userPains: asOptionalArrayField<ExtractUserPainScenariosResult['userPains'][number]>(
-      payload,
-      'userPains',
-    ) ?? [],
-    userScenarios: asOptionalArrayField<ExtractUserPainScenariosResult['userScenarios'][number]>(
-      payload,
-      'userScenarios',
-    ) ?? [],
+    userPains:
+      asOptionalArrayField<ExtractUserPainScenariosResult['userPains'][number]>(
+        payload,
+        'userPains',
+      ) ?? [],
+    userScenarios:
+      asOptionalArrayField<ExtractUserPainScenariosResult['userScenarios'][number]>(
+        payload,
+        'userScenarios',
+      ) ?? [],
     riskNotes: asOptionalArrayField<string>(payload, 'riskNotes') ?? [],
   };
 }
@@ -1704,25 +1664,6 @@ function restoreOnpageResearch(artifacts: SeoBriefArtifact[]): {
 
   return {
     pages: asArrayField<OnPageResearchEntry>(payload, 'pages', 'onpage_research_snapshot'),
-  };
-}
-
-function restoreKeywordTriage(artifacts: SeoBriefArtifact[]): {
-  accepted: TriageAcceptedEntry[];
-  rejected: KeywordTriageResult['rejected'];
-} {
-  const payload = asObjectRecord(
-    findLatestArtifactByType(artifacts, 'keyword_triage_snapshot').payload,
-    'keyword_triage_snapshot',
-  );
-
-  return {
-    accepted: asArrayField<TriageAcceptedEntry>(payload, 'accepted', 'keyword_triage_snapshot'),
-    rejected: asArrayField<KeywordTriageResult['rejected'][number]>(
-      payload,
-      'rejected',
-      'keyword_triage_snapshot',
-    ),
   };
 }
 
@@ -2093,6 +2034,39 @@ function findKeywordUniverseEntry(
   return (
     keywordUniverse.find((item) => item.keyword.trim().toLowerCase() === normalizedKeyword) ?? null
   );
+}
+
+function buildClusterInputCandidates(
+  keywordUniverse: KeywordUniverseEntry[],
+  topicSeed: string,
+): TriageAcceptedEntry[] {
+  return keywordUniverse.map((item) => ({
+    keyword: item.keyword,
+    intent: inferKeywordIntent(item.keyword, topicSeed),
+    stage: 'consideration',
+    reason: 'Passed from SERP-expanded keyword universe directly into clustering.',
+    searchVolume: item.searchVolume,
+    competition: item.competition,
+    cpc: item.cpc,
+  }));
+}
+
+function inferKeywordIntent(keyword: string, topicSeed: string): SeoBriefAiKeywordIntent {
+  const normalized = `${keyword} ${topicSeed}`.toLowerCase();
+  if (
+    /\b(buy|price|pricing|cost|fees?|review|reviews|best|compare|vs|alternative|alternatives)\b/u.test(
+      normalized,
+    )
+  ) {
+    return 'commercial';
+  }
+  if (/\b(login|sign in|app|dashboard|account)\b/u.test(normalized)) {
+    return 'navigational';
+  }
+  if (/\b(apply|open|start|register|signup|sign up|download)\b/u.test(normalized)) {
+    return 'transactional';
+  }
+  return 'informational';
 }
 
 function buildClusterEntry(

@@ -127,6 +127,20 @@
       "when": 1782072000000,
       "tag": "0017_x_oauth_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1782441600000,
+      "tag": "0018_marker_placement_markets",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1782518400000,
+      "tag": "0019_brand_memory_target_audiences",
+      "breakpoints": true
     }
   ]
 }

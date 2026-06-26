@@ -15,9 +15,10 @@ import {
   type ProductFitReviewSupportingItemDetail,
   type SeoBriefAiKeywordIntent,
   type SeoBriefAiModelMode,
-  type SeoBriefClusterSourceConfidence,
   SeoBriefAiPort,
+  type SeoBriefClusterSourceConfidence,
 } from '../../ports/seo-brief-ai.port.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ReviewClusterProductFitCommand } from './review-cluster-product-fit.command.js';
 
@@ -80,6 +81,7 @@ export class ReviewClusterProductFitHandler
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
+        promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,
@@ -164,7 +166,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -220,7 +224,9 @@ function normalizeProductFitReviews(
   reviews: SeoBriefJsonObject[];
   supportingOnlyCount: number;
 } {
-  const clusterByName = new Map(clusters.map((cluster) => [normalizeText(cluster.clusterName), cluster]));
+  const clusterByName = new Map(
+    clusters.map((cluster) => [normalizeText(cluster.clusterName), cluster]),
+  );
   const reviewByClusterName = new Map<string, ClusterProductFitReview>();
   let ignoredAiClusterReviewCount = 0;
 

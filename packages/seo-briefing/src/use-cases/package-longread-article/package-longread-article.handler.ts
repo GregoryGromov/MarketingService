@@ -76,6 +76,7 @@ export class PackageLongreadArticleHandler
         stepId: step.id,
         modelMode: context.modelMode,
         timeoutMs: context.requestTimeoutMs,
+        promptInstructionOverrides: context.promptInstructionOverrides,
         reviewedArticleMarkdown,
         finalSeoBrief: context.finalSeoBrief,
         cleanupWarnings,

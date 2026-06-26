@@ -80,6 +80,7 @@ export class CleanupLongreadArticleHandler
           stepId: step.id,
           modelMode: context.modelMode,
           timeoutMs: context.requestTimeoutMs,
+          promptInstructionOverrides: context.promptInstructionOverrides,
           draftArticleMarkdown: currentMarkdown,
           finalSeoBrief: context.finalSeoBrief,
           productProfile: context.productProfile,

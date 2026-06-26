@@ -58,6 +58,7 @@ export interface BrandMemory {
   brandName: string | null;
   productDescription: string | null;
   targetAudience: string | null;
+  targetAudiences: string[];
   keyMessage: string | null;
   defaultCta: string | null;
   brandConstraints: string[];
@@ -96,9 +97,17 @@ function normalizeStringList(values?: string[] | null): string[] {
     return [];
   }
 
-  return values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  return values.map((value) => value.trim()).filter((value) => value.length > 0);
+}
+
+function normalizeTargetAudiences(
+  targetAudiences?: string[] | null,
+  legacyTargetAudience?: string | null,
+): string[] {
+  return normalizeStringList([
+    ...(targetAudiences ?? []),
+    ...(legacyTargetAudience ? [legacyTargetAudience] : []),
+  ]).filter((value, index, values) => values.indexOf(value) === index);
 }
 
 function normalizeGlossary(glossary?: Record<string, string> | null): Record<string, string> {
@@ -187,9 +196,7 @@ function normalizeAdaptationPromptRules(
   };
 }
 
-function normalizeMediaAspectRatios(
-  ratios?: Partial<MediaAspectRatios> | null,
-): MediaAspectRatios {
+function normalizeMediaAspectRatios(ratios?: Partial<MediaAspectRatios> | null): MediaAspectRatios {
   return {
     telegram: normalizeText(ratios?.telegram) ?? '1:1',
     x: normalizeText(ratios?.x) ?? '16:9',
@@ -199,10 +206,15 @@ function normalizeMediaAspectRatios(
 }
 
 function normalizeBrandMemory(brandMemory?: Partial<BrandMemory> | null): BrandMemory {
+  const targetAudiences = normalizeTargetAudiences(
+    brandMemory?.targetAudiences,
+    brandMemory?.targetAudience,
+  );
   return {
     brandName: normalizeText(brandMemory?.brandName),
     productDescription: normalizeText(brandMemory?.productDescription),
-    targetAudience: normalizeText(brandMemory?.targetAudience),
+    targetAudience: targetAudiences[0] ?? null,
+    targetAudiences,
     keyMessage: normalizeText(brandMemory?.keyMessage),
     defaultCta: normalizeText(brandMemory?.defaultCta),
     brandConstraints: normalizeStringList(brandMemory?.brandConstraints),
@@ -213,13 +225,9 @@ function normalizeBrandMemory(brandMemory?: Partial<BrandMemory> | null): BrandM
     bannedPhrases: normalizeStringList(brandMemory?.bannedPhrases),
     requiredPhrases: normalizeStringList(brandMemory?.requiredPhrases),
     brandDocs: normalizeBrandDocs(brandMemory?.brandDocs),
-    adaptationPromptRules: normalizeAdaptationPromptRules(
-      brandMemory?.adaptationPromptRules,
-    ),
+    adaptationPromptRules: normalizeAdaptationPromptRules(brandMemory?.adaptationPromptRules),
     seoCompetitors: normalizeSeoCompetitors(brandMemory?.seoCompetitors),
-    seoCompetitorKeywordMap: normalizeSeoCompetitorKeywordMap(
-      brandMemory?.seoCompetitorKeywordMap,
-    ),
+    seoCompetitorKeywordMap: normalizeSeoCompetitorKeywordMap(brandMemory?.seoCompetitorKeywordMap),
   };
 }
 

@@ -14,6 +14,7 @@ import {
   SeoBriefAiPort,
   type SeoKeywordCluster,
 } from '../../ports/seo-brief-ai.port.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClusterKeywordCandidatesCommand } from './cluster-keyword-candidates.command.js';
 
@@ -49,16 +50,24 @@ export class ClusterKeywordCandidatesHandler
 
     const artifacts = await this.artifactRepository.findByRunId(run.id);
     const scoring = readLatestObjectArtifact(artifacts, 'keyword_candidate_scoring');
-    if (!scoring) {
-      throw new Error('Score keyword candidates before clustering');
+    const dirtyPool = scoring ? null : readLatestObjectArtifact(artifacts, 'dirty_keyword_pool');
+    if (!scoring && !dirtyPool) {
+      throw new Error('Build dirty keyword pool before clustering');
+    }
+    const candidateSource = scoring ?? dirtyPool;
+    if (!candidateSource) {
+      throw new Error('Build dirty keyword pool before clustering');
     }
 
-    const accepted = readCandidateBucket(scoring, 'accepted');
-    const maybe = readCandidateBucket(scoring, 'maybe');
-    const rejected = readCandidateBucket(scoring, 'rejected');
+    const accepted = scoring
+      ? readCandidateBucket(scoring, 'accepted')
+      : readCandidateBucket(candidateSource, 'candidates');
+    const maybe = scoring ? readCandidateBucket(scoring, 'maybe') : [];
+    const rejected = scoring ? readCandidateBucket(scoring, 'rejected') : [];
+    const sourceArtifactType = scoring ? 'keyword_candidate_scoring' : 'dirty_keyword_pool';
     const viableCandidates = [...accepted, ...maybe];
     if (viableCandidates.length === 0) {
-      throw new Error('Keyword candidate scoring does not contain viable candidates to cluster');
+      throw new Error('Dirty keyword pool does not contain viable candidates to cluster');
     }
 
     const step = SeoBriefRunStep.create({
@@ -76,6 +85,7 @@ export class ClusterKeywordCandidatesHandler
         stepId: step.id,
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
+        promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
         market: {
           country: run.country,
@@ -100,7 +110,7 @@ export class ClusterKeywordCandidatesHandler
 
       const payload: SeoBriefJsonObject = {
         artifactVersion: 'keyword_intent_clusters_v1',
-        sourceArtifactType: 'keyword_candidate_scoring',
+        sourceArtifactType,
         inputCandidateCount: viableCandidates.length,
         acceptedCandidateCount: accepted.length,
         maybeCandidateCount: maybe.length,
@@ -108,9 +118,15 @@ export class ClusterKeywordCandidatesHandler
         clusterCount: clusters.length,
         notes: [
           'Clusters are grouped by user intent, not exact word overlap.',
-          'All accepted and maybe candidates are sent to clustering; rejected candidates are excluded.',
-          'Rejected candidates were excluded from clustering.',
-          'Maybe candidates can appear as secondary keywords, questions, or supporting items.',
+          scoring
+            ? 'All accepted and maybe candidates are sent to clustering; rejected candidates are excluded.'
+            : 'Dirty-pool candidates are sent directly to clustering; AI prioritization happens inside clustering and Product Fit.',
+          scoring
+            ? 'Rejected candidates were excluded from clustering.'
+            : 'The separate AI candidate filtering step is bypassed for the current flow.',
+          scoring
+            ? 'Maybe candidates can appear as secondary keywords, questions, or supporting items.'
+            : 'SERP-derived evidence and source diversity metrics are preserved on each candidate.',
         ],
         clusters: clusters as unknown as SeoBriefJsonValue,
       };
@@ -189,7 +205,9 @@ function toClusterCandidateInput(candidate: CandidateRecord): ClusterKeywordCand
     reasons: readStringArray(candidate.reasons),
     riskFlags: readStringArray(candidate.riskFlags),
     evidenceNotes: readStringArray(candidate.evidenceNotes),
-    sources: readStringArray(sourceCandidate?.sources),
+    sources: readStringArray(candidate.sources).length
+      ? readStringArray(candidate.sources)
+      : readStringArray(sourceCandidate?.sources),
     metrics: {
       searchVolume: readNumber(metrics?.searchVolume),
       keywordDifficulty: readNumber(metrics?.keywordDifficulty),
@@ -212,7 +230,7 @@ function toClusterCandidateInput(candidate: CandidateRecord): ClusterKeywordCand
         metrics?.sourceHypothesisSerpUniqueDomainCount,
       ),
     },
-    competitorUrls: readCompetitorUrls(sourceCandidate),
+    competitorUrls: readCompetitorUrls(sourceCandidate ?? candidate),
   };
 }
 

@@ -1,7 +1,11 @@
 import type { SeoBriefArtifact } from '../../domain/seo-brief-artifact.entity.js';
 import type { SeoBriefRun } from '../../domain/seo-brief-run.aggregate.js';
 import type { SeoBriefJsonObject } from '../../domain/seo-briefing.types.js';
-import type { SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
+import type {
+  SeoBriefAiModelMode,
+  SeoBriefPromptInstructionOverrides,
+} from '../../ports/seo-brief-ai.port.js';
+import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 
 const REQUIRED_FINAL_BRIEF_FIELDS = [
@@ -18,6 +22,7 @@ export interface ArticleGenerationContext {
   finalSeoBrief: SeoBriefJsonObject;
   modelMode: SeoBriefAiModelMode | null;
   productProfile: SeoBriefJsonObject;
+  promptInstructionOverrides: SeoBriefPromptInstructionOverrides | null;
   requestTimeoutMs: number;
   validation: SeoBriefJsonObject;
 }
@@ -39,8 +44,10 @@ export function buildArticleGenerationContext(
       },
     } as SeoBriefJsonObject,
     modelMode: readAiModelMode(artifacts),
+    promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
     requestTimeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
     productProfile: {
+      brandMemory,
       productName: run.productName,
       fullName: run.productName,
       company: brandMemory.brandName ?? run.productName,
@@ -55,6 +62,7 @@ export function buildArticleGenerationContext(
       approvedFacts: brandMemory.approvedFacts,
     } as unknown as SeoBriefJsonObject,
     claimsPolicy: {
+      brandMemory,
       notAllowedClaims: uniqueStrings([
         ...brandMemory.forbiddenClaims,
         ...brandMemory.bannedPhrases,
@@ -81,6 +89,7 @@ export function buildArticleGenerationContext(
       ],
     } as unknown as SeoBriefJsonObject,
     brandVoice: {
+      brandMemory,
       tone: 'clear, calm, beginner-friendly, practical, risk-aware',
       avoid: uniqueStrings([
         ...brandMemory.bannedPhrases,
