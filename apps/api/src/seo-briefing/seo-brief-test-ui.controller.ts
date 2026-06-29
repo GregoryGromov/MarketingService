@@ -2101,15 +2101,14 @@ export class SeoBriefTestUiController {
                   <p>Execution controls: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
                 </div>
                 <input id="aiModelMode" type="hidden" value="pro" />
-                <input id="aiModel" type="hidden" value="deepseek-v4-pro" />
+                <input id="aiModel" type="hidden" value="deepseek/deepseek-r1-0528" />
                 <div class="input-group-grid">
                   <label class="field">
                     <span>AI Model</span>
                     <em>Primary model used for every AI call in this SEO run.</em>
                     <select id="aiModelPreset">
-                      <option value="deepseek-v4-flash" data-mode="flash" data-input-price="0.14" data-output-price="0.28">DeepSeek Flash - fast</option>
-                      <option value="deepseek-v4-pro" data-mode="pro" data-input-price="0.435" data-output-price="0.87" selected>DeepSeek Pro - balanced</option>
-                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">OpenRouter DeepSeek R1 0528 - deep reasoning</option>
+                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="flash" data-input-price="0.27" data-output-price="1.10">DeepSeek Flash - Chat V3 via OpenRouter</option>
+                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19" selected>DeepSeek Pro - R1 reasoning via OpenRouter</option>
                       <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">OpenRouter Gemini 2.5 Flash - fast</option>
                       <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">OpenRouter Gemini 2.5 Pro - deep reasoning</option>
                       <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">OpenRouter Claude Sonnet 4 - deep reasoning</option>
@@ -2120,8 +2119,8 @@ export class SeoBriefTestUiController {
                   </label>
                   <label class="field">
                     <span>Custom Model Slug</span>
-                    <em>Use a DeepSeek model id or an OpenRouter vendor/model slug.</em>
-                    <input id="aiModelCustom" value="deepseek-v4-pro" placeholder="vendor/model-name" />
+                    <em>Use any OpenRouter vendor/model slug.</em>
+                    <input id="aiModelCustom" value="deepseek/deepseek-r1-0528" placeholder="vendor/model-name" />
                   </label>
                 </div>
                 <div class="field full">

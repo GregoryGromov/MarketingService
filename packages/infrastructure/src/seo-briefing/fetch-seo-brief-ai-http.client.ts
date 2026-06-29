@@ -39,30 +39,30 @@ export class FetchSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
     const requestedOpenRouterModel = request.model.includes('/');
     const openRouterApiKey = this.config.get<string>('OPENROUTER_API_KEY')?.trim();
     const genericApiKey = this.config.get<string>('SEO_BRIEF_AI_API_KEY')?.trim();
-    const deepSeekApiKey = this.config.get<string>('DEEPSEEK_API_KEY')?.trim();
-    const apiKey = requestedOpenRouterModel
-      ? openRouterApiKey || genericApiKey
-      : deepSeekApiKey || genericApiKey;
+    const apiKey =
+      openRouterApiKey ||
+      genericApiKey ||
+      (requestedOpenRouterModel ? undefined : this.config.get<string>('DEEPSEEK_API_KEY')?.trim());
     if (!apiKey) {
       throw new SeoBriefAiConfigurationError(
-        requestedOpenRouterModel
-          ? 'OPENROUTER_API_KEY or SEO_BRIEF_AI_API_KEY must be configured for OpenRouter model slugs'
-          : 'DEEPSEEK_API_KEY or SEO_BRIEF_AI_API_KEY must be configured for DeepSeek model ids',
+        'OPENROUTER_API_KEY, SEO_BRIEF_AI_API_KEY, or DEEPSEEK_API_KEY must be configured',
       );
     }
     if (!isValidHeaderToken(apiKey)) {
       throw new SeoBriefAiConfigurationError(
-        'SEO brief AI API keys must contain only ASCII characters and no whitespace',
+        'OPENROUTER_API_KEY, SEO_BRIEF_AI_API_KEY, or DEEPSEEK_API_KEY must contain only ASCII characters and no whitespace',
       );
     }
 
-    const baseUrl = requestedOpenRouterModel
-      ? this.config.get<string>('OPENROUTER_BASE_URL')?.trim() ||
-        this.config.get<string>('SEO_BRIEF_AI_BASE_URL')?.trim() ||
-        'https://openrouter.ai/api/v1'
-      : this.config.get<string>('DEEPSEEK_BASE_URL')?.trim() ||
-        this.config.get<string>('SEO_BRIEF_AI_BASE_URL')?.trim() ||
-        'https://api.deepseek.com';
+    const baseUrl =
+      this.config.get<string>('OPENROUTER_BASE_URL')?.trim() ||
+      this.config.get<string>('SEO_BRIEF_AI_BASE_URL')?.trim() ||
+      (requestedOpenRouterModel
+        ? undefined
+        : this.config.get<string>('DEEPSEEK_BASE_URL')?.trim()) ||
+      (openRouterApiKey || genericApiKey || requestedOpenRouterModel
+        ? 'https://openrouter.ai/api/v1'
+        : 'https://api.deepseek.com');
     const provider = isOpenRouterBaseUrl(baseUrl) ? 'openrouter' : 'ai';
 
     let response: Response;
