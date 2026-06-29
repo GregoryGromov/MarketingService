@@ -78,6 +78,7 @@ export class CleanupLongreadArticleHandler
         result = await this.ai.cleanupLongreadArticle({
           runId: run.id,
           stepId: step.id,
+          model: context.model,
           modelMode: context.modelMode,
           timeoutMs: context.requestTimeoutMs,
           promptInstructionOverrides: context.promptInstructionOverrides,

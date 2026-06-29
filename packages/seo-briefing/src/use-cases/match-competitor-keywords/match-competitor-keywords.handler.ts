@@ -14,11 +14,12 @@ import {
   type AiKeywordGroupMatch,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
+import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import {
   type CompetitorKeywordMatchingMode,
   MatchCompetitorKeywordsCommand,
 } from './match-competitor-keywords.command.js';
-import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 
 type CandidateOriginType =
   | 'ai_hypothesis'
@@ -27,12 +28,7 @@ type CandidateOriginType =
   | 'serp_related_search'
   | 'selected_related_query';
 
-type MatchType =
-  | 'exact_match'
-  | 'near_match'
-  | 'same_intent'
-  | 'semantic_related'
-  | 'no_match';
+type MatchType = 'exact_match' | 'near_match' | 'same_intent' | 'semantic_related' | 'no_match';
 
 interface CandidateQuery {
   intent: string | null;
@@ -245,6 +241,7 @@ export class MatchCompetitorKeywordsHandler
             run,
             candidateQueries,
             competitorKeywords,
+            readSeoBriefAiModel(artifacts),
             readAiModelMode(artifacts),
             readRequestTimeoutMsFromArtifacts(artifacts),
           )
@@ -340,6 +337,7 @@ export class MatchCompetitorKeywordsHandler
     run: MatchCompetitorKeywordsRun,
     candidateQueries: CandidateQuery[],
     competitorKeywords: CompetitorKeyword[],
+    model: string | null,
     modelMode: 'flash' | 'pro' | 'pro_thinking' | null,
     timeoutMs: number,
   ): Promise<MatchCompetitorKeywordsExecutionResult> {
@@ -378,6 +376,7 @@ export class MatchCompetitorKeywordsHandler
     try {
       const competitorBucketResult = await this.seoBriefAi.groupCompetitorKeywordEvidence({
         runId: run.id,
+        model,
         modelMode,
         timeoutMs,
         topicSeed: run.topicSeed,
@@ -411,6 +410,7 @@ export class MatchCompetitorKeywordsHandler
 
       const candidateBucketResult = await this.seoBriefAi.groupCandidateKeywords({
         runId: run.id,
+        model,
         modelMode,
         timeoutMs,
         topicSeed: run.topicSeed,
@@ -445,6 +445,7 @@ export class MatchCompetitorKeywordsHandler
 
       const groupMatchResult = await this.seoBriefAi.matchKeywordGroups({
         runId: run.id,
+        model,
         modelMode,
         timeoutMs,
         topicSeed: run.topicSeed,
@@ -546,6 +547,7 @@ export class MatchCompetitorKeywordsHandler
             });
             const groupScoreResult = await this.seoBriefAi.scoreCompetitorKeywordCandidateGroup({
               runId: run.id,
+              model,
               modelMode,
               timeoutMs,
               topicSeed: run.topicSeed,
@@ -868,7 +870,9 @@ function normalizeCandidateBuckets(
   buckets: AiCandidateKeywordBucket[],
   candidateInputs: AiCompetitorKeywordCandidateInput[],
 ): AiCandidateKeywordBucket[] {
-  const candidateById = new Map(candidateInputs.map((candidate) => [candidate.candidateId, candidate]));
+  const candidateById = new Map(
+    candidateInputs.map((candidate) => [candidate.candidateId, candidate]),
+  );
   const assignedCandidateIds = new Set<string>();
   const result: AiCandidateKeywordBucket[] = [];
 
@@ -1059,9 +1063,7 @@ function normalizeMatchingMode(mode: CompetitorKeywordMatchingMode): CompetitorK
   return mode === 'ai' ? 'ai' : 'algorithmic';
 }
 
-function readAiModelMode(
-  artifacts: SeoBriefArtifact[],
-): 'flash' | 'pro' | 'pro_thinking' | null {
+function readAiModelMode(artifacts: SeoBriefArtifact[]): 'flash' | 'pro' | 'pro_thinking' | null {
   const normalizedInput = readLatestObjectArtifact(artifacts, 'normalized_input');
   const mode = readString(normalizedInput?.aiModelMode);
   return mode === 'flash' || mode === 'pro' || mode === 'pro_thinking' ? mode : null;
@@ -1124,7 +1126,10 @@ function collectKeywordHypothesisCandidates(artifacts: SeoBriefArtifact[]): Cand
         intent: readString(record?.intentHint) ?? readString(record?.intent_hint),
         productFitHypothesis:
           readString(record?.productFitHypothesis) ?? readString(record?.product_fit_hypothesis),
-        reason: readString(record?.reason) ?? readString(record?.whyGenerated) ?? readString(record?.why_generated),
+        reason:
+          readString(record?.reason) ??
+          readString(record?.whyGenerated) ??
+          readString(record?.why_generated),
         riskFlags: readStringArray(record?.riskFlags ?? record?.risk_flags),
         sourceKeyword: null,
         sourceText: text,
@@ -1143,9 +1148,7 @@ function collectSerpDerivedCandidates(artifacts: SeoBriefArtifact[]): CandidateQ
   for (const item of items) {
     const record = asObject(item);
     const sourceKeyword = readString(record?.keyword);
-    const queries = Array.isArray(record?.similarSearchQueries)
-      ? record.similarSearchQueries
-      : [];
+    const queries = Array.isArray(record?.similarSearchQueries) ? record.similarSearchQueries : [];
 
     for (const queryItem of queries) {
       const query = asObject(queryItem);
@@ -1326,10 +1329,7 @@ function markAlgorithmicFallbackCandidate(
   };
 }
 
-function createKeywordMatch(
-  candidate: CandidateQuery,
-  keyword: CompetitorKeyword,
-): KeywordMatch {
+function createKeywordMatch(candidate: CandidateQuery, keyword: CompetitorKeyword): KeywordMatch {
   const matchSignal = classifyMatch(candidate.normalizedText, keyword.normalizedText);
   const competitorKeywordScore = calculateCompetitorKeywordScore(keyword);
   const proxyContribution = roundScore(
@@ -1352,14 +1352,22 @@ function createKeywordMatch(
   };
 }
 
-function classifyMatch(candidateText: string, competitorText: string): {
+function classifyMatch(
+  candidateText: string,
+  competitorText: string,
+): {
   confidence: number;
   matchType: MatchType;
   score: number;
   why: string;
 } {
   if (candidateText === competitorText) {
-    return { matchType: 'exact_match', confidence: 1, score: 100, why: 'Exact normalized query match.' };
+    return {
+      matchType: 'exact_match',
+      confidence: 1,
+      score: 100,
+      why: 'Exact normalized query match.',
+    };
   }
 
   const candidateTokens = importantTokenAwareTokens(candidateText);
@@ -1531,9 +1539,7 @@ function mapSerpCandidateOrigin(source: string | null): CandidateOriginType {
 
 function importantTokenAwareTokens(text: string): string[] {
   const normalized = normalizeKeywordText(text);
-  const words = normalized
-    .split(' ')
-    .filter((token) => token.length > 1 && !isStopWord(token));
+  const words = normalized.split(' ').filter((token) => token.length > 1 && !isStopWord(token));
   const phraseTokens = IMPORTANT_TOKEN_PHRASES.filter((phrase) => normalized.includes(phrase));
 
   return [...new Set([...words, ...phraseTokens])];
@@ -1600,13 +1606,18 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
 
 function normalizeDisplayText(value: string): string {
-  return value.replace(/\s+/gu, ' ').replace(/[?!.\u3002\uff01\uff1f]+$/u, '').trim();
+  return value
+    .replace(/\s+/gu, ' ')
+    .replace(/[?!.\u3002\uff01\uff1f]+$/u, '')
+    .trim();
 }
 
 function normalizeKeywordText(value: string): string {

@@ -13,6 +13,7 @@ import type {
   SeoBriefAiModelMode,
 } from '../../ports/seo-brief-ai.port.js';
 import { SeoBriefAiPort } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateKeywordHypothesesCommand } from './generate-keyword-hypotheses.command.js';
@@ -74,6 +75,7 @@ export class GenerateKeywordHypothesesHandler
       const result = await this.ai.expandKeywords({
         runId: run.id,
         stepId: step.id,
+        model: readSeoBriefAiModel(artifacts),
         modelMode: aiModelMode,
         timeoutMs: requestTimeoutMs,
         promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),

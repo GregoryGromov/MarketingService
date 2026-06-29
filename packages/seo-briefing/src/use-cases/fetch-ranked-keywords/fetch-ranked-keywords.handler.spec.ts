@@ -149,17 +149,11 @@ describe('FetchRankedKeywordsHandler', () => {
         },
       }),
     );
-    const handler = new FetchRankedKeywordsHandler(
-      runRepository,
-      artifactRepository,
-      seoResearch,
-    );
+    const handler = new FetchRankedKeywordsHandler(runRepository, artifactRepository, seoResearch);
 
     const result = await handler.execute(new FetchRankedKeywordsCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const artifact = artifacts.find(
-      (item) => item.artifactType === 'ranked_keywords_universe',
-    );
+    const artifact = artifacts.find((item) => item.artifactType === 'ranked_keywords_universe');
     const payload = artifact?.payload as {
       itemCount: number;
       items: Array<{ sourceDomain: string; text: string }>;
@@ -177,7 +171,9 @@ describe('FetchRankedKeywordsHandler', () => {
       'binance.com',
       'trustwallet.com',
     ]);
-    expect(seoResearch.rankedKeywordCalls.some((call) => call.target === 'youtube.com')).toBe(false);
+    expect(seoResearch.rankedKeywordCalls.some((call) => call.target === 'youtube.com')).toBe(
+      false,
+    );
     expect(payload.targets).toEqual(['binance.com', 'trustwallet.com']);
     expect(payload.itemCount).toBe(2);
     expect(payload.items.map((item) => item.sourceDomain)).toEqual([

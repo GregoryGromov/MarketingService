@@ -20,6 +20,7 @@ export interface ArticleGenerationContext {
   brandVoice: SeoBriefJsonObject;
   claimsPolicy: SeoBriefJsonObject;
   finalSeoBrief: SeoBriefJsonObject;
+  model: string | null;
   modelMode: SeoBriefAiModelMode | null;
   productProfile: SeoBriefJsonObject;
   promptInstructionOverrides: SeoBriefPromptInstructionOverrides | null;
@@ -34,15 +35,29 @@ export function buildArticleGenerationContext(
   const finalSeoBrief = readFinalSeoBrief(artifacts);
   const validation = validateFinalSeoBrief(finalSeoBrief);
   const brandMemory = run.brandMemorySnapshot;
+  const normalizedInput = readLatestObjectArtifact(artifacts, 'normalized_input');
+  const keyMessage =
+    run.keyMessage ?? readString(normalizedInput?.keyMessage) ?? brandMemory.keyMessage ?? null;
+  const cta =
+    run.cta ??
+    readString(normalizedInput?.cta) ??
+    readString(finalSeoBrief.cta) ??
+    brandMemory.defaultCta ??
+    null;
+  const conclusionDirection = readString(normalizedInput?.conclusionDirection);
 
   return {
     finalSeoBrief: {
       ...finalSeoBrief,
+      keyMessage,
+      cta,
+      conclusionDirection,
       market: {
         country: run.country,
         language: run.language,
       },
     } as SeoBriefJsonObject,
+    model: readAiModel(artifacts),
     modelMode: readAiModelMode(artifacts),
     promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),
     requestTimeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
@@ -53,6 +68,9 @@ export function buildArticleGenerationContext(
       company: brandMemory.brandName ?? run.productName,
       category: 'SEO brief product',
       mainValue: run.productDescription,
+      keyMessage,
+      cta,
+      conclusionDirection,
       targetUsers: uniqueStrings([run.audience, brandMemory.targetAudience]),
       useCases: uniqueStrings([
         run.topicSeed,
@@ -174,6 +192,11 @@ function readAiModelMode(artifacts: SeoBriefArtifact[]): SeoBriefAiModelMode | n
   const payload = readLatestObjectArtifact(artifacts, 'normalized_input');
   const mode = readString(payload?.aiModelMode);
   return mode === 'flash' || mode === 'pro' || mode === 'pro_thinking' ? mode : null;
+}
+
+function readAiModel(artifacts: SeoBriefArtifact[]): string | null {
+  const payload = readLatestObjectArtifact(artifacts, 'normalized_input');
+  return readString(payload?.aiModel);
 }
 
 function readString(value: unknown): string | null {

@@ -74,6 +74,7 @@ export class PackageLongreadArticleHandler
       const result = await this.ai.packageLongreadArticle({
         runId: run.id,
         stepId: step.id,
+        model: context.model,
         modelMode: context.modelMode,
         timeoutMs: context.requestTimeoutMs,
         promptInstructionOverrides: context.promptInstructionOverrides,

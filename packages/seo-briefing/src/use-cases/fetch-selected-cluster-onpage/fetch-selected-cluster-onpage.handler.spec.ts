@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  SeoBriefArtifact,
-  SeoBriefRun,
-  SeoResearchPort,
   type GetOnPageContentParsingParams,
   type GetOnPageInstantPagesParams,
+  SeoBriefArtifact,
+  SeoBriefRun,
   type SeoOnPageContentParsingResult,
   type SeoOnPageInstantPagesResult,
+  SeoResearchPort,
 } from '../../index.js';
 import {
   InMemorySeoBriefArtifactRepository,
@@ -55,9 +55,7 @@ class FakeSeoResearchPort extends SeoResearchPort {
     });
   }
 
-  getOnPageInstantPages(
-    params: GetOnPageInstantPagesParams,
-  ): Promise<SeoOnPageInstantPagesResult> {
+  getOnPageInstantPages(params: GetOnPageInstantPagesParams): Promise<SeoOnPageInstantPagesResult> {
     this.instantCalls.push(params);
     return Promise.resolve({
       provider: 'dataforseo',

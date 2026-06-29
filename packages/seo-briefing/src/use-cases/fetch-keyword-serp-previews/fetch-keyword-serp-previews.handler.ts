@@ -54,7 +54,10 @@ export class FetchKeywordSerpPreviewsHandler
     const keywordHypothesesArtifact = [...artifacts]
       .reverse()
       .find((artifact) => artifact.artifactType === 'keyword_hypotheses');
-    const hypotheses = readHypothesesForSerpSelection(keywordHypothesesArtifact?.payload ?? null, run.id);
+    const hypotheses = readHypothesesForSerpSelection(
+      keywordHypothesesArtifact?.payload ?? null,
+      run.id,
+    );
     const requestedCount = readSerpEnrichmentCount(artifacts, hypotheses.length);
     const selectedHypotheses = selectHypothesesForSerp(hypotheses, requestedCount);
     const keywords = selectedHypotheses.map((item) => item.keyword);

@@ -14,6 +14,7 @@ import {
   SeoBriefAiPort,
   type SeoKeywordCluster,
 } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClusterKeywordCandidatesCommand } from './cluster-keyword-candidates.command.js';
@@ -83,6 +84,7 @@ export class ClusterKeywordCandidatesHandler
       const result = await this.ai.clusterKeywords({
         runId: run.id,
         stepId: step.id,
+        model: readSeoBriefAiModel(artifacts),
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),

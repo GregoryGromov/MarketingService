@@ -101,8 +101,6 @@ describe('ExtractSerpDerivedCandidatesHandler', () => {
         sourceText: 'earn usdt basics',
       },
     ]);
-    expect(derived?.items?.[0]?.serpThemes.map((item) => item.theme)).toContain(
-      'Earn USDT guide',
-    );
+    expect(derived?.items?.[0]?.serpThemes.map((item) => item.theme)).toContain('Earn USDT guide');
   });
 });

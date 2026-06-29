@@ -38,6 +38,7 @@ export interface CreateSeoBriefRunResult {
 interface NormalizedCreateSeoBriefRunInput {
   projectId: string | null;
   aiModelMode: SeoBriefAiModelMode;
+  aiModel: string | null;
   workflowMode: 'manual' | 'auto_until_selection';
   topicHint: string;
   topicSeed: string;
@@ -74,6 +75,7 @@ interface NormalizedCreateSeoBriefRunInput {
   audienceBefore: string | null;
   audienceAfter: string | null;
   cta: string | null;
+  conclusionDirection: string | null;
   seoWeight: number;
   productWeight: number;
 }
@@ -202,6 +204,7 @@ function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBrief
   return {
     projectId: normalizeText(input.projectId),
     aiModelMode: normalizeAiModelMode(input.aiModelMode),
+    aiModel: normalizeText(input.aiModel),
     workflowMode: normalizeWorkflowMode(input.workflowMode),
     topicHint,
     topicSeed: topicHint,
@@ -244,6 +247,7 @@ function normalizeInput(input: CreateSeoBriefRunInput): NormalizedCreateSeoBrief
     audienceBefore: normalizeText(input.audienceShift?.before),
     audienceAfter: normalizeText(input.audienceShift?.after),
     cta: normalizeText(input.cta),
+    conclusionDirection: normalizeText(input.conclusionDirection),
     seoWeight: weights.seoWeight,
     productWeight: weights.productWeight,
   };
@@ -334,8 +338,8 @@ function applyBrandMemoryDefaults(
     audience: normalizeRequiredText(audience),
     productName: normalizeRequiredText(productName),
     productDescription: normalizeRequiredText(productDescription),
-    keyMessage: brandMemorySnapshot.keyMessage ?? input.keyMessage ?? null,
-    cta: brandMemorySnapshot.defaultCta ?? input.cta ?? null,
+    keyMessage: input.keyMessage ?? brandMemorySnapshot.keyMessage ?? null,
+    cta: input.cta ?? brandMemorySnapshot.defaultCta ?? null,
     brandConstraints: brandMemorySnapshot.brandConstraints ?? input.brandConstraints,
     claimsConstraints: brandMemorySnapshot.claimsConstraints ?? input.claimsConstraints,
   };
@@ -350,6 +354,7 @@ function createNormalizedInputArtifactPayload(
     inputVersion: 'topic_hint_manual_pains_v2',
     projectId: input.projectId,
     aiModelMode: input.aiModelMode,
+    aiModel: input.aiModel,
     workflowMode: input.workflowMode,
     topicHint: input.topicHint,
     topicSeed: input.topicSeed,
@@ -397,6 +402,7 @@ function createNormalizedInputArtifactPayload(
       after: input.audienceAfter,
     },
     cta: input.cta,
+    conclusionDirection: input.conclusionDirection,
     seoProductBalance: {
       seoWeight: input.seoWeight,
       productWeight: input.productWeight,
@@ -493,6 +499,7 @@ function createSeoProductContextArtifactPayload(
       preferredAngle: input.preferredAngle,
       keyMessage: input.keyMessage,
       cta: input.cta,
+      conclusionDirection: input.conclusionDirection,
       campaignContext: input.campaignContext,
       audienceShift: {
         before: input.audienceBefore,
@@ -574,6 +581,7 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
   return JSON.stringify({
     projectId: input.projectId,
     aiModelMode: input.aiModelMode,
+    aiModel: input.aiModel?.trim().toLowerCase() ?? null,
     topicHint: input.topicHint.trim().toLowerCase(),
     topicSeed: input.topicSeed.trim().toLowerCase(),
     country: input.country.trim().toLowerCase(),
@@ -614,6 +622,7 @@ function createRunFingerprint(input: NormalizedCreateSeoBriefRunInput): string {
     audienceBefore: input.audienceBefore?.trim().toLowerCase() ?? null,
     audienceAfter: input.audienceAfter?.trim().toLowerCase() ?? null,
     cta: input.cta?.trim().toLowerCase() ?? null,
+    conclusionDirection: input.conclusionDirection?.trim().toLowerCase() ?? null,
     seoWeight: Number(input.seoWeight.toFixed(4)),
     productWeight: Number(input.productWeight.toFixed(4)),
   });
@@ -921,6 +930,7 @@ export class CreateSeoBriefRunHandler
           return createRunFingerprint({
             projectId: candidate.projectId,
             aiModelMode: extractAiModelModeFromArtifacts(candidateArtifacts),
+            aiModel: extractTextFromPayload(candidateInputPayload, 'aiModel'),
             workflowMode:
               extractTextFromPayload(candidateInputPayload, 'workflowMode') ===
               'auto_until_selection'
@@ -983,6 +993,10 @@ export class CreateSeoBriefRunHandler
             audienceBefore: candidate.audienceBefore,
             audienceAfter: candidate.audienceAfter,
             cta: candidate.cta,
+            conclusionDirection: extractTextFromPayload(
+              candidateInputPayload,
+              'conclusionDirection',
+            ),
             seoWeight: candidate.seoWeight,
             productWeight: candidate.productWeight,
           });

@@ -16,6 +16,7 @@ import {
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
 import { deriveTopicHintScope } from '../../services/topic-hint-scope.service.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readPromptInstructionOverridesFromArtifacts } from '../seo-brief-prompt-instruction-overrides.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateFinalSeoBriefCommand } from './generate-final-seo-brief.command.js';
@@ -113,6 +114,7 @@ export class GenerateFinalSeoBriefHandler
       const brief = await this.ai.generateSeoBrief({
         runId: run.id,
         stepId: step.id,
+        model: readSeoBriefAiModel(artifacts),
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         promptInstructionOverrides: readPromptInstructionOverridesFromArtifacts(artifacts),

@@ -20,6 +20,7 @@ export type SeoBriefPromptInstructionOverrides = Record<string, string>;
 export interface SeoBriefAiRequestContext {
   runId: SeoBriefRunId;
   stepId?: SeoBriefRunStepId | null;
+  model?: string | null;
   modelMode?: SeoBriefAiModelMode | null;
   timeoutMs?: number | null;
   promptInstructionOverrides?: SeoBriefPromptInstructionOverrides | null;
@@ -27,6 +28,7 @@ export interface SeoBriefAiRequestContext {
 
 export interface ExtractSeoBriefContextParams {
   contextText: string;
+  model?: string | null;
   modelMode?: SeoBriefAiModelMode | null;
   timeoutMs?: number | null;
   promptInstructionOverrides?: SeoBriefPromptInstructionOverrides | null;

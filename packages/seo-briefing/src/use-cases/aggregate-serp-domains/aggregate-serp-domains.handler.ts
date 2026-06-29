@@ -185,8 +185,9 @@ function aggregateDomains(snapshots: SnapshotItem[]) {
         return right.appearances - left.appearances;
       }
 
-      return (left.best_rank ?? Number.MAX_SAFE_INTEGER) -
-        (right.best_rank ?? Number.MAX_SAFE_INTEGER);
+      return (
+        (left.best_rank ?? Number.MAX_SAFE_INTEGER) - (right.best_rank ?? Number.MAX_SAFE_INTEGER)
+      );
     });
 
   return {

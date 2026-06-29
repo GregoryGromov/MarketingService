@@ -43,6 +43,7 @@ describe('CreateSeoBriefRunHandler', () => {
         brandName: null,
         productDescription: null,
         targetAudience: 'Crypto beginners',
+        targetAudiences: ['Crypto beginners'],
         approvedFacts: ['Supports USDT productivity flows'],
         forbiddenClaims: ['Guaranteed returns'],
         glossary: { usdt: 'Stablecoin pegged to USD' },
@@ -135,6 +136,7 @@ describe('CreateSeoBriefRunHandler', () => {
       inputVersion: 'topic_hint_manual_pains_v2',
       projectId: 'project-1',
       aiModelMode: 'pro',
+      aiModel: null,
       workflowMode: 'manual',
       topicHint: 'how to earn with USDT',
       topicHintScope: {
@@ -146,6 +148,7 @@ describe('CreateSeoBriefRunHandler', () => {
       hypothesesCount: 20,
       serpEnrichmentCount: 10,
       requestTimeoutMs: 300000,
+      coverImageUrl: null,
       deepSeekPricing: {
         inputUsdPerMillionTokens: null,
         outputUsdPerMillionTokens: null,
@@ -160,6 +163,7 @@ describe('CreateSeoBriefRunHandler', () => {
       userPains: ['Save money in dollars', 'Avoid naira devaluation'],
       userScenarios: ['Uses Binance P2P', 'Stores USDT in Trust Wallet'],
       keywordExpansionPrompt: 'Keep the keywords short and head-term oriented.',
+      promptInstructionOverrides: {},
       product: {
         name: 'Reinforce',
         description: 'Helps users make idle USDT productive',
@@ -172,6 +176,10 @@ describe('CreateSeoBriefRunHandler', () => {
       },
       brandConstraints: ['No hype'],
       claimsConstraints: ['No guaranteed returns'],
+      approvedFacts: [],
+      forbiddenClaims: [],
+      bannedPhrases: [],
+      requiredPhrases: [],
       preferredAngle: 'Educational comparison',
       excludedTopics: ['Leverage'],
       campaignContext: null,
@@ -180,6 +188,7 @@ describe('CreateSeoBriefRunHandler', () => {
         after: 'Understands options and sees Reinforce as one path',
       },
       cta: 'Learn more',
+      conclusionDirection: null,
       seoProductBalance: {
         seoWeight: 0.7,
         productWeight: 0.30000000000000004,
@@ -209,7 +218,10 @@ describe('CreateSeoBriefRunHandler', () => {
         'Use forbiddenClaims and bannedPhrases as hard constraints.',
         'Do not infer persistent brand facts from marketer one-off files unless they are already in this snapshot.',
       ],
-      snapshot: storedRun?.brandMemorySnapshot,
+      snapshot: {
+        ...storedRun?.brandMemorySnapshot,
+        targetAudiences: ['Crypto beginners'],
+      },
     });
     expect(manualPainsArtifact?.payload).toMatchObject({
       artifactVersion: 'manual_user_pain_scenarios_v1',
@@ -252,6 +264,7 @@ describe('CreateSeoBriefRunHandler', () => {
         preferredAngle: 'Educational comparison',
         keyMessage: 'Idle USDT can be used more productively',
         cta: 'Learn more',
+        conclusionDirection: null,
         campaignContext: null,
         audienceShift: {
           before: 'Does not know earning options',

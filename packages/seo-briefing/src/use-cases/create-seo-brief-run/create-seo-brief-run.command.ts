@@ -33,6 +33,7 @@ export interface CreateSeoBriefRunKnownCompetitorsInput {
 export interface CreateSeoBriefRunInput {
   projectId?: string | null;
   aiModelMode?: 'flash' | 'pro' | 'pro_thinking' | null;
+  aiModel?: string | null;
   workflowMode?: 'manual' | 'auto_until_selection' | null;
   topicHint?: string | null;
   /**
@@ -66,6 +67,7 @@ export interface CreateSeoBriefRunInput {
   campaignContext?: string | null;
   audienceShift?: CreateSeoBriefRunAudienceShiftInput | null;
   cta?: string | null;
+  conclusionDirection?: string | null;
   seoProductBalance?: CreateSeoBriefRunSeoProductBalanceInput | null;
 }
 

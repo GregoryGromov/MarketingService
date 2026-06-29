@@ -1,9 +1,9 @@
-import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
-import { AdaptationVersionRepository } from '../../domain/adaptation-version.repository.js';
+import { CommandHandler, type EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { AdaptationVersion } from '../../domain/adaptation-version.entity.js';
-import { AdaptationGeneratorPort } from '../../ports/adaptation-generator.port.js';
-import { ArticleRepository } from '../../domain/article.repository.js';
-import { ChannelAdaptationRepository } from '../../domain/channel-adaptation.repository.js';
+import type { AdaptationVersionRepository } from '../../domain/adaptation-version.repository.js';
+import type { ArticleRepository } from '../../domain/article.repository.js';
+import type { ChannelAdaptationRepository } from '../../domain/channel-adaptation.repository.js';
+import type { AdaptationGeneratorPort } from '../../ports/adaptation-generator.port.js';
 import { GenerateAdaptationCommand } from './generate-adaptation.command.js';
 
 @CommandHandler(GenerateAdaptationCommand)
@@ -22,7 +22,9 @@ export class GenerateAdaptationHandler
     const adaptation = await this.channelAdaptationRepository.findById(command.adaptationId);
 
     if (!adaptation || adaptation.articleId !== command.articleId) {
-      throw new Error(`Adaptation ${command.adaptationId} not found in article ${command.articleId}`);
+      throw new Error(
+        `Adaptation ${command.adaptationId} not found in article ${command.articleId}`,
+      );
     }
 
     const article = await this.articleRepository.findById(command.articleId);
@@ -36,6 +38,7 @@ export class GenerateAdaptationHandler
       sourceLanguage: article.original.language,
       channelId: adaptation.channelId,
       displayName: adaptation.displayName,
+      model: command.model,
       promptInstructions: adaptation.promptInstructions,
     });
 

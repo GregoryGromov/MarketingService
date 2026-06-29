@@ -235,6 +235,7 @@ export class ProcessSeoBriefRunExecutor {
     const priorArtifacts = await this.artifactRepository.findByRunId(run.id);
     const keywordExpansionPrompt = readKeywordExpansionPrompt(priorArtifacts);
     const aiModelMode = readAiModelMode(priorArtifacts);
+    const aiModel = readAiModel(priorArtifacts);
     const campaignContext = readCampaignContext(priorArtifacts);
     const seoProductContext = readSeoProductContext(priorArtifacts);
     const hypothesesCount = readHypothesesCount(priorArtifacts);
@@ -253,6 +254,7 @@ export class ProcessSeoBriefRunExecutor {
               (await this.ai.extractUserPainScenarios({
                 runId: run.id,
                 stepId: step.id,
+                model: aiModel,
                 modelMode: aiModelMode,
                 timeoutMs: requestTimeoutMs,
                 promptInstructionOverrides,
@@ -290,6 +292,7 @@ export class ProcessSeoBriefRunExecutor {
             const result = await this.ai.expandKeywords({
               runId: run.id,
               stepId: step.id,
+              model: aiModel,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
               promptInstructionOverrides,
@@ -734,6 +737,7 @@ export class ProcessSeoBriefRunExecutor {
             const clusteringResult = await this.ai.clusterKeywords({
               runId: run.id,
               stepId: step.id,
+              model: aiModel,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
               promptInstructionOverrides,
@@ -818,6 +822,7 @@ export class ProcessSeoBriefRunExecutor {
               const productBridge = await this.ai.buildProductBridge({
                 runId: run.id,
                 stepId: step.id,
+                model: aiModel,
                 modelMode: aiModelMode,
                 timeoutMs: requestTimeoutMs,
                 clusterLabel: cluster.label,
@@ -1028,6 +1033,7 @@ export class ProcessSeoBriefRunExecutor {
             const explanation = await this.ai.explainClusterSelection({
               runId: run.id,
               stepId: step.id,
+              model: aiModel,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
               selectedClusterLabel: selectedCluster.label,
@@ -1141,6 +1147,7 @@ export class ProcessSeoBriefRunExecutor {
             const brief = await this.ai.generateSeoBrief({
               runId: run.id,
               stepId: step.id,
+              model: aiModel,
               modelMode: aiModelMode,
               timeoutMs: requestTimeoutMs,
               promptInstructionOverrides,
@@ -1484,6 +1491,17 @@ function readAiModelMode(artifacts: SeoBriefArtifact[]): SeoBriefAiModelMode {
   const payload = asObjectRecord(artifact.payload, 'normalized_input');
   const value = asNullableString(payload.aiModelMode);
   return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
+}
+
+function readAiModel(artifacts: SeoBriefArtifact[]): string | null {
+  const artifact = findLatestArtifactByTypeOrNull(artifacts, 'normalized_input');
+  if (!artifact) {
+    return null;
+  }
+
+  const payload = asObjectRecord(artifact.payload, 'normalized_input');
+  const value = asNullableString(payload.aiModel);
+  return value?.trim() || null;
 }
 
 function readCampaignContext(artifacts: SeoBriefArtifact[]): string | null {

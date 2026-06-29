@@ -7,7 +7,8 @@ import { SeoBriefRunStep } from '../../domain/seo-brief-run-step.entity.js';
 import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
-import { SeoBriefAiPort, type SeoBriefAiModelMode } from '../../ports/seo-brief-ai.port.js';
+import { type SeoBriefAiModelMode, SeoBriefAiPort } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { GenerateUserPainScenariosCommand } from './generate-user-pain-scenarios.command.js';
 
@@ -35,7 +36,9 @@ export class GenerateUserPainScenariosHandler
     private readonly ai: SeoBriefAiPort,
   ) {}
 
-  async execute(command: GenerateUserPainScenariosCommand): Promise<GenerateUserPainScenariosResult> {
+  async execute(
+    command: GenerateUserPainScenariosCommand,
+  ): Promise<GenerateUserPainScenariosResult> {
     const run = await this.runRepository.findById(command.runId as never);
     if (!run) {
       throw new SeoBriefRunNotFoundError(command.runId);
@@ -56,6 +59,7 @@ export class GenerateUserPainScenariosHandler
       const result = await this.ai.extractUserPainScenarios({
         runId: run.id,
         stepId: step.id,
+        model: readSeoBriefAiModel(artifacts),
         modelMode: aiModelMode,
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
@@ -117,15 +121,25 @@ function nextAttemptNumber(artifacts: SeoBriefArtifactList, type: string): numbe
 }
 
 function readSeoProductContext(artifacts: SeoBriefArtifactList): SeoBriefJsonObject | null {
-  const artifact = [...artifacts].reverse().find((item) => item.artifactType === 'seo_product_context');
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  const artifact = [...artifacts]
+    .reverse()
+    .find((item) => item.artifactType === 'seo_product_context');
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
 
 function readAiModelMode(artifacts: SeoBriefArtifactList): SeoBriefAiModelMode | null {
-  const artifact = [...artifacts].reverse().find((item) => item.artifactType === 'normalized_input');
-  if (!artifact?.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+  const artifact = [...artifacts]
+    .reverse()
+    .find((item) => item.artifactType === 'normalized_input');
+  if (
+    !artifact?.payload ||
+    typeof artifact.payload !== 'object' ||
+    Array.isArray(artifact.payload)
+  ) {
     return null;
   }
   const mode = (artifact.payload as Record<string, unknown>).aiModelMode;

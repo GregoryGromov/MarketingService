@@ -5,7 +5,7 @@ import { SeoBriefArtifactRepository } from '../../domain/seo-brief-artifact.repo
 import { SeoBriefRunRepository } from '../../domain/seo-brief-run.repository.js';
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
-import { SeoResearchPort, type SeoRankedKeywordItem } from '../../ports/seo-research.port.js';
+import { type SeoRankedKeywordItem, SeoResearchPort } from '../../ports/seo-research.port.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { FetchRankedKeywordsCommand } from './fetch-ranked-keywords.command.js';
 
@@ -130,7 +130,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -164,6 +166,9 @@ function readDomain(value: unknown): string | null {
     return null;
   }
 
-  const normalized = domain.trim().toLowerCase().replace(/^www\./u, '');
+  const normalized = domain
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./u, '');
   return normalized || null;
 }

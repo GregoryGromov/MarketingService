@@ -28,6 +28,7 @@ const OptionalHttpsUrlSchema = v.optional(
 export const CreateSeoBriefRunSchema = v.object({
   projectId: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1)))),
   aiModelMode: v.optional(v.nullish(v.picklist(['flash', 'pro', 'pro_thinking']))),
+  aiModel: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(200)))),
   workflowMode: v.optional(v.nullish(v.picklist(['manual', 'auto_until_selection']))),
   topicHint: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
   topicSeed: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000)))),
@@ -106,6 +107,9 @@ export const CreateSeoBriefRunSchema = v.object({
     ),
   ),
   cta: v.optional(v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(240)))),
+  conclusionDirection: v.optional(
+    v.nullish(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(2000))),
+  ),
   seoProductBalance: v.optional(
     v.nullish(
       v.object({

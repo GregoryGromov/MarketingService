@@ -61,11 +61,13 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
 } as const;
 
 function applyInstructionOverride(
-  operation: keyof typeof SEO_BRIEF_AI_PROMPT_VERSIONS,
+  operation: keyof typeof SEO_BRIEF_AI_PROMPT_VERSIONS | string | string[],
   systemPrompt: string,
   overrides?: Record<string, string> | null,
 ): string {
-  const override = overrides?.[operation]?.trim();
+  const operations = Array.isArray(operation) ? operation : [operation];
+  const matchedOperation = operations.find((item) => overrides?.[item]?.trim());
+  const override = matchedOperation ? overrides?.[matchedOperation]?.trim() : null;
   if (!override) {
     return systemPrompt;
   }
@@ -73,12 +75,22 @@ function applyInstructionOverride(
   return [
     systemPrompt,
     '',
-    'Marketer editable instruction override:',
+    `Marketer editable instruction override (${matchedOperation}):`,
     override,
     '',
     'The override can guide style, prioritization, selection criteria, and editorial preferences.',
     'The override must not change required JSON schema, allowed enum values, selected market language, or safety/compliance constraints.',
   ].join('\n');
+}
+
+function cleanupLongreadArticleInstructionOperations(reviewAttempt?: number | null): string[] {
+  const attempt =
+    typeof reviewAttempt === 'number' && Number.isFinite(reviewAttempt)
+      ? Math.trunc(reviewAttempt)
+      : null;
+  return attempt && attempt > 0
+    ? [`cleanupLongreadArticleAttempt${attempt}`, 'cleanupLongreadArticle']
+    : ['cleanupLongreadArticle'];
 }
 
 export function buildExtractContextPrompt(
@@ -812,7 +824,7 @@ export function buildCleanupLongreadArticlePrompt(
     promptVersion: SEO_BRIEF_AI_PROMPT_VERSIONS.cleanupLongreadArticle,
     temperature: 0.15,
     systemPrompt: applyInstructionOverride(
-      'cleanupLongreadArticle',
+      cleanupLongreadArticleInstructionOperations(params.reviewAttempt),
       [
         'You are an SEO editor and crypto/finance claims reviewer.',
         'Return only valid JSON.',

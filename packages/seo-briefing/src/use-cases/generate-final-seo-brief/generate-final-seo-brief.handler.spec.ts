@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type GenerateSeoBriefParams,
+  type GenerateSeoBriefResult,
   SeoBriefAiPort,
   SeoBriefArtifact,
   SeoBriefRun,
-  type GenerateSeoBriefParams,
-  type GenerateSeoBriefResult,
 } from '../../index.js';
 import {
   InMemorySeoBriefArtifactRepository,

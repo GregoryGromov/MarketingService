@@ -12,6 +12,7 @@ import {
   type SeoBriefAiModelMode,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { SelectFirstKeywordRelatedQueriesCommand } from './select-first-keyword-related-queries.command.js';
 
@@ -158,6 +159,7 @@ export class SelectFirstKeywordRelatedQueriesHandler
 
     const aiResult = await this.ai.selectRelatedKeywords({
       runId: run.id,
+      model: readSeoBriefAiModel(artifacts),
       modelMode: aiModelMode,
       timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
       seedKeyword: keyword,

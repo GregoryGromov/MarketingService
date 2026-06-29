@@ -8,9 +8,9 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoResearchPort,
   type SeoOnPageContentParsingResult,
   type SeoOnPageInstantPagesResult,
+  SeoResearchPort,
 } from '../../ports/seo-research.port.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { FetchSelectedClusterOnPageCommand } from './fetch-selected-cluster-onpage.command.js';
@@ -204,7 +204,8 @@ export class FetchSelectedClusterOnPageHandler
         failedPageCount: pages.length - successfulPages.length,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Selected cluster on-page fetch failed';
+      const message =
+        error instanceof Error ? error.message : 'Selected cluster on-page fetch failed';
       step.fail(message);
       run.fail(message);
       await this.stepRepository.save(step);
@@ -223,7 +224,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -264,7 +267,9 @@ function selectOnPageTargets(
 
   candidates.push(...readAggregationCandidates(aggregation, mainQueries));
   candidates.push(...readSerpSnapshotCandidates(serpSnapshots, mainQueries));
-  const usableCandidates = dedupeCandidates(candidates).filter(isUsableOnPageTarget).map(scoreCandidate);
+  const usableCandidates = dedupeCandidates(candidates)
+    .filter(isUsableOnPageTarget)
+    .map(scoreCandidate);
   const selected: OnPageTargetCandidate[] = [];
 
   addTopCandidates(selected, usableCandidates, (item) => item.role === 'closest_intent_match', 2);
@@ -479,7 +484,9 @@ function addTopCandidates(
 
   const selectedUrls = new Set(selected.map((item) => normalizeUrlKey(item.url)));
   const next = candidates
-    .filter((candidate) => predicate(candidate) && !selectedUrls.has(normalizeUrlKey(candidate.url)))
+    .filter(
+      (candidate) => predicate(candidate) && !selectedUrls.has(normalizeUrlKey(candidate.url)),
+    )
     .sort(compareCandidates)
     .slice(0, limit);
 
@@ -491,8 +498,9 @@ function compareCandidates(left: OnPageTargetCandidate, right: OnPageTargetCandi
     return right.score - left.score;
   }
 
-  return (left.rankAbsolute ?? Number.MAX_SAFE_INTEGER) -
-    (right.rankAbsolute ?? Number.MAX_SAFE_INTEGER);
+  return (
+    (left.rankAbsolute ?? Number.MAX_SAFE_INTEGER) - (right.rankAbsolute ?? Number.MAX_SAFE_INTEGER)
+  );
 }
 
 function dedupeCandidates(candidates: OnPageTargetCandidate[]): OnPageTargetCandidate[] {
@@ -625,9 +633,11 @@ function domainFromUrl(value: string | null): string | null {
 }
 
 function isForumDomain(domain: string): boolean {
-  return /(^|\.)((reddit|quora|medium)\.com|stackexchange\.com)$/u.test(domain) ||
+  return (
+    /(^|\.)((reddit|quora|medium)\.com|stackexchange\.com)$/u.test(domain) ||
     domain.includes('forum') ||
-    domain.includes('community');
+    domain.includes('community')
+  );
 }
 
 function isLocalTarget(domain: string, url: string): boolean {
@@ -636,9 +646,7 @@ function isLocalTarget(domain: string, url: string): boolean {
 }
 
 function asObject(value: unknown): JsonRecord | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : null;
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonRecord) : null;
 }
 
 function readObjectArray(value: unknown): JsonRecord[] {

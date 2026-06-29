@@ -170,15 +170,14 @@ describe('BuildCompetitorKeywordMapHandler', () => {
     const run = createRunWithBrandMemoryKeywordMap();
     await runRepository.save(run);
 
-    const handler = new BuildCompetitorKeywordMapHandler(
-      runRepository,
-      artifactRepository,
-    );
+    const handler = new BuildCompetitorKeywordMapHandler(runRepository, artifactRepository);
 
     const result = await handler.execute(new BuildCompetitorKeywordMapCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
     const competitorMap = artifacts.find((item) => item.artifactType === 'competitor_keyword_map');
-    const rankedUniverse = artifacts.find((item) => item.artifactType === 'ranked_keywords_universe');
+    const rankedUniverse = artifacts.find(
+      (item) => item.artifactType === 'ranked_keywords_universe',
+    );
     const competitorPayload = competitorMap?.payload as {
       competitorKeywordsJsonId: string;
       itemCount: number;
@@ -218,13 +217,10 @@ describe('BuildCompetitorKeywordMapHandler', () => {
     const run = createRunWithoutBrandMemoryKeywordMap();
     await runRepository.save(run);
 
-    const handler = new BuildCompetitorKeywordMapHandler(
-      runRepository,
-      artifactRepository,
-    );
+    const handler = new BuildCompetitorKeywordMapHandler(runRepository, artifactRepository);
 
-    await expect(
-      handler.execute(new BuildCompetitorKeywordMapCommand(run.id)),
-    ).rejects.toThrow('No Brand Memory competitor keyword map found');
+    await expect(handler.execute(new BuildCompetitorKeywordMapCommand(run.id))).rejects.toThrow(
+      'No Brand Memory competitor keyword map found',
+    );
   });
 });

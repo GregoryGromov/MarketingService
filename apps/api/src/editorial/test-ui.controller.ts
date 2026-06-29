@@ -1744,12 +1744,12 @@ ${renderDevConsoleStyles()}
         <div class="modal-head">
           <div>
             <h3 id="markerPlacementTitle">Place draft marker</h3>
-            <p id="markerPlacementSubtitle">Choose location and time for this marker placement.</p>
+            <p id="markerPlacementSubtitle">Choose one or more locations and time for this marker placement.</p>
           </div>
           <button type="button" onclick="closeMarkerPlacementModal()">Close</button>
         </div>
         <label>
-          Location
+          Locations
           <select id="markerPlacementLanguage"></select>
         </label>
         <label>
@@ -2830,11 +2830,13 @@ ${renderDevConsoleStyles()}
             marker.title + ' · ' +
             (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
             ' · ' +
-            formatDayLabel(selectedDay),
+            formatDayLabel(selectedDay) +
+            ' · select one or more locations',
           targetLanguage: null,
           timeValue: resolveDefaultMarkerPlacementTime(selectedDay),
-          saveLabel: 'Save placement',
+          saveLabel: 'Save placements',
           canDelete: false,
+          allowMultipleLocations: true,
         });
       }
 
@@ -2881,6 +2883,7 @@ ${renderDevConsoleStyles()}
           timeValue: formatTimeInputValue(publishAt),
           saveLabel: 'Save changes',
           canDelete: true,
+          allowMultipleLocations: false,
         });
       }
 
@@ -2910,6 +2913,8 @@ ${renderDevConsoleStyles()}
         document.getElementById('markerPlacementDeleteBtn').hidden = !options.canDelete;
 
         const languageSelect = document.getElementById('markerPlacementLanguage');
+        languageSelect.multiple = Boolean(options.allowMultipleLocations);
+        languageSelect.size = options.allowMultipleLocations ? Math.min(8, marketLocationOptions().length) : 1;
         languageSelect.innerHTML = marketLocationOptions().map((option) =>
           '<option value="' + escapeHtml(option.key) + '">' + escapeHtml(option.label) + '</option>'
         ).join('');
@@ -2918,6 +2923,8 @@ ${renderDevConsoleStyles()}
             targetLanguage: options.targetLanguage,
             marketCountry: options.marketCountry,
           })?.key || options.targetLanguage;
+        } else if (options.allowMultipleLocations) {
+          languageSelect.selectedIndex = 0;
         }
 
         const timeInput = document.getElementById('markerPlacementTime');
@@ -2936,9 +2943,10 @@ ${renderDevConsoleStyles()}
 
       async function saveMarkerPlacement() {
         const error = document.getElementById('markerPlacementError');
-        const marketKey = document.getElementById('markerPlacementLanguage').value.trim();
-        const marketOption = marketOptionByKey(marketKey);
-        const targetLanguage = marketOption?.language || '';
+        const languageSelect = document.getElementById('markerPlacementLanguage');
+        const selectedMarketOptions = [...languageSelect.selectedOptions]
+          .map((option) => marketOptionByKey(option.value.trim()))
+          .filter(Boolean);
         const timeValue = document.getElementById('markerPlacementTime').value.trim();
 
         error.textContent = '';
@@ -2948,8 +2956,8 @@ ${renderDevConsoleStyles()}
           return;
         }
 
-        if (!marketOption || !targetLanguage || !timeValue) {
-          error.textContent = 'Choose location and time.';
+        if (!selectedMarketOptions.length || !timeValue) {
+          error.textContent = 'Choose at least one location and time.';
           return;
         }
 
@@ -2964,32 +2972,36 @@ ${renderDevConsoleStyles()}
         }
 
         try {
+          const firstMarketOption = selectedMarketOptions[0];
+          const targetLanguage = firstMarketOption.language || '';
           if (
             pendingMarkerPlacement.mode === 'edit' &&
             pendingMarkerPlacement.originalTargetLanguage === targetLanguage.toLowerCase() &&
-            pendingMarkerPlacement.originalMarketKey === marketOption.key &&
+            pendingMarkerPlacement.originalMarketKey === firstMarketOption.key &&
             pendingMarkerPlacement.originalPublishAt === publishAt.toISOString()
           ) {
             closeMarkerPlacementModal();
             return;
           }
 
-          await request(
-            '/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                markerId: pendingMarkerPlacement.markerId,
-                channelId: pendingMarkerPlacement.channelId,
-                targetLanguage,
-                marketCountry: marketOption.country,
-                marketLocationName: marketOption.locationName,
-                publishAt: publishAt.toISOString(),
-              }),
-            },
-            { renderResponse: false },
-          );
+          for (const marketOption of selectedMarketOptions) {
+            await request(
+              '/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  markerId: pendingMarkerPlacement.markerId,
+                  channelId: pendingMarkerPlacement.channelId,
+                  targetLanguage: marketOption.language,
+                  marketCountry: marketOption.country,
+                  marketLocationName: marketOption.locationName,
+                  publishAt: publishAt.toISOString(),
+                }),
+              },
+              { renderResponse: false },
+            );
+          }
 
           if (pendingMarkerPlacement.mode === 'edit' && pendingMarkerPlacement.placementId) {
             await request(
@@ -8595,9 +8607,9 @@ ${renderDevConsoleStyles()}
 
             <div id="aiPanel" class="ai-panel">
               <h3>AI fix selection</h3>
-              <p>Select a text fragment on the left, describe what should change, and DeepSeek will create a new adaptation version.</p>
+              <p>Select a text fragment on the left, describe what should change, and AI/OpenRouter will create a new adaptation version.</p>
               <div>
-                <strong>Instruction for DeepSeek</strong>
+                <strong>Instruction for AI/OpenRouter</strong>
                 <textarea id="aiPrompt" class="ai-prompt" placeholder="For example: make this idea softer, remove clickbait, shorten it, make the phrasing more precise"></textarea>
               </div>
               <div class="actions" style="margin-top:0;">
@@ -8997,7 +9009,7 @@ ${renderDevConsoleStyles()}
         }
 
         if (!instruction) {
-          setMessage('Write an instruction for DeepSeek first.', 'error');
+          setMessage('Write an instruction for AI/OpenRouter first.', 'error');
           return;
         }
 
@@ -9024,7 +9036,7 @@ ${renderDevConsoleStyles()}
           document.getElementById('content').value = result.adaptedContent;
           clearPersistentSelection();
           updateSelectionPreview();
-          setMessage('DeepSeek created a new intermediate version and made it current.', 'success');
+          setMessage('AI/OpenRouter created a new intermediate version and made it current.', 'success');
 
           if (window.opener && typeof window.opener.refreshArticle === 'function') {
             window.opener.refreshArticle().catch(() => {});

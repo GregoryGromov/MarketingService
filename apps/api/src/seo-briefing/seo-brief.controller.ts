@@ -197,6 +197,7 @@ export class SeoBriefController {
     articleContent: string;
     articleId: ArticleId;
     channel: NormalizedAdaptationChannel;
+    model: string | null;
     promptInstructions: string;
     runId: SeoBriefRunId;
   }): Promise<SeoBriefLlmCallLog> {
@@ -204,7 +205,7 @@ export class SeoBriefController {
       runId: params.runId,
       stepId: null,
       operation: `generateLongreadAdaptation:${params.channel.channelId}`,
-      model: resolveEditorialDeepSeekModel(this.config),
+      model: params.model ?? resolveEditorialDeepSeekModel(this.config),
       promptVersion: 'editorial.generate-adaptation.v1',
       requestPayload: {
         articleId: params.articleId,
@@ -293,6 +294,7 @@ export class SeoBriefController {
   ): Promise<ExtractedSeoBriefContext> {
     return this.ai.extractContext({
       contextText: dto.contextText,
+      model: dto.aiModel ?? null,
       modelMode: dto.aiModelMode ?? null,
       promptInstructionOverrides: dto.promptInstructionOverrides ?? null,
       timeoutMs: dto.requestTimeoutMs ?? null,
@@ -867,6 +869,7 @@ export class SeoBriefController {
     const seoBriefContext = buildSeoBriefAdaptationContext(run, packagePayload);
     const normalizedInputArtifact = findLatestSeoBriefArtifact(run, 'normalized_input');
     const normalizedInputPayload = readSeoBriefObject(normalizedInputArtifact?.payload);
+    const aiModel = readNonEmptyString(normalizedInputPayload?.aiModel);
     const coverImageUrl = readNonEmptyString(normalizedInputPayload?.coverImageUrl);
     const articleLanguage = normalizeBlogLocale(run.market.language);
     const articleId = (await this.commandBus.execute(
@@ -913,12 +916,13 @@ export class SeoBriefController {
         adaptationId,
         channel,
         articleContent,
+        model: aiModel,
         promptInstructions,
       });
       let adaptedContent = '';
       try {
         adaptedContent = (await this.commandBus.execute(
-          new GenerateAdaptationCommand(articleId, adaptationId),
+          new GenerateAdaptationCommand(articleId, adaptationId, aiModel),
         )) as string;
         await this.completeAdaptationLlmLog(adaptationLog.id, {
           articleContent,
@@ -1211,10 +1215,13 @@ interface DeepSeekPricing {
 
 function resolveEditorialDeepSeekModel(config: ConfigService): string {
   return (
+    config.get<string>('OPENROUTER_ADAPTATION_MODEL')?.trim() ||
+    config.get<string>('OPENROUTER_CONTENT_MODEL')?.trim() ||
+    config.get<string>('OPENROUTER_MODEL')?.trim() ||
     config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
     config.get<string>('DEEPSEEK_CONTENT_MODEL')?.trim() ||
     config.get<string>('DEEPSEEK_MODEL')?.trim() ||
-    'deepseek-v4-pro'
+    'deepseek/deepseek-chat-v3-0324'
   );
 }
 

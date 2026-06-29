@@ -441,10 +441,7 @@ function buildCostBreakdownByStep(
   }>,
 ): GetSeoBriefRunResult['metrics']['costBreakdownByStep'] {
   const stepById = new Map(steps.map((step) => [step.id, step]));
-  const buckets = new Map<
-    string,
-    GetSeoBriefRunResult['metrics']['costBreakdownByStep'][number]
-  >();
+  const buckets = new Map<string, GetSeoBriefRunResult['metrics']['costBreakdownByStep'][number]>();
 
   const getBucket = (stepId: string | null) => {
     const key = stepId ?? '__run_level__';
@@ -498,8 +495,10 @@ function buildCostBreakdownByStep(
     .sort((left, right) => {
       if (!left.stepId) return 1;
       if (!right.stepId) return -1;
-      return (stepOrder.get(left.stepId) ?? Number.MAX_SAFE_INTEGER) -
-        (stepOrder.get(right.stepId) ?? Number.MAX_SAFE_INTEGER);
+      return (
+        (stepOrder.get(left.stepId) ?? Number.MAX_SAFE_INTEGER) -
+        (stepOrder.get(right.stepId) ?? Number.MAX_SAFE_INTEGER)
+      );
     });
 }
 

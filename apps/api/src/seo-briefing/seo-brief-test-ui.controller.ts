@@ -47,6 +47,17 @@ const DEFAULT_SEO_BRIEF_FORM_VALUES = {
     'Risk language must be present, but avoid repeating "not guaranteed" or "subject to risk" in every section. Explain risks naturally and place explicit warnings where they matter most.',
     'The article must include: a strong opening based on the user\'s real problem; a comparison table framed as "what to compare before depositing"; a section explaining how Reinforce differs from generic CEX Earn and generic DeFi yield products; a "5 questions to ask before putting USDT to work" section; a "When CEX Earn may fit" section; a "When Reinforce may fit" section; a "Start small" section; soft CTAs focused on understanding before depositing; SEO-focused FAQ questions.',
   ].join('\n'),
+  keyMessage: [
+    'Do not compare USDT earning options only by APR.',
+    'Before putting idle USDT to work, users should compare who controls the funds, what they receive, where yield may come from, what can be verified, how exit or redemption works, and what risks remain.',
+    'Reinforce helps practical USDT users explore an on-chain savings alternative built around self-custody, TRUSD, transparency, and risk awareness - not guaranteed yield or risk-free income.',
+  ].join('\n'),
+  cta: 'Compare the risks before putting your USDT to work.',
+  conclusionDirection: [
+    'Conclude by reinforcing that APR alone is not enough.',
+    'The user should leave with a clear next step: compare custody, transparency, redemption, exit terms, and risk; review how Reinforce works; understand TRUSD and redemption; start small if they decide to test.',
+    'Do not push immediate deposit.',
+  ].join('\n'),
   excludedTopics: [
     'Airdrops',
     'Faucets',
@@ -149,6 +160,36 @@ const DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES = {
     "Do not remove the article's clear point of view: APR is not enough. Users should compare custody, transparency, exit, and risk before depositing.",
     'Final output should still read like a useful blog article, not a legal disclaimer.',
   ].join('\n'),
+  cleanupLongreadArticleAttempt1: [
+    'First automated review pass.',
+    'Fix clear claims, compliance, SEO, tone, structure, factual caution, and product insertion issues while preserving the article quality.',
+    'If you can fix an issue safely, edit the article directly instead of asking for human review.',
+    'Return passed or passed_with_warnings when all blocking issues are fixed.',
+  ].join('\n'),
+  cleanupLongreadArticleAttempt2: [
+    'Second automated review pass.',
+    'Use previousReviewFindings as a checklist and verify that every earlier issue was actually fixed.',
+    'If a risky claim remains, soften, generalize, or remove it.',
+    'Prefer a clean publishable article over preserving risky specificity.',
+  ].join('\n'),
+  cleanupLongreadArticleAttempt3: [
+    'Third automated review pass.',
+    'Be more conservative: remove unsupported numbers, absolute safety claims, aggressive CTA language, and forced product mentions.',
+    'Keep the core SEO intent and article usefulness, but simplify sections that create compliance uncertainty.',
+    'Only keep warnings that are genuinely non-blocking after the article has been corrected.',
+  ].join('\n'),
+  cleanupLongreadArticleAttempt4: [
+    'Fourth automated review pass.',
+    'This is a near-final auto-repair pass. Do not leave blockers if they can be removed by deleting or rewriting the problematic sentence.',
+    'Prioritize automatic publication safety over completeness.',
+    'The article may become more conservative, but it should still read naturally and answer the search intent.',
+  ].join('\n'),
+  cleanupLongreadArticleAttempt5: [
+    'Final automated review pass.',
+    'Return needs_human_review only if a publish-blocking issue remains after you tried to remove, generalize, or neutralize it.',
+    'If a blocker depends on unverifiable facts, remove those facts and keep a safer educational explanation.',
+    'If only non-blocking cautions remain, return passed_with_warnings with concise warnings.',
+  ].join('\n'),
   packageLongreadArticle: [
     'Create the final article package.',
     'Before finalizing, check: Is the article focused on CEX Earn vs on-chain USDT savings, not a broad idle USDT listicle? Does the introduction clearly state the user tension? Does the article explain why APR is not enough? Is there a strong comparison table? Is Reinforce explained clearly but not over-promoted? Are TRUSD, custody, redemption, peg, and risk explained accurately? Are compliance caveats present but not repetitive? Are CTAs soft and focused on understanding before depositing? Are FAQ questions SEO-relevant? Does the conclusion give the user a clear next step?',
@@ -167,9 +208,13 @@ export class SeoBriefTestUiController {
     @Query('markerId') markerId?: string,
     @Query('step') step?: string,
   ): string {
+    const initialProjectId = projectId?.trim() || null;
+    const initialDashboardHref = initialProjectId
+      ? `/test-ui/project?projectId=${encodeURIComponent(initialProjectId)}`
+      : '/test-ui';
     const initialState = JSON.stringify({
       runId: runId?.trim() || null,
-      projectId: projectId?.trim() || null,
+      projectId: initialProjectId,
       markerId: markerId?.trim() || null,
       step: step?.trim() || null,
     }).replace(/</g, '\\u003c');
@@ -237,6 +282,14 @@ export class SeoBriefTestUiController {
       .hero {
         display: grid;
         gap: 16px;
+      }
+      .hero-nav {
+        display: flex;
+        justify-content: flex-start;
+      }
+      .dashboard-back-link {
+        background: rgba(255, 255, 255, 0.74);
+        text-decoration: none;
       }
       .run-library-panel {
         display: grid;
@@ -356,6 +409,11 @@ export class SeoBriefTestUiController {
       button:hover, .button-like:hover {
         transform: translateY(-1px);
         border-color: var(--text);
+      }
+      .button-like.is-disabled {
+        opacity: 0.52;
+        pointer-events: none;
+        transform: none;
       }
       button:disabled {
         opacity: 0.52;
@@ -1625,6 +1683,12 @@ export class SeoBriefTestUiController {
       .hero {
         gap: 18px;
       }
+      .hero-nav {
+        justify-content: flex-start;
+      }
+      .dashboard-back-link {
+        text-decoration: none;
+      }
       .hero-top, .section-head, .toolbar, .form-grid {
         gap: 16px;
       }
@@ -1682,6 +1746,11 @@ export class SeoBriefTestUiController {
         transform: none;
         border-color: var(--line-strong);
         background: rgba(255, 255, 255, 0.58);
+      }
+      .button-like.is-disabled {
+        opacity: 0.52;
+        pointer-events: none;
+        transform: none;
       }
       button.primary:hover {
         background: #121212;
@@ -1841,6 +1910,9 @@ export class SeoBriefTestUiController {
   <body>
     <div class="shell">
       <section class="hero">
+        <div class="hero-nav">
+          <a class="button-like dashboard-back-link" id="dashboardBackLink" href="${escapeHtmlServer(initialDashboardHref)}">&lt; Dashboard</a>
+        </div>
         <div class="hero-top">
           <div class="hero-copy">
             <div class="eyebrow">Internal Console</div>
@@ -1920,6 +1992,7 @@ export class SeoBriefTestUiController {
                 </label>
                 <div class="actions full">
                   <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
+                  <a class="button-like" id="openBrandMemoryLink" href="/test-ui/brand-memory" aria-disabled="true">Open Brand Memory</a>
                 </div>
                 <label class="field full">
                   <span>Target Audience</span>
@@ -1999,6 +2072,21 @@ export class SeoBriefTestUiController {
                     <textarea id="preferredAngle">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.preferredAngle)}</textarea>
                   </label>
                   <label class="field full">
+                    <span>Key Message</span>
+                    <em>Main article-level message. Used to shape the brief, conclusion, and CTA.</em>
+                    <textarea id="keyMessage">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.keyMessage)}</textarea>
+                  </label>
+                  <label class="field full">
+                    <span>CTA</span>
+                    <em>Soft article-level call to action. Brand Memory is fallback only if this is empty.</em>
+                    <input id="cta" maxlength="240" value="${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.cta)}" />
+                  </label>
+                  <label class="field full">
+                    <span>Conclusion Direction</span>
+                    <em>What the final conclusion should make the reader understand or do.</em>
+                    <textarea id="conclusionDirection">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.conclusionDirection)}</textarea>
+                  </label>
+                  <label class="field full">
                     <span>Excluded Topics</span>
                     <em>Run-specific additional context.</em>
                     <textarea id="excludedTopics">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.excludedTopics)}</textarea>
@@ -2022,8 +2110,9 @@ export class SeoBriefTestUiController {
                   <p>Execution controls: model mode, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
                 </div>
                 <div class="field full">
-                  <span>AI Model</span>
+                  <span>AI Model Mode</span>
                   <input id="aiModelMode" type="hidden" value="pro" />
+                  <input id="aiModel" type="hidden" value="deepseek/deepseek-chat-v3-0324" />
                   <div class="model-picker" role="radiogroup" aria-label="AI Model">
                     <label class="model-option" data-model-option="flash">
                       <input type="radio" name="aiModelModeChoice" value="flash" />
@@ -2044,6 +2133,27 @@ export class SeoBriefTestUiController {
                       <p>Slowest and most expensive. Use for hard semantic decisions.</p>
                     </label>
                   </div>
+                </div>
+                <div class="input-group-grid">
+                  <label class="field">
+                    <span>OpenRouter Model</span>
+                    <em>Exact OpenRouter model slug used for every AI call in this SEO run.</em>
+                    <select id="aiModelPreset">
+                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="pro" data-input-price="0.27" data-output-price="1.10" selected>DeepSeek Chat V3</option>
+                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">DeepSeek R1</option>
+                      <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">Gemini 2.5 Flash</option>
+                      <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">Gemini 2.5 Pro</option>
+                      <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">Claude Sonnet 4</option>
+                      <option value="openai/gpt-4.1-mini" data-mode="flash" data-input-price="0.40" data-output-price="1.60">GPT-4.1 Mini</option>
+                      <option value="openai/gpt-4.1" data-mode="pro" data-input-price="2" data-output-price="8">GPT-4.1</option>
+                      <option value="custom" data-mode="pro">Custom model slug</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Custom Model Slug</span>
+                    <em>Use any model id from OpenRouter, for example vendor/model-name.</em>
+                    <input id="aiModelCustom" value="deepseek/deepseek-chat-v3-0324" placeholder="vendor/model-name" />
+                  </label>
                 </div>
                 <div class="field full">
                   <span>Workflow Mode</span>
@@ -2089,7 +2199,7 @@ export class SeoBriefTestUiController {
                   </label>
                 </div>
                 <div class="field full">
-                  <span>DeepSeek Pricing</span>
+                  <span>OpenRouter Pricing</span>
                   <em>USD per 1M tokens. Used only for Log Audit cost estimates; marketers can override before launch.</em>
                   <div class="filters">
                     <label class="field">
@@ -2162,6 +2272,7 @@ export class SeoBriefTestUiController {
       const appState = {
         projects: [],
         selectedBrandMemory: null,
+        launchFormRestoring: false,
         runs: [],
         selectedRun: null,
         selectedRunId: null,
@@ -2255,6 +2366,7 @@ export class SeoBriefTestUiController {
       const UI_LOGS_HIDDEN_STORAGE_KEY = 'seoBriefing.hiddenUiLogRunIds';
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const CLIENT_DEV_PANEL_OPEN_STORAGE_KEY = 'seoBriefing.clientDevPanelOpen';
+      const LAUNCH_FORM_STATE_STORAGE_KEY = 'seoBriefing.launchFormState.v1';
       const SEO_STEP_TABS = [
         { id: 'input', label: 'Input', number: '0' },
         { id: 'keywords', label: 'Keywords', number: '1' },
@@ -2368,9 +2480,9 @@ export class SeoBriefTestUiController {
               step: 'Step 6 · Safety Cleanup',
               operation: 'cleanupLongreadArticle',
               version: 'article-generation.cleanup.v2-compact',
-              why: 'AI edits the draft for clarity, compliance, brand safety, and unsupported claims.',
+              why: 'Fallback instruction for the recursive article cleanup/review loop when a specific attempt instruction is not set.',
               instruction: 'Edit the draft into a safer publishable article. Remove or soften unsupported claims, hype, forced product mentions, and compliance risks while preserving useful content.',
-              input: 'Draft article plus final SEO brief and claims/brand constraints.',
+              input: 'Draft/current article plus final SEO brief, claims/brand constraints, reviewAttempt, and previousReviewFindings.',
               output: 'Cleaned article, warnings, removed/changed claims, editorial notes.',
             },
             {
@@ -2381,6 +2493,56 @@ export class SeoBriefTestUiController {
               instruction: 'Package the reviewed article into clean CMS fields. Preserve SEO metadata, checklist, product insertion summary, claims status, and selected market language.',
               input: 'Cleaned article, SEO brief, safety notes, product placement plan.',
               output: 'Final article package with SEO fields, article body, metadata, checklist.',
+            },
+          ],
+        },
+        {
+          group: 'Recursive article review loop',
+          prompts: [
+            {
+              step: 'Review loop · Attempt 1',
+              operation: 'cleanupLongreadArticleAttempt1',
+              version: 'article-generation.cleanup.v2-compact.attempt-1',
+              why: 'First cleanup pass. AI reviews the raw draft and fixes obvious safety, compliance, SEO, tone, and structure issues.',
+              instruction: 'Fix obvious publish-blocking issues directly while preserving article quality. Return passed or passed_with_warnings if blockers are gone.',
+              input: 'Raw draft article, final SEO brief, product profile, claims policy, brand voice, reviewAttempt=1.',
+              output: 'Reviewed article markdown, status, warnings, changes made.',
+            },
+            {
+              step: 'Review loop · Attempt 2',
+              operation: 'cleanupLongreadArticleAttempt2',
+              version: 'article-generation.cleanup.v2-compact.attempt-2',
+              why: 'Second cleanup pass. AI checks whether previous findings were fixed and repairs remaining issues.',
+              instruction: 'Use previous findings as a checklist. Soften, generalize, or remove any risky claim that remains.',
+              input: 'Revised article from attempt 1 plus previousReviewFindings.',
+              output: 'Reviewed article markdown, status, warnings, changes made.',
+            },
+            {
+              step: 'Review loop · Attempt 3',
+              operation: 'cleanupLongreadArticleAttempt3',
+              version: 'article-generation.cleanup.v2-compact.attempt-3',
+              why: 'Third cleanup pass. AI becomes more conservative when earlier passes still found unresolved issues.',
+              instruction: 'Remove unsupported specificity and aggressive claims. Keep the article useful, but simplify sections that create compliance uncertainty.',
+              input: 'Current article plus accumulated previousReviewFindings.',
+              output: 'Reviewed article markdown, status, warnings, changes made.',
+            },
+            {
+              step: 'Review loop · Attempt 4',
+              operation: 'cleanupLongreadArticleAttempt4',
+              version: 'article-generation.cleanup.v2-compact.attempt-4',
+              why: 'Fourth cleanup pass. AI prioritizes automatic publication safety over preserving every detail.',
+              instruction: 'Delete or rewrite problematic sentences instead of leaving blockers. Keep the article natural and search-intent focused.',
+              input: 'Current article plus accumulated previousReviewFindings.',
+              output: 'Reviewed article markdown, status, warnings, changes made.',
+            },
+            {
+              step: 'Review loop · Attempt 5',
+              operation: 'cleanupLongreadArticleAttempt5',
+              version: 'article-generation.cleanup.v2-compact.attempt-5',
+              why: 'Final cleanup pass before the flow either accepts the article or marks it for human review.',
+              instruction: 'Return needs_human_review only if a blocker remains after attempted deletion, generalization, or neutralization.',
+              input: 'Current article plus all previousReviewFindings.',
+              output: 'Final reviewed article markdown, status, warnings, changes made.',
             },
           ],
         },
@@ -2719,6 +2881,7 @@ export class SeoBriefTestUiController {
         return {
           projectId: payload.projectId,
           aiModelMode: payload.aiModelMode,
+          aiModel: payload.aiModel,
           workflowMode: payload.workflowMode,
           topicHint: payload.topicHint,
           hypothesesCount: payload.hypothesesCount,
@@ -2853,14 +3016,39 @@ export class SeoBriefTestUiController {
           ? selected.value
           : 'pro';
         qs('aiModelMode').value = value;
-        const pricing = value === 'flash'
-          ? { input: '0.14', output: '0.28' }
-          : { input: '0.435', output: '0.87' };
-        qs('deepSeekInputUsdPerMillionTokens').value = pricing.input;
-        qs('deepSeekOutputUsdPerMillionTokens').value = pricing.output;
         document.querySelectorAll('[data-model-option]').forEach((option) => {
           option.classList.toggle('is-selected', option.getAttribute('data-model-option') === value);
         });
+      }
+
+      function syncAiModelSelection(options = {}) {
+        const preset = qs('aiModelPreset');
+        const custom = qs('aiModelCustom');
+        const selected = preset?.selectedOptions?.[0] || null;
+        const presetValue = preset?.value || '';
+        const model = presetValue === 'custom'
+          ? String(custom?.value || '').trim()
+          : presetValue.trim();
+        if (custom) {
+          custom.readOnly = presetValue !== 'custom';
+          if (presetValue !== 'custom' && presetValue) {
+            custom.value = presetValue;
+          }
+        }
+        if (model) {
+          qs('aiModel').value = model;
+        }
+        const mode = selected?.dataset?.mode;
+        if (mode === 'flash' || mode === 'pro' || mode === 'pro_thinking') {
+          setRadioValue('aiModelModeChoice', mode);
+          syncAiModelMode();
+        }
+        if (!options.preservePricing) {
+          const inputPrice = selected?.dataset?.inputPrice;
+          const outputPrice = selected?.dataset?.outputPrice;
+          if (inputPrice) qs('deepSeekInputUsdPerMillionTokens').value = inputPrice;
+          if (outputPrice) qs('deepSeekOutputUsdPerMillionTokens').value = outputPrice;
+        }
       }
 
       function getWorkflowMode() {
@@ -2890,6 +3078,149 @@ export class SeoBriefTestUiController {
       function setIfPresent(id, value) {
         if (typeof value !== 'string' || !value.trim()) return;
         qs(id).value = value.trim();
+      }
+
+      function readLaunchFormState() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(LAUNCH_FORM_STATE_STORAGE_KEY) || '{}');
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (_error) {
+          return {};
+        }
+      }
+
+      function getSelectedMarketKeys() {
+        const select = qs('language');
+        return select ? [...select.selectedOptions].map((option) => option.value).filter(Boolean) : [];
+      }
+
+      function setSelectedMarketKeys(values) {
+        const select = qs('language');
+        if (!select || !Array.isArray(values) || values.length === 0) return;
+        const valueSet = new Set(values.map((value) => String(value)));
+        let matched = false;
+        [...select.options].forEach((option) => {
+          option.selected = valueSet.has(option.value);
+          matched = matched || option.selected;
+        });
+        if (matched) {
+          syncCountryFromSelectedLanguages();
+        }
+      }
+
+      function setRadioValue(name, value) {
+        if (!value) return;
+        const input = document.querySelector('input[name="' + name + '"][value="' + String(value) + '"]');
+        if (input) {
+          input.checked = true;
+        }
+      }
+
+      function setValueIfElement(id, value) {
+        const element = qs(id);
+        if (!element || value === undefined || value === null) return;
+        element.value = String(value);
+      }
+
+      function collectLaunchFormState() {
+        return {
+          projectId: qs('projectId')?.value || '',
+          targetAudience: qs('targetAudienceSelect')?.value || '',
+          marketKeys: getSelectedMarketKeys(),
+          blogCoverImageUrl: qs('blogCoverImageUrl')?.value || '',
+          userPains: qs('userPains')?.value || '',
+          userScenarios: qs('userScenarios')?.value || '',
+          preferredAngle: qs('preferredAngle')?.value || '',
+          keyMessage: qs('keyMessage')?.value || '',
+          cta: qs('cta')?.value || '',
+          conclusionDirection: qs('conclusionDirection')?.value || '',
+          excludedTopics: qs('excludedTopics')?.value || '',
+          audienceBefore: qs('audienceBefore')?.value || '',
+          audienceAfter: qs('audienceAfter')?.value || '',
+          aiModel: qs('aiModel')?.value || '',
+          aiModelPreset: qs('aiModelPreset')?.value || '',
+          aiModelCustom: qs('aiModelCustom')?.value || '',
+          inputMode: document.querySelector('input[name="inputMode"]:checked')?.value || 'manual',
+          aiModelMode: document.querySelector('input[name="aiModelModeChoice"]:checked')?.value || 'pro',
+          workflowMode: document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual',
+          hypothesesCount: qs('hypothesesCount')?.value || '',
+          serpEnrichmentCount: qs('serpEnrichmentCount')?.value || '',
+          requestTimeoutSeconds: qs('requestTimeoutSeconds')?.value || '',
+          balanceSlider: qs('balanceSlider')?.value || '',
+          deepSeekInputUsdPerMillionTokens: qs('deepSeekInputUsdPerMillionTokens')?.value || '',
+          deepSeekOutputUsdPerMillionTokens: qs('deepSeekOutputUsdPerMillionTokens')?.value || '',
+          keywordExpansionPrompt: qs('keywordExpansionPrompt')?.value || '',
+        };
+      }
+
+      function saveLaunchFormState() {
+        if (appState.launchFormRestoring) return;
+        localStorage.setItem(
+          LAUNCH_FORM_STATE_STORAGE_KEY,
+          JSON.stringify(collectLaunchFormState(), null, 2),
+        );
+      }
+
+      async function restoreLaunchFormState() {
+        const state = readLaunchFormState();
+        if (!Object.keys(state).length) return;
+        appState.launchFormRestoring = true;
+        try {
+          const targetProjectId = initialState.projectId || state.projectId;
+          setValueIfElement('projectId', targetProjectId);
+          syncBrandMemoryLink();
+          syncDashboardBackLink();
+          setSelectedMarketKeys(state.marketKeys);
+          setValueIfElement('blogCoverImageUrl', state.blogCoverImageUrl);
+          setValueIfElement('userPains', state.userPains);
+          setValueIfElement('userScenarios', state.userScenarios);
+          setValueIfElement('preferredAngle', state.preferredAngle);
+          setValueIfElement('keyMessage', state.keyMessage);
+          setValueIfElement('cta', state.cta);
+          setValueIfElement('conclusionDirection', state.conclusionDirection);
+          setValueIfElement('excludedTopics', state.excludedTopics);
+          setValueIfElement('audienceBefore', state.audienceBefore);
+          setValueIfElement('audienceAfter', state.audienceAfter);
+          setValueIfElement('aiModelCustom', state.aiModelCustom || state.aiModel);
+          if (state.aiModelPreset) {
+            setValueIfElement('aiModelPreset', state.aiModelPreset);
+          } else if (state.aiModel) {
+            setValueIfElement('aiModelPreset', 'custom');
+            setValueIfElement('aiModelCustom', state.aiModel);
+          }
+          syncAiModelSelection({ preservePricing: true });
+          setValueIfElement('hypothesesCount', state.hypothesesCount);
+          setValueIfElement('serpEnrichmentCount', state.serpEnrichmentCount);
+          setValueIfElement('requestTimeoutSeconds', state.requestTimeoutSeconds);
+          setValueIfElement('balanceSlider', state.balanceSlider);
+          setValueIfElement('keywordExpansionPrompt', state.keywordExpansionPrompt);
+          setRadioValue('inputMode', state.inputMode);
+          setRadioValue('aiModelModeChoice', state.aiModelMode);
+          setRadioValue('workflowModeChoice', state.workflowMode);
+          syncBalanceSlider();
+          syncInputMode();
+          syncAiModelMode();
+          if (state.deepSeekInputUsdPerMillionTokens) {
+            setValueIfElement('deepSeekInputUsdPerMillionTokens', state.deepSeekInputUsdPerMillionTokens);
+          }
+          if (state.deepSeekOutputUsdPerMillionTokens) {
+            setValueIfElement('deepSeekOutputUsdPerMillionTokens', state.deepSeekOutputUsdPerMillionTokens);
+          }
+          syncWorkflowMode();
+          syncCountryFromSelectedLanguages();
+          if (targetProjectId && qs('projectId')?.value === targetProjectId) {
+            await fillFromBrandMemory({ silent: true });
+            const audienceSelect = qs('targetAudienceSelect');
+            if (targetProjectId === state.projectId && state.targetAudience && audienceSelect) {
+              const hasAudience = [...audienceSelect.options].some((option) => option.value === state.targetAudience);
+              if (hasAudience) {
+                audienceSelect.value = state.targetAudience;
+              }
+            }
+          }
+        } finally {
+          appState.launchFormRestoring = false;
+        }
       }
 
       function setLanguageIfPresent(value) {
@@ -3094,6 +3425,8 @@ export class SeoBriefTestUiController {
         setIfPresent('audienceBefore', result.audienceBefore);
         setIfPresent('audienceAfter', result.audienceAfter);
         setIfPresent('preferredAngle', result.preferredAngle);
+        setIfPresent('keyMessage', result.keyMessage);
+        setIfPresent('cta', result.cta);
         setListIfPresent('excludedTopics', result.excludedTopics);
         const contextLines = []
           .concat(Array.isArray(result.temporaryConstraints) ? result.temporaryConstraints.map((item) => 'Constraint: ' + item) : [])
@@ -3131,6 +3464,7 @@ export class SeoBriefTestUiController {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             aiModelMode: qs('aiModelMode').value,
+            aiModel: qs('aiModel').value || null,
             requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
             promptInstructionOverrides: readPromptInstructionOverrides(),
             contextText: trimmed,
@@ -3271,6 +3605,12 @@ export class SeoBriefTestUiController {
         return value === 'flash' || value === 'pro' || value === 'pro_thinking' ? value : 'pro';
       }
 
+      function readRunAiModel(run) {
+        const artifact = findArtifact(run, 'normalized_input');
+        const value = artifact?.payload?.aiModel;
+        return typeof value === 'string' && value.trim() ? value.trim() : 'env fallback';
+      }
+
       function readRunWorkflowMode(run) {
         const artifact = findArtifact(run, 'normalized_input');
         const value = artifact?.payload?.workflowMode;
@@ -3386,6 +3726,7 @@ export class SeoBriefTestUiController {
                   '<dt>Preferred Angle</dt><dd>' + escapeHtmlClient(researchFrame.preferredAngle || '—') + '</dd>' +
                   '<dt>Key Message</dt><dd>' + escapeHtmlClient(researchFrame.keyMessage || run.keyMessage || '—') + '</dd>' +
                   '<dt>CTA</dt><dd>' + escapeHtmlClient(researchFrame.cta || run.cta || '—') + '</dd>' +
+                  '<dt>Conclusion</dt><dd>' + escapeHtmlClient(researchFrame.conclusionDirection || '—') + '</dd>' +
                 '</dl>' +
               '</div>' +
               '<div class="brand-memory-block"><h4>Excluded Topics</h4>' + renderMemoryList(marketerConstraints.excludedTopics, 'No excluded topics.') + '</div>' +
@@ -5381,6 +5722,7 @@ export class SeoBriefTestUiController {
         };
         if (qs('projectId')) qs('projectId').value = initialState.projectId;
         if (qs('projectFilter')) qs('projectFilter').value = initialState.projectId;
+        syncBrandMemoryLink();
         appState.filterProjectId = initialState.projectId;
         qs('topicHint').value = appState.markerPlan.markerTitle;
         qs('campaignContext').value = buildMarkerPlanCampaignContext(appState.markerPlan);
@@ -5725,6 +6067,31 @@ export class SeoBriefTestUiController {
         return project ? project.name : projectId;
       }
 
+      function syncBrandMemoryLink() {
+        const link = qs('openBrandMemoryLink');
+        const projectId = qs('projectId')?.value || '';
+        if (!link) return;
+        if (!projectId) {
+          link.href = '/test-ui/brand-memory';
+          link.setAttribute('aria-disabled', 'true');
+          link.classList.add('is-disabled');
+          return;
+        }
+
+        link.href = '/test-ui/brand-memory?projectId=' + encodeURIComponent(projectId);
+        link.setAttribute('aria-disabled', 'false');
+        link.classList.remove('is-disabled');
+      }
+
+      function syncDashboardBackLink() {
+        const link = qs('dashboardBackLink');
+        if (!link) return;
+        const projectId = qs('projectId')?.value || initialState.projectId || '';
+        link.href = projectId
+          ? '/test-ui/project?projectId=' + encodeURIComponent(projectId)
+          : '/test-ui';
+      }
+
       function updateUrl(runId) {
         const url = new URL(window.location.href);
         if (runId) {
@@ -5774,6 +6141,8 @@ export class SeoBriefTestUiController {
           if (qs('projectFilter')) qs('projectFilter').value = initialState.projectId;
           appState.filterProjectId = initialState.projectId;
         }
+        syncBrandMemoryLink();
+        syncDashboardBackLink();
       }
 
       function readBrandMemoryAudiences(brandMemory) {
@@ -6275,7 +6644,7 @@ export class SeoBriefTestUiController {
               '<dt>Topic</dt><dd>' + escapeHtmlClient(run.topicSeed) + '</dd>' +
               '<dt>Project</dt><dd>' + escapeHtmlClient(getProjectName(run.projectId)) + '</dd>' +
               '<dt>Market</dt><dd>' + escapeHtmlClient(run.market.country + ' · ' + run.market.language) + '</dd>' +
-              '<dt>AI Model</dt><dd>' + escapeHtmlClient(aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
+              '<dt>AI Model</dt><dd>' + escapeHtmlClient(readRunAiModel(run) + ' · ' + aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
               '<dt>Hypotheses / SERP Enrichment</dt><dd>' + escapeHtmlClient(String(inputPayload.hypothesesCount ?? '—') + ' / ' + String(inputPayload.serpEnrichmentCount ?? '—')) + '</dd>' +
               '<dt>Request Timeout</dt><dd>' + escapeHtmlClient(String(Math.round(Number(inputPayload.requestTimeoutMs ?? 300000) / 1000)) + ' sec') + '</dd>' +
               '<dt>Audience</dt><dd>' + escapeHtmlClient(run.audience || '—') + '</dd>' +
@@ -6847,16 +7216,16 @@ export class SeoBriefTestUiController {
           return (
             '<details class="card full cost-receipt">' +
               '<summary><div class="section-head"><div class="stack"><div class="eyebrow">Cost Receipt</div><h3>Run Cost</h3></div><span class="badge">No calls yet</span></div></summary>' +
-              '<div class="empty">No DeepSeek or DataForSEO calls have been logged for this run yet.</div>' +
+              '<div class="empty">No OpenRouter/AI or DataForSEO calls have been logged for this run yet.</div>' +
             '</details>'
           );
         }
 
         return (
           '<details class="card full cost-receipt" open>' +
-            '<summary><div class="section-head"><div class="stack"><div class="eyebrow">Cost Receipt</div><h3>DeepSeek + DataForSEO Check</h3></div><span class="badge">' + escapeHtmlClient(formatMoney(totalCost)) + '</span></div></summary>' +
+            '<summary><div class="section-head"><div class="stack"><div class="eyebrow">Cost Receipt</div><h3>OpenRouter/AI + DataForSEO Check</h3></div><span class="badge">' + escapeHtmlClient(formatMoney(totalCost)) + '</span></div></summary>' +
             '<div class="cost-summary-grid">' +
-              '<article><strong>' + escapeHtmlClient(formatMoney(totalLlmCost)) + '</strong><span>DeepSeek total</span></article>' +
+              '<article><strong>' + escapeHtmlClient(formatMoney(totalLlmCost)) + '</strong><span>OpenRouter/AI total</span></article>' +
               '<article><strong>' + escapeHtmlClient(formatMoney(totalExternalCost)) + '</strong><span>DataForSEO total</span></article>' +
               '<article><strong>' + escapeHtmlClient(formatMoney(totalCost)) + '</strong><span>Total</span></article>' +
               '<article><strong>' + escapeHtmlClient(String((metrics.llmCallCount || 0) + (metrics.externalCallCount || 0))) + '</strong><span>Logged calls</span></article>' +
@@ -6882,7 +7251,7 @@ export class SeoBriefTestUiController {
         return (
           '<div class="cost-row">' +
             '<div><strong>' + escapeHtmlClient(String(index + 1).padStart(2, '0') + '. ' + getStageLabel(row.stage)) + '</strong><small>' + escapeHtmlClient(callsText) + '</small></div>' +
-            '<div><strong>' + escapeHtmlClient(formatMoney(row.llmCost || 0)) + '</strong><small>DeepSeek</small></div>' +
+            '<div><strong>' + escapeHtmlClient(formatMoney(row.llmCost || 0)) + '</strong><small>OpenRouter/AI</small></div>' +
             '<div><strong>' + escapeHtmlClient(formatMoney(row.externalCost || 0)) + '</strong><small>DataForSEO</small></div>' +
             '<div><strong>' + escapeHtmlClient(formatMoney(row.totalCost || 0)) + '</strong><small>Total</small></div>' +
             '<div><code>' + escapeHtmlClient(operationText) + '</code></div>' +
@@ -6944,7 +7313,7 @@ export class SeoBriefTestUiController {
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(String(steps.length)) + '</strong><span>Step attempts</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(artifacts.length)) + '</strong><span>Artifacts</span></div>' +
-              '<div><strong>' + escapeHtmlClient(String(llmCalls.length) + ' · ' + formatMoney(llmCost)) + '</strong><span>DeepSeek calls</span></div>' +
+              '<div><strong>' + escapeHtmlClient(String(llmCalls.length) + ' · ' + formatMoney(llmCost)) + '</strong><span>OpenRouter/AI calls</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(externalCalls.length) + ' · ' + formatMoney(externalCost)) + '</strong><span>DataForSEO calls</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(scoreLogs.length)) + '</strong><span>Score logs</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(failedSteps + failedLlmCalls + failedExternalCalls)) + '</strong><span>Failures</span></div>' +
@@ -7041,7 +7410,7 @@ export class SeoBriefTestUiController {
             '</article>'
           );
         }).join('');
-        return renderAuditCostSection('DeepSeek calls', calls, rows, calls.some((call) => call.status === 'failed'));
+        return renderAuditCostSection('OpenRouter/AI calls', calls, rows, calls.some((call) => call.status === 'failed'));
       }
 
       function renderAuditExternalCalls(calls) {
@@ -7094,7 +7463,7 @@ export class SeoBriefTestUiController {
               '<dt>Run ID</dt><dd class="mono">' + escapeHtmlClient(run.id) + '</dd>' +
               '<dt>Project</dt><dd>' + escapeHtmlClient(getProjectName(run.projectId)) + '</dd>' +
               '<dt>Market</dt><dd>' + escapeHtmlClient(run.market.country + ' · ' + run.market.language) + '</dd>' +
-              '<dt>AI Model</dt><dd>' + escapeHtmlClient(aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
+              '<dt>AI Model</dt><dd>' + escapeHtmlClient(readRunAiModel(run) + ' · ' + aiModelModeLabel(readRunAiModelMode(run))) + '</dd>' +
               '<dt>Product</dt><dd>' + escapeHtmlClient(run.product.name) + '</dd>' +
               '<dt>Created</dt><dd>' + escapeHtmlClient(prettyDate(run.createdAt)) + '</dd>' +
               '<dt>Updated</dt><dd>' + escapeHtmlClient(prettyDate(run.updatedAt)) + '</dd>' +
@@ -7900,6 +8269,7 @@ export class SeoBriefTestUiController {
           batchProgress.hidden = true;
           batchProgress.innerHTML = '';
         }
+        qs('topicHint').value = DEFAULT_SEO_BRIEF_FORM_VALUES.topicHint;
         qs('topicHint').focus();
         showToast('Ready for a new SEO brief');
       }
@@ -7913,6 +8283,7 @@ export class SeoBriefTestUiController {
           setLaunchStatus('Validation stopped the launch. Check the highlighted required field.', 'error');
           return;
         }
+        saveLaunchFormState();
         const launchBtn = qs('launchBtn');
         launchBtn.disabled = true;
         try {
@@ -7980,6 +8351,7 @@ export class SeoBriefTestUiController {
         return {
           projectId: qs('projectId').value || null,
           aiModelMode: qs('aiModelMode').value,
+          aiModel: qs('aiModel').value || null,
           workflowMode,
           topicHint: qs('topicHint').value,
           hypothesesCount: Number(qs('hypothesesCount').value || '10'),
@@ -8001,6 +8373,9 @@ export class SeoBriefTestUiController {
           userScenarios: parseListInput('userScenarios'),
           keywordExpansionPrompt: qs('keywordExpansionPrompt').value || null,
           preferredAngle: qs('preferredAngle').value || null,
+          keyMessage: qs('keyMessage').value || null,
+          cta: qs('cta').value || null,
+          conclusionDirection: qs('conclusionDirection').value || null,
           excludedTopics: parseListInput('excludedTopics'),
           campaignContext: qs('campaignContext').value || null,
           audienceShift: qs('audienceBefore').value && qs('audienceAfter').value
@@ -8402,6 +8777,15 @@ export class SeoBriefTestUiController {
         document.querySelectorAll('input[name="aiModelModeChoice"]').forEach((input) => {
           input.addEventListener('change', syncAiModelMode);
         });
+        qs('aiModelPreset')?.addEventListener('change', () => {
+          syncAiModelSelection();
+          saveLaunchFormState();
+        });
+        qs('aiModelCustom')?.addEventListener('input', () => {
+          if (qs('aiModelPreset')?.value === 'custom') {
+            syncAiModelSelection({ preservePricing: true });
+          }
+        });
         document.querySelectorAll('[data-workflow-mode-option]').forEach((option) => {
           option.addEventListener('click', () => {
             const value = option.getAttribute('data-workflow-mode-option') === 'auto_until_selection'
@@ -8455,12 +8839,24 @@ export class SeoBriefTestUiController {
             renderMarkerPlanContext();
             updateUrl(appState.selectedRunId);
           }
-          fillFromBrandMemory({ silent: true }).catch(() => undefined);
+          syncBrandMemoryLink();
+          syncDashboardBackLink();
+          fillFromBrandMemory({ silent: true })
+            .then(saveLaunchFormState)
+            .catch(() => undefined);
         });
         qs('fillFromBrandMemoryBtn')?.addEventListener('click', () => {
-          fillFromBrandMemory().catch((error) => {
-            showToast(error instanceof Error ? error.message : 'Failed to load Brand Memory');
-          });
+          fillFromBrandMemory()
+            .then(saveLaunchFormState)
+            .catch((error) => {
+              showToast(error instanceof Error ? error.message : 'Failed to load Brand Memory');
+            });
+        });
+        launchForm.addEventListener('input', () => {
+          window.setTimeout(saveLaunchFormState, 0);
+        });
+        launchForm.addEventListener('change', () => {
+          window.setTimeout(saveLaunchFormState, 0);
         });
       }
 
@@ -8478,7 +8874,7 @@ export class SeoBriefTestUiController {
         });
         syncBalanceSlider();
         syncInputMode();
-        syncAiModelMode();
+        syncAiModelSelection();
         syncWorkflowMode();
         syncCountryFromSelectedLanguages();
         qs('refreshAllBtn').addEventListener('click', async () => {
@@ -8502,6 +8898,8 @@ export class SeoBriefTestUiController {
         });
         await loadProjects();
         appendClientDevLog('Projects loaded', { count: appState.projects.length });
+        await restoreLaunchFormState();
+        appendClientDevLog('Launch form state restored');
         await applyMarkerPlanFromInitialState();
         appendClientDevLog('Initial marker plan applied', {
           hasMarkerPlan: Boolean(appState.markerPlan),

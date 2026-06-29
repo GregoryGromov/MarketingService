@@ -8,10 +8,11 @@ import { SeoBriefRunStepRepository } from '../../domain/seo-brief-run-step.repos
 import type { SeoBriefJsonObject, SeoBriefJsonValue } from '../../domain/seo-briefing.types.js';
 import { SeoBriefRunNotFoundError } from '../../errors/seo-brief-run-not-found.error.js';
 import {
-  SeoBriefAiPort,
   type ExtractUserPainScenariosResult,
   type SeoBriefAiModelMode,
+  SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ClassifySerpDomainsCommand } from './classify-serp-domains.command.js';
 
@@ -65,6 +66,7 @@ export class ClassifySerpDomainsHandler
       const result = await this.ai.classifySerpDomains({
         runId: run.id,
         stepId: step.id,
+        model: readSeoBriefAiModel(artifacts),
         modelMode: readAiModelMode(artifacts),
         timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
         topicSeed: run.topicSeed,
@@ -141,7 +143,9 @@ function readLatestObjectArtifact(
   artifactType: string,
 ): SeoBriefJsonObject | null {
   const artifact = [...artifacts].reverse().find((item) => item.artifactType === artifactType);
-  return artifact?.payload && typeof artifact.payload === 'object' && !Array.isArray(artifact.payload)
+  return artifact?.payload &&
+    typeof artifact.payload === 'object' &&
+    !Array.isArray(artifact.payload)
     ? (artifact.payload as SeoBriefJsonObject)
     : null;
 }
@@ -164,7 +168,9 @@ function readUserPainScenarios(
     topicHintInterpretation: asString(payload.topicHintInterpretation),
     userPains: asArray(payload.userPains),
     userScenarios: asArray(payload.userScenarios),
-    riskNotes: asArray(payload.riskNotes).filter((item): item is string => typeof item === 'string'),
+    riskNotes: asArray(payload.riskNotes).filter(
+      (item): item is string => typeof item === 'string',
+    ),
   };
 }
 

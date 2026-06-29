@@ -14,6 +14,7 @@ import {
   type ScoredDirtyKeywordCandidate,
   SeoBriefAiPort,
 } from '../../ports/seo-brief-ai.port.js';
+import { readSeoBriefAiModel } from '../seo-brief-ai-model-selection.js';
 import { readRequestTimeoutMsFromArtifacts } from '../seo-brief-request-timeout.js';
 import { ScoreKeywordCandidatesCommand } from './score-keyword-candidates.command.js';
 
@@ -569,12 +570,17 @@ export class ScoreKeywordCandidatesHandler
     params: Omit<Parameters<SeoBriefAiPort['scoreDirtyKeywordCandidates']>[0], 'candidates'>;
     stageNote: string;
   }): Promise<{ aiCallCount: number; result: AiScoreDirtyKeywordCandidatesResult }> {
+    const seoBriefAi = this.seoBriefAi;
+    if (!seoBriefAi) {
+      throw new Error('SeoBriefAiPort is not configured for AI staged keyword filtering');
+    }
+
     const chunks = chunkArray(params.candidates, params.batchSize);
     const merged = emptyAiScoreResult(params.stageNote);
     let aiCallCount = 0;
 
     for (const chunk of chunks) {
-      const result = await this.seoBriefAi!.scoreDirtyKeywordCandidates({
+      const result = await seoBriefAi.scoreDirtyKeywordCandidates({
         ...params.params,
         candidates: chunk.map((candidate) => ({
           ...candidate,
@@ -637,6 +643,7 @@ function createAiScoringParams(
   return {
     runId: run.id,
     stepId: step.id,
+    model: readSeoBriefAiModel(artifacts),
     modelMode: readAiModelMode(artifacts),
     timeoutMs: readRequestTimeoutMsFromArtifacts(artifacts),
     topicSeed: run.topicSeed,

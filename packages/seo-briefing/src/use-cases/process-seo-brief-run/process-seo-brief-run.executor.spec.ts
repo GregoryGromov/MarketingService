@@ -182,9 +182,7 @@ class FakeSeoBriefAiPort extends SeoBriefAiPort {
     });
   }
 
-  classifySerpDomains(
-    _params: ClassifySerpDomainsParams,
-  ): Promise<ClassifySerpDomainsResult> {
+  classifySerpDomains(_params: ClassifySerpDomainsParams): Promise<ClassifySerpDomainsResult> {
     return Promise.resolve({
       rankedKeywordsTargets: [],
       onpageOnlyTargets: [],
@@ -508,9 +506,7 @@ describe('ProcessSeoBriefRunExecutor', () => {
         topicHint: 'how people can make idle USDT productive',
       },
     });
-    expect(ai.expandKeywordCalls[0]?.userPainScenarios).toEqual(
-      ai.extractUserPainScenariosResult,
-    );
+    expect(ai.expandKeywordCalls[0]?.userPainScenarios).toEqual(ai.extractUserPainScenariosResult);
     expect(ai.expandKeywordCalls[0]?.seoProductContext).toMatchObject({
       artifactVersion: 'seo_product_context_v1',
       researchFrame: {
@@ -558,7 +554,10 @@ describe('ProcessSeoBriefRunExecutor', () => {
         artifactVersion: 'seo_product_context_v1',
       },
       hypothesesCount: 10,
-      searchHypotheses: [{ keyword: 'usdt passive income' }, { keyword: 'best way to earn with usdt' }],
+      searchHypotheses: [
+        { keyword: 'usdt passive income' },
+        { keyword: 'best way to earn with usdt' },
+      ],
       userPainScenarios: {
         topicHintInterpretation: 'Research area around making idle USDT productive.',
       },

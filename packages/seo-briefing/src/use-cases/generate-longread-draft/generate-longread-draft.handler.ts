@@ -55,6 +55,7 @@ export class GenerateLongreadDraftHandler
       const result = await this.ai.draftLongreadArticle({
         runId: run.id,
         stepId: step.id,
+        model: context.model,
         modelMode: context.modelMode,
         timeoutMs: context.requestTimeoutMs,
         promptInstructionOverrides: context.promptInstructionOverrides,

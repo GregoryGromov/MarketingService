@@ -139,7 +139,7 @@ export class DeepSeekSeoBriefAiAdapter {
   async extractContext(params: ExtractSeoBriefContextParams): Promise<ExtractedSeoBriefContext> {
     const prompt = buildExtractContextPrompt(params);
     const modelMode = params.modelMode ?? null;
-    const model = this.getModel(modelMode);
+    const model = this.getModel(modelMode, params.model);
     const completionRequest = this.createCompletionRequest(
       model,
       modelMode,
@@ -346,6 +346,7 @@ export class DeepSeekSeoBriefAiAdapter {
     TParams extends {
       runId: string;
       stepId?: string | null;
+      model?: string | null;
       modelMode?: SeoBriefAiModelMode | null;
       timeoutMs?: number | null;
     },
@@ -356,7 +357,7 @@ export class DeepSeekSeoBriefAiAdapter {
     validator: (payload: unknown, operation: string) => TResult,
   ): Promise<TResult> {
     const modelMode = params.modelMode ?? null;
-    const model = this.getModel(modelMode);
+    const model = this.getModel(modelMode, params.model);
     const maxRepairAttempts = this.getStructuredRepairAttempts();
     let repairAttempt = 0;
     let userPrompt = prompt.userPrompt;
@@ -571,29 +572,47 @@ export class DeepSeekSeoBriefAiAdapter {
     ].join('\n');
   }
 
-  private getModel(modelMode: SeoBriefAiModelMode | null): string {
+  private getModel(modelMode: SeoBriefAiModelMode | null, requestedModel?: string | null): string {
+    const explicitModel = requestedModel?.trim();
+    if (explicitModel) {
+      return explicitModel;
+    }
+    const defaultFlashModel = this.hasOpenRouterConfigured()
+      ? 'deepseek/deepseek-chat-v3-0324'
+      : 'deepseek-v4-flash';
+    const defaultProModel = this.hasOpenRouterConfigured()
+      ? 'deepseek/deepseek-chat-v3-0324'
+      : 'deepseek-v4-pro';
+
     if (modelMode === 'flash') {
       return (
+        this.config.get<string>('OPENROUTER_FLASH_MODEL')?.trim() ||
         this.config.get<string>('SEO_BRIEF_AI_FLASH_MODEL')?.trim() ||
         this.config.get<string>('DEEPSEEK_FLASH_MODEL')?.trim() ||
-        'deepseek-v4-flash'
+        defaultFlashModel
       );
     }
 
     if (modelMode === 'pro' || modelMode === 'pro_thinking') {
       return (
+        this.config.get<string>('OPENROUTER_PRO_MODEL')?.trim() ||
         this.config.get<string>('SEO_BRIEF_AI_PRO_MODEL')?.trim() ||
         this.config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
         this.config.get<string>('SEO_BRIEF_AI_MODEL')?.trim() ||
-        'deepseek-v4-pro'
+        defaultProModel
       );
     }
 
     return (
+      this.config.get<string>('OPENROUTER_MODEL')?.trim() ||
       this.config.get<string>('SEO_BRIEF_AI_MODEL')?.trim() ||
       this.config.get<string>('DEEPSEEK_MODEL')?.trim() ||
-      'deepseek-v4-pro'
+      defaultProModel
     );
+  }
+
+  private hasOpenRouterConfigured(): boolean {
+    return Boolean(this.config.get<string>('OPENROUTER_API_KEY')?.trim());
   }
 
   private getThinkingType(modelMode: SeoBriefAiModelMode | null): SeoBriefAiThinkingType {

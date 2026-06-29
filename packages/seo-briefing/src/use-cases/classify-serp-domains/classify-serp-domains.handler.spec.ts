@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type ClassifySerpDomainsParams,
   type ClassifySerpDomainsResult as AiClassifySerpDomainsResult,
+  type ClassifySerpDomainsParams,
   SeoBriefAiPort,
   SeoBriefArtifact,
   SeoBriefRun,
@@ -49,7 +49,8 @@ class FakeSeoBriefAiPort extends SeoBriefAiPort {
           domain: 'binance.com',
           domainType: 'cex_p2p',
           priority: 'high',
-          reason: 'Appears across multiple target queries and represents a relevant CEX/P2P competitor.',
+          reason:
+            'Appears across multiple target queries and represents a relevant CEX/P2P competitor.',
         },
         {
           domain: 'trustwallet.com',

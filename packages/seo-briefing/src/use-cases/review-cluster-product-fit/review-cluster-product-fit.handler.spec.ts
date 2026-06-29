@@ -232,8 +232,9 @@ describe('ReviewClusterProductFitHandler', () => {
 
     const result = await handler.execute(new ReviewClusterProductFitCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const saved = artifacts.find((artifact) => artifact.artifactType === 'cluster_product_fit_review')
-      ?.payload as {
+    const saved = artifacts.find(
+      (artifact) => artifact.artifactType === 'cluster_product_fit_review',
+    )?.payload as {
       approvedCount: number;
       clusterProductFit: Array<{
         clusterName: string;

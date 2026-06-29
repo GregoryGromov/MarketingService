@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import {
-  SeoBriefArtifact,
-  SeoBriefRun,
-} from '../../index.js';
+import { SeoBriefArtifact, SeoBriefRun } from '../../index.js';
+import type {
+  ScoreDirtyKeywordCandidateInput,
+  ScoreDirtyKeywordCandidatesResult,
+  SeoBriefAiPort,
+} from '../../ports/seo-brief-ai.port.js';
 import {
   InMemorySeoBriefArtifactRepository,
   InMemorySeoBriefRunRepository,
   InMemorySeoBriefRunStepRepository,
 } from '../../testing/run-test-harness.js';
-import type {
-  ScoreDirtyKeywordCandidatesResult,
-  ScoreDirtyKeywordCandidateInput,
-  SeoBriefAiPort,
-} from '../../ports/seo-brief-ai.port.js';
 import { ScoreKeywordCandidatesCommand } from './score-keyword-candidates.command.js';
 import { ScoreKeywordCandidatesHandler } from './score-keyword-candidates.handler.js';
 
@@ -42,7 +39,11 @@ function createRun(): SeoBriefRun {
 
 function createAiPort(callLog: number[] = []): SeoBriefAiPort {
   return {
-    scoreDirtyKeywordCandidates: async ({ candidates }: { candidates: ScoreDirtyKeywordCandidateInput[] }) => {
+    scoreDirtyKeywordCandidates: async ({
+      candidates,
+    }: {
+      candidates: ScoreDirtyKeywordCandidateInput[];
+    }) => {
       callLog.push(candidates.length);
       const result: ScoreDirtyKeywordCandidatesResult = {
         accepted: [],
@@ -64,7 +65,7 @@ function createAiPort(callLog: number[] = []): SeoBriefAiPort {
           normalized.includes('logo download');
         const scored = {
           keyword: candidate.keyword,
-          status: rejected ? 'rejected' as const : 'accepted' as const,
+          status: rejected ? ('rejected' as const) : ('accepted' as const),
           totalScore: rejected ? 5 : 82,
           scores: {
             topicFit: rejected ? 5 : 85,
@@ -75,16 +76,20 @@ function createAiPort(callLog: number[] = []): SeoBriefAiPort {
             evidence: rejected ? 20 : 75,
           },
           fit: {
-            topicFit: rejected ? 'none' as const : 'strong' as const,
-            productFit: rejected ? 'none' as const : 'strong' as const,
-            audienceFit: rejected ? 'none' as const : 'strong' as const,
-            intentFit: rejected ? 'none' as const : 'strong' as const,
-            riskCompliance: rejected ? 'none' as const : 'strong' as const,
-            evidence: rejected ? 'weak' as const : 'strong' as const,
+            topicFit: rejected ? ('none' as const) : ('strong' as const),
+            productFit: rejected ? ('none' as const) : ('strong' as const),
+            audienceFit: rejected ? ('none' as const) : ('strong' as const),
+            intentFit: rejected ? ('none' as const) : ('strong' as const),
+            riskCompliance: rejected ? ('none' as const) : ('strong' as const),
+            evidence: rejected ? ('weak' as const) : ('strong' as const),
           },
-          intent: rejected ? 'navigational' as const : 'informational' as const,
-          stage: rejected ? 'awareness' as const : 'consideration' as const,
-          reasons: [rejected ? 'Rejected by AI test stub as noise.' : 'Accepted by AI test stub as relevant.'],
+          intent: rejected ? ('navigational' as const) : ('informational' as const),
+          stage: rejected ? ('awareness' as const) : ('consideration' as const),
+          reasons: [
+            rejected
+              ? 'Rejected by AI test stub as noise.'
+              : 'Accepted by AI test stub as relevant.',
+          ],
           riskFlags: rejected ? ['test_noise'] : [],
           evidenceNotes: candidate.evidenceSummary.slice(0, 2),
         };
@@ -267,7 +272,9 @@ describe('ScoreKeywordCandidatesHandler', () => {
         llmCallCount: number;
       };
       filteringMode: string;
-      stagedFiltering: { stages: Array<{ stage: string; acceptedCount?: number; keptCount?: number }> };
+      stagedFiltering: {
+        stages: Array<{ stage: string; acceptedCount?: number; keptCount?: number }>;
+      };
     };
     const steps = await stepRepository.findByRunId(run.id);
 

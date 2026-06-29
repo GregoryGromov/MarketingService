@@ -36,6 +36,7 @@ export interface GenerateAdaptationAiParams {
   sourceLanguage: string;
   channel: string;
   displayName: string;
+  model?: string | null;
   publicationType?: string | null;
   style?: string | null;
   promptInstructions?: string | null;
@@ -127,21 +128,13 @@ export abstract class AiGatewayPort {
     params: ValidateSourceLongreadParams,
   ): Promise<ValidateSourceLongreadResult>;
 
-  abstract generateAdaptation(
-    params: GenerateAdaptationAiParams,
-  ): Promise<AiGeneratedTextResult>;
+  abstract generateAdaptation(params: GenerateAdaptationAiParams): Promise<AiGeneratedTextResult>;
 
-  abstract reviseAdaptation(
-    params: ReviseAdaptationAiParams,
-  ): Promise<AiGeneratedTextResult>;
+  abstract reviseAdaptation(params: ReviseAdaptationAiParams): Promise<AiGeneratedTextResult>;
 
-  abstract generateTranslation(
-    params: GenerateTranslationAiParams,
-  ): Promise<AiGeneratedTextResult>;
+  abstract generateTranslation(params: GenerateTranslationAiParams): Promise<AiGeneratedTextResult>;
 
-  abstract reviseTranslation(
-    params: ReviseTranslationAiParams,
-  ): Promise<AiGeneratedTextResult>;
+  abstract reviseTranslation(params: ReviseTranslationAiParams): Promise<AiGeneratedTextResult>;
 
   abstract checkAdaptationQuality(
     params: CheckAdaptationQualityParams,

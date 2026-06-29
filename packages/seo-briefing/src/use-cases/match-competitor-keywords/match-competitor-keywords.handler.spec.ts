@@ -86,7 +86,9 @@ function createAiStub(result?: unknown): SeoBriefAiPort {
       matches: [
         {
           candidateBucketId: 'candidate_bucket_01',
-          competitorBucketIds: (record.buckets ?? []).map((bucket) => bucket.bucketId ?? 'bucket_01'),
+          competitorBucketIds: (record.buckets ?? []).map(
+            (bucket) => bucket.bucketId ?? 'bucket_01',
+          ),
           matchType: 'direct',
           matchStrength: 90,
           reason: 'Candidate bucket maps to competitor evidence bucket.',
@@ -226,8 +228,9 @@ describe('MatchCompetitorKeywordsHandler', () => {
 
     const result = await handler.execute(new MatchCompetitorKeywordsCommand(run.id));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const payload = artifacts.find((artifact) => artifact.artifactType === 'competitor_keyword_matches')
-      ?.payload as {
+    const payload = artifacts.find(
+      (artifact) => artifact.artifactType === 'competitor_keyword_matches',
+    )?.payload as {
       candidateCount: number;
       candidates: Array<{
         candidateScore: number;
@@ -385,8 +388,9 @@ describe('MatchCompetitorKeywordsHandler', () => {
 
     const result = await handler.execute(new MatchCompetitorKeywordsCommand(run.id, 'ai'));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const payload = artifacts.find((artifact) => artifact.artifactType === 'competitor_keyword_matches')
-      ?.payload as {
+    const payload = artifacts.find(
+      (artifact) => artifact.artifactType === 'competitor_keyword_matches',
+    )?.payload as {
       candidates: Array<{
         candidateScore: number;
         proxyEvaluation: {
@@ -476,8 +480,9 @@ describe('MatchCompetitorKeywordsHandler', () => {
 
     const result = await handler.execute(new MatchCompetitorKeywordsCommand(run.id, 'ai'));
     const artifacts = await artifactRepository.findByRunId(run.id);
-    const payload = artifacts.find((artifact) => artifact.artifactType === 'competitor_keyword_matches')
-      ?.payload as {
+    const payload = artifacts.find(
+      (artifact) => artifact.artifactType === 'competitor_keyword_matches',
+    )?.payload as {
       aiError: string | null;
       aiEvaluationStatus: string;
       algorithmicFallbackCandidateCount: number;

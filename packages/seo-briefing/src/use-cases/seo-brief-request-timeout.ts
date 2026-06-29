@@ -22,9 +22,7 @@ export function normalizeSeoBriefRequestTimeoutMs(value: unknown): number {
   );
 }
 
-export function readRequestTimeoutMsFromArtifacts(
-  artifacts: SeoBriefArtifact[],
-): number {
+export function readRequestTimeoutMsFromArtifacts(artifacts: SeoBriefArtifact[]): number {
   const artifact = [...artifacts]
     .reverse()
     .find((item) => item.artifactType === 'normalized_input');
