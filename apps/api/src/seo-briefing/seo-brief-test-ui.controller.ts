@@ -2026,16 +2026,6 @@ export class SeoBriefTestUiController {
                   <h3>Article Input</h3>
                   <p>Fields that describe this concrete article/run: topic, location/language pair, cover, audience state, marketer pains, scenarios, and angle.</p>
                 </div>
-                <section id="briefTextPanel" class="context-panel full">
-                  <label class="field full">
-                    <span>One Brief Text</span>
-                    <textarea id="briefContextText" placeholder="Paste the full SEO task brief here: topic, launch context, market, audience, product context, constraints, CTA."></textarea>
-                  </label>
-                  <div class="actions">
-                    <button type="button" id="extractBriefTextBtn">Extract Fields From Text</button>
-                  </div>
-                </section>
-                <div id="contextExtractionResult" class="context-result full" hidden></div>
                 <div id="markerPlanContext" class="context-result full" hidden></div>
                 <textarea id="campaignContext" hidden></textarea>
                 <label class="field full">
@@ -2108,52 +2098,30 @@ export class SeoBriefTestUiController {
               <section class="input-group-card">
                 <div class="input-group-head">
                   <h3>Technical Parameters</h3>
-                  <p>Execution controls: model mode, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
+                  <p>Execution controls: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
                 </div>
-                <div class="field full">
-                  <span>AI Model Mode</span>
-                  <input id="aiModelMode" type="hidden" value="pro" />
-                  <input id="aiModel" type="hidden" value="deepseek/deepseek-chat-v3-0324" />
-                  <div class="model-picker" role="radiogroup" aria-label="AI Model">
-                    <label class="model-option" data-model-option="flash">
-                      <input type="radio" name="aiModelModeChoice" value="flash" />
-                      <span>Fast</span>
-                      <strong>Flash</strong>
-                      <p>Cheaper and quicker. Good for drafts and low-risk checks.</p>
-                    </label>
-                    <label class="model-option is-selected" data-model-option="pro">
-                      <input type="radio" name="aiModelModeChoice" value="pro" checked />
-                      <span>Balanced</span>
-                      <strong>Pro</strong>
-                      <p>Default quality mode. Better reasoning without thinking mode.</p>
-                    </label>
-                    <label class="model-option" data-model-option="pro_thinking">
-                      <input type="radio" name="aiModelModeChoice" value="pro_thinking" />
-                      <span>Deep</span>
-                      <strong>Pro Thinking</strong>
-                      <p>Slowest and most expensive. Use for hard semantic decisions.</p>
-                    </label>
-                  </div>
-                </div>
+                <input id="aiModelMode" type="hidden" value="pro" />
+                <input id="aiModel" type="hidden" value="deepseek-v4-pro" />
                 <div class="input-group-grid">
                   <label class="field">
-                    <span>OpenRouter Model</span>
-                    <em>Exact OpenRouter model slug used for every AI call in this SEO run.</em>
+                    <span>AI Model</span>
+                    <em>Primary model used for every AI call in this SEO run.</em>
                     <select id="aiModelPreset">
-                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="pro" data-input-price="0.27" data-output-price="1.10" selected>DeepSeek Chat V3</option>
-                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">DeepSeek R1</option>
-                      <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">Gemini 2.5 Flash</option>
-                      <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">Gemini 2.5 Pro</option>
-                      <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">Claude Sonnet 4</option>
-                      <option value="openai/gpt-4.1-mini" data-mode="flash" data-input-price="0.40" data-output-price="1.60">GPT-4.1 Mini</option>
-                      <option value="openai/gpt-4.1" data-mode="pro" data-input-price="2" data-output-price="8">GPT-4.1</option>
-                      <option value="custom" data-mode="pro">Custom model slug</option>
+                      <option value="deepseek-v4-flash" data-mode="flash" data-input-price="0.14" data-output-price="0.28">DeepSeek Flash - fast</option>
+                      <option value="deepseek-v4-pro" data-mode="pro" data-input-price="0.435" data-output-price="0.87" selected>DeepSeek Pro - balanced</option>
+                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">OpenRouter DeepSeek R1 0528 - deep reasoning</option>
+                      <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">OpenRouter Gemini 2.5 Flash - fast</option>
+                      <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">OpenRouter Gemini 2.5 Pro - deep reasoning</option>
+                      <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">OpenRouter Claude Sonnet 4 - deep reasoning</option>
+                      <option value="openai/gpt-4.1-mini" data-mode="flash" data-input-price="0.40" data-output-price="1.60">OpenRouter GPT-4.1 Mini - fast</option>
+                      <option value="openai/gpt-4.1" data-mode="pro" data-input-price="2" data-output-price="8">OpenRouter GPT-4.1 - balanced</option>
+                      <option value="custom" data-mode="pro">Custom model id - advanced</option>
                     </select>
                   </label>
                   <label class="field">
                     <span>Custom Model Slug</span>
-                    <em>Use any model id from OpenRouter, for example vendor/model-name.</em>
-                    <input id="aiModelCustom" value="deepseek/deepseek-chat-v3-0324" placeholder="vendor/model-name" />
+                    <em>Use a DeepSeek model id or an OpenRouter vendor/model slug.</em>
+                    <input id="aiModelCustom" value="deepseek-v4-pro" placeholder="vendor/model-name" />
                   </label>
                 </div>
                 <div class="field full">
@@ -3059,28 +3027,6 @@ export class SeoBriefTestUiController {
         qs('productWeightLabel').textContent = productPercent + '%';
       }
 
-      function getInputMode() {
-        return 'manual';
-      }
-
-      function syncInputMode() {
-        const briefTextPanel = qs('briefTextPanel');
-        if (briefTextPanel) {
-          briefTextPanel.hidden = false;
-        }
-      }
-
-      function syncAiModelMode() {
-        const selected = document.querySelector('input[name="aiModelModeChoice"]:checked');
-        const value = selected?.value === 'flash' || selected?.value === 'pro_thinking'
-          ? selected.value
-          : 'pro';
-        qs('aiModelMode').value = value;
-        document.querySelectorAll('[data-model-option]').forEach((option) => {
-          option.classList.toggle('is-selected', option.getAttribute('data-model-option') === value);
-        });
-      }
-
       function syncAiModelSelection(options = {}) {
         const preset = qs('aiModelPreset');
         const custom = qs('aiModelCustom');
@@ -3100,8 +3046,7 @@ export class SeoBriefTestUiController {
         }
         const mode = selected?.dataset?.mode;
         if (mode === 'flash' || mode === 'pro' || mode === 'pro_thinking') {
-          setRadioValue('aiModelModeChoice', mode);
-          syncAiModelMode();
+          qs('aiModelMode').value = mode;
         }
         if (!options.preservePricing) {
           const inputPrice = selected?.dataset?.inputPrice;
@@ -3124,11 +3069,6 @@ export class SeoBriefTestUiController {
             option.getAttribute('data-workflow-mode-option') === value,
           );
         });
-      }
-
-      function setIfPresent(id, value) {
-        if (typeof value !== 'string' || !value.trim()) return;
-        qs(id).value = value.trim();
       }
 
       function readLaunchFormState() {
@@ -3191,8 +3131,7 @@ export class SeoBriefTestUiController {
           aiModel: qs('aiModel')?.value || '',
           aiModelPreset: qs('aiModelPreset')?.value || '',
           aiModelCustom: qs('aiModelCustom')?.value || '',
-          inputMode: getInputMode(),
-          aiModelMode: document.querySelector('input[name="aiModelModeChoice"]:checked')?.value || 'pro',
+          aiModelMode: qs('aiModelMode')?.value || 'pro',
           workflowMode: document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual',
           hypothesesCount: qs('hypothesesCount')?.value || '',
           serpEnrichmentCount: qs('serpEnrichmentCount')?.value || '',
@@ -3245,11 +3184,8 @@ export class SeoBriefTestUiController {
           setValueIfElement('requestTimeoutSeconds', state.requestTimeoutSeconds);
           setValueIfElement('balanceSlider', state.balanceSlider);
           setValueIfElement('keywordExpansionPrompt', state.keywordExpansionPrompt);
-          setRadioValue('aiModelModeChoice', state.aiModelMode);
           setRadioValue('workflowModeChoice', state.workflowMode);
           syncBalanceSlider();
-          syncInputMode();
-          syncAiModelMode();
           if (state.deepSeekInputUsdPerMillionTokens) {
             setValueIfElement('deepSeekInputUsdPerMillionTokens', state.deepSeekInputUsdPerMillionTokens);
           }
@@ -3271,17 +3207,6 @@ export class SeoBriefTestUiController {
         } finally {
           appState.launchFormRestoring = false;
         }
-      }
-
-      function setLanguageIfPresent(value) {
-        if (typeof value !== 'string' || !value.trim()) return;
-        const preset = resolveMarketPreset(value) || resolveLanguagePreset(value);
-        const languageSelect = qs('language');
-        const targetValue = preset?.marketKey || preset?.name || value.trim();
-        [...languageSelect.options].forEach((option) => {
-          option.selected = option.value === targetValue;
-        });
-        syncCountryFromSelectedLanguages();
       }
 
       function hydrateMarketSelect() {
@@ -3367,15 +3292,6 @@ export class SeoBriefTestUiController {
           .replace(/[()]/g, ' ')
           .replace(/[_-]/g, ' ')
           .replace(/\\s+/g, ' ');
-      }
-
-      function setListIfPresent(id, value) {
-        if (!Array.isArray(value) || value.length === 0) return;
-        const nextValue = value
-          .filter((item) => typeof item === 'string' && item.trim())
-          .map((item) => item.trim())
-          .join('\\n');
-        if (nextValue) qs(id).value = nextValue;
       }
 
       function parseListInput(id) {
@@ -3464,65 +3380,6 @@ export class SeoBriefTestUiController {
           return false;
         }
         return true;
-      }
-
-      function applyExtractedContext(result) {
-        setIfPresent('topicHint', result.topicHint || result.topicSeed);
-        setIfPresent('country', result.country);
-        setLanguageIfPresent(result.language);
-        setListIfPresent('userPains', result.userPains);
-        setListIfPresent('userScenarios', result.userScenarios);
-        setIfPresent('audienceBefore', result.audienceBefore);
-        setIfPresent('audienceAfter', result.audienceAfter);
-        setIfPresent('preferredAngle', result.preferredAngle);
-        setIfPresent('keyMessage', result.keyMessage);
-        setIfPresent('cta', result.cta);
-        setListIfPresent('excludedTopics', result.excludedTopics);
-        const contextLines = []
-          .concat(Array.isArray(result.temporaryConstraints) ? result.temporaryConstraints.map((item) => 'Constraint: ' + item) : [])
-          .concat(Array.isArray(result.notes) ? result.notes.map((item) => 'Note: ' + item) : []);
-        qs('campaignContext').value = contextLines.join('\\n').slice(0, 8000);
-      }
-
-      function renderExtractionResult(result) {
-        const missing = Array.isArray(result.missingFields) ? result.missingFields : [];
-        const constraints = Array.isArray(result.temporaryConstraints) ? result.temporaryConstraints : [];
-        const notes = Array.isArray(result.notes) ? result.notes : [];
-        const root = qs('contextExtractionResult');
-        root.hidden = false;
-        root.innerHTML =
-          '<strong>' + (missing.length > 0 ? 'Missing fields' : 'Extracted fields look usable') + '</strong>' +
-          (missing.length > 0
-            ? '<ul>' + missing.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
-            : '<p>Review the filled fields below before launching the run.</p>') +
-          (constraints.length > 0
-            ? '<strong>Temporary constraints</strong><ul>' + constraints.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
-            : '') +
-          (notes.length > 0
-            ? '<strong>Notes</strong><ul>' + notes.map((item) => '<li>' + escapeHtmlClient(item) + '</li>').join('') + '</ul>'
-            : '');
-      }
-
-      async function extractContextFromText(contextText) {
-        const trimmed = String(contextText || '').trim();
-        if (!trimmed) {
-          showToast('Brief context is empty');
-          return;
-        }
-        const result = await fetchJson('/seo-briefing/context/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            aiModelMode: qs('aiModelMode').value,
-            aiModel: qs('aiModel').value || null,
-            requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
-            promptInstructionOverrides: readPromptInstructionOverrides(),
-            contextText: trimmed,
-          }),
-        });
-        applyExtractedContext(result);
-        renderExtractionResult(result);
-        showToast('Brief context extracted');
       }
 
       const STAGE_ORDER = [
@@ -6045,7 +5902,6 @@ export class SeoBriefTestUiController {
           bindLaunchFormActions();
           populateProjectControls();
           syncBalanceSlider();
-          syncInputMode();
         }
       }
 
@@ -8827,9 +8683,6 @@ export class SeoBriefTestUiController {
           }
         });
         qs('balanceSlider')?.addEventListener('input', syncBalanceSlider);
-        document.querySelectorAll('input[name="aiModelModeChoice"]').forEach((input) => {
-          input.addEventListener('change', syncAiModelMode);
-        });
         qs('aiModelPreset')?.addEventListener('change', () => {
           syncAiModelSelection();
           saveLaunchFormState();
@@ -8855,13 +8708,6 @@ export class SeoBriefTestUiController {
           input.addEventListener('change', syncWorkflowMode);
         });
         qs('language')?.addEventListener('change', syncCountryFromSelectedLanguages);
-        qs('extractBriefTextBtn')?.addEventListener('click', async () => {
-          try {
-            await extractContextFromText(qs('briefContextText').value);
-          } catch (error) {
-            showToast(error instanceof Error ? error.message : 'Failed to extract context');
-          }
-        });
         qs('copyClientDevLogBtn')?.addEventListener('click', () => {
           void copyClientDevLog();
         });
@@ -8907,7 +8753,6 @@ export class SeoBriefTestUiController {
           setRunLibraryOpen(Boolean(qs('runLibraryPanel')?.hidden));
         });
         syncBalanceSlider();
-        syncInputMode();
         syncAiModelSelection();
         syncWorkflowMode();
         syncCountryFromSelectedLanguages();
