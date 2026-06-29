@@ -328,6 +328,20 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
       audience: 'Beginners holding USDT',
       productName: 'Reinforce',
       productDescription: 'Helps users put idle USDT to work',
+      brandMemorySnapshot: {
+        brandName: 'Reinforce',
+        productDescription: 'Helps users put idle USDT to work',
+        targetAudience: 'Beginners holding USDT',
+        approvedFacts: ['Education-first product context'],
+        forbiddenClaims: [
+          `${'Do not include this very long forbidden claim. '.repeat(40)}FULL_FINAL_BRIEF_BRAND_MEMORY_TAIL_SHOULD_NOT_APPEAR`,
+        ],
+        glossary: {},
+        bannedPhrases: [],
+        requiredPhrases: ['risk-aware'],
+        brandDocs: [],
+        adaptationPromptRules: null,
+      },
       market: {
         country: 'Nigeria',
         language: 'English',
@@ -397,6 +411,9 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(client.requests[0]?.userPrompt).not.toContain('RAW_SERP_MARKDOWN_SHOULD_NOT_APPEAR');
     expect(client.requests[0]?.userPrompt).not.toContain(
       'RAW_COMPETITOR_REQUEST_SHOULD_NOT_APPEAR',
+    );
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'FULL_FINAL_BRIEF_BRAND_MEMORY_TAIL_SHOULD_NOT_APPEAR',
     );
   });
 

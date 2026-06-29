@@ -54,7 +54,7 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   buildProductBridge: 'seo-brief.product-bridge.v1',
   explainClusterSelection: 'seo-brief.cluster-selection.v1',
   synthesizeOnPage: 'seo-brief.synthesize-onpage.v4-compact-context',
-  generateSeoBrief: 'seo-brief.generate-brief.v3-compact',
+  generateSeoBrief: 'seo-brief.generate-brief.v4-compact-context',
   draftLongreadArticle: 'article-generation.draft.v2-compact',
   cleanupLongreadArticle: 'article-generation.cleanup.v2-compact',
   packageLongreadArticle: 'article-generation.package.v2-compact',
@@ -943,14 +943,7 @@ function createGenerateSeoBriefContext(
       }),
     },
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    brandMemory: fullPromptJson(brandMemory),
-    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
-    forbiddenClaims: uniqueStringsPreserveFullText([
-      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
-      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
-      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 8, 90),
-    ]),
-    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
+    brandMemory: compactFinalBriefBrandMemory(brandMemory, seoProductContext),
     constraints: uniqueCompactStrings(
       [
         ...(params.constraints ?? []).map((item) => compactRowValue(item, 120)),
@@ -961,6 +954,29 @@ function createGenerateSeoBriefContext(
     ),
     instruction:
       'Generate the final brief from compact evidence. Preserve concrete topic scope and use OnPage synthesis as the outline source of truth.',
+  };
+}
+
+function compactFinalBriefBrandMemory(
+  brandMemory: Record<string, unknown> | null,
+  seoProductContext: Record<string, unknown> | null,
+): Record<string, unknown> {
+  return {
+    brandName: compactText(readPromptValue(brandMemory, 'brandName'), 80),
+    productDescription: compactText(readPromptValue(brandMemory, 'productDescription'), 240),
+    targetAudience: compactText(readPromptValue(brandMemory, 'targetAudience'), 180),
+    keyMessage: compactText(readPromptValue(brandMemory, 'keyMessage'), 180),
+    defaultCta: compactText(readPromptValue(brandMemory, 'defaultCta'), 160),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 10, 130),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 10, 130),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 10, 90),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 8, 100),
+      ],
+      18,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 10, 90),
   };
 }
 

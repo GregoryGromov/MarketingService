@@ -2427,7 +2427,7 @@ export class SeoBriefTestUiController {
             {
               step: 'Step 5 · Final SEO brief',
               operation: 'generateSeoBrief',
-              version: 'seo-brief.generate-brief.v3-compact',
+              version: 'seo-brief.generate-brief.v4-compact-context',
               why: 'AI creates the production-ready SEO brief from all approved evidence.',
               instruction: 'Create a writer-ready SEO brief from selected cluster, on-page synthesis, product fit, and Brand Memory. Answer search intent first and keep product insertion natural and compliant.',
               input: 'Selected cluster, keyword evidence, product fit, on-page synthesis, Brand Memory, constraints.',

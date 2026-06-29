@@ -1620,12 +1620,7 @@ function buildSeoBriefAdaptationContext(
     cta: run.cta,
     finalBrief: compactSeoBriefContext(run.finalBrief?.briefPayload),
     articlePackage: compactArticlePackage(packagePayload),
-    brandRules: {
-      requiredPhrases: run.brandMemorySnapshot.requiredPhrases,
-      bannedPhrases: run.brandMemorySnapshot.bannedPhrases,
-      forbiddenClaims: run.brandMemorySnapshot.forbiddenClaims,
-      adaptationPromptRules: run.brandMemorySnapshot.adaptationPromptRules,
-    },
+    brandRules: compactAdaptationBrandRules(run.brandMemorySnapshot),
   };
 }
 
@@ -1668,6 +1663,34 @@ function compactArticlePackage(value: SeoBriefJsonObject): SeoBriefJsonObject {
   };
 }
 
+function compactAdaptationBrandRules(brandMemory: GetSeoBriefRunResult['brandMemorySnapshot']) {
+  return {
+    requiredPhrases: compactStringList(brandMemory.requiredPhrases, 16, 120),
+    bannedPhrases: compactStringList(brandMemory.bannedPhrases, 16, 120),
+    forbiddenClaims: compactStringList(brandMemory.forbiddenClaims, 16, 180),
+    adaptationPromptRules: compactAdaptationPromptRules(brandMemory.adaptationPromptRules),
+  };
+}
+
+function compactAdaptationPromptRules(value: unknown): SeoBriefJsonObject | null {
+  const promptRules = readSeoBriefObject(value);
+  if (!promptRules) {
+    const fallback = compactStringList(value, 8, 220);
+    return fallback.length > 0 ? { notes: fallback } : null;
+  }
+
+  const output: SeoBriefJsonObject = {};
+  const knownKeys = ['generalInstructions', 'telegram', 'x', 'discord', 'blog'] as const;
+  for (const key of knownKeys) {
+    const text = compactLongText(promptRules[key], key === 'generalInstructions' ? 900 : 700);
+    if (text) {
+      output[key] = text;
+    }
+  }
+
+  return Object.keys(output).length > 0 ? output : null;
+}
+
 function compactOutline(value: unknown): SeoBriefJsonValue[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1690,6 +1713,54 @@ function limitJsonArray(value: unknown, limit: number): SeoBriefJsonValue[] {
     return [];
   }
   return value.slice(0, limit).map((item) => toSeoBriefJsonValue(item));
+}
+
+function compactStringList(value: unknown, limit: number, itemLimit: number): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of collectStrings(value)) {
+    const compacted = compactLongText(item, itemLimit);
+    if (!compacted) {
+      continue;
+    }
+    const key = compacted.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(compacted);
+    if (result.length >= limit) {
+      break;
+    }
+  }
+  return result;
+}
+
+function collectStrings(value: unknown, depth = 0): string[] {
+  if (depth > 5 || value === null || value === undefined) {
+    return [];
+  }
+  if (typeof value === 'string') {
+    return value.trim() ? [value.trim()] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectStrings(item, depth + 1));
+  }
+  if (typeof value === 'object') {
+    return Object.values(value).flatMap((item) => collectStrings(item, depth + 1));
+  }
+  return [];
+}
+
+function compactLongText(value: unknown, limit: number): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return null;
+  }
+  return normalized.length > limit ? `${normalized.slice(0, limit - 3)}...` : normalized;
 }
 
 function toSeoBriefJsonValue(value: unknown): SeoBriefJsonValue {
@@ -1737,7 +1808,9 @@ function buildSeoBriefAdaptationInstructions(
     'Preserve the brief angle, target reader, primary keyword intent, product insertion boundaries, CTA, and compliance/risk constraints.',
     'Do not invent new product claims, APY guarantees, or unsupported facts. If a claim needs verification, phrase it cautiously.',
     brandAdaptationRules,
-    extraInstructions ? `Extra channel instructions: ${extraInstructions}` : null,
+    extraInstructions
+      ? `Extra channel instructions: ${compactLongText(extraInstructions, 900)}`
+      : null,
     'SEO brief context:',
     JSON.stringify(context),
   ].filter(Boolean);
