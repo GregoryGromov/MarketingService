@@ -682,9 +682,29 @@ export class SeoBriefTestUiController {
         margin: -14px;
         padding: 14px;
         border-radius: 22px;
+        position: relative;
+        padding-right: 48px;
       }
       .input-group-summary::-webkit-details-marker {
         display: none;
+      }
+      .input-group-summary::before {
+        content: '▸';
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: inline-grid;
+        place-items: center;
+        color: var(--text);
+        background: rgba(20, 19, 17, 0.07);
+        transition: transform 0.16s ease, background 0.16s ease;
+      }
+      .input-group-card[open] .input-group-summary::before {
+        transform: rotate(90deg);
+        background: rgba(27, 107, 75, 0.11);
       }
       .input-group-summary::after {
         content: 'Collapse';
@@ -2024,7 +2044,7 @@ export class SeoBriefTestUiController {
             <div id="launchStatus" class="context-result full" hidden></div>
             <div id="launchPromptInventory"></div>
             <form id="launchForm" class="launch-grid" novalidate>
-              <details class="input-group-card" open>
+              <details class="input-group-card">
                 <summary class="input-group-summary">
                   <div class="input-group-head">
                     <h3>Article Input</h3>
@@ -2107,7 +2127,7 @@ export class SeoBriefTestUiController {
                 </div>
               </details>
 
-              <details class="input-group-card" open>
+              <details class="input-group-card">
                 <summary class="input-group-summary">
                   <div class="input-group-head">
                     <h3>Technical Parameters</h3>
@@ -2202,7 +2222,7 @@ export class SeoBriefTestUiController {
                 </label>
               </details>
 
-              <details class="input-group-card" open>
+              <details class="input-group-card">
                 <summary class="input-group-summary">
                   <div class="input-group-head">
                     <h3>Project & Brand Memory</h3>
