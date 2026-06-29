@@ -325,4 +325,41 @@ describe('ClusterKeywordCandidatesHandler', () => {
     });
     expect((await runRepository.findById(run.id))?.status).toBe('awaiting_confirmation');
   });
+
+  it('requires scored keyword candidates before clustering', async () => {
+    const runRepository = new InMemorySeoBriefRunRepository();
+    const stepRepository = new InMemorySeoBriefRunStepRepository();
+    const artifactRepository = new InMemorySeoBriefArtifactRepository();
+    const ai = new FakeSeoBriefAiPort();
+    const run = createRun();
+    await runRepository.save(run);
+    await artifactRepository.save(
+      SeoBriefArtifact.create({
+        runId: run.id,
+        stage: 'keyword_research',
+        artifactType: 'dirty_keyword_pool',
+        payload: {
+          artifactVersion: 'dirty_keyword_pool_v1',
+          candidates: [
+            {
+              keyword: 'is it safe to earn interest on USDT',
+              status: 'accepted',
+            },
+          ],
+        },
+      }),
+    );
+    const handler = new ClusterKeywordCandidatesHandler(
+      runRepository,
+      stepRepository,
+      artifactRepository,
+      ai,
+    );
+
+    await expect(handler.execute(new ClusterKeywordCandidatesCommand(run.id))).rejects.toThrow(
+      'Score keyword candidates before clustering',
+    );
+    expect(ai.clusterCalls).toHaveLength(0);
+    expect(await stepRepository.findByRunId(run.id)).toHaveLength(0);
+  });
 });

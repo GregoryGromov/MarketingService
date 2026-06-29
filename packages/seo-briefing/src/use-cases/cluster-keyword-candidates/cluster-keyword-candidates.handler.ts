@@ -51,24 +51,17 @@ export class ClusterKeywordCandidatesHandler
 
     const artifacts = await this.artifactRepository.findByRunId(run.id);
     const scoring = readLatestObjectArtifact(artifacts, 'keyword_candidate_scoring');
-    const dirtyPool = scoring ? null : readLatestObjectArtifact(artifacts, 'dirty_keyword_pool');
-    if (!scoring && !dirtyPool) {
-      throw new Error('Build dirty keyword pool before clustering');
-    }
-    const candidateSource = scoring ?? dirtyPool;
-    if (!candidateSource) {
-      throw new Error('Build dirty keyword pool before clustering');
+    if (!scoring) {
+      throw new Error('Score keyword candidates before clustering');
     }
 
-    const accepted = scoring
-      ? readCandidateBucket(scoring, 'accepted')
-      : readCandidateBucket(candidateSource, 'candidates');
-    const maybe = scoring ? readCandidateBucket(scoring, 'maybe') : [];
-    const rejected = scoring ? readCandidateBucket(scoring, 'rejected') : [];
-    const sourceArtifactType = scoring ? 'keyword_candidate_scoring' : 'dirty_keyword_pool';
+    const accepted = readCandidateBucket(scoring, 'accepted');
+    const maybe = readCandidateBucket(scoring, 'maybe');
+    const rejected = readCandidateBucket(scoring, 'rejected');
+    const sourceArtifactType = 'keyword_candidate_scoring';
     const viableCandidates = [...accepted, ...maybe];
     if (viableCandidates.length === 0) {
-      throw new Error('Dirty keyword pool does not contain viable candidates to cluster');
+      throw new Error('Keyword candidate scoring does not contain viable candidates to cluster');
     }
 
     const step = SeoBriefRunStep.create({
@@ -120,15 +113,9 @@ export class ClusterKeywordCandidatesHandler
         clusterCount: clusters.length,
         notes: [
           'Clusters are grouped by user intent, not exact word overlap.',
-          scoring
-            ? 'All accepted and maybe candidates are sent to clustering; rejected candidates are excluded.'
-            : 'Dirty-pool candidates are sent directly to clustering; AI prioritization happens inside clustering and Product Fit.',
-          scoring
-            ? 'Rejected candidates were excluded from clustering.'
-            : 'The separate AI candidate filtering step is bypassed for the current flow.',
-          scoring
-            ? 'Maybe candidates can appear as secondary keywords, questions, or supporting items.'
-            : 'SERP-derived evidence and source diversity metrics are preserved on each candidate.',
+          'All accepted and maybe candidates are sent to clustering; rejected candidates are excluded.',
+          'Rejected candidates were excluded from clustering.',
+          'Maybe candidates can appear as secondary keywords, questions, or supporting items.',
         ],
         clusters: clusters as unknown as SeoBriefJsonValue,
       };
