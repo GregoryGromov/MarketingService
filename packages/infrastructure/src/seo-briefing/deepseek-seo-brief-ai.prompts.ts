@@ -40,7 +40,7 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   extractUserPainScenarios: 'seo-brief.extract-user-pain-scenarios.v1',
   expandKeywords: 'seo-brief.expand-keywords.v7-topic-scope',
   triageKeywords: 'seo-brief.triage-keywords.v1',
-  clusterKeywords: 'seo-brief.cluster-keywords.v4-compact',
+  clusterKeywords: 'seo-brief.cluster-keywords.v5-id-keyword-only',
   selectRelatedKeywords: 'seo-brief.select-related-keywords.v1',
   classifySerpDomains: 'seo-brief.classify-serp-domains.v1',
   evaluateCompetitorKeywordMatches: 'seo-brief.evaluate-competitor-keyword-matches.v2-topic-scope',
@@ -1527,15 +1527,28 @@ function createClusterKeywordsContext(params: ClusterKeywordsParams): Record<str
       240,
     ),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    brandMemory: fullPromptJson(brandMemory),
-    allowedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
-    forbiddenClaims: uniqueStringsPreserveFullText([
-      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
-      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
-    ]),
+    brandMemory: compactClusterBrandMemory(brandMemory),
     userPains: compactStringArray(params.userPainScenarios, 8, 110),
     instruction:
-      'Cluster only listed candidate ids. Rejected keywords are already removed and must not be reintroduced.',
+      'Cluster only listed candidate ids by keyword meaning. Rejected keywords are already removed and must not be reintroduced.',
+  };
+}
+
+function compactClusterBrandMemory(
+  brandMemory: Record<string, unknown> | null,
+): Record<string, unknown> {
+  return {
+    brandName: compactText(readPromptValue(brandMemory, 'brandName'), 80),
+    productDescription: compactText(readPromptValue(brandMemory, 'productDescription'), 180),
+    targetAudience: compactText(readPromptValue(brandMemory, 'targetAudience'), 160),
+    targetAudiences: compactPromptJson(readPromptValue(brandMemory, 'targetAudiences'), {
+      maxArrayItems: 4,
+      maxDepth: 2,
+      stringLimit: 120,
+    }),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 8, 120),
+    forbiddenClaims: compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 120),
+    bannedPhrases: compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 80),
   };
 }
 
@@ -1543,47 +1556,7 @@ function formatClusterCandidateRow(
   candidate: NonNullable<ClusterKeywordsParams['candidates']>[number],
   index: number,
 ): string {
-  const sourceNames = candidate.sources.map(compactSourceName).filter(Boolean);
-  const scoreParts = [
-    numberField('t', candidate.scores.topicFit),
-    numberField('p', candidate.scores.productFit),
-    numberField('a', candidate.scores.audienceFit),
-    numberField('i', candidate.scores.intentFit),
-    numberField('r', candidate.scores.riskCompliance),
-    numberField('e', candidate.scores.evidence),
-  ].filter(Boolean);
-  const metricParts = [
-    numberField('sv', candidate.metrics.searchVolume),
-    numberField('kd', candidate.metrics.keywordDifficulty),
-    numberField('hhi', candidate.metrics.sourceHypothesisSerpDomainHhi),
-    candidate.metrics.sourceHypothesisSerpDomainConcentrationLabel
-      ? `conc=${compactRowValue(candidate.metrics.sourceHypothesisSerpDomainConcentrationLabel, 20)}`
-      : null,
-    candidate.metrics.sourceHypothesisSerpUniqueDomainCount != null &&
-    candidate.metrics.sourceHypothesisSerpResultCount != null
-      ? `doms=${candidate.metrics.sourceHypothesisSerpUniqueDomainCount}/${candidate.metrics.sourceHypothesisSerpResultCount}`
-      : null,
-  ].filter(Boolean);
-  const notes = [...candidate.reasons, ...candidate.evidenceNotes]
-    .slice(0, 2)
-    .map((item) => compactRowValue(item, 120))
-    .join('; ');
-
-  return [
-    String(index + 1),
-    `kw=${compactRowValue(candidate.keyword, 130)}`,
-    `st=${candidate.status === 'maybe' ? 'maybe' : 'accepted'}`,
-    `intent=${candidate.intent}`,
-    `stage=${candidate.stage}`,
-    `score=${String(Math.round(candidate.totalScore))}`,
-    scoreParts.length ? `scores=${scoreParts.join('/')}` : null,
-    sourceNames.length ? `src=${sourceNames.join(',')}` : null,
-    candidate.riskFlags.length
-      ? `flags=${candidate.riskFlags.map((item) => compactRowValue(item, 40)).join(',')}`
-      : null,
-    metricParts.length ? `m=${metricParts.join(',')}` : null,
-    notes ? `ev=${notes}` : null,
-  ]
+  return [String(index + 1), `kw=${compactRowValue(candidate.keyword, 130)}`]
     .filter(Boolean)
     .join(' | ');
 }

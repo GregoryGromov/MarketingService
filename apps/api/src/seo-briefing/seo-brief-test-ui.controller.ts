@@ -2390,7 +2390,7 @@ export class SeoBriefTestUiController {
             {
               step: 'Step 3 · Clusters',
               operation: 'clusterKeywords',
-              version: 'seo-brief.cluster-keywords.v4-compact',
+              version: 'seo-brief.cluster-keywords.v5-id-keyword-only',
               why: 'AI clusters and prioritizes dirty-pool candidates after SERP expansion.',
               instruction: 'Cluster candidates by user intent, not exact wording. Use only provided candidate ids/keywords and prioritize clusters that preserve topic scope and useful search intent.',
               input: 'Dirty-pool candidates, selected market, product context, Brand Memory.',
