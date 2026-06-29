@@ -2400,7 +2400,7 @@ export class SeoBriefTestUiController {
             {
               step: 'Step 3 · Product Fit',
               operation: 'reviewClusterProductFit',
-              version: 'seo-brief.review-cluster-product-fit.v3-compact',
+              version: 'seo-brief.review-cluster-product-fit.v4-compact-context',
               why: 'AI checks which clusters can honestly connect to the product and which should be rejected or supporting only.',
               instruction: 'Approve only clusters where the product can naturally help answer the search intent. Treat Brand Memory and claims constraints as hard boundaries.',
               input: 'Clusters, product facts, selected market, Brand Memory.',

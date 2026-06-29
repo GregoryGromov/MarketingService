@@ -50,7 +50,7 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   scoreCompetitorKeywordCandidateGroup:
     'seo-brief.score-competitor-keyword-candidate-group.v2-topic-scope',
   scoreDirtyKeywordCandidates: 'seo-brief.score-dirty-keyword-candidates.v3-compact',
-  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v3-compact',
+  reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v4-compact-context',
   buildProductBridge: 'seo-brief.product-bridge.v1',
   explainClusterSelection: 'seo-brief.cluster-selection.v1',
   synthesizeOnPage: 'seo-brief.synthesize-onpage.v3-compact',
@@ -1371,14 +1371,7 @@ function createProductFitReviewContext(
     ),
     keyMessage: compactText(params.keyMessage, 200),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    brandMemory: fullPromptJson(brandMemory),
-    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
-    forbiddenClaims: uniqueStringsPreserveFullText([
-      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
-      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
-      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-    ]),
-    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
+    brandMemory: compactProductFitBrandMemory(brandMemory, seoProductContext),
     constraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
@@ -1389,6 +1382,32 @@ function createProductFitReviewContext(
     userPains: compactStringArray(params.userPainScenarios, 10, 120),
     instruction:
       'Review each CLUSTERS row once. Use name= exactly as cluster_name. Rows are compact summaries, not full evidence dumps.',
+  };
+}
+
+function compactProductFitBrandMemory(
+  brandMemory: Record<string, unknown> | null,
+  seoProductContext: Record<string, unknown> | null,
+): Record<string, unknown> {
+  return {
+    brandName: compactText(readPromptValue(brandMemory, 'brandName'), 80),
+    productDescription: compactText(readPromptValue(brandMemory, 'productDescription'), 220),
+    targetAudience: compactText(readPromptValue(brandMemory, 'targetAudience'), 160),
+    targetAudiences: compactPromptJson(readPromptValue(brandMemory, 'targetAudiences'), {
+      maxArrayItems: 4,
+      maxDepth: 2,
+      stringLimit: 120,
+    }),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 8, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 120),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 80),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+      ],
+      14,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 8, 80),
   };
 }
 
@@ -1403,26 +1422,6 @@ function formatProductFitClusterRow(
   ]
     .filter((item) => item !== cluster.primaryKeywordCandidate)
     .map((item) => compactRowValue(item, 72));
-  const supportDetails = cluster.supportingItemDetails
-    .slice()
-    .sort((left, right) => readProductFitSupportScore(right) - readProductFitSupportScore(left))
-    .slice(0, 5)
-    .map(formatProductFitSupportDetail)
-    .filter(Boolean)
-    .join('; ');
-  const urls = cluster.competitorUrls
-    .slice(0, 3)
-    .map((item) =>
-      [
-        compactRowValue(item.domain, 40),
-        item.rankAbsolute == null ? null : `r=${String(item.rankAbsolute)}`,
-        compactRowValue(item.title ?? item.url, 70),
-      ]
-        .filter(Boolean)
-        .join(':'),
-    )
-    .filter(Boolean)
-    .join('; ');
 
   return [
     String(index + 1),
@@ -1432,44 +1431,9 @@ function formatProductFitClusterRow(
     cluster.sourceConfidence ? `conf=${cluster.sourceConfidence}` : null,
     cluster.userIntent ? `user=${compactRowValue(cluster.userIntent, 160)}` : null,
     keywordParts.length ? `kw=${uniqueCompactStrings(keywordParts, 10).join(', ')}` : null,
-    supportDetails ? `support=${supportDetails}` : null,
-    urls ? `urls=${urls}` : null,
-    cluster.evidenceSummary ? `ev=${compactRowValue(cluster.evidenceSummary, 180)}` : null,
   ]
     .filter(Boolean)
     .join(' | ');
-}
-
-function readProductFitSupportScore(
-  item: ReviewClusterProductFitParams['clusters'][number]['supportingItemDetails'][number],
-): number {
-  return Number(
-    item.candidateScore ?? item.metrics?.candidateScore ?? item.metrics?.proxyDemandScore ?? 0,
-  );
-}
-
-function formatProductFitSupportDetail(
-  item: ReviewClusterProductFitParams['clusters'][number]['supportingItemDetails'][number],
-): string {
-  const metrics = item.metrics ?? {};
-  const metricParts = [
-    numberField('score', item.candidateScore ?? metrics.candidateScore),
-    numberField('sv', metrics.searchVolume),
-    numberField('kd', metrics.keywordDifficulty),
-    numberField('rank', metrics.bestRankAbsolute),
-    numberField('proxy', metrics.proxyDemandScore),
-  ].filter(Boolean);
-  const sources = item.sources.slice(0, 3).map(compactSourceName).filter(Boolean);
-  const detailParts = [
-    item.originType ? `origin=${compactRowValue(item.originType, 32)}` : null,
-    sources.length ? `src=${sources.join(',')}` : null,
-    metricParts.length ? `m=${metricParts.join(',')}` : null,
-    item.whyInCluster ? `why=${compactRowValue(item.whyInCluster, 90)}` : null,
-  ].filter(Boolean);
-
-  return [compactRowValue(item.text, 82), detailParts.length ? `{${detailParts.join(',')}}` : null]
-    .filter(Boolean)
-    .join('');
 }
 
 function createClusterKeywordsUserPrompt(params: ClusterKeywordsParams): string {
