@@ -5,15 +5,15 @@ import {
   type ReviseAdaptationSelectionParams,
   type TranslationGeneratorPort,
 } from '@marketing-service/editorial';
-import type { AiGatewayPort } from '@marketing-service/project-management';
-import { Injectable } from '@nestjs/common';
+import { AiGatewayPort } from '@marketing-service/project-management';
+import { Inject, Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeepSeekAdaptationGenerator
   extends AdaptationGeneratorPort
   implements TranslationGeneratorPort
 {
-  constructor(private readonly aiGateway: AiGatewayPort) {
+  constructor(@Inject(AiGatewayPort) private readonly aiGateway: AiGatewayPort) {
     super();
   }
 
