@@ -14,8 +14,8 @@ import {
   type ValidateSourceLongreadParams,
   type ValidateSourceLongreadResult,
 } from '@marketing-service/project-management';
-import { Injectable, Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 interface ChatCompletionResponse {
   choices?: Array<{
@@ -86,7 +86,7 @@ const REASON_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 export class DeepSeekAiGateway extends AiGatewayPort {
   private readonly logger = new Logger(DeepSeekAiGateway.name);
 
-  constructor(private readonly config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     super();
   }
 
