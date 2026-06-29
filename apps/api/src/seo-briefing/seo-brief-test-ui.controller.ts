@@ -10,6 +10,153 @@ function escapeHtmlServer(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+const DEFAULT_SEO_BRIEF_FORM_VALUES = {
+  topicHint: [
+    'CEX Earn vs on-chain USDT savings: what cautious USDT holders should compare before depositing.',
+    'Compare Binance Earn, Bybit Earn, OKX Earn, Coinbase Earn, and similar CEX Earn products with Reinforce.',
+    'Main thesis: APR is not enough. Users should compare custody, what they receive, transparency, yield source, lock-ups, exit terms, redemption, and risk.',
+    'The article should not become a broad "what to do with idle USDT" guide. It should stay focused on CEX Earn vs Reinforce as two different risk models.',
+    'The article should explain both sides fairly, then show how Reinforce may fit users who value self-custody, TRUSD, on-chain visibility, and risk-aware USDT savings.',
+  ].join('\n'),
+  userPains: [
+    'My USDT is sitting idle, but I do not want to lose it chasing yield.',
+    'I see Binance Earn, Bybit Earn, OKX Earn, Coinbase Earn, and similar CEX Earn products offering returns, but the APR alone does not tell me enough.',
+    'I do not fully understand who controls my funds after I deposit, where the yield comes from, whether I can exit early, whether withdrawals can be limited, or what happens if the exchange has problems.',
+    'I also want to understand on-chain alternatives, but I worry about smart contract risk, peg risk, liquidity risk, redemption delays, gas fees, and making a mistake with my wallet.',
+    'I do not want a hype article or a generic crypto explainer. I want a practical comparison that helps me decide what to check before putting idle USDT anywhere.',
+  ].join('\n'),
+  userScenarios: [
+    'User holds USDT on Binance, Bybit, OKX, Coinbase, Trust Wallet, Tonkeeper, or another wallet.',
+    'User has used P2P to buy or sell USDT.',
+    'User sees CEX Earn products with attractive APRs and wants to understand the risks before depositing.',
+    'User wants to make idle USDT productive without trading, leverage, or speculation.',
+    'User is comparing centralized exchange custody with on-chain self-custody.',
+    'User wants to understand what they receive in each option: an exchange Earn balance or TRUSD in their own wallet.',
+    'User needs to understand what happens when they want to withdraw, exit, or redeem.',
+    'User wants a beginner-friendly checklist before putting USDT anywhere.',
+    'User needs a balanced section explaining when CEX Earn may fit and when Reinforce may fit.',
+    'User should finish the article thinking: "I should not choose by APR alone. I should understand control, transparency, exit, and risk first."',
+  ].join('\n'),
+  preferredAngle: [
+    'Educational comparison for cautious USDT holders, written like a useful blog article, not like a compliance checklist.',
+    'Main angle: Do not compare only APR. Compare custody, what you receive, transparency, yield source, lock-ups, exit terms, redemption, and risk.',
+    'The article should have a clear point of view: APR is the wrong starting point if the user does not understand control, transparency, exit, and risk.',
+    'The article should position Reinforce as a concrete on-chain savings option for users who value self-custody, TRUSD, on-chain visibility, and risk-aware USDT savings.',
+    'The article should not present Reinforce as risk-free, guaranteed, or automatically better than CEX Earn.',
+    'Write with a calm but confident editorial voice. Avoid sounding overly defensive.',
+    'Risk language must be present, but avoid repeating "not guaranteed" or "subject to risk" in every section. Explain risks naturally and place explicit warnings where they matter most.',
+    'The article must include: a strong opening based on the user\'s real problem; a comparison table framed as "what to compare before depositing"; a section explaining how Reinforce differs from generic CEX Earn and generic DeFi yield products; a "5 questions to ask before putting USDT to work" section; a "When CEX Earn may fit" section; a "When Reinforce may fit" section; a "Start small" section; soft CTAs focused on understanding before depositing; SEO-focused FAQ questions.',
+  ].join('\n'),
+  excludedTopics: [
+    'Airdrops',
+    'Faucets',
+    'High-risk leverage',
+    'Memecoins',
+    'Trading signals',
+    'Price predictions',
+    'Speculation',
+    'Guaranteed income',
+    'Tax advice',
+    'Legal advice',
+    'Complex DeFi farming',
+    'Technical smart contract deep dives',
+  ].join('\n'),
+  audienceBefore: [
+    'User holds USDT and sees Earn products, but does not know how to compare them beyond APR.',
+    'User does not fully understand CEX Earn, on-chain savings, custody, TRUSD, redemption, peg risk, smart contract risk, lock-ups, or where yield comes from.',
+  ].join('\n'),
+  audienceAfter: [
+    'User understands that APR is not enough to compare USDT earning options.',
+    'User can compare CEX Earn and Reinforce using custody, what they receive, transparency, yield source, lock-ups, redemption, and risk.',
+    'User understands that CEX Earn and Reinforce are different risk models, not simply "safe vs unsafe."',
+    'User knows Reinforce may be worth investigating if they value self-custody, TRUSD, on-chain visibility, and risk-aware USDT savings.',
+    'User understands they should review how Reinforce works, start small, and understand redemption before depositing larger amounts.',
+  ].join('\n'),
+} as const;
+
+const DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES = {
+  expandKeywords: DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT,
+  clusterKeywords: [
+    'Cluster keyword candidates by user search intent.',
+    'The main article intent is: CEX Earn vs on-chain USDT savings for cautious USDT holders.',
+    'Create clusters that preserve the user\'s decision context. Do not merge comparison, risk, and broad "what to do with idle USDT" queries into one generic cluster if that would turn the article into a broad listicle.',
+    'Preferred cluster types: 1. CEX Earn vs on-chain USDT savings comparison; 2. CEX Earn / Binance Earn / Bybit Earn / OKX Earn risks; 3. CEX Earn alternatives for USDT holders; 4. On-chain USDT savings and self-custody; 5. Idle USDT productivity as supporting context only.',
+    'Reject or downgrade clusters that would produce generic articles such as: what to do with idle USDT; best ways to earn crypto; passive income with stablecoins; highest APY products; broad DeFi explainers.',
+    'For each cluster, explain search intent, funnel stage, why it fits or does not fit Reinforce, whether it supports a comparison article, and whether it risks becoming too broad.',
+    'The selected cluster should be specific enough to produce a focused article, not a generic guide.',
+  ].join('\n'),
+  reviewClusterProductFit: [
+    'Review whether Reinforce can naturally and specifically help answer each intent cluster.',
+    'Approve clusters only when Reinforce can be discussed as a concrete, relevant option without forcing the product into the article.',
+    'Strong product fit: CEX Earn vs on-chain USDT savings; CEX Earn alternatives; USDT Earn risks; self-custody USDT yield; on-chain USDT savings; how to compare USDT earning products.',
+    'Weak product fit: broad "what to do with idle USDT" listicles; general crypto education; generic stablecoin explainers; highest APY comparisons; trading, leverage, farming, airdrops, or speculation.',
+    'When reviewing a cluster, ask: Can Reinforce appear naturally before the conclusion? Can the article explain TRUSD without feeling forced? Does the user intent involve custody, redemption, risk, or CEX alternatives? Would this article attract cautious USDT holders rather than yield chasers? Would the article become too broad if this cluster is selected?',
+    'Prefer narrower comparison and risk clusters over broader traffic clusters when the broader cluster would weaken conversion.',
+  ].join('\n'),
+  explainClusterSelection: [
+    'Select the cluster that best matches the actual article goal, not only the broadest traffic opportunity.',
+    'The article goal is to compare CEX Earn with on-chain USDT savings for cautious USDT holders.',
+    'Prefer a focused comparison or risk-evaluation cluster over a broad "idle USDT" cluster.',
+    'Do not select a broad cluster if it would turn the article into a list of ways to use USDT, a generic stablecoin yield guide, a broad crypto education article, or a top-funnel overview with weak Reinforce relevance.',
+    'Select the cluster that can produce the strongest article around APR is not enough, custody, what the user receives, transparency, yield source, lock-ups, exit terms, redemption, risk, when CEX Earn may fit, and when Reinforce may fit.',
+    'Explain the selection in simple marketer-readable language.',
+  ].join('\n'),
+  synthesizeOnPage: [
+    'Analyze competitor pages to extract useful SEO structure, but do not copy generic crypto article patterns.',
+    'Identify common headings competitors use, missing decision criteria, missing risk explanations, missing comparison tables, missing beginner-friendly explanations, missing conversion opportunities, and gaps where Reinforce can add a clearer framework.',
+    'The output should help create a better article than the SERP, not an average article that repeats it.',
+    'For this topic, prioritize evidence and structure around CEX Earn risks, Binance Earn / Bybit Earn / OKX Earn product patterns, flexible vs locked Earn products, custody and counterparty risk, on-chain savings, self-custody, smart contract risk, redemption and liquidity, and user decision frameworks.',
+    'Flag if the SERP is dominated by generic "best APY" content, and recommend avoiding that angle.',
+    'Recommend a table framed as: "What to compare before depositing".',
+    'Recommend FAQ questions that match real search behavior, not generic filler.',
+  ].join('\n'),
+  generateSeoBrief: [
+    'Create a writer-ready SEO brief for a focused comparison article.',
+    'The article must not become a broad "what to do with idle USDT" guide.',
+    'Primary angle: CEX Earn vs on-chain USDT savings: do not compare only APR.',
+    'Required editorial thesis: APR is the wrong starting point if the user does not understand custody, what they receive, transparency, yield source, lock-ups, exit terms, redemption, and risk.',
+    'The brief must include recommended H1, meta title, meta description, URL slug, target reader, search intent, primary keyword, secondary keywords, article promise, required sections, comparison table requirements, Reinforce integration guidance, compliance notes, soft CTA guidance, and FAQ questions.',
+    'Preferred H1 pattern: "CEX Earn vs On-Chain USDT Savings: What to Compare Before You Deposit".',
+    'The article should explain CEX Earn fairly, explain Reinforce clearly, and help the user make a better risk-aware comparison.',
+    'Do not frame Reinforce as risk-free or automatically better. Frame it as a concrete on-chain option for users who value self-custody, TRUSD, on-chain visibility, and understanding risks before depositing.',
+  ].join('\n'),
+  draftLongreadArticle: [
+    'Write a complete SEO article for cautious USDT holders.',
+    'Write like a useful, clear blog article - not like a compliance checklist, not like a help-center FAQ, and not like a promotional landing page.',
+    'Primary title: CEX Earn vs On-Chain USDT Savings: What to Compare Before You Deposit.',
+    'Core thesis: Do not compare only APR. Before putting idle USDT to work, compare custody, what you receive, transparency, yield source, lock-ups, exit terms, redemption, and risk.',
+    'Start with a real user tension: Many USDT holders have idle USDT. CEX Earn products may look attractive, but APR does not answer the most important questions: who controls the funds, where does yield come from, and what happens when the user wants to exit?',
+    'Required structure: strong introduction based on the user problem; brief explanation of CEX Earn; brief explanation of Reinforce and TRUSD; comparison table titled "What to compare before depositing"; "Why APR is not enough"; "The 5 questions to ask before putting USDT to work"; "When CEX Earn may fit"; "When Reinforce may fit"; "Risks to understand on both sides"; "Start small before committing more"; SEO-focused FAQ; soft CTA conclusion.',
+    "Explain that Reinforce is an on-chain savings layer for practical USDT users. Users deposit USDT and receive TRUSD, or Token Reinforced USD. TRUSD is designed to represent the user's position in the Reinforce savings system. Reinforce is not a CEX Earn product, trading app, leverage product, or gambling product.",
+    'Editorial style: calm, practical, human, beginner-friendly, confident but not promotional, risk-aware without sounding defensive.',
+    'Avoid repeating the same caveat in every paragraph. Explicit risk warnings should appear where they matter most: yield, peg, redemption, risk comparison, and conclusion.',
+    'The comparison table must compare what you deposit into, what you receive, custody model, transparency, yield source, lock-ups / exit terms, redemption / withdrawal, main risk, and best fit user.',
+    'Do not push immediate deposit. Push the user to understand how Reinforce works, compare risks, and start small if they decide to test.',
+    'Use qualified language: designed to, aims to, can help, may, intended to, subject to protocol conditions.',
+    'Do not say guaranteed yield, risk-free, cannot lose money, always redeemable, instant withdrawal, highest APY, or passive income with no risk.',
+    'Do not overuse Reinforce. Mention it where it helps answer the decision. The article should feel educational first and product-relevant second.',
+  ].join('\n'),
+  cleanupLongreadArticle: [
+    'Edit the draft for claims safety, compliance, and factual caution without making the article sound overly defensive.',
+    "Preserve the article's readability, flow, structure, and conversion intent.",
+    'Fix only risky or unsupported claims.',
+    'Do not add repetitive caveats to every paragraph.',
+    'Do not weaken every sentence with excessive hedging.',
+    'Ensure the article does not claim guaranteed yield, guaranteed peg, guaranteed redemption, guaranteed liquidity, risk-free income, instant withdrawal, absolute safety, or that Reinforce is safer than all CEX Earn products.',
+    'Use qualified language where needed: designed to, aims to, may, can help, subject to protocol conditions, not guaranteed.',
+    'Keep explicit warnings in the most important places: yield explanation, TRUSD peg explanation, redemption explanation, risk comparison, and conclusion.',
+    'Avoid unsupported claims about exchange insurance, exchange safety funds, proof of reserves, fully transparent code, audits, guaranteed reserves, or instant liquidity.',
+    "Do not remove the article's clear point of view: APR is not enough. Users should compare custody, transparency, exit, and risk before depositing.",
+    'Final output should still read like a useful blog article, not a legal disclaimer.',
+  ].join('\n'),
+  packageLongreadArticle: [
+    'Create the final article package.',
+    'Before finalizing, check: Is the article focused on CEX Earn vs on-chain USDT savings, not a broad idle USDT listicle? Does the introduction clearly state the user tension? Does the article explain why APR is not enough? Is there a strong comparison table? Is Reinforce explained clearly but not over-promoted? Are TRUSD, custody, redemption, peg, and risk explained accurately? Are compliance caveats present but not repetitive? Are CTAs soft and focused on understanding before depositing? Are FAQ questions SEO-relevant? Does the conclusion give the user a clear next step?',
+    'Return final title, meta title, meta description, slug, article, FAQ, SEO notes, claims/compliance notes, and recommended manual editor checks.',
+    'If the article has become too broad, revise it back toward the comparison angle before finalizing.',
+  ].join('\n'),
+} as const;
+
 @Controller('test-ui')
 export class SeoBriefTestUiController {
   @Get('seo-briefing')
@@ -31,6 +178,13 @@ export class SeoBriefTestUiController {
     );
     const defaultKeywordExpansionPromptJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_KEYWORD_EXPANSION_PROMPT,
+    ).replace(/</g, '\\u003c');
+    const defaultFormValuesJson = JSON.stringify(DEFAULT_SEO_BRIEF_FORM_VALUES).replace(
+      /</g,
+      '\\u003c',
+    );
+    const defaultPromptInstructionOverridesJson = JSON.stringify(
+      DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
 
     return `<!doctype html>
@@ -1813,7 +1967,7 @@ export class SeoBriefTestUiController {
                 <label class="field full">
                   <span>Topic Hint</span>
                   <em>Research direction from the marketer. This is not a final keyword and not an article title.</em>
-                  <textarea id="topicHint" required>How people in emerging markets can make idle USDT productive</textarea>
+                  <textarea id="topicHint" required>${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.topicHint)}</textarea>
                 </label>
                 <input id="country" type="hidden" value="United States" />
                 <label class="field full">
@@ -1831,39 +1985,33 @@ export class SeoBriefTestUiController {
                 <label class="field full">
                   <span>User Pains</span>
                   <em>Manual input from marketer. One per line or comma-separated. AI does not generate this step anymore.</em>
-                  <textarea id="userPains" required>Save money in dollars
-Avoid naira devaluation
-Make idle USDT useful without hype</textarea>
+                  <textarea id="userPains" required>${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.userPains)}</textarea>
                 </label>
                 <div class="input-group-grid">
                   <label class="field full">
                     <span>User Scenarios</span>
                     <em>Run-specific additional context. Optional search, behavior, ecosystem, comparison, or action scenarios.</em>
-                    <textarea id="userScenarios">Uses Binance P2P
-Stores USDT in Trust Wallet
-Needs to understand TRC20 vs BEP20</textarea>
+                    <textarea id="userScenarios">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.userScenarios)}</textarea>
                   </label>
                   <label class="field full">
                     <span>Preferred Angle</span>
                     <em>Run-specific additional context.</em>
-                    <input id="preferredAngle" value="Educational comparison for cautious USDT holders" />
+                    <textarea id="preferredAngle">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.preferredAngle)}</textarea>
                   </label>
                   <label class="field full">
                     <span>Excluded Topics</span>
                     <em>Run-specific additional context.</em>
-                    <textarea id="excludedTopics">Airdrops
-Faucets
-High-risk leverage</textarea>
+                    <textarea id="excludedTopics">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.excludedTopics)}</textarea>
                   </label>
-                  <label class="field">
+                  <label class="field full">
                     <span>Audience Before</span>
                     <em>Run-specific additional context.</em>
-                    <input id="audienceBefore" value="User holds USDT but does not understand earning options." />
+                    <textarea id="audienceBefore">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.audienceBefore)}</textarea>
                   </label>
-                  <label class="field">
+                  <label class="field full">
                     <span>Audience After</span>
                     <em>Run-specific additional context.</em>
-                    <input id="audienceAfter" value="User understands the options and sees Reinforce as one practical next step." />
+                    <textarea id="audienceAfter">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.audienceAfter)}</textarea>
                   </label>
                 </div>
               </section>
@@ -1918,11 +2066,11 @@ High-risk leverage</textarea>
                 <div class="input-group-grid">
                   <label class="field">
                     <span>Hypotheses Count</span>
-                    <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="10" />
+                    <input id="hypothesesCount" type="number" min="1" max="100" step="1" value="12" />
                   </label>
                   <label class="field">
                     <span>SERP Enrichment Count</span>
-                    <input id="serpEnrichmentCount" type="number" min="1" max="100" step="1" value="10" />
+                    <input id="serpEnrichmentCount" type="number" min="1" max="100" step="1" value="12" />
                   </label>
                   <label class="field">
                     <span>Request Timeout, sec</span>
@@ -1932,12 +2080,12 @@ High-risk leverage</textarea>
                   <label class="field full balance-field">
                     <span>SEO / Product Balance</span>
                     <div class="balance-values">
-                      <strong>SEO <b id="seoWeightLabel">60%</b></strong>
-                      <strong>Product <b id="productWeightLabel">40%</b></strong>
+                      <strong>SEO <b id="seoWeightLabel">55%</b></strong>
+                      <strong>Product <b id="productWeightLabel">45%</b></strong>
                     </div>
-                    <input id="balanceSlider" type="range" min="0" max="100" step="5" value="60" />
-                    <input id="seoWeight" type="hidden" value="0.6" />
-                    <input id="productWeight" type="hidden" value="0.4" />
+                    <input id="balanceSlider" type="range" min="0" max="100" step="5" value="55" />
+                    <input id="seoWeight" type="hidden" value="0.55" />
+                    <input id="productWeight" type="hidden" value="0.45" />
                   </label>
                 </div>
                 <div class="field full">
@@ -2009,6 +2157,8 @@ High-risk leverage</textarea>
 
     <script>
       const initialState = ${initialState};
+      const DEFAULT_SEO_BRIEF_FORM_VALUES = ${defaultFormValuesJson};
+      const DEFAULT_PROMPT_INSTRUCTION_OVERRIDES = ${defaultPromptInstructionOverridesJson};
       const appState = {
         projects: [],
         selectedBrandMemory: null,
@@ -2290,14 +2440,15 @@ High-risk leverage</textarea>
       function readPromptInstructionOverrides() {
         try {
           const parsed = JSON.parse(localStorage.getItem(PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY) || '{}');
-          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-          return Object.fromEntries(
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...DEFAULT_PROMPT_INSTRUCTION_OVERRIDES };
+          const storedOverrides = Object.fromEntries(
             Object.entries(parsed)
               .map(([key, value]) => [String(key).trim(), typeof value === 'string' ? value.trim() : ''])
               .filter(([key, value]) => key && value),
           );
+          return { ...DEFAULT_PROMPT_INSTRUCTION_OVERRIDES, ...storedOverrides };
         } catch (_error) {
-          return {};
+          return { ...DEFAULT_PROMPT_INSTRUCTION_OVERRIDES };
         }
       }
 
@@ -2306,6 +2457,15 @@ High-risk leverage</textarea>
           PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY,
           JSON.stringify(overrides || {}, null, 2),
         );
+      }
+
+      function readStoredPromptInstructionOverrides() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(PROMPT_INSTRUCTION_OVERRIDES_STORAGE_KEY) || '{}');
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (_error) {
+          return {};
+        }
       }
 
       function findPromptByOperation(operation) {
@@ -2321,12 +2481,16 @@ High-risk leverage</textarea>
         return overrides[prompt.operation] || prompt.instruction || '';
       }
 
+      function getDefaultPromptInstructionValue(prompt) {
+        return DEFAULT_PROMPT_INSTRUCTION_OVERRIDES[prompt.operation] || prompt.instruction || '';
+      }
+
       function savePromptInstructionOverride(operation, value) {
         const prompt = findPromptByOperation(operation);
         if (!prompt) return;
-        const overrides = readPromptInstructionOverrides();
+        const overrides = readStoredPromptInstructionOverrides();
         const normalized = String(value || '').trim();
-        if (!normalized || normalized === prompt.instruction) {
+        if (!normalized || normalized === getDefaultPromptInstructionValue(prompt)) {
           delete overrides[operation];
         } else {
           overrides[operation] = normalized;
@@ -2335,7 +2499,7 @@ High-risk leverage</textarea>
       }
 
       function resetPromptInstructionOverride(operation) {
-        const overrides = readPromptInstructionOverrides();
+        const overrides = readStoredPromptInstructionOverrides();
         delete overrides[operation];
         writePromptInstructionOverrides(overrides);
       }
@@ -2608,7 +2772,7 @@ High-risk leverage</textarea>
           const textarea = qs('promptInstruction_' + operation);
           resetPromptInstructionOverride(operation);
           if (textarea && prompt) {
-            textarea.value = prompt.instruction || '';
+            textarea.value = getDefaultPromptInstructionValue(prompt);
           }
           appendClientDevLog('Reset prompt instruction override', { operation });
           showToast('Prompt instruction reset');
@@ -2742,8 +2906,8 @@ High-risk leverage</textarea>
       function hydrateMarketSelect() {
         const select = qs('language');
         if (!select) return;
-        select.innerHTML = SEO_BRIEF_MARKET_PRESETS.map((market, index) =>
-          '<option value="' + escapeHtmlClient(market.marketKey) + '" ' + (index === 0 ? 'selected' : '') + '>' +
+        select.innerHTML = SEO_BRIEF_MARKET_PRESETS.map((market) =>
+          '<option value="' + escapeHtmlClient(market.marketKey) + '" ' + (market.marketKey === 'nigeria-en' ? 'selected' : '') + '>' +
             escapeHtmlClient(market.label) +
           '</option>'
         ).join('');
