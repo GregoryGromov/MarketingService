@@ -667,10 +667,36 @@ export class SeoBriefTestUiController {
         grid-column: 1 / -1;
         border: 1px solid rgba(20, 19, 17, 0.12);
         border-radius: 22px;
-        background: rgba(255, 255, 255, 0.58);
+        background: rgba(255, 255, 255, 0.72);
         padding: 14px;
         display: grid;
         gap: 12px;
+        box-shadow: 0 12px 32px rgba(20, 19, 17, 0.05);
+      }
+      .input-group-card:not([open]) {
+        gap: 0;
+      }
+      .input-group-summary {
+        list-style: none;
+        cursor: pointer;
+        margin: -14px;
+        padding: 14px;
+        border-radius: 22px;
+      }
+      .input-group-summary::-webkit-details-marker {
+        display: none;
+      }
+      .input-group-summary::after {
+        content: 'Collapse';
+        display: inline-flex;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .input-group-card:not([open]) .input-group-summary::after {
+        content: 'Expand';
       }
       .input-group-head {
         display: grid;
@@ -1998,34 +2024,13 @@ export class SeoBriefTestUiController {
             <div id="launchStatus" class="context-result full" hidden></div>
             <div id="launchPromptInventory"></div>
             <form id="launchForm" class="launch-grid" novalidate>
-              <section class="input-group-card">
-                <div class="input-group-head">
-                  <h3>Project & Brand Memory</h3>
-                  <p>Project-bound context. Brand Memory stays the source of truth for brand name, product facts, claims rules, CTA rules, banned/required phrases, SEO rules, and audience profiles.</p>
-                </div>
-                <label class="field full">
-                  <span>Project</span>
-                  <select id="projectId">
-                    <option value="">No project context</option>
-                  </select>
-                </label>
-                <div class="actions full">
-                  <a class="button-like" id="openBrandMemoryLink" href="/test-ui/brand-memory" aria-disabled="true">Open Brand Memory</a>
-                </div>
-                <label class="field full">
-                  <span>Target Audience</span>
-                  <em>Select one audience from Project Brand Memory. It will be used as the run audience in all SEO and article prompts.</em>
-                  <select id="targetAudienceSelect" disabled>
-                    <option value="">Select project first</option>
-                  </select>
-                </label>
-              </section>
-
-              <section class="input-group-card">
-                <div class="input-group-head">
-                  <h3>Article Input</h3>
-                  <p>Fields that describe this concrete article/run: topic, location/language pair, cover, audience state, marketer pains, scenarios, and angle.</p>
-                </div>
+              <details class="input-group-card" open>
+                <summary class="input-group-summary">
+                  <div class="input-group-head">
+                    <h3>Article Input</h3>
+                    <p>Fields that change from article to article: topic, locations/languages, cover, selected audience, key message, CTA, audience state, marketer pains, scenarios, and angle.</p>
+                  </div>
+                </summary>
                 <div id="markerPlanContext" class="context-result full" hidden></div>
                 <textarea id="campaignContext" hidden></textarea>
                 <label class="field full">
@@ -2044,6 +2049,13 @@ export class SeoBriefTestUiController {
                   <span>Blog cover image URL</span>
                   <em>Optional. If this SEO run is published to Blog, this HTTPS image will be sent as the article cover.</em>
                   <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+                </label>
+                <label class="field full">
+                  <span>Target Audience</span>
+                  <em>Select one audience from Project Brand Memory. It will be used as the run audience in all SEO and article prompts.</em>
+                  <select id="targetAudienceSelect" disabled>
+                    <option value="">Select project first</option>
+                  </select>
                 </label>
                 <div id="languageBatchProgress" class="batch-progress full" hidden></div>
                 <label class="field full">
@@ -2093,13 +2105,15 @@ export class SeoBriefTestUiController {
                     <textarea id="audienceAfter">${escapeHtmlServer(DEFAULT_SEO_BRIEF_FORM_VALUES.audienceAfter)}</textarea>
                   </label>
                 </div>
-              </section>
+              </details>
 
-              <section class="input-group-card">
-                <div class="input-group-head">
-                  <h3>Technical Parameters</h3>
-                  <p>Execution controls: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
-                </div>
+              <details class="input-group-card" open>
+                <summary class="input-group-summary">
+                  <div class="input-group-head">
+                    <h3>Technical Parameters</h3>
+                    <p>Execution controls only: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
+                  </div>
+                </summary>
                 <input id="aiModelMode" type="hidden" value="pro" />
                 <input id="aiModel" type="hidden" value="deepseek/deepseek-chat-v3-0324" />
                 <div class="input-group-grid">
@@ -2186,7 +2200,25 @@ export class SeoBriefTestUiController {
                   <em>This is not marketer context. It only tunes how AI generates initial keyword hypotheses.</em>
                   <textarea id="keywordExpansionPrompt">${defaultKeywordExpansionPrompt}</textarea>
                 </label>
-              </section>
+              </details>
+
+              <details class="input-group-card" open>
+                <summary class="input-group-summary">
+                  <div class="input-group-head">
+                    <h3>Project & Brand Memory</h3>
+                    <p>Project-bound source of truth: brand name, product facts, CTA rules, claims rules, banned/required phrases, SEO rules, and audience profiles. These are loaded from the project, not rewritten per article.</p>
+                  </div>
+                </summary>
+                <label class="field full">
+                  <span>Project</span>
+                  <select id="projectId">
+                    <option value="">No project context</option>
+                  </select>
+                </label>
+                <div class="actions full">
+                  <a class="button-like" id="openBrandMemoryLink" href="/test-ui/brand-memory" aria-disabled="true">Open Brand Memory</a>
+                </div>
+              </details>
             </form>
           </section>
         </aside>
