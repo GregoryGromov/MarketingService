@@ -2101,26 +2101,27 @@ export class SeoBriefTestUiController {
                   <p>Execution controls: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
                 </div>
                 <input id="aiModelMode" type="hidden" value="pro" />
-                <input id="aiModel" type="hidden" value="deepseek/deepseek-r1-0528" />
+                <input id="aiModel" type="hidden" value="deepseek/deepseek-chat-v3-0324" />
                 <div class="input-group-grid">
                   <label class="field">
                     <span>AI Model</span>
                     <em>Primary model used for every AI call in this SEO run.</em>
                     <select id="aiModelPreset">
-                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="flash" data-input-price="0.27" data-output-price="1.10">DeepSeek Flash - Chat V3 via OpenRouter</option>
-                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19" selected>DeepSeek Pro - R1 reasoning via OpenRouter</option>
-                      <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">OpenRouter Gemini 2.5 Flash - fast</option>
-                      <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">OpenRouter Gemini 2.5 Pro - deep reasoning</option>
-                      <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">OpenRouter Claude Sonnet 4 - deep reasoning</option>
-                      <option value="openai/gpt-4.1-mini" data-mode="flash" data-input-price="0.40" data-output-price="1.60">OpenRouter GPT-4.1 Mini - fast</option>
-                      <option value="openai/gpt-4.1" data-mode="pro" data-input-price="2" data-output-price="8">OpenRouter GPT-4.1 - balanced</option>
+                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="flash" data-input-price="0.27" data-output-price="1.10">DeepSeek Flash (no thinking, fastest) - Chat V3 via OpenRouter</option>
+                      <option value="deepseek-chat-v3-pro" data-model="deepseek/deepseek-chat-v3-0324" data-mode="pro" data-input-price="0.27" data-output-price="1.10" selected>DeepSeek Pro (no thinking) - Chat V3 via OpenRouter</option>
+                      <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">DeepSeek Pro Thinking - R1 reasoning via OpenRouter</option>
+                      <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">Gemini Flash (no thinking, fast) - 2.5 Flash via OpenRouter</option>
+                      <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">Gemini Pro Thinking - 2.5 Pro via OpenRouter</option>
+                      <option value="anthropic/claude-sonnet-4" data-mode="pro_thinking" data-input-price="3" data-output-price="15">Claude Sonnet Thinking - Sonnet 4 via OpenRouter</option>
+                      <option value="openai/gpt-4.1-mini" data-mode="flash" data-input-price="0.40" data-output-price="1.60">GPT-4.1 Mini Flash (no thinking, fast) via OpenRouter</option>
+                      <option value="openai/gpt-4.1" data-mode="pro" data-input-price="2" data-output-price="8">GPT-4.1 Pro (no thinking, balanced) via OpenRouter</option>
                       <option value="custom" data-mode="pro">Custom model id - advanced</option>
                     </select>
                   </label>
                   <label class="field">
                     <span>Custom Model Slug</span>
                     <em>Use any OpenRouter vendor/model slug.</em>
-                    <input id="aiModelCustom" value="deepseek/deepseek-r1-0528" placeholder="vendor/model-name" />
+                    <input id="aiModelCustom" value="deepseek/deepseek-chat-v3-0324" placeholder="vendor/model-name" />
                   </label>
                 </div>
                 <div class="field full">
@@ -3033,11 +3034,11 @@ export class SeoBriefTestUiController {
         const presetValue = preset?.value || '';
         const model = presetValue === 'custom'
           ? String(custom?.value || '').trim()
-          : presetValue.trim();
+          : String(selected?.dataset?.model || presetValue).trim();
         if (custom) {
           custom.readOnly = presetValue !== 'custom';
           if (presetValue !== 'custom' && presetValue) {
-            custom.value = presetValue;
+            custom.value = model;
           }
         }
         if (model) {
