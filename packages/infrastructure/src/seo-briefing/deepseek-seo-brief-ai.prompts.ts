@@ -53,7 +53,7 @@ export const SEO_BRIEF_AI_PROMPT_VERSIONS = {
   reviewClusterProductFit: 'seo-brief.review-cluster-product-fit.v4-compact-context',
   buildProductBridge: 'seo-brief.product-bridge.v1',
   explainClusterSelection: 'seo-brief.cluster-selection.v1',
-  synthesizeOnPage: 'seo-brief.synthesize-onpage.v3-compact',
+  synthesizeOnPage: 'seo-brief.synthesize-onpage.v4-compact-context',
   generateSeoBrief: 'seo-brief.generate-brief.v3-compact',
   draftLongreadArticle: 'article-generation.draft.v2-compact',
   cleanupLongreadArticle: 'article-generation.cleanup.v2-compact',
@@ -1248,14 +1248,7 @@ function createSynthesizeOnPageContext(
     ),
     keyMessage: compactText(params.keyMessage, 200),
     researchFrame: compactText(readPromptValue(seoProductContext, 'researchFrame'), 260),
-    brandMemory: fullPromptJson(brandMemory),
-    approvedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
-    forbiddenClaims: uniqueStringsPreserveFullText([
-      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
-      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
-      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-    ]),
-    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
+    brandMemory: compactOnPageBrandMemory(brandMemory, seoProductContext),
     constraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 6, 110),
@@ -1272,6 +1265,27 @@ function createSynthesizeOnPageContext(
     competitorKeywordSignals: compactPromptSignals(params.competitorKeywordEvidence, 12, 120),
     instruction:
       'Use PAGES rows as competitor evidence. Prefer recurring H2/content-block patterns across domains over one-off snippets.',
+  };
+}
+
+function compactOnPageBrandMemory(
+  brandMemory: Record<string, unknown> | null,
+  seoProductContext: Record<string, unknown> | null,
+): Record<string, unknown> {
+  return {
+    brandName: compactText(readPromptValue(brandMemory, 'brandName'), 80),
+    productDescription: compactText(readPromptValue(brandMemory, 'productDescription'), 220),
+    targetAudience: compactText(readPromptValue(brandMemory, 'targetAudience'), 160),
+    approvedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 10, 130),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 10, 130),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 10, 90),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 100),
+      ],
+      16,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 10, 90),
   };
 }
 

@@ -994,6 +994,20 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
       audience: 'Stablecoin users',
       productName: 'Northstar',
       productDescription: 'Digital asset education',
+      brandMemorySnapshot: {
+        brandName: 'Northstar',
+        productDescription: 'Digital asset education',
+        targetAudience: 'Stablecoin users',
+        approvedFacts: ['Education-first product context'],
+        forbiddenClaims: [
+          `${'Do not include this very long forbidden claim. '.repeat(40)}FULL_BRAND_MEMORY_TAIL_SHOULD_NOT_APPEAR`,
+        ],
+        glossary: {},
+        bannedPhrases: [],
+        requiredPhrases: ['education-first'],
+        brandDocs: [],
+        adaptationPromptRules: null,
+      },
       market: {
         country: 'United States',
         language: 'English',
@@ -1102,6 +1116,20 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
       audience: 'Stablecoin beginners',
       productName: 'Northstar',
       productDescription: 'Digital asset education',
+      brandMemorySnapshot: {
+        brandName: 'Northstar',
+        productDescription: 'Digital asset education',
+        targetAudience: 'Stablecoin beginners',
+        approvedFacts: ['Education-first product context'],
+        forbiddenClaims: [
+          `${'Do not include this very long forbidden claim. '.repeat(40)}FULL_BRAND_MEMORY_TAIL_SHOULD_NOT_APPEAR`,
+        ],
+        glossary: {},
+        bannedPhrases: [],
+        requiredPhrases: ['education-first'],
+        brandDocs: [],
+        adaptationPromptRules: null,
+      },
       market: {
         country: 'United States',
         language: 'English',
@@ -1150,5 +1178,8 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(client.requests[0]?.userPrompt).not.toContain('textBlocks');
     expect(client.requests[0]?.userPrompt).not.toContain('importantLinks');
     expect(client.requests[0]?.userPrompt).not.toContain('RAW_MARKDOWN_TAIL_SHOULD_NOT_APPEAR');
+    expect(client.requests[0]?.userPrompt).not.toContain(
+      'FULL_BRAND_MEMORY_TAIL_SHOULD_NOT_APPEAR',
+    );
   });
 });

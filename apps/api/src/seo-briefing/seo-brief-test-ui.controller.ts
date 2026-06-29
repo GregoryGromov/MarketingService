@@ -2418,7 +2418,7 @@ export class SeoBriefTestUiController {
             {
               step: 'Step 4 · OnPage synthesis',
               operation: 'synthesizeOnPage',
-              version: 'seo-brief.synthesize-onpage.v3-compact',
+              version: 'seo-brief.synthesize-onpage.v4-compact-context',
               why: 'AI summarizes competitor on-page structure for the selected cluster.',
               instruction: 'Summarize competitor page structure into actionable article requirements. Preserve market language, topic scope, content gaps, FAQ ideas, and safe product insertion guidance.',
               input: 'Fetched competitor pages, headings, text blocks, links, selected cluster, product context.',
