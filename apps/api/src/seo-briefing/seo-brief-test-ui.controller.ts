@@ -6680,6 +6680,14 @@ export class SeoBriefTestUiController {
           payload: {},
         },
         {
+          label: 'Filtering and scoring keyword candidates',
+          step: 'candidateScoring',
+          loadingKey: 'candidateScoringLoading',
+          path: '/score-keyword-candidates',
+          readyFlag: 'candidateScoring',
+          payload: {},
+        },
+        {
           label: 'Building intent clusters',
           step: 'clusterGroup',
           loadingKey: 'keywordClusteringLoading',
