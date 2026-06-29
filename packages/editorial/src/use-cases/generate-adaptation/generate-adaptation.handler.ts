@@ -1,9 +1,10 @@
-import { CommandHandler, type EventBus, type ICommandHandler } from '@nestjs/cqrs';
+import { Inject } from '@nestjs/common';
+import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { AdaptationVersion } from '../../domain/adaptation-version.entity.js';
-import type { AdaptationVersionRepository } from '../../domain/adaptation-version.repository.js';
-import type { ArticleRepository } from '../../domain/article.repository.js';
-import type { ChannelAdaptationRepository } from '../../domain/channel-adaptation.repository.js';
-import type { AdaptationGeneratorPort } from '../../ports/adaptation-generator.port.js';
+import { AdaptationVersionRepository } from '../../domain/adaptation-version.repository.js';
+import { ArticleRepository } from '../../domain/article.repository.js';
+import { ChannelAdaptationRepository } from '../../domain/channel-adaptation.repository.js';
+import { AdaptationGeneratorPort } from '../../ports/adaptation-generator.port.js';
 import { GenerateAdaptationCommand } from './generate-adaptation.command.js';
 
 @CommandHandler(GenerateAdaptationCommand)
@@ -11,10 +12,15 @@ export class GenerateAdaptationHandler
   implements ICommandHandler<GenerateAdaptationCommand, string>
 {
   constructor(
+    @Inject(ArticleRepository)
     private readonly articleRepository: ArticleRepository,
+    @Inject(ChannelAdaptationRepository)
     private readonly channelAdaptationRepository: ChannelAdaptationRepository,
+    @Inject(AdaptationVersionRepository)
     private readonly adaptationVersionRepository: AdaptationVersionRepository,
+    @Inject(AdaptationGeneratorPort)
     private readonly adaptationGenerator: AdaptationGeneratorPort,
+    @Inject(EventBus)
     private readonly eventBus: EventBus,
   ) {}
 
