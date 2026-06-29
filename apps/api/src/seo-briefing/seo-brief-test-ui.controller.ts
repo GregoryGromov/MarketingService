@@ -291,6 +291,15 @@ export class SeoBriefTestUiController {
         background: rgba(255, 255, 255, 0.74);
         text-decoration: none;
       }
+      .danger-action {
+        border-color: rgba(181, 56, 40, 0.5);
+        background: #b53828;
+        color: #fffaf2;
+      }
+      .danger-action:hover {
+        border-color: #7f2419;
+        background: #9f2f22;
+      }
       .run-library-panel {
         display: grid;
         gap: 14px;
@@ -1689,6 +1698,15 @@ export class SeoBriefTestUiController {
       .dashboard-back-link {
         text-decoration: none;
       }
+      .danger-action {
+        border-color: rgba(180, 35, 24, 0.52);
+        background: #b42318;
+        color: #fff;
+      }
+      .danger-action:hover {
+        border-color: #8f1d14;
+        background: #9f1f16;
+      }
       .hero-top, .section-head, .toolbar, .form-grid {
         gap: 16px;
       }
@@ -1923,6 +1941,7 @@ export class SeoBriefTestUiController {
             </p>
           </div>
           <div class="actions">
+            <button type="button" class="danger-action" id="killAutoFlowBtn" hidden>Kill flow</button>
             <button type="button" class="primary" id="startNewRunBtn">Start New SEO Brief</button>
             <button type="button" id="runLibraryBtn" aria-expanded="false" aria-controls="runLibraryPanel">Run Library</button>
             <button type="button" id="refreshAllBtn">Refresh</button>
@@ -1991,7 +2010,6 @@ export class SeoBriefTestUiController {
                   </select>
                 </label>
                 <div class="actions full">
-                  <button type="button" id="fillFromBrandMemoryBtn">Fill From Brand Memory</button>
                   <a class="button-like" id="openBrandMemoryLink" href="/test-ui/brand-memory" aria-disabled="true">Open Brand Memory</a>
                 </div>
                 <label class="field full">
@@ -2008,30 +2026,13 @@ export class SeoBriefTestUiController {
                   <h3>Article Input</h3>
                   <p>Fields that describe this concrete article/run: topic, location/language pair, cover, audience state, marketer pains, scenarios, and angle.</p>
                 </div>
-                <div class="field full">
-                  <span>Input Mode</span>
-                  <div class="input-mode-tabs">
-                    <label><input type="radio" name="inputMode" value="manual" checked /> Manual fields</label>
-                    <label><input type="radio" name="inputMode" value="brief_text" /> One brief text</label>
-                    <label><input type="radio" name="inputMode" value="file" /> File</label>
-                  </div>
-                </div>
-                <section id="briefTextPanel" class="context-panel full" hidden>
+                <section id="briefTextPanel" class="context-panel full">
                   <label class="field full">
                     <span>One Brief Text</span>
                     <textarea id="briefContextText" placeholder="Paste the full SEO task brief here: topic, launch context, market, audience, product context, constraints, CTA."></textarea>
                   </label>
                   <div class="actions">
                     <button type="button" id="extractBriefTextBtn">Extract Fields From Text</button>
-                  </div>
-                </section>
-                <section id="filePanel" class="context-panel full" hidden>
-                  <label class="field full">
-                    <span>Brief File</span>
-                    <input id="briefContextFile" type="file" accept=".txt,.md,.json,.csv,text/plain,text/markdown,application/json" />
-                  </label>
-                  <div class="actions">
-                    <button type="button" id="extractFileBtn">Extract Fields From File</button>
                   </div>
                 </section>
                 <div id="contextExtractionResult" class="context-result full" hidden></div>
@@ -2312,6 +2313,8 @@ export class SeoBriefTestUiController {
         autoFlowCurrentIndex: 0,
         autoFlowTotal: 0,
         autoFlowDebugEvents: [],
+        autoFlowAbortController: null,
+        autoFlowKilled: false,
       };
       let launchPanelNode = null;
       let clientDevLogSeq = 0;
@@ -2795,6 +2798,62 @@ export class SeoBriefTestUiController {
         node.textContent = parts.join(' · ');
       }
 
+      function syncKillAutoFlowButton() {
+        const button = qs('killAutoFlowBtn');
+        if (!button) return;
+        button.hidden = !appState.autoFlowLoading;
+      }
+
+      function resetAutoFlowState(options = {}) {
+        clearAutoFlowStepLoading();
+        appState.autoFlowLoading = false;
+        appState.autoFlowTitle = null;
+        appState.autoFlowDescription = null;
+        appState.autoFlowCurrentLabel = null;
+        appState.autoFlowCurrentIndex = 0;
+        appState.autoFlowTotal = 0;
+        appState.autoFlowAbortController = null;
+        if (!options.preserveKilled) {
+          appState.autoFlowKilled = false;
+        }
+        syncKillAutoFlowButton();
+        updateClientDevStatus();
+      }
+
+      function killAutoFlow() {
+        if (!appState.autoFlowLoading) {
+          showToast('No auto flow is running');
+          return;
+        }
+        appState.autoFlowKilled = true;
+        const runId = appState.selectedRunId;
+        if (runId) {
+          setAutoFlowRun(runId, false);
+        }
+        try {
+          appState.autoFlowAbortController?.abort();
+        } catch (_error) {
+          // AbortController may already be closed; logical kill flag is the source of truth.
+        }
+        pushAutoFlowDebugEvent({
+          status: 'warn',
+          label: 'Kill flow',
+          path: '',
+          message: 'Auto workflow was stopped by user. Already-started backend request may still finish.',
+        });
+        resetAutoFlowState({ preserveKilled: true });
+        if (appState.selectedRun) {
+          renderDetail(appState.selectedRun);
+        }
+        showToast('Auto flow stopped');
+      }
+
+      function assertAutoFlowNotKilled() {
+        if (appState.autoFlowKilled) {
+          throw new Error('Auto workflow killed by user');
+        }
+      }
+
       function setClientDevPanelOpen(open) {
         const panel = qs('clientDevPanel');
         const toggle = qs('clientDevToggleBtn');
@@ -3001,13 +3060,14 @@ export class SeoBriefTestUiController {
       }
 
       function getInputMode() {
-        return document.querySelector('input[name="inputMode"]:checked')?.value || 'manual';
+        return 'manual';
       }
 
       function syncInputMode() {
-        const mode = getInputMode();
-        qs('briefTextPanel').hidden = mode !== 'brief_text';
-        qs('filePanel').hidden = mode !== 'file';
+        const briefTextPanel = qs('briefTextPanel');
+        if (briefTextPanel) {
+          briefTextPanel.hidden = false;
+        }
       }
 
       function syncAiModelMode() {
@@ -3063,15 +3123,6 @@ export class SeoBriefTestUiController {
             'is-selected',
             option.getAttribute('data-workflow-mode-option') === value,
           );
-        });
-      }
-
-      function readTextFile(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => reject(reader.error || new Error('File read failed'));
-          reader.readAsText(file);
         });
       }
 
@@ -3140,7 +3191,7 @@ export class SeoBriefTestUiController {
           aiModel: qs('aiModel')?.value || '',
           aiModelPreset: qs('aiModelPreset')?.value || '',
           aiModelCustom: qs('aiModelCustom')?.value || '',
-          inputMode: document.querySelector('input[name="inputMode"]:checked')?.value || 'manual',
+          inputMode: getInputMode(),
           aiModelMode: document.querySelector('input[name="aiModelModeChoice"]:checked')?.value || 'pro',
           workflowMode: document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual',
           hypothesesCount: qs('hypothesesCount')?.value || '',
@@ -3194,7 +3245,6 @@ export class SeoBriefTestUiController {
           setValueIfElement('requestTimeoutSeconds', state.requestTimeoutSeconds);
           setValueIfElement('balanceSlider', state.balanceSlider);
           setValueIfElement('keywordExpansionPrompt', state.keywordExpansionPrompt);
-          setRadioValue('inputMode', state.inputMode);
           setRadioValue('aiModelModeChoice', state.aiModelMode);
           setRadioValue('workflowModeChoice', state.workflowMode);
           syncBalanceSlider();
@@ -6871,8 +6921,8 @@ export class SeoBriefTestUiController {
         return Boolean(getManualStepFlags(run)[stepConfig.readyFlag]);
       }
 
-      async function fetchRunSnapshot(runId) {
-        return fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId));
+      async function fetchRunSnapshot(runId, options = {}) {
+        return fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId), options);
       }
 
       function formatDuration(ms) {
@@ -6951,6 +7001,7 @@ export class SeoBriefTestUiController {
       }
 
       async function executeAutoFlowStep(runId, stepConfig) {
+        assertAutoFlowNotKilled();
         const stepStartedAt = performance.now();
         pushAutoFlowDebugEvent({
           status: 'check',
@@ -6958,7 +7009,10 @@ export class SeoBriefTestUiController {
           path: stepConfig.path,
           message: 'fetching current run snapshot',
         });
-        const beforeRun = await fetchRunSnapshot(runId);
+        const beforeRun = await fetchRunSnapshot(runId, {
+          signal: appState.autoFlowAbortController?.signal,
+        });
+        assertAutoFlowNotKilled();
         if (shouldSkipAutoFlowStep(beforeRun, stepConfig)) {
           pushAutoFlowDebugEvent({
             status: 'skip',
@@ -6980,8 +7034,10 @@ export class SeoBriefTestUiController {
         const actionResult = await fetchJson('/seo-briefing/runs/' + encodeURIComponent(runId) + stepConfig.path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: appState.autoFlowAbortController?.signal,
           body: JSON.stringify(getAutoFlowPayload(stepConfig)),
         });
+        assertAutoFlowNotKilled();
         pushAutoFlowDebugEvent({
           status: 'done',
           label: stepConfig.label,
@@ -6990,7 +7046,10 @@ export class SeoBriefTestUiController {
           message: 'POST completed' + summarizeAutoFlowResult(actionResult),
         });
 
-        const afterRun = await fetchRunSnapshot(runId);
+        const afterRun = await fetchRunSnapshot(runId, {
+          signal: appState.autoFlowAbortController?.signal,
+        });
+        assertAutoFlowNotKilled();
         pushAutoFlowDebugEvent({
           status: 'snapshot',
           label: stepConfig.label,
@@ -7031,16 +7090,20 @@ export class SeoBriefTestUiController {
       }
 
       async function runAutoFlowSequence(runId, steps, config) {
+        appState.autoFlowKilled = false;
+        appState.autoFlowAbortController = new AbortController();
         appState.autoFlowLoading = true;
         appState.autoFlowTitle = config.title;
         appState.autoFlowDescription = config.description;
         appState.autoFlowTotal = steps.length;
         appState.autoFlowDebugEvents = [];
         clearAutoFlowStepLoading();
+        syncKillAutoFlowButton();
         showToast(config.startedToast || 'Auto workflow started');
 
         try {
           for (let index = 0; index < steps.length; index += 1) {
+            assertAutoFlowNotKilled();
             const stepConfig = steps[index];
             clearAutoFlowStepLoading();
             appState.autoFlowCurrentIndex = index + 1;
@@ -7072,28 +7135,21 @@ export class SeoBriefTestUiController {
             }
 
             appState[stepConfig.loadingKey] = false;
+            assertAutoFlowNotKilled();
             await loadRuns();
+            assertAutoFlowNotKilled();
             await selectRun(runId, false);
           }
 
-          clearAutoFlowStepLoading();
-          appState.autoFlowLoading = false;
-          appState.autoFlowTitle = null;
-          appState.autoFlowDescription = null;
-          appState.autoFlowCurrentLabel = null;
-          appState.autoFlowCurrentIndex = 0;
+          resetAutoFlowState();
           appState.activeSeoStep = config.finalStep;
           updateUrl(runId);
           await loadRuns();
           await selectRun(runId, false);
           showToast(config.finishedToast || 'Auto workflow finished');
         } catch (error) {
-          clearAutoFlowStepLoading();
-          appState.autoFlowLoading = false;
-          appState.autoFlowTitle = null;
-          appState.autoFlowDescription = null;
-          appState.autoFlowCurrentLabel = null;
-          appState.autoFlowCurrentIndex = 0;
+          const killed = appState.autoFlowKilled || error?.name === 'AbortError';
+          resetAutoFlowState();
           try {
             await loadRuns();
             await selectRun(runId, false);
@@ -7102,7 +7158,7 @@ export class SeoBriefTestUiController {
               renderDetail(appState.selectedRun);
             }
           }
-          showToast(error instanceof Error ? error.message : 'Auto workflow failed');
+          showToast(killed ? 'Auto flow stopped' : error instanceof Error ? error.message : 'Auto workflow failed');
         }
       }
 
@@ -8771,9 +8827,6 @@ export class SeoBriefTestUiController {
           }
         });
         qs('balanceSlider')?.addEventListener('input', syncBalanceSlider);
-        document.querySelectorAll('input[name="inputMode"]').forEach((input) => {
-          input.addEventListener('change', syncInputMode);
-        });
         document.querySelectorAll('input[name="aiModelModeChoice"]').forEach((input) => {
           input.addEventListener('change', syncAiModelMode);
         });
@@ -8809,19 +8862,6 @@ export class SeoBriefTestUiController {
             showToast(error instanceof Error ? error.message : 'Failed to extract context');
           }
         });
-        qs('extractFileBtn')?.addEventListener('click', async () => {
-          const file = qs('briefContextFile').files?.[0] || null;
-          if (!file) {
-            showToast('Select a brief file first');
-            return;
-          }
-          try {
-            const text = await readTextFile(file);
-            await extractContextFromText(text);
-          } catch (error) {
-            showToast(error instanceof Error ? error.message : 'Failed to extract file context');
-          }
-        });
         qs('copyClientDevLogBtn')?.addEventListener('click', () => {
           void copyClientDevLog();
         });
@@ -8845,13 +8885,7 @@ export class SeoBriefTestUiController {
             .then(saveLaunchFormState)
             .catch(() => undefined);
         });
-        qs('fillFromBrandMemoryBtn')?.addEventListener('click', () => {
-          fillFromBrandMemory()
-            .then(saveLaunchFormState)
-            .catch((error) => {
-              showToast(error instanceof Error ? error.message : 'Failed to load Brand Memory');
-            });
-        });
+        qs('killAutoFlowBtn')?.addEventListener('click', killAutoFlow);
         launchForm.addEventListener('input', () => {
           window.setTimeout(saveLaunchFormState, 0);
         });
