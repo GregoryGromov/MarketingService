@@ -425,9 +425,11 @@ export function validateClusterKeywordsResult(
   operation: string,
   params?: ClusterKeywordsParams,
 ): ClusterKeywordsResult {
-  const record = ensureObject(payload, operation, 'payload');
+  const record = Array.isArray(payload)
+    ? { clusters: payload }
+    : ensureObject(payload, operation, 'payload');
   const candidateById = createClusterCandidateById(params);
-  const clusters = ensureArray(record.clusters, operation, 'clusters').map((item, index) => {
+  const clusters = readClusterArray(record, operation).map((item, index) => {
     const cluster = ensureObject(item, operation, `clusters[${index}]`);
     if (cluster.primary_id != null || cluster.primaryId != null) {
       return validateCompactCluster(cluster, index, operation, candidateById);
@@ -509,6 +511,18 @@ export function validateClusterKeywordsResult(
   }
 
   return { clusters };
+}
+
+function readClusterArray(record: JsonRecord, operation: string): unknown[] {
+  const value =
+    record.clusters ??
+    record.intent_clusters ??
+    record.intentClusters ??
+    record.keyword_clusters ??
+    record.keywordClusters ??
+    record.groups;
+
+  return ensureArray(value, operation, 'clusters');
 }
 
 function validateCompactCluster(

@@ -113,4 +113,58 @@ describe('validateClusterKeywordsResult', () => {
       },
     ]);
   });
+
+  it('accepts common alternative cluster array keys', () => {
+    const result = validateClusterKeywordsResult(
+      {
+        intent_clusters: [
+          {
+            name: 'USDT transfer fees',
+            user_intent: 'Reader wants to reduce transfer cost.',
+            intent: 'informational',
+            primary_id: 1,
+            secondary_ids: [2],
+            question_ids: [],
+            supporting_ids: [2],
+            confidence: 'medium',
+            reason: 'Both ids describe transfer cost.',
+          },
+        ],
+      },
+      'clusterKeywords',
+      {
+        runId: 'run_1' as never,
+        topicSeed: 'USDT fees',
+        keywords: ['how to reduce USDT transfer fees', 'cheapest network for USDT transfer'],
+      },
+    );
+
+    expect(result.clusters[0]?.primaryKeyword).toBe('how to reduce USDT transfer fees');
+  });
+
+  it('accepts a root array of clusters', () => {
+    const result = validateClusterKeywordsResult(
+      [
+        {
+          name: 'USDT transfer fees',
+          user_intent: 'Reader wants to reduce transfer cost.',
+          intent: 'informational',
+          primary_id: 1,
+          secondary_ids: [],
+          question_ids: [],
+          supporting_ids: [],
+          confidence: 'low',
+          reason: 'Single intent cluster.',
+        },
+      ],
+      'clusterKeywords',
+      {
+        runId: 'run_1' as never,
+        topicSeed: 'USDT fees',
+        keywords: ['how to reduce USDT transfer fees'],
+      },
+    );
+
+    expect(result.clusters).toHaveLength(1);
+  });
 });

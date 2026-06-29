@@ -1049,7 +1049,10 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(client.requests[0]?.userPrompt).toContain('PRODUCT_FIT_CONTEXT_JSON=');
     expect(client.requests[0]?.userPrompt).toContain('CLUSTERS:');
     expect(client.requests[0]?.userPrompt).toContain('name=USDC on Arbitrum');
-    expect(client.requests[0]?.userPrompt).toContain('support=arbitrum usdc bridge');
+    expect(client.requests[0]?.userPrompt).toContain('kw=arbitrum usdc bridge');
+    expect(client.requests[0]?.userPrompt).not.toContain('support=');
+    expect(client.requests[0]?.userPrompt).not.toContain('urls=');
+    expect(client.requests[0]?.userPrompt).not.toContain('ev=');
     expect(client.requests[0]?.userPrompt).not.toContain('sourceCandidate');
     expect(client.requests[0]?.userPrompt).not.toContain('raw nested evidence');
   });
