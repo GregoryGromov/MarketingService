@@ -2536,7 +2536,6 @@ ${renderDevConsoleStyles()}
           { key: 'colombia-es', country: 'Colombia', locationName: 'Colombia', language: 'es', label: 'Colombia · Español (es)' },
           { key: 'peru-es', country: 'Peru', locationName: 'Peru', language: 'es', label: 'Peru · Español (es)' },
           { key: 'chile-es', country: 'Chile', locationName: 'Chile', language: 'es', label: 'Chile · Español (es)' },
-          { key: 'russia-ru', country: 'Russia', locationName: 'Russia', language: 'ru', label: 'Russia · Русский (ru)' },
           { key: 'ukraine-ru', country: 'Ukraine', locationName: 'Ukraine', language: 'ru', label: 'Ukraine · Русский (ru)' },
           { key: 'kazakhstan-ru', country: 'Kazakhstan', locationName: 'Kazakhstan', language: 'ru', label: 'Kazakhstan · Русский (ru)' },
           { key: 'united-arab-emirates-ar', country: 'United Arab Emirates', locationName: 'United Arab Emirates', language: 'ar', label: 'United Arab Emirates · العربية (ar)' },

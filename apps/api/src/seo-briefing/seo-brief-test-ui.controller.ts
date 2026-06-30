@@ -2407,7 +2407,6 @@ export class SeoBriefTestUiController {
         { marketKey: 'colombia-es', country: 'Colombia', locationName: 'Colombia', code: 'es', name: 'Spanish', languageLabel: 'Español' },
         { marketKey: 'peru-es', country: 'Peru', locationName: 'Peru', code: 'es', name: 'Spanish', languageLabel: 'Español' },
         { marketKey: 'chile-es', country: 'Chile', locationName: 'Chile', code: 'es', name: 'Spanish', languageLabel: 'Español' },
-        { marketKey: 'russia-ru', country: 'Russia', locationName: 'Russia', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
         { marketKey: 'ukraine-ru', country: 'Ukraine', locationName: 'Ukraine', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
         { marketKey: 'kazakhstan-ru', country: 'Kazakhstan', locationName: 'Kazakhstan', code: 'ru', name: 'Russian', languageLabel: 'Русский' },
         { marketKey: 'united-arab-emirates-ar', country: 'United Arab Emirates', locationName: 'United Arab Emirates', code: 'ar', name: 'Arabic', languageLabel: 'العربية' },
