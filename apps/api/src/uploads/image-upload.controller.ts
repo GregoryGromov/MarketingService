@@ -84,12 +84,11 @@ export class ImageUploadController {
     if (!host) {
       return '';
     }
+    const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
     const forwardedProto = String(request.headers['x-forwarded-proto'] ?? '')
       .split(',')[0]
       ?.trim();
-    const proto =
-      forwardedProto ||
-      (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https');
+    const proto = isLocalhost ? forwardedProto || 'http' : 'https';
     return `${proto}://${host}`;
   }
 }
