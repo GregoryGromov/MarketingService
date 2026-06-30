@@ -231,7 +231,7 @@ export class SeoBriefTestUiController {
     const defaultPromptInstructionOverridesJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
-    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v4';
+    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v5';
 
     return `<!doctype html>
 <html lang="en">
@@ -8715,6 +8715,12 @@ export class SeoBriefTestUiController {
               item.stage = 'Final brief';
               item.message = 'Final brief generated';
               renderLanguageBatchProgress();
+              if (appState.markerPlan) {
+                setLaunchStatus('Finalizing ' + item.country + ' → ' + item.languageLabel + ' automatically');
+                await finalizeLanguageBatchItem(item);
+                item.readyForFinalize = false;
+                renderLanguageBatchProgress();
+              }
             }
           } catch (error) {
             item.status = 'failed';
