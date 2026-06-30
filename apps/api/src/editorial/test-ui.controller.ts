@@ -3816,7 +3816,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatTime(value) {
@@ -7156,7 +7156,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatPlanTiming(plan) {
@@ -7907,7 +7907,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatHumanDateTime(value) {

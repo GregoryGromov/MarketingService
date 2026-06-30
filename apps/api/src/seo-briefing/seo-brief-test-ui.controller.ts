@@ -231,7 +231,7 @@ export class SeoBriefTestUiController {
     const defaultPromptInstructionOverridesJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
-    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v5';
+    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v6';
 
     return `<!doctype html>
 <html lang="en">
@@ -2782,7 +2782,20 @@ export class SeoBriefTestUiController {
       function prettyDate(value) {
         if (!value) return '—';
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+        return Number.isNaN(date.getTime()) ? '—' : formatMoscowDateTime(date);
+      }
+
+      function formatMoscowDateTime(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value || '—');
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Moscow',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(date) + ' MSK';
       }
 
       function toDateTimeLocalValue(value) {
@@ -5725,7 +5738,7 @@ export class SeoBriefTestUiController {
         return (
           '<div class="stage-output-item">' +
             '<div class="inline-meta"><strong>Blog publication</strong><span>' + escapeHtmlClient(locale) + '</span></div>' +
-            '<p>' + escapeHtmlClient(plannedAt ? 'Marker placement: ' + new Date(plannedAt).toLocaleString() : 'Publish the final longread package to Blog admin API.') + '</p>' +
+            '<p>' + escapeHtmlClient(plannedAt ? 'Marker placement: ' + formatMoscowDateTime(plannedAt) : 'Publish the final longread package to Blog admin API.') + '</p>' +
             (publishedUrl
               ? '<p><a href="' + escapeHtmlClient(publishedUrl) + '" target="_blank" rel="noreferrer">Open published blog article</a></p>'
               : '') +
@@ -5897,7 +5910,7 @@ export class SeoBriefTestUiController {
           '<p>' + escapeHtmlClient(String(markerPlan.placements.length) + ' placement(s), ' + markets.join(', ') + ', channels: ' + channels.join(', ')) + '</p>' +
           '<ul>' + markerPlan.placements.map((placement) =>
             '<li>' +
-              escapeHtmlClient(new Date(placement.publishAt).toLocaleString() + ' · ' + channelDisplayName(placement.channelId) + ' · ' + (placement.marketCountry || 'Default market') + ' · ' + placement.targetLanguage) +
+              escapeHtmlClient(formatMoscowDateTime(placement.publishAt) + ' · ' + channelDisplayName(placement.channelId) + ' · ' + (placement.marketCountry || 'Default market') + ' · ' + placement.targetLanguage) +
             '</li>'
           ).join('') + '</ul>';
       }
@@ -5915,7 +5928,7 @@ export class SeoBriefTestUiController {
         markerPlan.placements.forEach((placement) => {
           lines.push(
             '- ' +
-              placement.publishAt +
+              formatMoscowDateTime(placement.publishAt) +
               ' | ' +
               channelDisplayName(placement.channelId) +
               ' | ' +
@@ -6102,7 +6115,7 @@ export class SeoBriefTestUiController {
             ' / ' +
             placement.targetLanguage +
             ' / ' +
-            placement.publishAt;
+            formatMoscowDateTime(placement.publishAt);
           if (placement.channelId === 'channel_blog') {
             const inputArtifact = findArtifact(run, 'normalized_input');
             const coverImageUrl = inputArtifact?.payload?.coverImageUrl;
