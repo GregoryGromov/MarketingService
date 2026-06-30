@@ -95,6 +95,7 @@ import {
   Get,
   HttpCode,
   Inject,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -165,6 +166,14 @@ interface PublishBlogArticleDto {
   status?: 'draft' | 'published';
 }
 
+interface PublishDirectBlogArticleDto {
+  bodyMd?: string | null;
+  coverImageUrl?: string | null;
+  locale?: string | null;
+  status?: 'draft' | 'published';
+  title?: string | null;
+}
+
 interface PublishBlogArticleResult {
   articleId: string;
   artifactType: 'blog_publish_result';
@@ -177,6 +186,8 @@ interface PublishBlogArticleResult {
 
 @Controller('seo-briefing')
 export class SeoBriefController {
+  private readonly logger = new Logger(SeoBriefController.name);
+
   constructor(
     @Inject(CommandBus)
     private readonly commandBus: CommandBus,
@@ -1061,6 +1072,87 @@ export class SeoBriefController {
     return result;
   }
 
+  @Post('publish-blog-direct')
+  @HttpCode(202)
+  async publishDirectBlogArticle(
+    @Body() dto: PublishDirectBlogArticleDto = {},
+  ): Promise<PublishBlogArticleResult> {
+    const bodyMd = readNonEmptyString(dto.bodyMd);
+    if (!bodyMd) {
+      throw new BadRequestException('bodyMd is required');
+    }
+
+    const coverImageUrl = readNonEmptyString(dto.coverImageUrl);
+    if (!coverImageUrl) {
+      throw new BadRequestException(
+        'coverImageUrl is required for Blog publishing. Provide a direct HTTPS image URL.',
+      );
+    }
+    assertHttpsUrl(coverImageUrl, 'coverImageUrl');
+
+    const locale = normalizeBlogLocale(dto.locale ?? 'en');
+    const status = dto.status === 'draft' ? 'draft' : 'published';
+    const title = readNonEmptyString(dto.title) ?? extractBlogTitleFromMarkdown(bodyMd);
+    const blogArticleId = deterministicUuid(`manual-blog:${locale}:${title}:${bodyMd}`);
+    this.logger.log({
+      message: 'Direct Blog publish started',
+      articleId: blogArticleId,
+      locale,
+      status,
+      title,
+      bodyChars: bodyMd.length,
+      coverImageUrlHost: safeUrlHost(coverImageUrl),
+    });
+    const requestPayload = {
+      articleId: blogArticleId,
+      status,
+      coverImageUrl,
+      translations: [
+        {
+          locale,
+          title,
+          excerpt: extractBlogExcerptFromMarkdown(bodyMd),
+          bodyMd,
+        },
+      ],
+    };
+
+    let responsePayload: SeoBriefJsonObject;
+    try {
+      responsePayload = await publishBlogAdminArticle(blogArticleId, requestPayload);
+    } catch (error) {
+      this.logger.error({
+        message: 'Direct Blog publish failed',
+        articleId: blogArticleId,
+        locale,
+        status,
+        bodyChars: bodyMd.length,
+        coverImageUrlHost: safeUrlHost(coverImageUrl),
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+    this.logger.log({
+      message: 'Direct Blog publish completed',
+      articleId: blogArticleId,
+      locale,
+      status,
+      url: readNonEmptyString(responsePayload.url),
+      slug: readNonEmptyString(responsePayload.slug),
+      localizedUrls: readStringRecord(responsePayload.localizedUrls),
+    });
+    return {
+      articleId: blogArticleId,
+      artifactType: 'blog_publish_result',
+      localizedUrls: readStringRecord(responsePayload.localizedUrls),
+      locale,
+      slug: readNonEmptyString(responsePayload.slug),
+      status,
+      url: readNonEmptyString(responsePayload.url),
+    };
+  }
+
   @Post('runs/:id/select-first-keyword-related-queries')
   @HttpCode(202)
   async selectFirstKeywordRelatedQueries(
@@ -1319,6 +1411,14 @@ function assertHttpsUrl(value: string, fieldName: string): void {
   }
 }
 
+function safeUrlHost(value: string): string | null {
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeBlogLocale(value: string | null | undefined): string {
   const normalized = String(value || '')
     .trim()
@@ -1428,6 +1528,29 @@ function normalizeBlogLocale(value: string | null | undefined): string {
     throw new BadRequestException(`Unsupported Blog locale: ${value || 'empty'}`);
   }
   return locale;
+}
+
+function extractBlogTitleFromMarkdown(bodyMd: string): string {
+  const lines = bodyMd
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const h1 = lines.find((line) => line.startsWith('# '));
+  const title = h1?.replace(/^#+\s*/, '').trim() || lines[0]?.replace(/^#+\s*/, '').trim();
+  return title ? title.slice(0, 180) : 'Manual blog article';
+}
+
+function extractBlogExcerptFromMarkdown(bodyMd: string): string | null {
+  const paragraph = bodyMd
+    .split(/\r?\n\r?\n/)
+    .map((item) =>
+      item
+        .replace(/^#+\s*/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .find((item) => item.length > 0);
+  return paragraph ? paragraph.slice(0, 240) : null;
 }
 
 function resolveBlogAdminArticlesUrl(articleId?: string): string {

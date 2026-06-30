@@ -2096,6 +2096,28 @@ export class SeoBriefTestUiController {
                   </div>
                   <div id="blogCoverImageUploadStatus" class="cover-upload-status"></div>
                 </div>
+                <details class="advanced-field full">
+                  <summary>Quick Blog Publish</summary>
+                  <p>Paste ready article text, choose a language, add a direct HTTPS cover image URL, and publish to Blog using the same Blog Admin API as the final SEO brief flow.</p>
+                  <div class="input-group-grid">
+                    <label class="field">
+                      <span>Blog language</span>
+                      <select id="directBlogLocale"></select>
+                    </label>
+                    <label class="field">
+                      <span>Cover image URL</span>
+                      <input id="directBlogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.jpg" />
+                    </label>
+                    <label class="field full">
+                      <span>Article text / Markdown</span>
+                      <textarea id="directBlogBodyMd" rows="12" placeholder="# Article title&#10;&#10;Paste article body here..."></textarea>
+                    </label>
+                  </div>
+                  <div class="actions">
+                    <button type="button" id="publishDirectBlogBtn">Publish Text to Blog</button>
+                  </div>
+                  <div id="directBlogPublishResult" class="context-result full" hidden></div>
+                </details>
                 <label class="field full">
                   <span>Target Audience</span>
                   <em>Select one audience from Project Brand Memory. It will be used as the run audience in all SEO and article prompts.</em>
@@ -3298,6 +3320,16 @@ export class SeoBriefTestUiController {
         ).join('');
       }
 
+      function hydrateDirectBlogLanguageSelect() {
+        const select = qs('directBlogLocale');
+        if (!select) return;
+        select.innerHTML = SEO_BRIEF_LANGUAGE_PRESETS.map((language) =>
+          '<option value="' + escapeHtmlClient(language.code) + '" ' + (language.code === 'en' ? 'selected' : '') + '>' +
+            escapeHtmlClient(language.label + ' (' + language.code + ')') +
+          '</option>'
+        ).join('');
+      }
+
       function dedupeLanguagePresets(markets) {
         const byCode = new Map();
         markets.forEach((market) => {
@@ -4170,6 +4202,93 @@ export class SeoBriefTestUiController {
           const message = error instanceof Error ? error.message : 'Image upload failed';
           setBlogCoverImageUploadStatus(message, 'error');
           showToast('Image upload failed');
+        }
+      }
+
+      async function publishDirectBlogArticle() {
+        const button = qs('publishDirectBlogBtn');
+        const resultNode = qs('directBlogPublishResult');
+        const bodyMd = String(qs('directBlogBodyMd')?.value || '').trim();
+        const coverImageUrl =
+          String(qs('directBlogCoverImageUrl')?.value || '').trim() ||
+          String(qs('blogCoverImageUrl')?.value || '').trim();
+        const locale = String(qs('directBlogLocale')?.value || 'en').trim();
+
+        if (!bodyMd) {
+          appendClientDevLog('Direct Blog publish blocked before request', { reason: 'empty bodyMd' }, 'warn');
+          showToast('Paste article text first');
+          return;
+        }
+        if (!coverImageUrl.startsWith('https://')) {
+          appendClientDevLog(
+            'Direct Blog publish blocked before request',
+            { reason: 'coverImageUrl is not HTTPS', coverImageUrl },
+            'warn',
+          );
+          showToast('Cover image URL must be HTTPS');
+          return;
+        }
+
+        if (button) {
+          button.disabled = true;
+          button.classList.add('is-loading');
+          button.textContent = 'Publishing...';
+        }
+        if (resultNode) {
+          resultNode.hidden = false;
+          resultNode.innerHTML = 'Publishing to Blog...';
+        }
+
+        try {
+          appendClientDevLog('Direct Blog publish request ready', {
+            locale,
+            bodyChars: bodyMd.length,
+            bodyPreview: bodyMd.slice(0, 240),
+            coverImageUrl,
+          });
+          const result = await fetchJson('/seo-briefing/publish-blog-direct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bodyMd,
+              coverImageUrl,
+              locale,
+              status: 'published',
+            }),
+          });
+          if (resultNode) {
+            const url = typeof result?.url === 'string' ? result.url : '';
+            resultNode.innerHTML =
+              '<strong>Published to Blog</strong>' +
+              '<p>' + escapeHtmlClient(result?.articleId || '—') + '</p>' +
+              (url
+                ? '<p><a href="' + escapeHtmlClient(url) + '" target="_blank" rel="noreferrer">Open published blog article</a></p>'
+                : '<p>No public URL returned.</p>');
+          }
+          appendClientDevLog('Direct Blog article published', result);
+          showToast('Blog article published');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to publish Blog article';
+          appendClientDevLog(
+            'Direct Blog publish failed',
+            {
+              message,
+              locale,
+              bodyChars: bodyMd.length,
+              coverImageUrl,
+            },
+            'error',
+          );
+          if (resultNode) {
+            resultNode.innerHTML = '<strong>Publish failed</strong><p>' + escapeHtmlClient(message) + '</p>';
+          }
+          showToast(message);
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.classList.remove('is-loading');
+            button.textContent = 'Publish Text to Blog';
+          }
         }
       }
 
@@ -8869,6 +8988,9 @@ export class SeoBriefTestUiController {
           void uploadBlogCoverImage();
         });
         qs('blogCoverImageUrl')?.addEventListener('input', syncBlogCoverImagePublicLink);
+        qs('publishDirectBlogBtn')?.addEventListener('click', () => {
+          void publishDirectBlogArticle();
+        });
         qs('copyClientDevLogBtn')?.addEventListener('click', () => {
           void copyClientDevLog();
         });
@@ -8906,6 +9028,7 @@ export class SeoBriefTestUiController {
         updateClientDevStatus();
         appendClientDevLog('UI boot started', initialState);
         hydrateMarketSelect();
+        hydrateDirectBlogLanguageSelect();
         bindLaunchFormActions();
         appendClientDevLog('Launch form actions bound');
         renderLaunchPromptInventory();
