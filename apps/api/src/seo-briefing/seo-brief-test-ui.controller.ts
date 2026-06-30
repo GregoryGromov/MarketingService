@@ -757,6 +757,23 @@ export class SeoBriefTestUiController {
         margin: 0;
         padding-left: 18px;
       }
+      .cover-upload-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+      .cover-upload-row input[type="file"] {
+        min-width: 0;
+      }
+      .cover-upload-link[hidden] {
+        display: none;
+      }
+      .cover-upload-status {
+        min-height: 18px;
+        color: var(--muted);
+        font-size: 12px;
+      }
       .client-dev-panel {
         position: fixed;
         right: 20px;
@@ -2070,6 +2087,15 @@ export class SeoBriefTestUiController {
                   <em>Optional. If this SEO run is published to Blog, this HTTPS image will be sent as the article cover.</em>
                   <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
                 </label>
+                <div class="field full">
+                  <span>Upload cover image</span>
+                  <em>Upload JPEG, PNG, or WebP. The generated public URL is inserted into Blog cover image URL automatically.</em>
+                  <div class="cover-upload-row">
+                    <input id="blogCoverImageFile" type="file" accept="image/jpeg,image/png,image/webp" />
+                    <a id="blogCoverImagePublicLink" class="button-like cover-upload-link" href="" target="_blank" rel="noreferrer" hidden>Open image</a>
+                  </div>
+                  <div id="blogCoverImageUploadStatus" class="cover-upload-status"></div>
+                </div>
                 <label class="field full">
                   <span>Target Audience</span>
                   <em>Select one audience from Project Brand Memory. It will be used as the run audience in all SEO and article prompts.</em>
@@ -3214,6 +3240,7 @@ export class SeoBriefTestUiController {
           syncDashboardBackLink();
           setSelectedMarketKeys(state.marketKeys);
           setValueIfElement('blogCoverImageUrl', state.blogCoverImageUrl);
+          syncBlogCoverImagePublicLink();
           setValueIfElement('userPains', state.userPains);
           setValueIfElement('userScenarios', state.userScenarios);
           setValueIfElement('preferredAngle', state.preferredAngle);
@@ -4073,6 +4100,76 @@ export class SeoBriefTestUiController {
             'error',
           );
           throw error;
+        }
+      }
+
+      function syncBlogCoverImagePublicLink() {
+        const input = qs('blogCoverImageUrl');
+        const link = qs('blogCoverImagePublicLink');
+        if (!input || !link) return;
+        const url = String(input.value || '').trim();
+        if (url) {
+          link.href = url;
+          link.hidden = false;
+        } else {
+          link.href = '';
+          link.hidden = true;
+        }
+      }
+
+      function setBlogCoverImageUploadStatus(message, tone = 'info') {
+        const node = qs('blogCoverImageUploadStatus');
+        if (!node) return;
+        node.textContent = message || '';
+        node.style.color = tone === 'error' ? '#b3261e' : '';
+      }
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(new Error('Could not read image file'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function uploadBlogCoverImage() {
+        const input = qs('blogCoverImageFile');
+        const file = input?.files?.[0];
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          setBlogCoverImageUploadStatus('Only JPEG, PNG, and WebP images are supported.', 'error');
+          showToast('Unsupported image type');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          setBlogCoverImageUploadStatus('Image is too large. Maximum size is 10 MB.', 'error');
+          showToast('Image is too large');
+          return;
+        }
+
+        setBlogCoverImageUploadStatus('Uploading image...');
+        try {
+          const imageDataUrl = await readFileAsDataUrl(file);
+          const result = await fetchJson('/uploads/images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageDataUrl }),
+          });
+          const url = typeof result?.url === 'string' ? result.url : '';
+          if (!url) {
+            throw new Error('Upload response did not include image URL');
+          }
+          qs('blogCoverImageUrl').value = url;
+          syncBlogCoverImagePublicLink();
+          saveLaunchFormState();
+          setBlogCoverImageUploadStatus('Uploaded. Public image URL is ready.');
+          appendClientDevLog('Cover image uploaded', { url });
+          showToast('Cover image uploaded');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Image upload failed';
+          setBlogCoverImageUploadStatus(message, 'error');
+          showToast('Image upload failed');
         }
       }
 
@@ -8768,6 +8865,10 @@ export class SeoBriefTestUiController {
           input.addEventListener('change', syncWorkflowMode);
         });
         qs('language')?.addEventListener('change', syncCountryFromSelectedLanguages);
+        qs('blogCoverImageFile')?.addEventListener('change', () => {
+          void uploadBlogCoverImage();
+        });
+        qs('blogCoverImageUrl')?.addEventListener('input', syncBlogCoverImagePublicLink);
         qs('copyClientDevLogBtn')?.addEventListener('click', () => {
           void copyClientDevLog();
         });

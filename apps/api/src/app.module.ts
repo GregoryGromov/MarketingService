@@ -11,6 +11,7 @@ import { EditorialHttpModule } from './editorial/editorial-http.module';
 import { ProjectManagementHttpModule } from './project-management/project-management-http.module';
 import { PublishingHttpModule } from './publishing/publishing-http.module';
 import { SeoBriefingHttpModule } from './seo-briefing/seo-briefing-http.module';
+import { ImageUploadController } from './uploads/image-upload.controller';
 
 // import { QueueModule } from './infrastructure/queue.module';
 // import { HealthModule } from './infrastructure/health.module';
@@ -38,5 +39,6 @@ import { SeoBriefingHttpModule } from './seo-briefing/seo-briefing-http.module';
     PublishingHttpModule,
     SeoBriefingHttpModule,
   ],
+  controllers: [ImageUploadController],
 })
 export class AppModule {}
