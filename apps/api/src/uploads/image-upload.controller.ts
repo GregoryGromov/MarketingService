@@ -2,8 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { BadRequestException, Body, Controller, Get, Param, Post, Req, Res } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -21,7 +31,7 @@ interface ParsedImageUpload {
 
 @Controller('uploads/images')
 export class ImageUploadController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
   @Post()
   async uploadImage(
