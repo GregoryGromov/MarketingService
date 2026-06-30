@@ -231,7 +231,7 @@ export class SeoBriefTestUiController {
     const defaultPromptInstructionOverridesJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
-    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v3';
+    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v4';
 
     return `<!doctype html>
 <html lang="en">
@@ -2474,6 +2474,20 @@ export class SeoBriefTestUiController {
         { id: 'onPageGroup', label: 'OnPage', number: '4' },
         { id: 'finalBrief', label: 'Final Brief', number: '5' },
         { id: 'articleGroup', label: 'Article', number: '6', kind: 'article' },
+        { id: 'audit', label: 'Audit', number: 'Log', kind: 'audit' },
+      ];
+      const BATCH_STEP_TABS = [
+        { id: 'input', label: 'Input', number: '0' },
+        { id: 'keywords', label: 'Keywords', number: '1' },
+        { id: 'serpGroup', label: 'SERP', number: '2' },
+        { id: 'clusterGroup', label: 'Clusters', number: '3' },
+        { id: 'onPageGroup', label: 'OnPage', number: '4' },
+        { id: 'finalBrief', label: 'Final Brief', number: '5' },
+        { id: 'longreadDraft', label: 'Draft', number: '6', kind: 'article' },
+        { id: 'longreadCleanup', label: 'Review', number: '7', kind: 'article' },
+        { id: 'longreadPackage', label: 'Package', number: '8', kind: 'article' },
+        { id: 'longreadAdaptations', label: 'Adaptations', number: '9', kind: 'article' },
+        { id: 'calendar', label: 'Calendar', number: '10', kind: 'article' },
         { id: 'audit', label: 'Audit', number: 'Log', kind: 'audit' },
       ];
       const SEO_STEP_GROUPS = {
@@ -8879,8 +8893,20 @@ export class SeoBriefTestUiController {
 
       function getBatchWorkflowStep(item) {
         const stage = String(item?.stage || '').toLowerCase();
-        if (stage.includes('longread') || stage.includes('review') || stage.includes('package') || stage.includes('adaptation') || stage.includes('calendar') || stage.includes('blog')) {
-          return 'articleGroup';
+        if (stage.includes('calendar') || stage.includes('blog')) {
+          return 'calendar';
+        }
+        if (stage.includes('adaptation')) {
+          return 'longreadAdaptations';
+        }
+        if (stage.includes('package')) {
+          return 'longreadPackage';
+        }
+        if (stage.includes('review') || stage.includes('cleanup')) {
+          return 'longreadCleanup';
+        }
+        if (stage.includes('longread') || stage.includes('draft')) {
+          return 'longreadDraft';
         }
         if (stage.includes('final brief') || stage.includes('final seo brief')) {
           return 'finalBrief';
@@ -8904,7 +8930,7 @@ export class SeoBriefTestUiController {
       }
 
       function getBatchStepIndex(stepId) {
-        const order = SEO_STEP_TABS.map((step) => step.id);
+        const order = BATCH_STEP_TABS.map((step) => step.id);
         const index = order.indexOf(stepId);
         return index >= 0 ? index : 0;
       }
@@ -8912,16 +8938,16 @@ export class SeoBriefTestUiController {
       function renderBatchWorkflowTabs(item) {
         const activeStep = getBatchWorkflowStep(item);
         const activeIndex = getBatchStepIndex(activeStep);
-        const isFinalized = item.status === 'done' && activeStep === 'articleGroup';
+        const isFinalized = item.status === 'done' && activeStep === 'calendar';
         return (
           '<div class="batch-step-tabs">' +
-            SEO_STEP_TABS.map((step) => {
+            BATCH_STEP_TABS.map((step) => {
               const stepIndex = getBatchStepIndex(step.id);
               const active = step.id === activeStep;
               const ready =
                 stepIndex < activeIndex ||
                 (item.readyForFinalize && stepIndex <= getBatchStepIndex('finalBrief')) ||
-                (isFinalized && stepIndex <= getBatchStepIndex('articleGroup'));
+                (isFinalized && stepIndex <= getBatchStepIndex('calendar'));
               const loading = item.status === 'running' && active;
               const className = [
                 'seo-step-tab',
