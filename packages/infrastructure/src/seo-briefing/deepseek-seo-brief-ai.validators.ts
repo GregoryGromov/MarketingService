@@ -2162,7 +2162,52 @@ function ensureSearchHypothesisType(
   operation: string,
   path: string,
 ): SeoBriefSearchHypothesisType {
+  const normalized = normalizeSearchHypothesisType(value);
+  if (normalized) {
+    return normalized;
+  }
+
   return ensureEnum(value, SEARCH_HYPOTHESIS_TYPES, operation, path);
+}
+
+function normalizeSearchHypothesisType(value: unknown): SeoBriefSearchHypothesisType | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.toLowerCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim();
+  if ((SEARCH_HYPOTHESIS_TYPES as readonly string[]).includes(normalized)) {
+    return normalized as SeoBriefSearchHypothesisType;
+  }
+
+  if (matchesAny(normalized, ['pain', 'problem', 'jtbd', 'job to be done', 'need', 'friction'])) {
+    return 'pain';
+  }
+  if (matchesAny(normalized, ['action', 'how to', 'procedure', 'step', 'transaction', 'task'])) {
+    return 'action';
+  }
+  if (matchesAny(normalized, ['ecosystem', 'platform', 'tool', 'wallet', 'exchange', 'network'])) {
+    return 'ecosystem';
+  }
+  if (matchesAny(normalized, ['comparison', 'compare', 'versus', 'vs', 'alternative'])) {
+    return 'comparison';
+  }
+  if (
+    matchesAny(normalized, ['risk', 'safety', 'safe', 'security', 'trust', 'scam', 'compliance'])
+  ) {
+    return 'risk';
+  }
+  if (
+    matchesAny(normalized, ['education', 'educational', 'informational', 'info', 'guide', 'learn'])
+  ) {
+    return 'education';
+  }
+
+  return 'education';
+}
+
+function matchesAny(value: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => value === pattern || value.includes(pattern));
 }
 
 function ensureOptionalSearchHypothesisType(

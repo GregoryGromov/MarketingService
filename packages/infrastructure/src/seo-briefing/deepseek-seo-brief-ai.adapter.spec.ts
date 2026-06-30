@@ -276,6 +276,36 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(result.hypotheses[0]?.hypothesisType).toBe('risk');
   });
 
+  it('normalizes unsupported search hypothesis types instead of failing keyword expansion', async () => {
+    const { adapter } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          search_hypotheses: [
+            {
+              query: 'usdt trc20 fee guide',
+              hypothesis_type: 'technical',
+              why_generated: 'The query asks for technical network fee education.',
+              product_fit_hypothesis: 'education_bridge',
+              risk_flags: [],
+            },
+          ],
+        }),
+        rawPayload: { id: 'resp-unsupported-type' },
+        tokenUsageInput: 111,
+        tokenUsageOutput: 44,
+        estimatedCost: null,
+      },
+    ]);
+
+    const result = await adapter.expandKeywords(createExpandParams());
+
+    expect(result.hypotheses).toHaveLength(1);
+    expect(result.hypotheses[0]?.hypothesisType).toBe('education');
+    expect(result.groups?.[0]?.groupId).toBe('education');
+  });
+
   it('retries transient AI JSON transport failures before validating structured output', async () => {
     const { adapter, client, repository } = createAdapter([
       new SeoBriefAiTransportError('Unexpected end of JSON input', 'completion', 'openrouter', 200),

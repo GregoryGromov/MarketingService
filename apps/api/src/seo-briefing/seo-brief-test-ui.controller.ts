@@ -231,7 +231,7 @@ export class SeoBriefTestUiController {
     const defaultPromptInstructionOverridesJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
-    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v2';
+    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v3';
 
     return `<!doctype html>
 <html lang="en">
@@ -8713,18 +8713,23 @@ export class SeoBriefTestUiController {
         await loadRuns();
         renderLanguageBatchProgress();
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const readyForAutoFinalize = batchItems.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize);
+        const failedCount = batchItems.filter((item) => item.status === 'failed').length;
         const shouldAutoFinalize =
           workflowMode === 'auto_until_selection' &&
           appState.markerPlan &&
-          batchItems.length > 0 &&
-          batchItems.every((item) => item.status === 'done' && item.runId && item.readyForFinalize);
+          readyForAutoFinalize.length > 0;
 
         if (shouldAutoFinalize) {
-          setLaunchStatus('Finalizing articles, adaptations, and calendar scheduling automatically');
+          setLaunchStatus(
+            'Finalizing ' +
+              String(readyForAutoFinalize.length) +
+              ' ready language(s) automatically' +
+              (failedCount > 0 ? '; ' + String(failedCount) + ' failed language(s) will not block calendar scheduling' : ''),
+          );
           await finalizeLanguageBatch();
         }
 
-        const failedCount = batchItems.filter((item) => item.status === 'failed').length;
         showToast(failedCount > 0
           ? 'Location batch finished with ' + String(failedCount) + ' failed run(s)'
           : shouldAutoFinalize
@@ -8749,9 +8754,9 @@ export class SeoBriefTestUiController {
 
       async function finalizeLanguageBatch() {
         if (appState.languageBatchFinalizing) return;
-        const items = appState.languageBatchItems.filter((item) => item.runId);
+        const items = appState.languageBatchItems.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize);
         if (!items.length) {
-          showToast('No batch runs to finalize');
+          showToast('No final-brief-ready batch runs to finalize');
           return;
         }
         appState.languageBatchFinalizing = true;
@@ -8989,19 +8994,17 @@ export class SeoBriefTestUiController {
           done: items.filter((item) => item.status === 'done').length,
           failed: items.filter((item) => item.status === 'failed').length,
         };
-        const canFinalize =
-          appState.markerPlan &&
-          items.length > 0 &&
-          items.every((item) => item.status === 'done' && item.runId && item.readyForFinalize);
+        const readyToFinalizeCount = items.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize).length;
+        const canFinalize = appState.markerPlan && readyToFinalizeCount > 0;
         node.hidden = false;
         node.innerHTML =
-          '<div class="inline-meta"><strong>Location batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to final brief' : 'create runs only') + '</span></div>' +
+          '<div class="inline-meta"><strong>Location batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to calendar' : 'create runs only') + '</span></div>' +
           '<p>' + escapeHtmlClient(String(counts.running) + ' running / ' + String(counts.queued) + ' queued / ' + String(counts.done) + ' done / ' + String(counts.failed) + ' failed') + '</p>' +
           '<div class="batch-progress-list">' + items.map(renderLanguageBatchItem).join('') + '</div>' +
           (canFinalize
-            ? '<div class="actions"><button type="button" class="primary ' + escapeHtmlClient(appState.languageBatchFinalizing ? 'is-loading' : '') + '" id="finalizeLanguageBatchBtn" ' + (appState.languageBatchFinalizing ? 'disabled' : '') + '>' + escapeHtmlClient(appState.languageBatchFinalizing ? 'Finalizing...' : 'Finalize all + send marker publications to calendar') + '</button></div>'
+            ? '<div class="actions"><button type="button" class="primary ' + escapeHtmlClient(appState.languageBatchFinalizing ? 'is-loading' : '') + '" id="finalizeLanguageBatchBtn" ' + (appState.languageBatchFinalizing ? 'disabled' : '') + '>' + escapeHtmlClient(appState.languageBatchFinalizing ? 'Finalizing...' : 'Finalize ready + send marker publications to calendar') + '</button></div>'
             : appState.markerPlan
-              ? '<p class="muted">Finalize button appears when every language reaches final brief.</p>'
+              ? '<p class="muted">Ready languages finalize automatically; failed languages do not block calendar scheduling.</p>'
               : '<p class="muted">Calendar scheduling requires launching from a marker plan.</p>');
       }
 
