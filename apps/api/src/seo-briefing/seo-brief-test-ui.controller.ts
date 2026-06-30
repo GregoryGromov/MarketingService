@@ -8670,10 +8670,23 @@ export class SeoBriefTestUiController {
         await loadRuns();
         renderLanguageBatchProgress();
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const shouldAutoFinalize =
+          workflowMode === 'auto_until_selection' &&
+          appState.markerPlan &&
+          batchItems.length > 0 &&
+          batchItems.every((item) => item.status === 'done' && item.runId && item.readyForFinalize);
+
+        if (shouldAutoFinalize) {
+          setLaunchStatus('Finalizing articles, adaptations, and calendar scheduling automatically');
+          await finalizeLanguageBatch();
+        }
+
         const failedCount = batchItems.filter((item) => item.status === 'failed').length;
         showToast(failedCount > 0
           ? 'Location batch finished with ' + String(failedCount) + ' failed run(s)'
-          : 'Location batch finished');
+          : shouldAutoFinalize
+            ? 'Location batch finalized and scheduled'
+            : 'Location batch finished');
       }
 
       async function postRunAction(runId, path, payload = {}) {
@@ -8704,6 +8717,7 @@ export class SeoBriefTestUiController {
           await runWithConcurrency(items, 2, async (item) => {
             try {
               await finalizeLanguageBatchItem(item);
+              item.readyForFinalize = false;
               if (item.status !== 'done') {
                 setBatchItemProgress(item, 'Calendar', 'Finalized and scheduled', 'done');
               }

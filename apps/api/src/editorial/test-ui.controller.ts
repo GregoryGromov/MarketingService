@@ -1665,7 +1665,7 @@ ${renderDevConsoleStyles()}
                 id="dashboardCreateCampaignBtn"
                 href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}"
               >Create campaign</a>
-              <button id="createSeoBriefFromMarkerBtn" class="primary" onclick="openSeoBriefFromActiveMarker()">Create SEO brief</button>
+              <button id="createSeoBriefFromMarkerBtn" class="primary" onclick="openSeoBriefFromActiveMarker()" disabled title="Select a draft marker first">Create SEO brief</button>
           </div>
         </div>
         <div class="marker-toolbar">
@@ -2639,6 +2639,8 @@ ${renderDevConsoleStyles()}
           meta.textContent = markerEditMode ? 'Delete draft marker templates. Their placements on the calendar will be removed too.' : '';
           if (createSeoBriefButton) {
             createSeoBriefButton.hidden = false;
+            createSeoBriefButton.disabled = true;
+            createSeoBriefButton.title = 'Select a draft marker first';
             createSeoBriefButton.classList.add('primary');
             createSeoBriefButton.classList.remove('marker-linked');
             createSeoBriefButton.style.removeProperty('--marker-bg');
@@ -2663,6 +2665,10 @@ ${renderDevConsoleStyles()}
             : '';
         if (createSeoBriefButton) {
           createSeoBriefButton.hidden = false;
+          createSeoBriefButton.disabled = !activeMarker;
+          createSeoBriefButton.title = activeMarker
+            ? 'Create SEO brief from selected marker'
+            : 'Select a draft marker first';
           createSeoBriefButton.classList.toggle('primary', !activeMarker);
           createSeoBriefButton.classList.toggle('marker-linked', Boolean(activeMarker));
           if (activeMarker) {
@@ -2703,15 +2709,13 @@ ${renderDevConsoleStyles()}
 
       function openSeoBriefFromActiveMarker() {
         const marker = markerById(activeMarkerId);
-        if (!currentProjectId) {
+        if (!currentProjectId || !marker) {
           return;
         }
 
         const url = new URL('/test-ui/seo-briefing', window.location.origin);
         url.searchParams.set('projectId', currentProjectId);
-        if (marker) {
-          url.searchParams.set('markerId', marker.id);
-        }
+        url.searchParams.set('markerId', marker.id);
 
         window.location.href = url.pathname + url.search;
       }

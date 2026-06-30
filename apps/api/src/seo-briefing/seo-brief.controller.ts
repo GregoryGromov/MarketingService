@@ -1684,14 +1684,7 @@ function normalizeAdaptationChannels(
         .filter((channel): channel is NormalizedAdaptationChannel => Boolean(channel))
     : [];
 
-  return normalized.length > 0
-    ? normalized
-    : [
-        { channelId: 'channel_telegram', displayName: 'Telegram', promptInstructions: null },
-        { channelId: 'channel_x', displayName: 'X', promptInstructions: null },
-        { channelId: 'channel_discord', displayName: 'Discord', promptInstructions: null },
-        { channelId: 'channel_blog', displayName: 'Blog', promptInstructions: null },
-      ];
+  return normalized;
 }
 
 function normalizePublishingChannelId(channelId: string | null): string | null {
