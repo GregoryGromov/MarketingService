@@ -2392,6 +2392,7 @@ export class SeoBriefTestUiController {
         onPageLoading: false,
         onPageSynthesisLoading: false,
         finalBriefLoading: false,
+        rerunStageLoading: null,
         finalBriefEditLoading: false,
         longreadDraftLoading: false,
         longreadCleanupLoading: false,
@@ -2798,11 +2799,48 @@ export class SeoBriefTestUiController {
         }).format(date) + ' MSK';
       }
 
-      function toDateTimeLocalValue(value) {
+      const MOSCOW_UTC_OFFSET_HOURS = 3;
+
+      function getMoscowDateTimeParts(value) {
         const date = value ? new Date(value) : new Date(Date.now() + 60 * 60 * 1000);
-        if (Number.isNaN(date.getTime())) return '';
-        const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+        if (Number.isNaN(date.getTime())) return null;
+        const shifted = new Date(date.getTime() + MOSCOW_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+        return {
+          year: shifted.getUTCFullYear(),
+          month: shifted.getUTCMonth() + 1,
+          day: shifted.getUTCDate(),
+          hours: shifted.getUTCHours(),
+          minutes: shifted.getUTCMinutes(),
+        };
+      }
+
+      function toDateTimeLocalValue(value) {
+        const parts = getMoscowDateTimeParts(value);
+        if (!parts) return '';
+        return [
+          String(parts.year),
+          String(parts.month).padStart(2, '0'),
+          String(parts.day).padStart(2, '0'),
+        ].join('-') + 'T' +
+          String(parts.hours).padStart(2, '0') + ':' +
+          String(parts.minutes).padStart(2, '0');
+      }
+
+      function parseMoscowDateTimeLocalValue(value) {
+        const [datePart, timePart] = String(value || '').split('T');
+        const [year, month, day] = String(datePart || '').split('-').map((part) => Number(part));
+        const [hours, minutes] = String(timePart || '').split(':').map((part) => Number(part));
+        if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
+          return new Date('invalid');
+        }
+        return new Date(Date.UTC(year, month - 1, day, hours - MOSCOW_UTC_OFFSET_HOURS, minutes, 0, 0));
+      }
+
+      function resolvePublishAtOrNow(publishAt) {
+        if (!(publishAt instanceof Date) || Number.isNaN(publishAt.getTime())) {
+          return publishAt;
+        }
+        return publishAt.getTime() <= Date.now() ? new Date() : publishAt;
       }
 
       function defaultAdaptationPublishAt(index) {
@@ -3682,6 +3720,49 @@ export class SeoBriefTestUiController {
           }
         }
         return null;
+      }
+
+      function findCurrentArticleArtifact(run, artifactType) {
+        if (artifactType === 'longread_draft_article') {
+          return findArtifactLinkedToSource(run, 'longread_draft_article', findArtifact(run, 'final_brief_snapshot'));
+        }
+        if (artifactType === 'longread_cleanup') {
+          return findArtifactLinkedToSource(run, 'longread_cleanup', findCurrentArticleArtifact(run, 'longread_draft_article'));
+        }
+        if (artifactType === 'longread_final_package') {
+          return findArtifactLinkedToSource(run, 'longread_final_package', findCurrentArticleArtifact(run, 'longread_cleanup'));
+        }
+        if (artifactType === 'longread_adaptations_export' || artifactType === 'blog_publish_result') {
+          return findArtifactLinkedToSource(run, artifactType, findCurrentArticleArtifact(run, 'longread_final_package'));
+        }
+        return findArtifact(run, artifactType);
+      }
+
+      function findArtifactLinkedToSource(run, artifactType, sourceArtifact) {
+        if (!sourceArtifact) {
+          return null;
+        }
+        const artifacts = Array.isArray(run.artifacts) ? run.artifacts : [];
+        for (let index = artifacts.length - 1; index >= 0; index -= 1) {
+          const artifact = artifacts[index];
+          if (artifact?.artifactType !== artifactType) {
+            continue;
+          }
+          const sourceArtifactId = artifact.payload?.sourceArtifactId;
+          if (sourceArtifactId && sourceArtifactId === sourceArtifact.id) {
+            return artifact;
+          }
+          if (!sourceArtifactId && isAtOrAfter(artifact.createdAt, sourceArtifact.createdAt)) {
+            return artifact;
+          }
+        }
+        return null;
+      }
+
+      function isAtOrAfter(value, referenceValue) {
+        const time = new Date(value || 0).getTime();
+        const referenceTime = new Date(referenceValue || 0).getTime();
+        return Number.isFinite(time) && Number.isFinite(referenceTime) && time >= referenceTime;
       }
 
       function readRunKeywordExpansionPrompt(run) {
@@ -5592,7 +5673,7 @@ export class SeoBriefTestUiController {
       }
 
       function renderLongreadDraft(run) {
-        const artifact = findArtifact(run, 'longread_draft_article');
+        const artifact = findCurrentArticleArtifact(run, 'longread_draft_article');
         const payload = artifact?.payload || null;
         const markdown = typeof payload?.draftArticleMarkdown === 'string' ? payload.draftArticleMarkdown : '';
         if (!artifact || !markdown) {
@@ -5614,8 +5695,8 @@ export class SeoBriefTestUiController {
       }
 
       function renderLongreadCleanup(run) {
-        const artifact = findArtifact(run, 'longread_cleanup');
-        const draftArtifact = findArtifact(run, 'longread_draft_article');
+        const artifact = findCurrentArticleArtifact(run, 'longread_cleanup');
+        const draftArtifact = findCurrentArticleArtifact(run, 'longread_draft_article');
         const payload = artifact?.payload || null;
         const draftPayload = draftArtifact?.payload || null;
         const rawDraftMarkdown =
@@ -5682,7 +5763,7 @@ export class SeoBriefTestUiController {
       }
 
       function renderLongreadPackage(run) {
-        const artifact = findArtifact(run, 'longread_final_package');
+        const artifact = findCurrentArticleArtifact(run, 'longread_final_package');
         const payload = artifact?.payload || null;
         const article = payload?.article || {};
         const seo = payload?.seo || {};
@@ -5723,7 +5804,7 @@ export class SeoBriefTestUiController {
 
       function renderBlogPublishPanel(run) {
         const blogPlacements = markerPlanBlogPlacementsForRun(run);
-        const publishArtifact = findArtifact(run, 'blog_publish_result');
+        const publishArtifact = findCurrentArticleArtifact(run, 'blog_publish_result');
         const inputArtifact = findArtifact(run, 'normalized_input');
         const payload = publishArtifact?.payload || null;
         const inputPayload = inputArtifact?.payload || null;
@@ -5753,7 +5834,7 @@ export class SeoBriefTestUiController {
       }
 
       function renderLongreadAdaptations(run) {
-        const artifact = findArtifact(run, 'longread_adaptations_export');
+        const artifact = findCurrentArticleArtifact(run, 'longread_adaptations_export');
         const payload = artifact?.payload || null;
         const adaptations = Array.isArray(payload?.adaptations) ? payload.adaptations : [];
         if (!artifact || !payload?.articleId) {
@@ -6131,11 +6212,8 @@ export class SeoBriefTestUiController {
             details.push(placementLabel + ': skipped because publishAt is invalid.');
             continue;
           }
-          if (publishAt.getTime() <= Date.now()) {
-            skipped += 1;
-            details.push(placementLabel + ': skipped because publish time is in the past.');
-            continue;
-          }
+          const effectivePublishAt = resolvePublishAtOrNow(publishAt);
+          const scheduledImmediately = effectivePublishAt.getTime() !== publishAt.getTime();
           const adaptation = adaptations.find(
             (item) => normalizePublicationChannelId(item?.channelId) === placement.channelId,
           );
@@ -6150,10 +6228,15 @@ export class SeoBriefTestUiController {
               adaptation.adaptationId,
               placement.channelId,
               placement.targetLanguage,
-              publishAt.toISOString(),
+              effectivePublishAt.toISOString(),
             );
             scheduled += 1;
-            details.push(placementLabel + ': scheduled.');
+            details.push(
+              placementLabel +
+                (scheduledImmediately
+                  ? ': publish deadline passed; scheduled immediately.'
+                  : ': scheduled.'),
+            );
             try {
               const cleanupResult = await cleanupScheduledMarkerPlacement(placement);
               if (cleanupResult.placementDeleted) {
@@ -6566,10 +6649,12 @@ export class SeoBriefTestUiController {
           onPage: Boolean(findArtifact(run, 'onpage_research_snapshot')),
           onPageSynthesis: Boolean(findArtifact(run, 'onpage_synthesis_snapshot')),
           finalBrief: Boolean(findArtifact(run, 'final_brief_snapshot') || run.finalBrief),
-          longreadDraft: Boolean(findArtifact(run, 'longread_draft_article')),
-          longreadCleanup: Boolean(findArtifact(run, 'longread_cleanup')),
-          longreadPackage: Boolean(findArtifact(run, 'longread_final_package')),
-          longreadAdaptations: Boolean(findArtifact(run, 'longread_adaptations_export')),
+          longreadDraft: Boolean(findCurrentArticleArtifact(run, 'longread_draft_article')),
+          longreadCleanup: Boolean(findCurrentArticleArtifact(run, 'longread_cleanup')),
+          longreadPackage: Boolean(findCurrentArticleArtifact(run, 'longread_final_package')),
+          longreadAdaptations: Boolean(
+            findCurrentArticleArtifact(run, 'longread_adaptations_export'),
+          ),
           audit: true,
         };
       }
@@ -6642,7 +6727,7 @@ export class SeoBriefTestUiController {
 
       function renderStepActionCard(run, flags) {
         const step = appState.activeSeoStep;
-        const cleanupArtifact = findArtifact(run, 'longread_cleanup');
+        const cleanupArtifact = findCurrentArticleArtifact(run, 'longread_cleanup');
         const cleanupPayload = cleanupArtifact?.payload || {};
         const cleanupStatus = String(cleanupPayload?.status || '');
         const cleanupPassed = cleanupStatus === 'passed' || cleanupStatus === 'passed_with_warnings';
@@ -7374,7 +7459,7 @@ export class SeoBriefTestUiController {
 
       async function autoScheduleLatestRunMarkerPlan(runId) {
         const run = await fetchRunSnapshot(runId);
-        const adaptationArtifact = findArtifact(run, 'longread_adaptations_export');
+        const adaptationArtifact = findCurrentArticleArtifact(run, 'longread_adaptations_export');
         const adaptationPayload = adaptationArtifact?.payload || null;
         if (!adaptationPayload?.articleId) {
           return;
@@ -7541,6 +7626,12 @@ export class SeoBriefTestUiController {
           brief_generation: 'Brief / Article generation',
         };
         return labels[stage] || 'Run-level call';
+      }
+
+      function formatStageList(stages) {
+        const values = Array.isArray(stages) ? stages : [];
+        if (!values.length) return 'none';
+        return values.map((stage) => STAGE_META[stage]?.title || getStageLabel(stage)).join(', ');
       }
 
       function formatMoney(value) {
@@ -7740,6 +7831,7 @@ export class SeoBriefTestUiController {
           renderStepTabs(manualStepFlags) +
           renderAutoFlowProgress() +
           renderAutoFlowResumeCard(run, manualStepFlags) +
+          renderRerunControls(run) +
           (shouldShowArticleResultsFirst ? activeStepContent + actionContent : actionContent + activeStepContent) +
           renderCostReceipt(run);
 
@@ -7759,6 +7851,35 @@ export class SeoBriefTestUiController {
             '<div class="section-head"><div class="stack"><div class="eyebrow">Auto Workflow</div><h3>Resume Auto to Final Brief</h3></div><span class="badge">auto</span></div>' +
             '<p>' + escapeHtmlClient(nextStep ? 'Next missing step: ' + nextStep.label : 'All auto steps look complete. Refresh the run if final brief is not visible.') + '</p>' +
             '<div class="actions"><button type="button" class="primary" id="resumeAutoFlowBtn">Resume Auto to Final Brief</button></div>' +
+          '</section>'
+        );
+      }
+
+      function renderRerunControls(run) {
+        const busy = isBusyStatus(run.status) || Boolean(appState.rerunStageLoading);
+        const latest = latestStepByStage(run.steps);
+        const stages = STAGE_ORDER.filter((stage) => {
+          const step = latest.get(stage);
+          return step && (step.status === 'completed' || step.status === 'failed');
+        });
+        if (!stages.length) {
+          return '';
+        }
+
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Rerun</div><h3>Rerun From Here</h3></div><span class="badge">reuse upstream</span></div>' +
+            '<p>Choose a stage to rerun it and continue the SEO brief flow to the end. Earlier stages will be reused; this stage and everything after it will be superseded.</p>' +
+            '<div class="actions">' +
+              stages.map((stage) => {
+                const isLoading = appState.rerunStageLoading === stage;
+                return (
+                  '<button type="button" data-rerun-from-stage="' + escapeHtmlClient(stage) + '" ' + (busy ? 'disabled' : '') + ' class="' + escapeHtmlClient(isLoading ? 'is-loading' : '') + '">' +
+                    escapeHtmlClient(isLoading ? 'Queueing...' : STAGE_META[stage]?.title || stage) +
+                  '</button>'
+                );
+              }).join('') +
+            '</div>' +
           '</section>'
         );
       }
@@ -7789,6 +7910,60 @@ export class SeoBriefTestUiController {
         });
         qs('resumeAutoFlowBtn')?.addEventListener('click', () => {
           void runAutoFlowUntilClusterSelection(run.id);
+        });
+        document.querySelectorAll('[data-rerun-from-stage]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const stage = button.getAttribute('data-rerun-from-stage');
+            if (!stage || appState.rerunStageLoading || isBusyStatus(run.status)) return;
+            appState.rerunStageLoading = stage;
+            renderDetail(run);
+            try {
+              const preview = await fetchJson(
+                '/seo-briefing/runs/' +
+                  encodeURIComponent(run.id) +
+                  '/rerun-preview?stage=' +
+                  encodeURIComponent(stage),
+              );
+              if (!preview.canRerun) {
+                showToast(preview.blockedReason || 'Run cannot be rerun right now');
+                appState.rerunStageLoading = null;
+                renderDetail(run);
+                return;
+              }
+              const plan = preview.plan || {};
+              const confirmed = window.confirm(
+                'Rerun from ' +
+                  (STAGE_META[stage]?.title || stage) +
+                  '\\n\\nWill reuse: ' +
+                  formatStageList(plan.reusedStages) +
+                  '\\n\\nWill rerun: ' +
+                  formatStageList(plan.rerunStages) +
+                  '\\n\\nWill supersede: ' +
+                  formatStageList(plan.supersededStages),
+              );
+              if (!confirmed) {
+                appState.rerunStageLoading = null;
+                renderDetail(run);
+                return;
+              }
+              await fetchJson(
+                '/seo-briefing/runs/' + encodeURIComponent(run.id) + '/rerun-stage',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ stage }),
+                },
+              );
+              showToast('Rerun queued from ' + (STAGE_META[stage]?.title || stage));
+              appState.rerunStageLoading = null;
+              await loadRuns();
+              await selectRun(run.id, false);
+            } catch (error) {
+              appState.rerunStageLoading = null;
+              renderDetail(run);
+              showToast(error instanceof Error ? error.message : 'Failed to queue rerun');
+            }
+          });
         });
 
         qs('generateKeywordHypothesesBtn')?.addEventListener('click', async () => {
@@ -8411,7 +8586,7 @@ export class SeoBriefTestUiController {
             const channelId = row.getAttribute('data-channel-id') || '';
             const language = row.querySelector('[data-adaptation-language]')?.value?.trim() || 'en';
             const publishAtValue = row.querySelector('[data-adaptation-publish-at]')?.value || '';
-            const publishAt = new Date(publishAtValue);
+            const publishAt = parseMoscowDateTimeLocalValue(publishAtValue);
 
             if (!articleId || !adaptationId || !channelId) {
               showToast('Missing article, adaptation, or channel id');
@@ -8421,10 +8596,8 @@ export class SeoBriefTestUiController {
               showToast('Choose a valid publication date and time');
               return;
             }
-            if (publishAt.getTime() <= Date.now()) {
-              showToast('Publication time must be in the future');
-              return;
-            }
+            const effectivePublishAt = resolvePublishAtOrNow(publishAt);
+            const scheduledImmediately = effectivePublishAt.getTime() !== publishAt.getTime();
 
             appState.longreadPublicationLoadingId = adaptationId;
             renderDetail(run);
@@ -8434,9 +8607,13 @@ export class SeoBriefTestUiController {
                 adaptationId,
                 channelId,
                 language,
-                publishAt.toISOString(),
+                effectivePublishAt.toISOString(),
               );
-              showToast('Adaptation scheduled and sent to dashboard');
+              showToast(
+                scheduledImmediately
+                  ? 'Deadline passed; adaptation scheduled immediately'
+                  : 'Adaptation scheduled and sent to dashboard',
+              );
               appState.longreadPublicationLoadingId = null;
               await loadRuns();
               await selectRun(run.id, false);
@@ -8851,7 +9028,7 @@ export class SeoBriefTestUiController {
         if (socialChannels.length > 0) {
           setBatchItemProgress(item, 'Adaptations', 'Creating dashboard adaptations');
           let adaptationResult = null;
-          const existingArtifact = findArtifact(run, 'longread_adaptations_export');
+          const existingArtifact = findCurrentArticleArtifact(run, 'longread_adaptations_export');
           const existingAdaptations = Array.isArray(existingArtifact?.payload?.adaptations)
             ? existingArtifact.payload.adaptations
             : [];
