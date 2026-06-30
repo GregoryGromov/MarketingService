@@ -2207,7 +2207,7 @@ export class SeoBriefTestUiController {
                 <summary class="input-group-summary">
                   <div class="input-group-head">
                     <h3>Technical Parameters</h3>
-                    <p>Execution controls only: AI model, manual/auto flow, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
+                    <p>Execution controls only: AI model, AI hypothesis count, SERP expansion count, timeout, token pricing, and SEO/Product scoring balance.</p>
                   </div>
                 </summary>
                 <input id="aiModelMode" type="hidden" value="pro" />
@@ -2233,24 +2233,6 @@ export class SeoBriefTestUiController {
                     <em>Use any OpenRouter vendor/model slug.</em>
                     <input id="aiModelCustom" value="deepseek/deepseek-chat-v3-0324" placeholder="vendor/model-name" />
                   </label>
-                </div>
-                <div class="field full">
-                  <span>Workflow Mode</span>
-                  <input id="workflowMode" type="hidden" value="manual" />
-                  <div class="model-picker workflow-mode-picker" role="radiogroup" aria-label="Workflow Mode">
-                    <label class="model-option is-selected" data-workflow-mode-option="manual">
-                      <input type="radio" name="workflowModeChoice" value="manual" checked />
-                      <span>Controlled</span>
-                      <strong>Manual clicking</strong>
-                      <p>You run each semantic step yourself and inspect the output before moving on.</p>
-                    </label>
-                    <label class="model-option" data-workflow-mode-option="auto_until_selection">
-                      <input type="radio" name="workflowModeChoice" value="auto_until_selection" />
-                      <span>Auto</span>
-                      <strong>Auto to final brief</strong>
-                      <p>Runs the workflow automatically, selects the best cluster, and generates the final brief.</p>
-                    </label>
-                  </div>
                 </div>
                 <div class="input-group-grid">
                   <label class="field">
@@ -2401,7 +2383,6 @@ export class SeoBriefTestUiController {
         longreadPublicationLoadingId: null,
         blogPublishLoading: false,
         languageBatchItems: [],
-        languageBatchWorkflowMode: 'manual',
         languageBatchFinalizing: false,
         autoFlowLoading: false,
         autoFlowTitle: null,
@@ -2467,6 +2448,7 @@ export class SeoBriefTestUiController {
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const CLIENT_DEV_PANEL_OPEN_STORAGE_KEY = 'seoBriefing.clientDevPanelOpen';
       const LAUNCH_FORM_STATE_STORAGE_KEY = 'seoBriefing.launchFormState.v1';
+      const AUTO_WORKFLOW_MODE = 'auto_until_selection';
       const SEO_STEP_TABS = [
         { id: 'input', label: 'Input', number: '0' },
         { id: 'keywords', label: 'Keywords', number: '1' },
@@ -2487,7 +2469,7 @@ export class SeoBriefTestUiController {
         { id: 'longreadDraft', label: 'Draft', number: '6', kind: 'article' },
         { id: 'longreadCleanup', label: 'Review', number: '7', kind: 'article' },
         { id: 'longreadPackage', label: 'Package', number: '8', kind: 'article' },
-        { id: 'longreadAdaptations', label: 'Adaptations', number: '9', kind: 'article' },
+        { id: 'longreadAdaptations', label: 'Blog Ready', number: '9', kind: 'article' },
         { id: 'calendar', label: 'Calendar', number: '10', kind: 'article' },
         { id: 'audit', label: 'Audit', number: 'Log', kind: 'audit' },
       ];
@@ -3263,21 +3245,6 @@ export class SeoBriefTestUiController {
         }
       }
 
-      function getWorkflowMode() {
-        return document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual';
-      }
-
-      function syncWorkflowMode() {
-        const value = getWorkflowMode() === 'auto_until_selection' ? 'auto_until_selection' : 'manual';
-        qs('workflowMode').value = value;
-        document.querySelectorAll('[data-workflow-mode-option]').forEach((option) => {
-          option.classList.toggle(
-            'is-selected',
-            option.getAttribute('data-workflow-mode-option') === value,
-          );
-        });
-      }
-
       function readLaunchFormState() {
         try {
           const parsed = JSON.parse(localStorage.getItem(LAUNCH_FORM_STATE_STORAGE_KEY) || '{}');
@@ -3306,14 +3273,6 @@ export class SeoBriefTestUiController {
         }
       }
 
-      function setRadioValue(name, value) {
-        if (!value) return;
-        const input = document.querySelector('input[name="' + name + '"][value="' + String(value) + '"]');
-        if (input) {
-          input.checked = true;
-        }
-      }
-
       function setValueIfElement(id, value) {
         const element = qs(id);
         if (!element || value === undefined || value === null) return;
@@ -3339,7 +3298,6 @@ export class SeoBriefTestUiController {
           aiModelPreset: qs('aiModelPreset')?.value || '',
           aiModelCustom: qs('aiModelCustom')?.value || '',
           aiModelMode: qs('aiModelMode')?.value || 'pro',
-          workflowMode: document.querySelector('input[name="workflowModeChoice"]:checked')?.value || 'manual',
           hypothesesCount: qs('hypothesesCount')?.value || '',
           serpEnrichmentCount: qs('serpEnrichmentCount')?.value || '',
           requestTimeoutSeconds: qs('requestTimeoutSeconds')?.value || '',
@@ -3392,7 +3350,6 @@ export class SeoBriefTestUiController {
           setValueIfElement('requestTimeoutSeconds', state.requestTimeoutSeconds);
           setValueIfElement('balanceSlider', state.balanceSlider);
           setValueIfElement('keywordExpansionPrompt', state.keywordExpansionPrompt);
-          setRadioValue('workflowModeChoice', state.workflowMode);
           syncBalanceSlider();
           if (state.deepSeekInputUsdPerMillionTokens) {
             setValueIfElement('deepSeekInputUsdPerMillionTokens', state.deepSeekInputUsdPerMillionTokens);
@@ -3400,7 +3357,6 @@ export class SeoBriefTestUiController {
           if (state.deepSeekOutputUsdPerMillionTokens) {
             setValueIfElement('deepSeekOutputUsdPerMillionTokens', state.deepSeekOutputUsdPerMillionTokens);
           }
-          syncWorkflowMode();
           syncCountryFromSelectedLanguages();
           if (targetProjectId && qs('projectId')?.value === targetProjectId) {
             await fillFromBrandMemory({ silent: true });
@@ -3785,18 +3741,8 @@ export class SeoBriefTestUiController {
         return typeof value === 'string' && value.trim() ? value.trim() : 'env fallback';
       }
 
-      function readRunWorkflowMode(run) {
-        const artifact = findArtifact(run, 'normalized_input');
-        const value = artifact?.payload?.workflowMode;
-        return value === 'auto_until_selection' ? 'auto_until_selection' : 'manual';
-      }
-
       function shouldAutoContinueAfterClusterSelection(run) {
-        return (
-          readRunWorkflowMode(run) === 'auto_until_selection' ||
-          isAutoFlowRun(run.id) ||
-          qs('workflowMode')?.value === 'auto_until_selection'
-        );
+        return Boolean(run);
       }
 
       function aiModelModeLabel(value) {
@@ -5233,8 +5179,8 @@ export class SeoBriefTestUiController {
 
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(autoSelected ? 'Auto Step 10' : 'Manual Step 10') + '</div><h3>Topic Choice From Ranked Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
-            '<p>' + escapeHtmlClient(autoSelected ? 'Primary output: the highest-ranked approved/supporting cluster was selected automatically for OnPage and final brief generation.' : 'Primary output: ranked cluster choices. Choose one topic manually; OnPage and the final brief will use that selected cluster.') + '</p>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(autoSelected ? 'Auto Step 10' : 'Step 10') + '</div><h3>Topic Choice From Ranked Clusters</h3></div><span class="badge">' + escapeHtmlClient(payload?.artifactVersion || 'cluster_selection_snapshot') + '</span></div>' +
+            '<p>' + escapeHtmlClient(autoSelected ? 'Primary output: the highest-ranked approved/supporting cluster was selected automatically for OnPage and final brief generation.' : 'Primary output: ranked cluster choices. The highest-ranked approved/supporting topic is selected automatically for OnPage and the final brief.') + '</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(main ? 'Yes' : 'No') + '</strong><span>Main selected</span></div>' +
               '<div><strong>' + escapeHtmlClient(supporting.length) + '</strong><span>Supporting</span></div>' +
@@ -5364,7 +5310,7 @@ export class SeoBriefTestUiController {
         return (
           '<section class="card full">' +
             '<div class="section-head"><div class="stack"><div class="eyebrow">Cluster Decision Table</div><h3>Clusters</h3></div><span class="badge">' + escapeHtmlClient(selectedClusterName ? 'topic_selected' : selectionArtifact ? 'ready_for_topic_choice' : productFitArtifact ? 'product_fit_ready' : 'intent_clusters_ready') + '</span></div>' +
-            '<p>One table combines Intent Clusters, Product Fit Review, and manual topic selection. Click a cluster row to inspect all saved details.</p>' +
+            '<p>One table combines Intent Clusters, Product Fit Review, and automatic topic selection. Click a cluster row to inspect all saved details.</p>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(clusters.length) + '</strong><span>Intent clusters</span></div>' +
               '<div><strong>' + escapeHtmlClient(productFitArtifact ? approvedCount + '/' + supportingOnlyCount + '/' + rejectedCount : '—') + '</strong><span>Product approve/support/reject</span></div>' +
@@ -5837,14 +5783,28 @@ export class SeoBriefTestUiController {
         const artifact = findCurrentArticleArtifact(run, 'longread_adaptations_export');
         const payload = artifact?.payload || null;
         const adaptations = Array.isArray(payload?.adaptations) ? payload.adaptations : [];
+        if (artifact && payload?.status === 'skipped_blog_longread_only') {
+          return (
+            '<section class="card full article-generation-card">' +
+              '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 4</div><h3>Blog Longread Ready</h3></div><span class="badge">skipped</span></div>' +
+              '<p>Blog uses the final longread package directly, so no dashboard/social adaptations were generated.</p>' +
+              '<div class="metric-grid compact">' +
+                '<div><strong>0</strong><span>Adaptations</span></div>' +
+                '<div><strong>' + escapeHtmlClient(prettyDate(artifact.createdAt)) + '</strong><span>Checkpoint</span></div>' +
+                '<div><strong>' + escapeHtmlClient(payload.sourceArtifactType || 'longread_final_package') + '</strong><span>Source</span></div>' +
+              '</div>' +
+              '<details><summary>Raw checkpoint</summary><div><pre>' + escapeHtmlClient(prettyJson(payload)) + '</pre></div></details>' +
+            '</section>'
+          );
+        }
         if (!artifact || !payload?.articleId) {
-          return '<section class="card full article-generation-card"><div class="empty">No dashboard adaptations created yet.</div></section>';
+          return '<section class="card full article-generation-card"><div class="empty">Blog longread checkpoint is not saved yet.</div></section>';
         }
 
         const dashboardUrl = payload.dashboardUrl || (run.projectId ? '/test-ui/project?projectId=' + encodeURIComponent(run.projectId) : null);
         return (
           '<section class="card full article-generation-card">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 4</div><h3>Dashboard Adaptations</h3></div><span class="badge">exported</span></div>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Article Step 4</div><h3>Social Adaptations</h3></div><span class="badge">exported</span></div>' +
             '<div class="metric-grid compact">' +
               '<div><strong>' + escapeHtmlClient(payload.articleId || '—') + '</strong><span>Article</span></div>' +
               '<div><strong>' + escapeHtmlClient(String(adaptations.length)) + '</strong><span>Adaptations</span></div>' +
@@ -6004,8 +5964,8 @@ export class SeoBriefTestUiController {
         if (markerPlan.markerNotes) {
           lines.push('Marker notes: ' + markerPlan.markerNotes);
         }
-        lines.push('Use each selected location for SEO research and its mapped language for SEO brief, longread, and adaptations.');
-        lines.push('Final dashboard adaptations must follow this publication plan:');
+        lines.push('Use each selected location for SEO research and its mapped language for SEO brief, longread, and social adaptations.');
+        lines.push('Final social adaptations must follow this publication plan:');
         markerPlan.placements.forEach((placement) => {
           lines.push(
             '- ' +
@@ -6093,6 +6053,7 @@ export class SeoBriefTestUiController {
       function markerPlanChannelsForRun(run) {
         const seen = new Set();
         return markerPlanPlacementsForRun(run)
+          .filter((placement) => placement.channelId !== 'channel_blog')
           .filter((placement) => {
             if (seen.has(placement.channelId)) return false;
             seen.add(placement.channelId);
@@ -6180,7 +6141,7 @@ export class SeoBriefTestUiController {
           return { scheduled: 0, skipped: 0, failed: 0, details };
         }
         if (adaptations.length === 0) {
-          details.push('Cannot schedule: dashboard adaptations export is empty.');
+          details.push('Cannot schedule: social adaptations export is empty.');
           return { scheduled: 0, skipped: 0, failed: 1, details };
         }
 
@@ -6698,7 +6659,7 @@ export class SeoBriefTestUiController {
         normalizeActiveSeoStep();
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>Manual SEO Brief Flow</h3></div></div>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>SEO Brief Flow</h3></div></div>' +
             '<div class="seo-step-tabs">' +
               SEO_STEP_TABS.map((step) => {
                 const active = step.id === appState.activeSeoStep;
@@ -6726,247 +6687,26 @@ export class SeoBriefTestUiController {
       }
 
       function renderStepActionCard(run, flags) {
-        const step = appState.activeSeoStep;
-        const cleanupArtifact = findCurrentArticleArtifact(run, 'longread_cleanup');
-        const cleanupPayload = cleanupArtifact?.payload || {};
-        const cleanupStatus = String(cleanupPayload?.status || '');
-        const cleanupPassed = cleanupStatus === 'passed' || cleanupStatus === 'passed_with_warnings';
-        const actionByStep = {
-          input: {
-            title: 'Input',
-            message: 'This is the source context for the current run.',
-            button: '',
-            progress: '',
-          },
-          audit: {
-            title: 'Run Audit Log',
-            message: 'Inspect every saved attempt, artifact snapshot, AI call, DataForSEO call, and score log for this run.',
-            button: '',
-            progress: '',
-          },
-          keywords: {
-            title: 'Search Hypotheses',
-            message: 'Generate Google-like search hypotheses from topic hint, manual user pains, manual scenarios, product context, and Brand Memory.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient('primary ' + (appState.keywordHypothesesLoading ? 'is-loading' : '')) + '" id="generateKeywordHypothesesBtn" ' + (appState.keywordHypothesesLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordHypothesesLoading ? 'Generating hypotheses...' : flags.keywords ? 'Refresh Search Hypotheses' : 'Generate Search Hypotheses') + '</button>',
-            progress: appState.keywordHypothesesLoading
-              ? '<div class="inline-progress"><p>AI is generating search hypotheses from manual pains and scenarios.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          serp: {
-            title: 'SERP Snapshots',
-            message: flags.keywords
-              ? 'Select hypotheses by SERP enrichment count and fetch Google Organic SERP Advanced snapshots.'
-              : 'Generate keywords first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.keywords ? 'primary ' : '') + (appState.serpPreviewLoading ? 'is-loading' : '')) + '" id="previewKeywordSerpsBtn" ' + (!flags.keywords || appState.serpPreviewLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.serpPreviewLoading ? 'Fetching SERPs...' : flags.serp ? 'Refresh Selected SERPs' : 'Fetch Selected SERPs') + '</button>',
-            progress: appState.serpPreviewLoading
-              ? '<div class="inline-progress"><p>Selecting hypotheses and saving raw + normalized SERP snapshots.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          candidates: {
-            title: 'SERP Candidates',
-            message: flags.serp
-              ? 'Extract related queries, PAA questions, SERP features, and content themes from saved snapshots.'
-              : 'Fetch SERP snapshots first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.serp ? 'primary ' : '') + (appState.serpDerivedCandidatesLoading ? 'is-loading' : '')) + '" id="extractSerpDerivedCandidatesBtn" ' + (!flags.serp || appState.serpDerivedCandidatesLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.serpDerivedCandidatesLoading ? 'Extracting candidates...' : flags.candidates ? 'Refresh SERP Candidates' : 'Extract SERP Candidates') + '</button>',
-            progress: appState.serpDerivedCandidatesLoading
-              ? '<div class="inline-progress"><p>Extracting candidates from saved SERP snapshots.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          rankedKeywords: {
-            title: 'Competitor Keyword Map',
-            message: 'Load the pre-fetched competitor Ranked Keywords map from Project Brand Memory.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient('primary ' + (appState.rankedKeywordsLoading ? 'is-loading' : '')) + '" id="buildCompetitorKeywordMapBtn" ' + (appState.rankedKeywordsLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.rankedKeywordsLoading ? 'Building competitor map...' : flags.rankedKeywords ? 'Refresh Competitor Keyword Map' : 'Build Competitor Keyword Map') + '</button>',
-            progress: appState.rankedKeywordsLoading
-              ? '<div class="inline-progress"><p>Reading competitor ranked keywords from Project Brand Memory.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          competitorMatching: {
-            title: 'Competitor Keyword Matching',
-            message: flags.rankedKeywords && flags.keywords && flags.candidates
-              ? 'Choose algorithmic matching or AI evidence evaluation against competitor ranked keywords.'
-              : 'Generate keywords, extract SERP candidates, and build Competitor Keyword Map first.',
-            details:
-              '<div class="mode-guide">' +
-                '<div class="mode-card">' +
-                  '<strong>Algorithmic matching</strong>' +
-                  '<p>1. Compares our candidates with competitor keywords by rules.</p>' +
-                  '<p>2. Uses text similarity, rank, volume, and traffic signals.</p>' +
-                  '<p>3. Fast and cheap, but less nuanced.</p>' +
-                '</div>' +
-                '<div class="mode-card">' +
-                  '<strong>AI evidence evaluation</strong>' +
-                  '<p>1. Sends our candidates and competitor keyword evidence to the selected AI model.</p>' +
-                  '<p>2. AI groups the market and matches candidates only to provided evidence.</p>' +
-                  '<p>3. Slower and costs more, but understands meaning better.</p>' +
-                '</div>' +
-              '</div>',
-            button:
-              '<div class="actions">' +
-                '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading && appState.competitorMatchingMode === 'algorithmic' ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsAlgorithmicBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading && appState.competitorMatchingMode === 'algorithmic' ? 'Running algorithmic matching...' : flags.competitorMatching ? 'Refresh Algorithmic Matching' : 'Run Algorithmic Matching') + '</button>' +
-                '<button type="button" class="' + escapeHtmlClient((flags.rankedKeywords && flags.keywords && flags.candidates ? 'primary ' : '') + (appState.competitorMatchingLoading && appState.competitorMatchingMode === 'ai' ? 'is-loading' : '')) + '" id="matchCompetitorKeywordsAiBtn" ' + (!flags.rankedKeywords || !flags.keywords || !flags.candidates || appState.competitorMatchingLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.competitorMatchingLoading && appState.competitorMatchingMode === 'ai' ? 'Running AI evidence matching...' : flags.competitorMatching ? 'Refresh AI Evidence Matching' : 'Run AI Evidence Matching') + '</button>' +
-              '</div>',
-            progress: appState.competitorMatchingLoading
-              ? renderCompetitorMatchingProgress(run, appState.competitorMatchingMode)
-              : '',
-          },
-          dirtyPool: {
-            title: 'Dirty Keyword Pool',
-            message: flags.keywords && flags.candidates
-              ? 'Merge hypotheses, SERP-derived candidates, and selected related queries into one dirty pool.'
-              : 'Run keyword generation and SERP-derived expansion first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.keywords && flags.candidates ? 'primary ' : '') + (appState.dirtyKeywordPoolLoading ? 'is-loading' : '')) + '" id="buildDirtyKeywordPoolBtn" ' + (!flags.keywords || !flags.candidates || appState.dirtyKeywordPoolLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.dirtyKeywordPoolLoading ? 'Building dirty pool...' : flags.dirtyPool ? 'Refresh Dirty Keyword Pool' : 'Build Dirty Keyword Pool') + '</button>',
-            progress: appState.dirtyKeywordPoolLoading
-              ? '<div class="inline-progress"><p>Merging saved keyword evidence into one candidate pool.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          candidateScoring: {
-            title: 'AI Candidate Filtering',
-            message: flags.dirtyPool
-              ? 'Filter dirty-pool candidates with three AI passes: eligibility, fit scoring, and final calibration.'
-              : 'Build the dirty keyword pool first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.candidateScoringLoading ? 'is-loading' : '')) + '" id="scoreKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.candidateScoringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.candidateScoringLoading ? 'AI filtering candidates...' : flags.candidateScoring ? 'Refresh AI Filtering' : 'Run AI Filtering') + '</button>',
-            progress: appState.candidateScoringLoading
-              ? '<div class="inline-progress"><p>Running AI eligibility, fit scoring, and final calibration passes.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          clusters: {
-            title: 'Intent Clusters',
-            message: flags.dirtyPool
-              ? 'Cluster and prioritize dirty-pool candidates by user intent.'
-              : 'Build the dirty keyword pool first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.dirtyPool ? 'primary ' : '') + (appState.keywordClusteringLoading ? 'is-loading' : '')) + '" id="clusterKeywordCandidatesBtn" ' + (!flags.dirtyPool || appState.keywordClusteringLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.keywordClusteringLoading ? 'Building clusters...' : flags.clusters ? 'Refresh Intent Clusters' : 'Build Intent Clusters') + '</button>',
-            progress: appState.keywordClusteringLoading
-              ? '<div class="inline-progress"><p>Grouping viable candidates by user intent and preserving evidence.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          productFit: {
-            title: 'Cluster Product Fit Review',
-            message: flags.clusters
-              ? 'Review whether Reinforce can naturally fit each whole intent cluster.'
-              : 'Build intent clusters first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.clusters ? 'primary ' : '') + (appState.clusterProductFitLoading ? 'is-loading' : '')) + '" id="reviewClusterProductFitBtn" ' + (!flags.clusters || appState.clusterProductFitLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterProductFitLoading ? 'Reviewing Product Fit...' : flags.productFit ? 'Refresh Product Fit Review' : 'Review Product Fit') + '</button>',
-            progress: appState.clusterProductFitLoading
-              ? '<div class="inline-progress"><p>Reviewing whole clusters against product facts, Brand Memory, audience fit, and compliance constraints.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          selection: {
-            title: 'Manual Topic Selection',
-            message: flags.productFit
-              ? flags.selection
-                ? 'Main topic is selected. You can choose another ranked cluster below if needed.'
-                : flags.clusterSelectionPrepared
-                  ? 'Ranked cluster choices are ready. Choose one topic below before OnPage.'
-                  : 'Prepare ranked cluster choices, then choose one topic manually.'
-              : 'Review Product Fit first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.productFit ? 'primary ' : '') + (appState.clusterSelectionLoading ? 'is-loading' : '')) + '" id="selectSeoBriefClustersBtn" ' + (!flags.productFit || appState.clusterSelectionLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.clusterSelectionLoading ? 'Preparing choices...' : flags.clusterSelectionPrepared ? 'Refresh Cluster Choices' : 'Prepare Cluster Choices') + '</button>',
-            progress: appState.clusterSelectionLoading
-              ? '<div class="inline-progress"><p>Scoring clusters by Product Fit, proxy demand evidence, intent relevance, SERP support, source diversity, and risk penalty.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          onPage: {
-            title: 'Selected Cluster OnPage Evidence',
-            message: flags.selection
-              ? 'Fetch content parsing and instant page metadata for 3-5 selected SERP URLs from the chosen cluster.'
-              : flags.clusterSelectionPrepared
-                ? 'Choose the main topic first.'
-                : 'Prepare cluster choices and choose the main topic first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.selection ? 'primary ' : '') + (appState.onPageLoading ? 'is-loading' : '')) + '" id="fetchSelectedClusterOnPageBtn" ' + (!flags.selection || appState.onPageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.onPageLoading ? 'Fetching OnPage evidence...' : flags.onPage ? 'Refresh OnPage Evidence' : 'Fetch OnPage Evidence') + '</button>',
-            progress: appState.onPageLoading
-              ? '<div class="inline-progress"><p>Parsing selected competitor pages through DataForSEO content parsing and instant pages.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          onPageSynthesis: {
-            title: 'OnPage Synthesis',
-            message: flags.onPage
-              ? 'AI turns parsed competitor pages into article structure requirements, gaps, FAQ ideas, and product insertion guardrails.'
-              : 'Fetch selected cluster OnPage evidence first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.onPage ? 'primary ' : '') + (appState.onPageSynthesisLoading ? 'is-loading' : '')) + '" id="synthesizeOnPageBtn" ' + (!flags.onPage || appState.onPageSynthesisLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.onPageSynthesisLoading ? 'Synthesizing OnPage...' : flags.onPageSynthesis ? 'Refresh OnPage Synthesis' : 'Synthesize OnPage') + '</button>',
-            progress: appState.onPageSynthesisLoading
-              ? '<div class="inline-progress"><p>AI is comparing competitor page structures and extracting brief requirements.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          finalBrief: {
-            title: 'Final SEO Brief',
-            message: flags.onPageSynthesis
-              ? 'Generate the production-ready SEO content brief from selected cluster, keyword evidence, Product Fit, and OnPage synthesis.'
-              : 'Synthesize OnPage evidence first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.onPageSynthesis ? 'primary ' : '') + (appState.finalBriefLoading ? 'is-loading' : '')) + '" id="generateFinalBriefBtn" ' + (!flags.onPageSynthesis || appState.finalBriefLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.finalBriefLoading ? 'Generating final brief...' : flags.finalBrief ? 'Refresh Final Brief' : 'Generate Final Brief') + '</button>',
-            progress: appState.finalBriefLoading
-              ? '<div class="inline-progress"><p>AI is assembling title, metadata, outline, FAQ, product insertion, gaps, risks, CTA, and source requirements.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          longreadDraft: {
-            title: 'Longread Draft',
-            message: flags.finalBrief
-              ? 'AI writes the raw Markdown longread and then automatically runs the AI review loop.'
-              : 'Generate the final SEO brief first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.finalBrief ? 'primary ' : '') + (appState.longreadDraftLoading || appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="generateLongreadDraftBtn" ' + (!flags.finalBrief || appState.longreadDraftLoading || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadDraftLoading ? 'Writing raw draft...' : appState.longreadCleanupLoading ? 'Running AI review loop...' : flags.longreadDraft ? 'Refresh Draft + Review Loop' : 'Generate Draft + Review Loop') + '</button>',
-            progress: appState.longreadDraftLoading || appState.longreadCleanupLoading
-              ? '<div class="inline-progress"><p>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Raw draft is saved. AI is reviewing, revising, and rechecking it automatically.' : 'AI is writing the raw Markdown article from the approved brief.') + '</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          longreadCleanup: {
-            title: 'AI Review Loop',
-            message: flags.longreadDraft
-              ? 'AI iteratively reviews and regenerates the longread for SEO fit, claims safety, US compliance risk, tone, product insertion, and factual-check warnings.'
-              : 'Generate the draft article first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.longreadDraft ? 'primary ' : '') + (appState.longreadCleanupLoading ? 'is-loading' : '')) + '" id="cleanupLongreadArticleBtn" ' + (!flags.longreadDraft || appState.longreadCleanupLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadCleanupLoading ? 'Running review loop...' : flags.longreadCleanup ? 'Refresh AI Review Loop' : 'Run AI Review Loop') + '</button>',
-            progress: appState.longreadCleanupLoading
-              ? '<div class="inline-progress"><p>AI is reviewing, revising, and rechecking the article until it passes or reaches the attempt limit.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          longreadPackage: {
-            title: 'Final Article Package',
-            message: cleanupPassed
-              ? 'AI packages the passed reviewed article into CMS-ready JSON: article fields, SEO fields, product insertion, claims review, and checklist.'
-              : flags.longreadCleanup
-                ? 'The AI review loop could not resolve publish-blocking issues. The longread was cancelled; refresh the review loop to retry from the draft.'
-                : 'Run the AI review loop first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((cleanupPassed ? 'primary ' : '') + (appState.longreadPackageLoading ? 'is-loading' : '')) + '" id="packageLongreadArticleBtn" ' + (!cleanupPassed || appState.longreadPackageLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadPackageLoading ? 'Packaging article...' : flags.longreadPackage ? 'Refresh Final Package' : 'Create Final Package') + '</button>',
-            progress: appState.longreadPackageLoading
-              ? '<div class="inline-progress"><p>AI is creating the CMS-ready article package.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-          longreadAdaptations: {
-            title: 'Dashboard Adaptations',
-            message: flags.longreadPackage
-              ? 'Create a normal dashboard article from the final longread package and generate channel adaptations using both the longread and SEO brief context.'
-              : 'Create the final article package first.',
-            button:
-              '<button type="button" class="' + escapeHtmlClient((flags.longreadPackage ? 'primary ' : '') + (appState.longreadAdaptationsLoading ? 'is-loading' : '')) + '" id="createLongreadAdaptationsBtn" ' + (!flags.longreadPackage || appState.longreadAdaptationsLoading ? 'disabled' : '') + '>' + escapeHtmlClient(appState.longreadAdaptationsLoading ? 'Creating adaptations...' : flags.longreadAdaptations ? 'Create Another Adaptation Set' : 'Create Dashboard Adaptations') + '</button>',
-            progress: appState.longreadAdaptationsLoading
-              ? '<div class="inline-progress"><p>Creating an editorial article and generating Telegram, X, Discord, and Blog adaptations from the longread plus SEO brief.</p><div class="progress-track"><div class="progress-bar"></div></div></div>'
-              : '',
-          },
-        };
-        const steps = SEO_STEP_GROUPS[step] || [step];
-        return steps.map((stepId, index) => {
-          const current = actionByStep[stepId] || actionByStep.input;
-          return (
-            '<section class="card full">' +
-              '<div class="section-head"><div class="stack"><div class="eyebrow">' + escapeHtmlClient(steps.length > 1 ? 'Grouped Step Action' : 'Step Action') + '</div><h3>' + escapeHtmlClient(current.title) + '</h3></div>' + (index === 0 ? '<span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span>' : '') + '</div>' +
-              '<p>' + escapeHtmlClient(current.message) + '</p>' +
-              (current.details ? current.details : '') +
-              (current.button ? '<div class="actions">' + current.button + '</div>' : '') +
-              current.progress +
-            '</section>'
-          );
-        }).join('');
+        const missingWorkflowStep = [
+          ...AUTO_FLOW_STEPS,
+          ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS,
+          ...AUTO_FLOW_ARTICLE_STEPS,
+        ].find((stepConfig) => !flags[stepConfig.readyFlag]);
+        const workflowMessage = isBusyStatus(run.status)
+          ? 'Backend workflow is running. This page only displays durable checkpoints and saved artifacts.'
+          : missingWorkflowStep
+            ? 'Backend workflow owns execution. Resume the workflow if this run stopped before completing all saved artifacts.'
+            : 'Backend workflow has produced all article artifacts visible in this UI.';
+        return (
+          '<section class="card full">' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Workflow</div><h3>Backend Auto Workflow</h3></div><span class="badge ' + statusClass(run.status) + '">' + escapeHtmlClient(run.status) + '</span></div>' +
+            '<p>' + escapeHtmlClient(workflowMessage) + '</p>' +
+            '<dl class="definition-list">' +
+              '<dt>Mode</dt><dd>Auto only</dd>' +
+              '<dt>Next Missing Artifact</dt><dd>' + escapeHtmlClient(missingWorkflowStep ? missingWorkflowStep.label : '—') + '</dd>' +
+            '</dl>' +
+          '</section>'
+        );
       }
 
       function renderInputStep(run) {
@@ -7195,7 +6935,7 @@ export class SeoBriefTestUiController {
           payload: {},
         },
         {
-          label: 'Creating dashboard adaptations',
+          label: 'Marking blog longread ready',
           step: 'articleGroup',
           loadingKey: 'longreadAdaptationsLoading',
           path: '/create-longread-adaptations',
@@ -7839,18 +7579,17 @@ export class SeoBriefTestUiController {
       }
 
       function renderAutoFlowResumeCard(run, flags) {
-        const isAutoRun = readRunWorkflowMode(run) === 'auto_until_selection';
-        if (!isAutoRun || flags.finalBrief || appState.autoFlowLoading) {
+        if (flags.longreadAdaptations || appState.autoFlowLoading || isBusyStatus(run.status)) {
           return '';
         }
-        const nextStep = [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS].find(
+        const nextStep = [...AUTO_FLOW_STEPS, ...AUTO_FLOW_AFTER_CLUSTER_SELECTION_STEPS, ...AUTO_FLOW_ARTICLE_STEPS].find(
           (stepConfig) => !flags[stepConfig.readyFlag],
         );
         return (
           '<section class="card full">' +
-            '<div class="section-head"><div class="stack"><div class="eyebrow">Auto Workflow</div><h3>Resume Auto to Final Brief</h3></div><span class="badge">auto</span></div>' +
-            '<p>' + escapeHtmlClient(nextStep ? 'Next missing step: ' + nextStep.label : 'All auto steps look complete. Refresh the run if final brief is not visible.') + '</p>' +
-            '<div class="actions"><button type="button" class="primary" id="resumeAutoFlowBtn">Resume Auto to Final Brief</button></div>' +
+            '<div class="section-head"><div class="stack"><div class="eyebrow">Auto Workflow</div><h3>Resume Backend Workflow</h3></div><span class="badge">auto</span></div>' +
+            '<p>' + escapeHtmlClient(nextStep ? 'Next missing step: ' + nextStep.label : 'All workflow steps look complete. Refresh the run if the latest artifacts are not visible.') + '</p>' +
+            '<div class="actions"><button type="button" class="primary" id="resumeAutoFlowBtn">Resume Backend Workflow</button></div>' +
           '</section>'
         );
       }
@@ -7909,7 +7648,12 @@ export class SeoBriefTestUiController {
           });
         });
         qs('resumeAutoFlowBtn')?.addEventListener('click', () => {
-          void runAutoFlowUntilClusterSelection(run.id);
+          void runControlAction(
+            run.id,
+            '/resume-full-workflow',
+            {},
+            'Backend workflow queued',
+          );
         });
         document.querySelectorAll('[data-rerun-from-stage]').forEach((button) => {
           button.addEventListener('click', async () => {
@@ -8251,7 +7995,7 @@ export class SeoBriefTestUiController {
                 body: JSON.stringify({}),
               },
             );
-            const autoWorkflowMode = readRunWorkflowMode(run) === 'auto_until_selection';
+            const autoWorkflowMode = true;
             showToast(autoWorkflowMode ? 'Main topic selected automatically' : 'Ranked cluster choices prepared');
             appState.clusterSelectionLoading = false;
             appState.activeSeoStep = autoWorkflowMode ? 'onPageGroup' : 'selection';
@@ -8573,7 +8317,7 @@ export class SeoBriefTestUiController {
             appState.longreadAdaptationsLoading = false;
             renderDetail(run);
             showToast(
-              error instanceof Error ? error.message : 'Failed to create dashboard adaptations',
+              error instanceof Error ? error.message : 'Failed to create social adaptations',
             );
           }
         });
@@ -8699,7 +8443,6 @@ export class SeoBriefTestUiController {
         appState.autoFlowCurrentIndex = 0;
         appState.autoFlowTotal = 0;
         appState.languageBatchItems = [];
-        appState.languageBatchWorkflowMode = 'manual';
         appState.languageBatchFinalizing = false;
         clearAutoFlowStepLoading();
         appState.activeSeoStep = 'input';
@@ -8730,9 +8473,7 @@ export class SeoBriefTestUiController {
         const launchBtn = qs('launchBtn');
         launchBtn.disabled = true;
         try {
-          const workflowMode = qs('workflowMode')?.value === 'auto_until_selection'
-            ? 'auto_until_selection'
-            : 'manual';
+          const workflowMode = AUTO_WORKFLOW_MODE;
           const selectedLanguages = getSelectedLanguagePresets();
           appendClientDevLog('Launch validation passed', {
             workflowMode,
@@ -8754,28 +8495,18 @@ export class SeoBriefTestUiController {
               : 'Creating SEO brief run',
           );
           if (selectedLanguages.length > 1) {
-            await createLanguageBatch(selectedLanguages, workflowMode);
+            await createLanguageBatch(selectedLanguages);
             return;
           }
           appendClientDevLog('Creating single SEO brief run');
-          const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_MARKET_PRESETS[0], workflowMode);
+          const result = await createSeoBriefRunForLanguage(selectedLanguages[0] || SEO_BRIEF_MARKET_PRESETS[0]);
           appendClientDevLog('Create SEO brief run returned', result);
-          setLaunchStatus('Run created: ' + result.runId);
+          setLaunchStatus('Run queued in backend workflow: ' + result.runId);
           appState.selectedRunId = result.runId;
           appState.activeSeoStep = 'keywords';
-          setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
-          showToast(
-            workflowMode === 'auto_until_selection'
-              ? 'Run created. Auto workflow will start now.'
-              : result.deduplicated
-                ? 'Reused recent run: ' + result.runId
-                : 'Run created. Generate search hypotheses next.',
-          );
+          showToast('Run queued. Backend workflow will continue automatically.');
           await loadRuns();
           await selectRun(result.runId);
-          if (workflowMode === 'auto_until_selection') {
-            void runAutoFlowUntilClusterSelection(result.runId);
-          }
         } catch (error) {
           appendClientDevLog(
             'Create SEO brief run failed: ' + (error instanceof Error ? error.message : String(error)),
@@ -8790,12 +8521,12 @@ export class SeoBriefTestUiController {
         }
       }
 
-      function buildCreateRunPayload(language, workflowMode, country) {
+      function buildCreateRunPayload(language, country) {
         return {
           projectId: qs('projectId').value || null,
           aiModelMode: qs('aiModelMode').value,
           aiModel: qs('aiModel').value || null,
-          workflowMode,
+          workflowMode: AUTO_WORKFLOW_MODE,
           topicHint: qs('topicHint').value,
           hypothesesCount: Number(qs('hypothesesCount').value || '10'),
           serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
@@ -8831,9 +8562,9 @@ export class SeoBriefTestUiController {
         };
       }
 
-      async function createSeoBriefRunForLanguage(language, workflowMode) {
+      async function createSeoBriefRunForLanguage(language) {
         const preset = resolveRunLanguagePreset(language);
-        const payload = buildCreateRunPayload(preset.name, workflowMode, preset.locationName || preset.country);
+        const payload = buildCreateRunPayload(preset.name, preset.locationName || preset.country);
         appendClientDevLog('POST /seo-briefing/runs payload ready', summarizeCreateRunPayload(payload));
         return fetchJson('/seo-briefing/runs', {
           method: 'POST',
@@ -8842,7 +8573,7 @@ export class SeoBriefTestUiController {
         });
       }
 
-      async function createLanguageBatch(languages, workflowMode) {
+      async function createLanguageBatch(languages) {
         appState.selectedRunId = null;
         appState.selectedRun = null;
         appState.activeSeoStep = 'input';
@@ -8865,7 +8596,6 @@ export class SeoBriefTestUiController {
           message: 'Waiting',
         }));
         appState.languageBatchItems = batchItems;
-        appState.languageBatchWorkflowMode = workflowMode;
         setLaunchStatus('Location batch queued: ' + batchItems.map((item) => item.country + ' → ' + item.languageLabel).join(', '));
         renderLanguageBatchProgress();
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -8878,40 +8608,13 @@ export class SeoBriefTestUiController {
           renderLanguageBatchProgress();
           try {
             setLaunchStatus('Sending create-run request for ' + item.country + ' → ' + item.languageLabel);
-            const result = await createSeoBriefRunForLanguage(item, workflowMode);
+            const result = await createSeoBriefRunForLanguage(item);
             item.runId = result.runId;
             setLaunchStatus('Run created for ' + item.country + ': ' + result.runId);
-            setAutoFlowRun(result.runId, workflowMode === 'auto_until_selection');
-            item.status = workflowMode === 'auto_until_selection' ? 'running' : 'done';
-            item.stage = workflowMode === 'auto_until_selection' ? 'Auto flow' : 'Run created';
-            item.message = workflowMode === 'auto_until_selection'
-              ? 'Running auto flow'
-              : result.deduplicated
-                ? 'Reused existing run'
-                : 'Run created';
+            item.status = 'queued';
+            item.stage = 'Backend workflow';
+            item.message = 'Queued in worker';
             renderLanguageBatchProgress();
-
-            if (workflowMode === 'auto_until_selection') {
-              await runAutoFlowHeadless(result.runId, (progress) => {
-                item.stage = progress.label;
-                item.message =
-                  progress.status === 'skipped'
-                    ? 'Skipped completed step ' + String(progress.index) + '/' + String(progress.total)
-                    : 'Step ' + String(progress.index) + '/' + String(progress.total);
-                renderLanguageBatchProgress();
-              });
-              item.readyForFinalize = true;
-              item.status = 'done';
-              item.stage = 'Final brief';
-              item.message = 'Final brief generated';
-              renderLanguageBatchProgress();
-              if (appState.markerPlan) {
-                setLaunchStatus('Finalizing ' + item.country + ' → ' + item.languageLabel + ' automatically');
-                await finalizeLanguageBatchItem(item);
-                item.readyForFinalize = false;
-                renderLanguageBatchProgress();
-              }
-            }
           } catch (error) {
             item.status = 'failed';
             item.stage = item.stage || 'Failed';
@@ -8925,10 +8628,7 @@ export class SeoBriefTestUiController {
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         const readyForAutoFinalize = batchItems.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize);
         const failedCount = batchItems.filter((item) => item.status === 'failed').length;
-        const shouldAutoFinalize =
-          workflowMode === 'auto_until_selection' &&
-          appState.markerPlan &&
-          readyForAutoFinalize.length > 0;
+        const shouldAutoFinalize = appState.markerPlan && readyForAutoFinalize.length > 0;
 
         if (shouldAutoFinalize) {
           setLaunchStatus(
@@ -8944,7 +8644,7 @@ export class SeoBriefTestUiController {
           ? 'Location batch finished with ' + String(failedCount) + ' failed run(s)'
           : shouldAutoFinalize
             ? 'Location batch finalized and scheduled'
-            : 'Location batch finished');
+            : 'Location batch queued in backend');
       }
 
       async function postRunAction(runId, path, payload = {}) {
@@ -9026,7 +8726,7 @@ export class SeoBriefTestUiController {
 
         const socialChannels = markerPlanChannelsForRun(run);
         if (socialChannels.length > 0) {
-          setBatchItemProgress(item, 'Adaptations', 'Creating dashboard adaptations');
+          setBatchItemProgress(item, 'Social adaptations', 'Creating social adaptations');
           let adaptationResult = null;
           const existingArtifact = findCurrentArticleArtifact(run, 'longread_adaptations_export');
           const existingAdaptations = Array.isArray(existingArtifact?.payload?.adaptations)
@@ -9202,7 +8902,7 @@ export class SeoBriefTestUiController {
         );
       }
 
-      function renderLanguageBatchProgress(items = appState.languageBatchItems, workflowMode = appState.languageBatchWorkflowMode) {
+      function renderLanguageBatchProgress(items = appState.languageBatchItems) {
         const node = qs('languageBatchProgress');
         if (!node) return;
         if (!Array.isArray(items) || items.length === 0) {
@@ -9220,14 +8920,14 @@ export class SeoBriefTestUiController {
         const canFinalize = appState.markerPlan && readyToFinalizeCount > 0;
         node.hidden = false;
         node.innerHTML =
-          '<div class="inline-meta"><strong>Location batch</strong><span>' + escapeHtmlClient(workflowMode === 'auto_until_selection' ? 'auto to calendar' : 'create runs only') + '</span></div>' +
+          '<div class="inline-meta"><strong>Location batch</strong><span>backend auto workflow</span></div>' +
           '<p>' + escapeHtmlClient(String(counts.running) + ' running / ' + String(counts.queued) + ' queued / ' + String(counts.done) + ' done / ' + String(counts.failed) + ' failed') + '</p>' +
           '<div class="batch-progress-list">' + items.map(renderLanguageBatchItem).join('') + '</div>' +
           (canFinalize
             ? '<div class="actions"><button type="button" class="primary ' + escapeHtmlClient(appState.languageBatchFinalizing ? 'is-loading' : '') + '" id="finalizeLanguageBatchBtn" ' + (appState.languageBatchFinalizing ? 'disabled' : '') + '>' + escapeHtmlClient(appState.languageBatchFinalizing ? 'Finalizing...' : 'Finalize ready + send marker publications to calendar') + '</button></div>'
             : appState.markerPlan
-              ? '<p class="muted">Ready languages finalize automatically; failed languages do not block calendar scheduling.</p>'
-              : '<p class="muted">Calendar scheduling requires launching from a marker plan.</p>');
+              ? '<p class="muted">Backend workflow continues each queued run independently. Persisted marker plans are required for calendar scheduling.</p>'
+              : '<p class="muted">Backend workflow continues each queued run independently.</p>');
       }
 
       function bindLaunchFormActions() {
@@ -9257,21 +8957,6 @@ export class SeoBriefTestUiController {
           if (qs('aiModelPreset')?.value === 'custom') {
             syncAiModelSelection({ preservePricing: true });
           }
-        });
-        document.querySelectorAll('[data-workflow-mode-option]').forEach((option) => {
-          option.addEventListener('click', () => {
-            const value = option.getAttribute('data-workflow-mode-option') === 'auto_until_selection'
-              ? 'auto_until_selection'
-              : 'manual';
-            const input = document.querySelector('input[name="workflowModeChoice"][value="' + value + '"]');
-            if (input) {
-              input.checked = true;
-            }
-            syncWorkflowMode();
-          });
-        });
-        document.querySelectorAll('input[name="workflowModeChoice"]').forEach((input) => {
-          input.addEventListener('change', syncWorkflowMode);
         });
         qs('language')?.addEventListener('change', syncCountryFromSelectedLanguages);
         qs('blogCoverImageFile')?.addEventListener('change', () => {
@@ -9328,7 +9013,6 @@ export class SeoBriefTestUiController {
         });
         syncBalanceSlider();
         syncAiModelSelection();
-        syncWorkflowMode();
         syncCountryFromSelectedLanguages();
         qs('refreshAllBtn').addEventListener('click', async () => {
           await loadRuns();

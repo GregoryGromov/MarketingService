@@ -1002,6 +1002,9 @@ ${renderDevConsoleScript()}
         gap: 8px;
         flex-wrap: wrap;
       }
+      .week-nav {
+        align-items: center;
+      }
       .calendar-switch-row {
         display: flex;
         justify-content: space-between;
@@ -1643,10 +1646,6 @@ ${renderDevConsoleStyles()}
               Inbox
             </a>
             <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand memory</a>
-            <div class="project-view-switch" role="tablist" aria-label="Project sections">
-              <button id="dashboardViewBtn" class="is-active" type="button" onclick="setProjectView('dashboard')">Dashboard</button>
-              <button id="campaignsViewBtn" type="button" onclick="setProjectView('campaigns')">Campaigns</button>
-            </div>
           </div>
         </div>
       </section>
@@ -1656,21 +1655,14 @@ ${renderDevConsoleStyles()}
           <div class="section-copy">
             <div class="calendar-headline">
               <h2 class="calendar-title">Publication calendar</h2>
-              <span id="weekRange" class="calendar-range"></span>
             </div>
           </div>
           <div class="calendar-create-actions">
-              <a
-                class="btn primary"
-                id="dashboardCreateCampaignBtn"
-                href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}"
-              >Create campaign</a>
               <button id="createSeoBriefFromMarkerBtn" class="primary" onclick="openSeoBriefFromActiveMarker()" disabled title="Select a draft marker first">Create SEO brief</button>
           </div>
         </div>
         <div class="marker-toolbar">
           <div class="marker-toolbar-side">
-            <span class="eyebrow marker-toolbar-label">Draft markers</span>
             <div class="marker-toolbar-actions">
               <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
               <button onclick="openMarkerModal()">New marker</button>
@@ -1689,6 +1681,7 @@ ${renderDevConsoleStyles()}
             <button id="markersModeBtn" onclick="setCalendarMode('markers')">Plans</button>
           </div>
           <div class="week-nav">
+            <span id="weekRange" class="calendar-range"></span>
             <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
             <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
           </div>
@@ -1986,7 +1979,7 @@ ${renderDevConsoleStyles()}
       }
 
       function renderProjectHero() {
-        const projectName = currentProject?.name || currentProjectId;
+        const projectName = currentProject?.name || 'Loading project';
         const createCampaignBtn = document.getElementById('createCampaignFromProjectBtn');
         const dashboardCreateCampaignBtn = document.getElementById('dashboardCreateCampaignBtn');
         const projectInboxLink = document.getElementById('projectInboxLink');
@@ -2052,8 +2045,8 @@ ${renderDevConsoleStyles()}
         projectView = view === 'campaigns' ? 'campaigns' : 'dashboard';
         document.getElementById('dashboardView').hidden = projectView !== 'dashboard';
         document.getElementById('campaignsView').hidden = projectView !== 'campaigns';
-        document.getElementById('dashboardViewBtn').classList.toggle('is-active', projectView === 'dashboard');
-        document.getElementById('campaignsViewBtn').classList.toggle('is-active', projectView === 'campaigns');
+        document.getElementById('dashboardViewBtn')?.classList.toggle('is-active', projectView === 'dashboard');
+        document.getElementById('campaignsViewBtn')?.classList.toggle('is-active', projectView === 'campaigns');
 
         if (projectView === 'campaigns') {
           loadCampaigns().catch((error) => {
@@ -2602,6 +2595,53 @@ ${renderDevConsoleStyles()}
         activeMarkerId = null;
       }
 
+      function currentWeekRange() {
+        const weekStart = new Date(currentWeekStart);
+        weekStart.setUTCHours(0, 0, 0, 0);
+        const weekEnd = addDays(currentWeekStart, 6);
+        weekEnd.setUTCHours(23, 59, 59, 999);
+        return { weekStart, weekEnd };
+      }
+
+      function markerPlacementsUrlForCurrentWeek() {
+        const { weekStart, weekEnd } = currentWeekRange();
+        return '/projects/' + encodeURIComponent(currentProjectId) +
+          '/marker-placements?from=' + encodeURIComponent(weekStart.toISOString()) +
+          '&to=' + encodeURIComponent(weekEnd.toISOString());
+      }
+
+      async function refreshMarkerPlanningState() {
+        document.getElementById('error').textContent = '';
+        const [markers, markerPlacements] = await Promise.all([
+          request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/markers',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []),
+          request(markerPlacementsUrlForCurrentWeek(), undefined, { renderResponse: false }).catch(() => []),
+        ]);
+
+        currentProjectMarkers = Array.isArray(markers) ? markers : [];
+        currentProjectMarkerPlacements = Array.isArray(markerPlacements) ? markerPlacements : [];
+        syncActiveMarker();
+        renderProjectHero();
+        renderMarkers();
+        renderWeekDashboard();
+      }
+
+      async function refreshMarkerPlacementsForCurrentWeek() {
+        document.getElementById('error').textContent = '';
+        const markerPlacements = await request(
+          markerPlacementsUrlForCurrentWeek(),
+          undefined,
+          { renderResponse: false },
+        ).catch(() => []);
+
+        currentProjectMarkerPlacements = Array.isArray(markerPlacements) ? markerPlacements : [];
+        renderProjectHero();
+        renderWeekDashboard();
+      }
+
       function toggleMarkerSelection(markerId) {
         if (markerEditMode) {
           return;
@@ -2746,7 +2786,7 @@ ${renderDevConsoleStyles()}
             activeMarkerId = null;
           }
 
-          await refreshProject();
+          await refreshMarkerPlanningState();
         } catch (requestError) {
           document.getElementById('error').textContent =
             requestError instanceof Error ? requestError.message : String(requestError);
@@ -2789,7 +2829,7 @@ ${renderDevConsoleStyles()}
           });
           activeMarkerId = result?.id || null;
           closeMarkerModal();
-          await refreshProject();
+          await refreshMarkerPlanningState();
         } catch (requestError) {
           error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
         }
@@ -2987,8 +3027,8 @@ ${renderDevConsoleStyles()}
             return;
           }
 
-          for (const marketOption of selectedMarketOptions) {
-            await request(
+          await Promise.all(selectedMarketOptions.map((marketOption) =>
+            request(
               '/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements',
               {
                 method: 'POST',
@@ -3003,8 +3043,8 @@ ${renderDevConsoleStyles()}
                 }),
               },
               { renderResponse: false },
-            );
-          }
+            )
+          ));
 
           if (pendingMarkerPlacement.mode === 'edit' && pendingMarkerPlacement.placementId) {
             await request(
@@ -3018,7 +3058,7 @@ ${renderDevConsoleStyles()}
           }
 
           closeMarkerPlacementModal();
-          await refreshProject();
+          await refreshMarkerPlacementsForCurrentWeek();
         } catch (requestError) {
           error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
         }
@@ -3048,7 +3088,7 @@ ${renderDevConsoleStyles()}
             { renderResponse: false },
           );
           closeMarkerPlacementModal();
-          await refreshProject();
+          await refreshMarkerPlacementsForCurrentWeek();
         } catch (requestError) {
           error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
         }
@@ -3247,13 +3287,36 @@ ${renderDevConsoleStyles()}
         }
 
         try {
-          const [project, articles, markers, campaigns] = await Promise.all([
-            request('/projects/' + encodeURIComponent(currentProjectId)).catch(() => null),
-            request('/articles?projectId=' + encodeURIComponent(currentProjectId)),
-            request('/projects/' + encodeURIComponent(currentProjectId) + '/markers').catch(() => []),
-            request('/projects/' + encodeURIComponent(currentProjectId) + '/campaigns', undefined, { renderResponse: false }).catch(() => []),
-          ]);
+          const projectPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId),
+            undefined,
+            { renderResponse: false },
+          ).catch(() => null);
+          const articlesPromise = request(
+            '/articles?projectId=' + encodeURIComponent(currentProjectId),
+            undefined,
+            { renderResponse: false },
+          );
+          const markersPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/markers',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []);
+          const campaignsPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/campaigns',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []);
+
+          const project = await projectPromise;
           currentProject = project;
+          renderProjectHero();
+
+          const [articles, markers, campaigns] = await Promise.all([
+            articlesPromise,
+            markersPromise,
+            campaignsPromise,
+          ]);
           currentProjectArticles = Array.isArray(articles) ? articles : [];
           currentProjectMarkers = Array.isArray(markers) ? markers : [];
           currentProjectCampaigns = Array.isArray(campaigns) ? campaigns : [];
@@ -3264,24 +3327,23 @@ ${renderDevConsoleStyles()}
             ),
           );
           syncActiveMarker();
-          const weekStart = new Date(currentWeekStart);
-          weekStart.setUTCHours(0, 0, 0, 0);
-          const weekEnd = addDays(currentWeekStart, 6);
-          weekEnd.setUTCHours(23, 59, 59, 999);
+          const { weekStart, weekEnd } = currentWeekRange();
           const [projectPlans, markerPlacements, publicationLists] = await Promise.all([
             request(
               '/publishing/projects/' + encodeURIComponent(currentProjectId) +
               '/plans?from=' + encodeURIComponent(weekStart.toISOString()) +
               '&to=' + encodeURIComponent(weekEnd.toISOString()),
+              undefined,
+              { renderResponse: false },
             ),
-            request(
-              '/projects/' + encodeURIComponent(currentProjectId) +
-              '/marker-placements?from=' + encodeURIComponent(weekStart.toISOString()) +
-              '&to=' + encodeURIComponent(weekEnd.toISOString()),
-            ).catch(() => []),
+            request(markerPlacementsUrlForCurrentWeek(), undefined, { renderResponse: false }).catch(() => []),
             Promise.all(
             currentProjectArticles.map((article) =>
-              request('/publishing/articles/' + encodeURIComponent(article.id)).catch(() => []),
+              request(
+                '/publishing/articles/' + encodeURIComponent(article.id),
+                undefined,
+                { renderResponse: false },
+              ).catch(() => []),
             ),
             ),
           ]);
