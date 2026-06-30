@@ -2098,11 +2098,12 @@ export class SeoBriefTestUiController {
                 </div>
                 <details class="advanced-field full">
                   <summary>Quick Blog Publish</summary>
-                  <p>Paste ready article text, choose a language, add a direct HTTPS cover image URL, and publish to Blog using the same Blog Admin API as the final SEO brief flow.</p>
+                  <p>Paste ready article text, choose one or more languages, add a direct HTTPS cover image URL, and publish to Blog using the same Blog Admin API as the final SEO brief flow.</p>
                   <div class="input-group-grid">
                     <label class="field">
-                      <span>Blog language</span>
-                      <select id="directBlogLocale"></select>
+                      <span>Blog languages</span>
+                      <em>Hold Cmd/Ctrl to select several languages.</em>
+                      <select id="directBlogLocale" multiple size="8"></select>
                     </label>
                     <label class="field">
                       <span>Cover image URL</span>
@@ -3330,6 +3331,12 @@ export class SeoBriefTestUiController {
         ).join('');
       }
 
+      function getSelectedDirectBlogLocales() {
+        const select = qs('directBlogLocale');
+        const selected = select ? [...select.selectedOptions].map((option) => option.value).filter(Boolean) : [];
+        return selected.length > 0 ? selected : ['en'];
+      }
+
       function dedupeLanguagePresets(markets) {
         const byCode = new Map();
         markets.forEach((market) => {
@@ -4212,7 +4219,7 @@ export class SeoBriefTestUiController {
         const coverImageUrl =
           String(qs('directBlogCoverImageUrl')?.value || '').trim() ||
           String(qs('blogCoverImageUrl')?.value || '').trim();
-        const locale = String(qs('directBlogLocale')?.value || 'en').trim();
+        const locales = getSelectedDirectBlogLocales();
 
         if (!bodyMd) {
           appendClientDevLog('Direct Blog publish blocked before request', { reason: 'empty bodyMd' }, 'warn');
@@ -4241,7 +4248,7 @@ export class SeoBriefTestUiController {
 
         try {
           appendClientDevLog('Direct Blog publish request ready', {
-            locale,
+            locales,
             bodyChars: bodyMd.length,
             bodyPreview: bodyMd.slice(0, 240),
             coverImageUrl,
@@ -4252,7 +4259,7 @@ export class SeoBriefTestUiController {
             body: JSON.stringify({
               bodyMd,
               coverImageUrl,
-              locale,
+              locales,
               status: 'published',
             }),
           });
@@ -4261,6 +4268,7 @@ export class SeoBriefTestUiController {
             resultNode.innerHTML =
               '<strong>Published to Blog</strong>' +
               '<p>' + escapeHtmlClient(result?.articleId || '—') + '</p>' +
+              '<p>Locales: ' + escapeHtmlClient(locales.join(', ')) + '</p>' +
               (url
                 ? '<p><a href="' + escapeHtmlClient(url) + '" target="_blank" rel="noreferrer">Open published blog article</a></p>'
                 : '<p>No public URL returned.</p>');
@@ -4273,7 +4281,7 @@ export class SeoBriefTestUiController {
             'Direct Blog publish failed',
             {
               message,
-              locale,
+              locales,
               bodyChars: bodyMd.length,
               coverImageUrl,
             },

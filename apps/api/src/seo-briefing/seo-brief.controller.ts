@@ -170,6 +170,7 @@ interface PublishDirectBlogArticleDto {
   bodyMd?: string | null;
   coverImageUrl?: string | null;
   locale?: string | null;
+  locales?: string[] | null;
   status?: 'draft' | 'published';
   title?: string | null;
 }
@@ -1090,14 +1091,14 @@ export class SeoBriefController {
     }
     assertHttpsUrl(coverImageUrl, 'coverImageUrl');
 
-    const locale = normalizeBlogLocale(dto.locale ?? 'en');
+    const locales = normalizeBlogLocales(dto.locales, dto.locale ?? 'en');
     const status = dto.status === 'draft' ? 'draft' : 'published';
     const title = readNonEmptyString(dto.title) ?? extractBlogTitleFromMarkdown(bodyMd);
-    const blogArticleId = deterministicUuid(`manual-blog:${locale}:${title}:${bodyMd}`);
+    const blogArticleId = deterministicUuid(`manual-blog:${locales.join(',')}:${title}:${bodyMd}`);
     this.logger.log({
       message: 'Direct Blog publish started',
       articleId: blogArticleId,
-      locale,
+      locales,
       status,
       title,
       bodyChars: bodyMd.length,
@@ -1107,14 +1108,12 @@ export class SeoBriefController {
       articleId: blogArticleId,
       status,
       coverImageUrl,
-      translations: [
-        {
-          locale,
-          title,
-          excerpt: extractBlogExcerptFromMarkdown(bodyMd),
-          bodyMd,
-        },
-      ],
+      translations: locales.map((locale) => ({
+        locale,
+        title,
+        excerpt: extractBlogExcerptFromMarkdown(bodyMd),
+        bodyMd,
+      })),
     };
 
     let responsePayload: SeoBriefJsonObject;
@@ -1124,7 +1123,7 @@ export class SeoBriefController {
       this.logger.error({
         message: 'Direct Blog publish failed',
         articleId: blogArticleId,
-        locale,
+        locales,
         status,
         bodyChars: bodyMd.length,
         coverImageUrlHost: safeUrlHost(coverImageUrl),
@@ -1136,7 +1135,7 @@ export class SeoBriefController {
     this.logger.log({
       message: 'Direct Blog publish completed',
       articleId: blogArticleId,
-      locale,
+      locales,
       status,
       url: readNonEmptyString(responsePayload.url),
       slug: readNonEmptyString(responsePayload.slug),
@@ -1146,7 +1145,7 @@ export class SeoBriefController {
       articleId: blogArticleId,
       artifactType: 'blog_publish_result',
       localizedUrls: readStringRecord(responsePayload.localizedUrls),
-      locale,
+      locale: locales[0] ?? 'en',
       slug: readNonEmptyString(responsePayload.slug),
       status,
       url: readNonEmptyString(responsePayload.url),
@@ -1417,6 +1416,21 @@ function safeUrlHost(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function normalizeBlogLocales(values: string[] | null | undefined, fallback: string): string[] {
+  const rawValues = Array.isArray(values) && values.length > 0 ? values : [fallback];
+  const locales: string[] = [];
+  const seen = new Set<string>();
+  for (const value of rawValues) {
+    const locale = normalizeBlogLocale(value);
+    if (seen.has(locale)) {
+      continue;
+    }
+    seen.add(locale);
+    locales.push(locale);
+  }
+  return locales.length > 0 ? locales : [normalizeBlogLocale(fallback)];
 }
 
 function normalizeBlogLocale(value: string | null | undefined): string {
