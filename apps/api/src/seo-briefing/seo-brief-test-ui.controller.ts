@@ -6066,6 +6066,38 @@ export class SeoBriefTestUiController {
           }));
       }
 
+      function markerPlanPlacementsForInput(language, country) {
+        const markerPlan = appState.markerPlan;
+        if (!markerPlan?.placements?.length) return [];
+        const runLanguage = normalizeTargetLanguage(language || qs('language')?.value || 'en');
+        const runCountry = normalizeLanguageLookup(country || qs('country')?.value || '');
+        return markerPlan.placements.filter((placement) => {
+          if (placement.targetLanguage !== runLanguage) return false;
+          if (!placement.marketCountry || !runCountry) return true;
+          return normalizeLanguageLookup(placement.marketCountry) === runCountry;
+        });
+      }
+
+      function buildCreateRunPublicationPlan(language, country) {
+        const markerPlan = appState.markerPlan;
+        const blogPlacement = markerPlanPlacementsForInput(language, country)
+          .filter((placement) => placement.channelId === 'channel_blog')
+          .sort((left, right) => new Date(left.publishAt).getTime() - new Date(right.publishAt).getTime())[0];
+        if (!markerPlan || !blogPlacement?.publishAt) {
+          return null;
+        }
+        return {
+          blog: {
+            publishAt: blogPlacement.publishAt,
+            targetLanguage: blogPlacement.targetLanguage || language || null,
+            markerId: blogPlacement.markerId || markerPlan.markerId || null,
+            markerPlacementId: blogPlacement.id || null,
+            markerTitle: markerPlan.markerTitle || null,
+            projectId: markerPlan.projectId || null,
+          },
+        };
+      }
+
       async function scheduleLongreadAdaptation(articleId, adaptationId, channelId, language, publishAtIso) {
         const normalizedChannelId = normalizePublicationChannelId(channelId);
         const payload = {
@@ -8532,6 +8564,7 @@ export class SeoBriefTestUiController {
           serpEnrichmentCount: Number(qs('serpEnrichmentCount').value || '10'),
           requestTimeoutMs: Number(qs('requestTimeoutSeconds').value || '300') * 1000,
           coverImageUrl: qs('blogCoverImageUrl').value.trim() || null,
+          publicationPlan: buildCreateRunPublicationPlan(language, country),
           promptInstructionOverrides: readPromptInstructionOverrides(),
           deepSeekPricing: {
             inputUsdPerMillionTokens: Number(qs('deepSeekInputUsdPerMillionTokens').value || '0'),
