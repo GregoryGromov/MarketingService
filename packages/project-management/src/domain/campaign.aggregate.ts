@@ -20,6 +20,7 @@ export type CampaignStatus =
   | 'completed'
   | 'failed'
   | 'cancelled';
+export type PublishingTarget = 'test' | 'production';
 
 export interface CreateCampaignParams {
   projectId: ProjectId;
@@ -29,6 +30,7 @@ export interface CreateCampaignParams {
   sourceLanguage?: string;
   sourceArticleId?: string | null;
   extraInstructions?: string | null;
+  publishingTarget?: PublishingTarget;
 }
 
 export interface CampaignProps {
@@ -39,6 +41,7 @@ export interface CampaignProps {
   sourceArticleId: string | null;
   startDate: Date;
   sourceLanguage: string;
+  publishingTarget: PublishingTarget;
   status: CampaignStatus;
   extraInstructions: string | null;
   finalApprovedAt: Date | null;
@@ -51,6 +54,10 @@ function normalizeText(value?: string | null): string | null {
   return nextValue ? nextValue : null;
 }
 
+function normalizePublishingTarget(value?: string | null): PublishingTarget {
+  return value === 'production' ? 'production' : 'test';
+}
+
 export class Campaign extends AggregateRoot {
   private constructor(
     public readonly id: CampaignId,
@@ -60,6 +67,7 @@ export class Campaign extends AggregateRoot {
     public sourceArticleId: string | null,
     public startDate: Date,
     public sourceLanguage: string,
+    public publishingTarget: PublishingTarget,
     public status: CampaignStatus,
     public extraInstructions: string | null,
     public finalApprovedAt: Date | null,
@@ -79,6 +87,7 @@ export class Campaign extends AggregateRoot {
       normalizeText(params.sourceArticleId),
       params.startDate,
       params.sourceLanguage?.trim().toLowerCase() ?? 'en',
+      normalizePublishingTarget(params.publishingTarget),
       'draft',
       normalizeText(params.extraInstructions),
       null,
@@ -105,6 +114,7 @@ export class Campaign extends AggregateRoot {
       props.sourceArticleId,
       props.startDate,
       props.sourceLanguage,
+      normalizePublishingTarget(props.publishingTarget),
       props.status,
       props.extraInstructions,
       props.finalApprovedAt,

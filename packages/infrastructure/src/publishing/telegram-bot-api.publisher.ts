@@ -29,7 +29,10 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
   async publishMessage(
     params: PublishTelegramMessageParams,
   ): Promise<PublishTelegramMessageResult> {
-    const channelConfig = this.resolveChannelConfig(params.language);
+    const channelConfig = this.resolveChannelConfig(
+      params.language,
+      params.publishingTarget ?? 'test',
+    );
     const text = this.formatTelegramHtml(params.text);
     const endpoint = params.imagePath ? 'sendPhoto' : 'sendMessage';
 
@@ -115,13 +118,18 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
     return String(payload.result?.chat?.id ?? configuredChatId);
   }
 
-  private resolveChannelConfig(language: string): { botToken: string; chatId: string } {
+  private resolveChannelConfig(
+    language: string,
+    publishingTarget: 'test' | 'production',
+  ): { botToken: string; chatId: string } {
     const normalized = language.trim().toUpperCase();
     const candidates = this.resolveLanguageCandidates(normalized);
+    const prefix =
+      publishingTarget === 'production' ? 'TELEGRAM_PUBLISH_PROD' : 'TELEGRAM_PUBLISH';
 
     for (const candidate of candidates) {
-      const botToken = this.config.get<string>(`TELEGRAM_PUBLISH_${candidate}_BOT_TOKEN`);
-      const chatId = this.config.get<string>(`TELEGRAM_PUBLISH_${candidate}_CHAT_ID`);
+      const botToken = this.config.get<string>(`${prefix}_${candidate}_BOT_TOKEN`);
+      const chatId = this.config.get<string>(`${prefix}_${candidate}_CHAT_ID`);
 
       if (botToken && chatId) {
         return { botToken, chatId };
@@ -130,8 +138,8 @@ export class TelegramBotApiPublisher extends TelegramPublisherPort {
 
     throw new Error(
       candidates.length > 1
-        ? `Telegram publish is not configured for ${normalized}; also no fallback config was found for ${candidates.slice(1).join(', ')}`
-        : `TELEGRAM_PUBLISH_${normalized}_BOT_TOKEN / TELEGRAM_PUBLISH_${normalized}_CHAT_ID are not configured`,
+        ? `Telegram ${publishingTarget} publish is not configured for ${normalized}; also no fallback config was found for ${candidates.slice(1).join(', ')}. Expected ${prefix}_${candidates[0]}_BOT_TOKEN / ${prefix}_${candidates[0]}_CHAT_ID.`
+        : `${prefix}_${normalized}_BOT_TOKEN / ${prefix}_${normalized}_CHAT_ID are not configured`,
     );
   }
 

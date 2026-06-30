@@ -9,6 +9,7 @@ import type { AdaptationId, ArticleId, ChannelId } from '@marketing-service/edit
 export type PublicationId = TypedId<'publication'>;
 export type PlannedPublicationId = TypedId<'planned_publication'>;
 export type PublicationStatus = 'scheduled' | 'publishing' | 'published' | 'failed';
+export type PublicationPublishingTarget = 'test' | 'production';
 
 export interface CreatePublicationParams {
   articleId: ArticleId;
@@ -18,6 +19,7 @@ export interface CreatePublicationParams {
   displayName: string;
   targetLanguage: string;
   publishAt: Date;
+  publishingTarget?: PublicationPublishingTarget;
 }
 
 export interface PublicationProps {
@@ -29,6 +31,7 @@ export interface PublicationProps {
   displayName: string;
   targetLanguage: string;
   publishAt: Date;
+  publishingTarget: PublicationPublishingTarget;
   status: PublicationStatus;
   telegramChatId: string | null;
   telegramMessageId: string | null;
@@ -48,6 +51,7 @@ export class Publication extends AggregateRoot {
     public readonly displayName: string,
     public readonly targetLanguage: string,
     public publishAt: Date,
+    public readonly publishingTarget: PublicationPublishingTarget,
     public status: PublicationStatus,
     public telegramChatId: string | null,
     public telegramMessageId: string | null,
@@ -70,6 +74,7 @@ export class Publication extends AggregateRoot {
       params.displayName,
       params.targetLanguage.toLowerCase(),
       params.publishAt,
+      params.publishingTarget ?? 'test',
       'scheduled',
       null,
       null,
@@ -99,6 +104,7 @@ export class Publication extends AggregateRoot {
       props.displayName,
       props.targetLanguage,
       props.publishAt,
+      props.publishingTarget ?? 'test',
       props.status,
       props.telegramChatId,
       props.telegramMessageId,

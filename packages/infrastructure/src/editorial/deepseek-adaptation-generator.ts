@@ -1,19 +1,19 @@
-import { Injectable } from '@nestjs/common';
 import {
   AdaptationGeneratorPort,
   type GenerateAdaptationParams,
   type GenerateTranslationParams,
   type ReviseAdaptationSelectionParams,
-  TranslationGeneratorPort,
+  type TranslationGeneratorPort,
 } from '@marketing-service/editorial';
 import { AiGatewayPort } from '@marketing-service/project-management';
+import { Inject, Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeepSeekAdaptationGenerator
   extends AdaptationGeneratorPort
   implements TranslationGeneratorPort
 {
-  constructor(private readonly aiGateway: AiGatewayPort) {
+  constructor(@Inject(AiGatewayPort) private readonly aiGateway: AiGatewayPort) {
     super();
   }
 
@@ -23,6 +23,7 @@ export class DeepSeekAdaptationGenerator
       sourceLanguage: params.sourceLanguage,
       channel: params.channelId,
       displayName: params.displayName,
+      model: params.model,
       promptInstructions: params.promptInstructions,
     });
 

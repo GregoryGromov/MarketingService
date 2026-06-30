@@ -18,6 +18,7 @@ export interface ListProjectCampaignsResultItem {
   sourceArticleId: string | null;
   startDate: Date;
   sourceLanguage: string;
+  publishingTarget: string;
   status: string;
   finalApprovedAt: Date | null;
   plannedPublicationCount: number;
@@ -89,6 +90,7 @@ export class ListProjectCampaignsHandler
           sourceArticleId: campaign.sourceArticleId,
           startDate: campaign.startDate,
           sourceLanguage: campaign.sourceLanguage,
+          publishingTarget: campaign.publishingTarget,
           status: campaign.status,
           finalApprovedAt: campaign.finalApprovedAt,
           plannedPublicationCount: plannedPublications.length,

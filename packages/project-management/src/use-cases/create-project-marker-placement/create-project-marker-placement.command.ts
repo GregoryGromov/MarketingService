@@ -8,5 +8,7 @@ export class CreateProjectMarkerPlacementCommand {
     public readonly channelId: string,
     public readonly targetLanguage: string,
     public readonly publishAt: Date,
+    public readonly marketCountry?: string | null,
+    public readonly marketLocationName?: string | null,
   ) {}
 }

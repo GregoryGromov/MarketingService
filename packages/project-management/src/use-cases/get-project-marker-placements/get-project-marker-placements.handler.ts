@@ -9,6 +9,8 @@ export interface GetProjectMarkerPlacementsResultItem {
   projectId: string;
   channelId: string;
   targetLanguage: string;
+  marketCountry: string | null;
+  marketLocationName: string | null;
   publishAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +42,8 @@ export class GetProjectMarkerPlacementsHandler
       projectId: placement.projectId,
       channelId: placement.channelId,
       targetLanguage: placement.targetLanguage,
+      marketCountry: placement.marketCountry,
+      marketLocationName: placement.marketLocationName,
       publishAt: placement.publishAt,
       createdAt: placement.createdAt,
       updatedAt: placement.updatedAt,

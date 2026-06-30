@@ -840,12 +840,19 @@ ${renderDevConsoleScript()}
         color: #fff;
         border-color: rgba(18, 18, 18, 0.92);
       }
-      a.btn.marker-linked {
+      button.danger, a.btn.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+        border-color: rgba(180, 35, 24, 0.28);
+      }
+      a.btn.marker-linked,
+      button.marker-linked {
         border-color: var(--marker-border);
         background: var(--marker-bg);
         color: var(--marker-text);
       }
-      a.btn.marker-linked:hover {
+      a.btn.marker-linked:hover,
+      button.marker-linked:hover {
         background: var(--marker-bg);
         transform: translateY(-1px);
       }
@@ -887,6 +894,7 @@ ${renderDevConsoleScript()}
       }
       .hero-actions,
       .week-nav,
+      .calendar-create-actions,
       .card-actions {
         display: flex;
         gap: 10px;
@@ -994,6 +1002,9 @@ ${renderDevConsoleScript()}
         gap: 8px;
         flex-wrap: wrap;
       }
+      .week-nav {
+        align-items: center;
+      }
       .calendar-switch-row {
         display: flex;
         justify-content: space-between;
@@ -1011,6 +1022,10 @@ ${renderDevConsoleScript()}
         align-items: center;
         gap: 14px;
         flex-wrap: wrap;
+      }
+      .calendar-create-actions {
+        justify-content: flex-end;
+        margin-left: auto;
       }
       .calendar-range {
         display: inline-flex;
@@ -1032,8 +1047,15 @@ ${renderDevConsoleScript()}
         gap: 16px;
         flex-wrap: wrap;
       }
+      .marker-toolbar-side {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        width: 168px;
+        flex: 0 0 168px;
+      }
       .marker-toolbar-label {
-        padding-top: 12px;
+        padding-top: 0;
         white-space: nowrap;
       }
       .marker-toolbar-main {
@@ -1043,10 +1065,12 @@ ${renderDevConsoleScript()}
         flex: 1 1 auto;
       }
       .marker-toolbar-actions {
-        display: flex;
+        display: grid;
         gap: 10px;
-        flex-wrap: wrap;
-        margin-left: auto;
+        width: 100%;
+      }
+      .marker-toolbar-actions button {
+        width: 100%;
       }
       .marker-list {
         display: flex;
@@ -1295,6 +1319,7 @@ ${renderDevConsoleScript()}
         color: var(--marker-text);
         display: grid;
         gap: 6px;
+        cursor: pointer;
       }
       .week-marker.is-active {
         border-style: solid;
@@ -1318,6 +1343,25 @@ ${renderDevConsoleScript()}
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
+      }
+      button.week-marker-add {
+        min-height: 54px;
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 16px;
+        border: 1px dashed rgba(18, 18, 18, 0.16);
+        background: rgba(18, 18, 18, 0.055);
+        color: rgba(18, 18, 18, 0.42);
+        font-size: 24px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      button.week-marker-add:hover {
+        background: rgba(18, 18, 18, 0.09);
+        color: rgba(18, 18, 18, 0.72);
+        transform: translateY(-1px);
       }
       .week-publication {
         --pub-bg: #eaf0ff;
@@ -1358,6 +1402,7 @@ ${renderDevConsoleScript()}
       .publication-detail-image {
         display: block;
         width: min(520px, 100%);
+        max-height: min(360px, 38vh);
         border: 1px solid var(--line);
         border-radius: 24px;
         background: rgba(255, 255, 255, 0.72);
@@ -1436,6 +1481,8 @@ ${renderDevConsoleScript()}
       }
       .modal {
         width: min(560px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
         background: rgba(255, 255, 255, 0.96);
         border: 1px solid rgba(18, 18, 18, 0.12);
         border-radius: 30px;
@@ -1553,14 +1600,19 @@ ${renderDevConsoleScript()}
           flex-direction: column;
           align-items: flex-start;
         }
+        .marker-toolbar-side {
+          width: 100%;
+          flex-basis: auto;
+        }
         .marker-toolbar-label {
           padding-top: 0;
         }
-        .marker-toolbar-actions {
-          margin-left: 0;
-        }
         .calendar-headline {
           align-items: flex-start;
+        }
+        .calendar-create-actions {
+          justify-content: flex-start;
+          margin-left: 0;
         }
         .calendar-switch-row {
           align-items: flex-start;
@@ -1594,10 +1646,6 @@ ${renderDevConsoleStyles()}
               Inbox
             </a>
             <a class="btn" href="/test-ui/brand-memory?projectId=${escapeHtml(projectId)}">Brand memory</a>
-            <div class="project-view-switch" role="tablist" aria-label="Project sections">
-              <button id="dashboardViewBtn" class="is-active" type="button" onclick="setProjectView('dashboard')">Dashboard</button>
-              <button id="campaignsViewBtn" type="button" onclick="setProjectView('campaigns')">Campaigns</button>
-            </div>
           </div>
         </div>
       </section>
@@ -1607,25 +1655,22 @@ ${renderDevConsoleStyles()}
           <div class="section-copy">
             <div class="calendar-headline">
               <h2 class="calendar-title">Publication calendar</h2>
-              <span id="weekRange" class="calendar-range"></span>
-              <a
-                class="btn primary"
-                id="dashboardCreateCampaignBtn"
-                href="/test-ui/campaigns/new?projectId=${escapeHtml(projectId)}"
-                hidden
-              >Create campaign</a>
             </div>
+          </div>
+          <div class="calendar-create-actions">
+              <button id="createSeoBriefFromMarkerBtn" class="primary" onclick="openSeoBriefFromActiveMarker()" disabled title="Select a draft marker first">Create SEO brief</button>
           </div>
         </div>
         <div class="marker-toolbar">
-          <span class="eyebrow marker-toolbar-label">Draft markers</span>
+          <div class="marker-toolbar-side">
+            <div class="marker-toolbar-actions">
+              <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
+              <button onclick="openMarkerModal()">New marker</button>
+            </div>
+          </div>
           <div class="marker-toolbar-main">
             <div id="markerList" class="marker-list"></div>
             <p id="markerToolbarMeta"></p>
-          </div>
-          <div class="marker-toolbar-actions">
-            <button id="editMarkersBtn" onclick="toggleMarkerEditMode()">Edit markers</button>
-            <button onclick="openMarkerModal()">New marker</button>
           </div>
         </div>
         <div id="error" class="error"></div>
@@ -1636,6 +1681,7 @@ ${renderDevConsoleStyles()}
             <button id="markersModeBtn" onclick="setCalendarMode('markers')">Plans</button>
           </div>
           <div class="week-nav">
+            <span id="weekRange" class="calendar-range"></span>
             <button onclick="shiftWeek(-1)" aria-label="Previous week">Previous</button>
             <button onclick="shiftWeek(1)" aria-label="Next week">Next</button>
           </div>
@@ -1690,13 +1736,13 @@ ${renderDevConsoleStyles()}
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-head">
           <div>
-            <h3>Place draft marker</h3>
-            <p id="markerPlacementSubtitle">Choose language and time for this marker placement.</p>
+            <h3 id="markerPlacementTitle">Place draft marker</h3>
+            <p id="markerPlacementSubtitle">Choose one or more locations and time for this marker placement.</p>
           </div>
           <button type="button" onclick="closeMarkerPlacementModal()">Close</button>
         </div>
         <label>
-          Language
+          Locations
           <select id="markerPlacementLanguage"></select>
         </label>
         <label>
@@ -1704,7 +1750,8 @@ ${renderDevConsoleStyles()}
           <input id="markerPlacementTime" type="time" />
         </label>
         <div class="modal-actions">
-          <button type="button" onclick="saveMarkerPlacement()">Save placement</button>
+          <button type="button" id="markerPlacementSaveBtn" onclick="saveMarkerPlacement()">Save placement</button>
+          <button type="button" id="markerPlacementDeleteBtn" class="danger" onclick="deleteMarkerPlacement()" hidden>Delete placement</button>
           <button type="button" onclick="closeMarkerPlacementModal()">Cancel</button>
         </div>
         <div id="markerPlacementError" class="error"></div>
@@ -1899,13 +1946,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
+        const match = languageOptions().find((option) => option.language === normalized);
+        if (match) return match.label;
+        if (normalized === 'fil') return 'Tagalog (tl)';
         return normalized.toUpperCase();
       }
 
@@ -1936,7 +1979,7 @@ ${renderDevConsoleStyles()}
       }
 
       function renderProjectHero() {
-        const projectName = currentProject?.name || currentProjectId;
+        const projectName = currentProject?.name || 'Loading project';
         const createCampaignBtn = document.getElementById('createCampaignFromProjectBtn');
         const dashboardCreateCampaignBtn = document.getElementById('dashboardCreateCampaignBtn');
         const projectInboxLink = document.getElementById('projectInboxLink');
@@ -1971,8 +2014,9 @@ ${renderDevConsoleStyles()}
           }
         }
         if (dashboardCreateCampaignBtn) {
-          dashboardCreateCampaignBtn.hidden = !activeMarker;
+          dashboardCreateCampaignBtn.hidden = false;
           dashboardCreateCampaignBtn.setAttribute('href', createCampaignUrl);
+          dashboardCreateCampaignBtn.classList.toggle('primary', !activeMarker);
           dashboardCreateCampaignBtn.classList.toggle('marker-linked', Boolean(activeMarker));
           if (activeMarker) {
             dashboardCreateCampaignBtn.style.setProperty('--marker-bg', activeMarker.colorBg);
@@ -2001,8 +2045,8 @@ ${renderDevConsoleStyles()}
         projectView = view === 'campaigns' ? 'campaigns' : 'dashboard';
         document.getElementById('dashboardView').hidden = projectView !== 'dashboard';
         document.getElementById('campaignsView').hidden = projectView !== 'campaigns';
-        document.getElementById('dashboardViewBtn').classList.toggle('is-active', projectView === 'dashboard');
-        document.getElementById('campaignsViewBtn').classList.toggle('is-active', projectView === 'campaigns');
+        document.getElementById('dashboardViewBtn')?.classList.toggle('is-active', projectView === 'dashboard');
+        document.getElementById('campaignsViewBtn')?.classList.toggle('is-active', projectView === 'campaigns');
 
         if (projectView === 'campaigns') {
           loadCampaigns().catch((error) => {
@@ -2357,6 +2401,14 @@ ${renderDevConsoleStyles()}
         return year + '-' + month + '-' + day;
       }
 
+      function moscowDateKey(value) {
+        const parts = getMoscowDateParts(value);
+        if (!parts) return '';
+        return String(parts.year) + '-' +
+          String(parts.month + 1).padStart(2, '0') + '-' +
+          String(parts.day).padStart(2, '0');
+      }
+
       function isSameDay(a, b) {
         const left = getMoscowDateParts(a);
         const right = getMoscowDateParts(b);
@@ -2411,6 +2463,8 @@ ${renderDevConsoleStyles()}
                   title: marker.title,
                   notes: marker.notes,
                   targetLanguage: placement.targetLanguage,
+                  marketCountry: placement.marketCountry || placement.market_country || null,
+                  marketLocationName: placement.marketLocationName || placement.market_location_name || null,
                   publishAt: new Date(placement.publishAt),
                   colorBg: marker.colorBg,
                   colorBorder: marker.colorBorder,
@@ -2424,14 +2478,113 @@ ${renderDevConsoleStyles()}
 
       function languageOptions() {
         return [
-          { language: 'en', label: 'English' },
-          { language: 'es', label: 'Spanish' },
-          { language: 'ru', label: 'Russian' },
-          { language: 'id', label: 'Indonesian' },
-          { language: 'fil', label: 'Filipino' },
-          { language: 'vi', label: 'Vietnamese' },
-          { language: 'pt', label: 'Portuguese' },
+          { language: 'en', label: 'English (en)' },
+          { language: 'pt', label: 'Português (pt)' },
+          { language: 'id', label: 'Bahasa Indonesia (id)' },
+          { language: 'es', label: 'Español (es)' },
+          { language: 'vi', label: 'Tiếng Việt (vi)' },
+          { language: 'ur', label: 'اردو (ur)' },
+          { language: 'tl', label: 'Tagalog (tl)' },
+          { language: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { language: 'ha', label: 'Hausa (ha)' },
+          { language: 'pa', label: 'ਪੰਜਾਬੀ (pa)' },
+          { language: 'yo', label: 'Yorùbá (yo)' },
+          { language: 'ps', label: 'پښتو (ps)' },
+          { language: 'zu', label: 'isiZulu (zu)' },
+          { language: 'tr', label: 'Türkçe (tr)' },
+          { language: 'ar', label: 'العربية (ar)' },
+          { language: 'ru', label: 'Русский (ru)' },
+          { language: 'hi', label: 'हिन्दी (hi)' },
+          { language: 'ja', label: '日本語 (ja)' },
+          { language: 'ko', label: '한국어 (ko)' },
+          { language: 'fr', label: 'Français (fr)' },
+          { language: 'de', label: 'Deutsch (de)' },
+          { language: 'it', label: 'Italiano (it)' },
+          { language: 'nl', label: 'Nederlands (nl)' },
+          { language: 'ms', label: 'Bahasa Melayu (ms)' },
+          { language: 'th', label: 'ไทย (th)' },
+          { language: 'af', label: 'Afrikaans (af)' },
+          { language: 'xh', label: 'isiXhosa (xh)' },
+          { language: 'ig', label: 'Igbo (ig)' },
+          { language: 'pl', label: 'Polski (pl)' },
+          { language: 'ro', label: 'Română (ro)' },
         ];
+      }
+
+      function marketLocationOptions() {
+        return [
+          { key: 'india-en', country: 'India', locationName: 'India', language: 'en', label: 'India · English (en)' },
+          { key: 'nigeria-en', country: 'Nigeria', locationName: 'Nigeria', language: 'en', label: 'Nigeria · English (en)' },
+          { key: 'pakistan-en', country: 'Pakistan', locationName: 'Pakistan', language: 'en', label: 'Pakistan · English (en)' },
+          { key: 'philippines-en', country: 'Philippines', locationName: 'Philippines', language: 'en', label: 'Philippines · English (en)' },
+          { key: 'singapore-en', country: 'Singapore', locationName: 'Singapore', language: 'en', label: 'Singapore · English (en)' },
+          { key: 'united-arab-emirates-en', country: 'United Arab Emirates', locationName: 'United Arab Emirates', language: 'en', label: 'United Arab Emirates · English (en)' },
+          { key: 'indonesia-id', country: 'Indonesia', locationName: 'Indonesia', language: 'id', label: 'Indonesia · Bahasa Indonesia (id)' },
+          { key: 'pakistan-ur', country: 'Pakistan', locationName: 'Pakistan', language: 'ur', label: 'Pakistan · اردو (ur)' },
+          { key: 'brazil-pt', country: 'Brazil', locationName: 'Brazil', language: 'pt', label: 'Brazil · Português (pt)' },
+          { key: 'vietnam-vi', country: 'Vietnam', locationName: 'Vietnam', language: 'vi', label: 'Vietnam · Tiếng Việt (vi)' },
+          { key: 'argentina-es', country: 'Argentina', locationName: 'Argentina', language: 'es', label: 'Argentina · Español (es)' },
+          { key: 'mexico-es', country: 'Mexico', locationName: 'Mexico', language: 'es', label: 'Mexico · Español (es)' },
+          { key: 'venezuela-es', country: 'Venezuela', locationName: 'Venezuela', language: 'es', label: 'Venezuela · Español (es)' },
+          { key: 'colombia-es', country: 'Colombia', locationName: 'Colombia', language: 'es', label: 'Colombia · Español (es)' },
+          { key: 'peru-es', country: 'Peru', locationName: 'Peru', language: 'es', label: 'Peru · Español (es)' },
+          { key: 'chile-es', country: 'Chile', locationName: 'Chile', language: 'es', label: 'Chile · Español (es)' },
+          { key: 'ukraine-ru', country: 'Ukraine', locationName: 'Ukraine', language: 'ru', label: 'Ukraine · Русский (ru)' },
+          { key: 'kazakhstan-ru', country: 'Kazakhstan', locationName: 'Kazakhstan', language: 'ru', label: 'Kazakhstan · Русский (ru)' },
+          { key: 'united-arab-emirates-ar', country: 'United Arab Emirates', locationName: 'United Arab Emirates', language: 'ar', label: 'United Arab Emirates · العربية (ar)' },
+          { key: 'egypt-ar', country: 'Egypt', locationName: 'Egypt', language: 'ar', label: 'Egypt · العربية (ar)' },
+          { key: 'saudi-arabia-ar', country: 'Saudi Arabia', locationName: 'Saudi Arabia', language: 'ar', label: 'Saudi Arabia · العربية (ar)' },
+          { key: 'india-hi', country: 'India', locationName: 'India', language: 'hi', label: 'India · हिन्दी (hi)' },
+          { key: 'turkey-tr', country: 'Turkey', locationName: 'Turkey', language: 'tr', label: 'Turkey · Türkçe (tr)' },
+          { key: 'philippines-tl', country: 'Philippines', locationName: 'Philippines', language: 'tl', label: 'Philippines · Tagalog (tl)' },
+          { key: 'thailand-th', country: 'Thailand', locationName: 'Thailand', language: 'th', label: 'Thailand · ไทย (th)' },
+          { key: 'nigeria-pcm', country: 'Nigeria', locationName: 'Nigeria', language: 'pcm', label: 'Nigeria · Naijá / Pidgin (pcm)' },
+          { key: 'france-fr', country: 'France', locationName: 'France', language: 'fr', label: 'France · Français (fr)' },
+          { key: 'south-korea-ko', country: 'South Korea', locationName: 'South Korea', language: 'ko', label: 'South Korea · 한국어 (ko)' },
+          { key: 'japan-ja', country: 'Japan', locationName: 'Japan', language: 'ja', label: 'Japan · 日本語 (ja)' },
+          { key: 'malaysia-ms', country: 'Malaysia', locationName: 'Malaysia', language: 'ms', label: 'Malaysia · Bahasa Melayu (ms)' },
+          { key: 'singapore-ms', country: 'Singapore', locationName: 'Singapore', language: 'ms', label: 'Singapore · Bahasa Melayu (ms)' },
+          { key: 'brunei-ms', country: 'Brunei', locationName: 'Brunei', language: 'ms', label: 'Brunei · Bahasa Melayu (ms)' },
+          { key: 'pakistan-pa', country: 'Pakistan', locationName: 'Pakistan', language: 'pa', label: 'Pakistan · ਪੰਜਾਬੀ (pa)' },
+          { key: 'india-pa', country: 'India', locationName: 'India', language: 'pa', label: 'India · ਪੰਜਾਬੀ (pa)' },
+          { key: 'nigeria-ha', country: 'Nigeria', locationName: 'Nigeria', language: 'ha', label: 'Nigeria · Hausa (ha)' },
+          { key: 'niger-ha', country: 'Niger', locationName: 'Niger', language: 'ha', label: 'Niger · Hausa (ha)' },
+          { key: 'nigeria-yo', country: 'Nigeria', locationName: 'Nigeria', language: 'yo', label: 'Nigeria · Yorùbá (yo)' },
+          { key: 'nigeria-ig', country: 'Nigeria', locationName: 'Nigeria', language: 'ig', label: 'Nigeria · Igbo (ig)' },
+        ];
+      }
+
+      function normalizeLookup(value) {
+        return String(value || '')
+          .trim()
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[_-]/g, ' ')
+          .replace(/\\s+/g, ' ');
+      }
+
+      function marketOptionByKey(key) {
+        const normalized = normalizeLookup(key);
+        return marketLocationOptions().find((option) => normalizeLookup(option.key) === normalized) || null;
+      }
+
+      function marketOptionForPlacement(placement) {
+        const language = String(placement?.targetLanguage || '').toLowerCase();
+        const country = normalizeLookup(placement?.marketCountry || placement?.market_country || '');
+        if (country && language) {
+          const exact = marketLocationOptions().find((option) =>
+            option.language === language && normalizeLookup(option.country) === country
+          );
+          if (exact) return exact;
+        }
+        return marketLocationOptions().find((option) => option.language === language) || null;
+      }
+
+      function markerPlacementMarketLabel(placement) {
+        const option = marketOptionForPlacement(placement);
+        if (option) return option.label;
+        return languageLabel(placement?.targetLanguage || placement?.target_language || '');
       }
 
       function syncActiveMarker() {
@@ -2442,26 +2595,58 @@ ${renderDevConsoleStyles()}
         activeMarkerId = null;
       }
 
-      function toggleMarkerSelection(markerId) {
-        if (markerEditMode) {
-          return;
-        }
-        activeMarkerId = activeMarkerId === markerId ? null : markerId;
+      function currentWeekRange() {
+        const weekStart = new Date(currentWeekStart);
+        weekStart.setUTCHours(0, 0, 0, 0);
+        const weekEnd = addDays(currentWeekStart, 6);
+        weekEnd.setUTCHours(23, 59, 59, 999);
+        return { weekStart, weekEnd };
+      }
+
+      function markerPlacementsUrlForCurrentWeek() {
+        const { weekStart, weekEnd } = currentWeekRange();
+        return '/projects/' + encodeURIComponent(currentProjectId) +
+          '/marker-placements?from=' + encodeURIComponent(weekStart.toISOString()) +
+          '&to=' + encodeURIComponent(weekEnd.toISOString());
+      }
+
+      async function refreshMarkerPlanningState() {
+        document.getElementById('error').textContent = '';
+        const [markers, markerPlacements] = await Promise.all([
+          request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/markers',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []),
+          request(markerPlacementsUrlForCurrentWeek(), undefined, { renderResponse: false }).catch(() => []),
+        ]);
+
+        currentProjectMarkers = Array.isArray(markers) ? markers : [];
+        currentProjectMarkerPlacements = Array.isArray(markerPlacements) ? markerPlacements : [];
+        syncActiveMarker();
         renderProjectHero();
         renderMarkers();
         renderWeekDashboard();
       }
 
-      function selectMarkerFromPlacement(event, markerId) {
-        if (event) {
-          event.stopPropagation();
-        }
+      async function refreshMarkerPlacementsForCurrentWeek() {
+        document.getElementById('error').textContent = '';
+        const markerPlacements = await request(
+          markerPlacementsUrlForCurrentWeek(),
+          undefined,
+          { renderResponse: false },
+        ).catch(() => []);
 
-        if (markerEditMode || !markerId) {
+        currentProjectMarkerPlacements = Array.isArray(markerPlacements) ? markerPlacements : [];
+        renderProjectHero();
+        renderWeekDashboard();
+      }
+
+      function toggleMarkerSelection(markerId) {
+        if (markerEditMode) {
           return;
         }
-
-        activeMarkerId = markerId;
+        activeMarkerId = activeMarkerId === markerId ? null : markerId;
         renderProjectHero();
         renderMarkers();
         renderWeekDashboard();
@@ -2487,9 +2672,20 @@ ${renderDevConsoleStyles()}
       function renderMarkers() {
         const root = document.getElementById('markerList');
         const meta = document.getElementById('markerToolbarMeta');
+        const createSeoBriefButton = document.getElementById('createSeoBriefFromMarkerBtn');
 
         if (!Array.isArray(currentProjectMarkers) || currentProjectMarkers.length === 0) {
-          meta.textContent = '';
+          meta.textContent = markerEditMode ? 'Delete draft marker templates. Their placements on the calendar will be removed too.' : '';
+          if (createSeoBriefButton) {
+            createSeoBriefButton.hidden = false;
+            createSeoBriefButton.disabled = true;
+            createSeoBriefButton.title = 'Select a draft marker first';
+            createSeoBriefButton.classList.add('primary');
+            createSeoBriefButton.classList.remove('marker-linked');
+            createSeoBriefButton.style.removeProperty('--marker-bg');
+            createSeoBriefButton.style.removeProperty('--marker-border');
+            createSeoBriefButton.style.removeProperty('--marker-text');
+          }
           const button = document.getElementById('editMarkersBtn');
           if (button) {
             button.textContent = 'Edit markers';
@@ -2503,7 +2699,27 @@ ${renderDevConsoleStyles()}
         const activeMarker = markerById(activeMarkerId);
         meta.textContent = markerEditMode
           ? 'Delete draft marker templates. Their placements on the calendar will be removed too.'
-          : '';
+          : activeMarker
+            ? 'Selected marker can seed a multi-language SEO brief from all its calendar placements.'
+            : '';
+        if (createSeoBriefButton) {
+          createSeoBriefButton.hidden = false;
+          createSeoBriefButton.disabled = !activeMarker;
+          createSeoBriefButton.title = activeMarker
+            ? 'Create SEO brief from selected marker'
+            : 'Select a draft marker first';
+          createSeoBriefButton.classList.toggle('primary', !activeMarker);
+          createSeoBriefButton.classList.toggle('marker-linked', Boolean(activeMarker));
+          if (activeMarker) {
+            createSeoBriefButton.style.setProperty('--marker-bg', activeMarker.colorBg);
+            createSeoBriefButton.style.setProperty('--marker-border', activeMarker.colorBorder);
+            createSeoBriefButton.style.setProperty('--marker-text', activeMarker.colorText);
+          } else {
+            createSeoBriefButton.style.removeProperty('--marker-bg');
+            createSeoBriefButton.style.removeProperty('--marker-border');
+            createSeoBriefButton.style.removeProperty('--marker-text');
+          }
+        }
 
         root.innerHTML = currentProjectMarkers.map((marker) =>
           '<div class="marker-pill-wrap">' +
@@ -2528,6 +2744,19 @@ ${renderDevConsoleStyles()}
             '</button>' +
           '</div>'
         ).join('');
+      }
+
+      function openSeoBriefFromActiveMarker() {
+        const marker = markerById(activeMarkerId);
+        if (!currentProjectId || !marker) {
+          return;
+        }
+
+        const url = new URL('/test-ui/seo-briefing', window.location.origin);
+        url.searchParams.set('projectId', currentProjectId);
+        url.searchParams.set('markerId', marker.id);
+
+        window.location.href = url.pathname + url.search;
       }
 
       async function deleteMarker(event, markerId) {
@@ -2557,7 +2786,7 @@ ${renderDevConsoleStyles()}
             activeMarkerId = null;
           }
 
-          await refreshProject();
+          await refreshMarkerPlanningState();
         } catch (requestError) {
           document.getElementById('error').textContent =
             requestError instanceof Error ? requestError.message : String(requestError);
@@ -2600,7 +2829,7 @@ ${renderDevConsoleStyles()}
           });
           activeMarkerId = result?.id || null;
           closeMarkerModal();
-          await refreshProject();
+          await refreshMarkerPlanningState();
         } catch (requestError) {
           error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
         }
@@ -2632,30 +2861,118 @@ ${renderDevConsoleStyles()}
         }
 
         pendingMarkerPlacement = {
+          mode: 'create',
           markerId: marker.id,
           channelId,
           dayKey,
         };
 
-        const languageSelect = document.getElementById('markerPlacementLanguage');
-        languageSelect.innerHTML = languageOptions().map((option) =>
-          '<option value="' + escapeHtml(option.language) + '">' + escapeHtml(option.label) + '</option>'
-        ).join('');
+        configureMarkerPlacementModal({
+          title: 'Place draft marker',
+          subtitle:
+            marker.title + ' · ' +
+            (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
+            ' · ' +
+            formatDayLabel(selectedDay) +
+            ' · select one or more locations',
+          targetLanguage: null,
+          timeValue: resolveDefaultMarkerPlacementTime(selectedDay),
+          saveLabel: 'Save placements',
+          canDelete: false,
+          allowMultipleLocations: true,
+        });
+      }
 
-        const timeInput = document.getElementById('markerPlacementTime');
-        if (isSameDay(selectedDay, new Date())) {
-          const nowParts = getMoscowDateParts(new Date(Date.now() + 5 * 60 * 1000));
-          timeInput.value = String(nowParts.hours).padStart(2, '0') + ':' +
-            String(nowParts.minutes).padStart(2, '0');
-        } else {
-          timeInput.value = '12:00';
+      function openExistingMarkerPlacementModal(event, placementId) {
+        if (event) {
+          event.stopPropagation();
         }
 
-        document.getElementById('markerPlacementSubtitle').textContent =
-          marker.title + ' · ' +
-          (adaptationChannels.find((item) => item.id === channelId)?.label || channelId) +
-          ' · ' +
-          formatDayLabel(selectedDay);
+        const placement = currentProjectMarkerPlacements.find((item) => item.id === placementId);
+        if (!placement) {
+          return;
+        }
+
+        const marker = markerById(placement.markerId);
+        if (!marker) {
+          return;
+        }
+
+        const publishAt = new Date(placement.publishAt);
+        if (Number.isNaN(publishAt.getTime())) {
+          return;
+        }
+
+        pendingMarkerPlacement = {
+          mode: 'edit',
+          placementId: placement.id,
+          markerId: placement.markerId,
+          channelId: placement.channelId,
+          dayKey: moscowDateKey(publishAt),
+          originalTargetLanguage: placement.targetLanguage,
+          originalMarketKey: marketOptionForPlacement(placement)?.key || null,
+          originalPublishAt: publishAt.toISOString(),
+        };
+
+        configureMarkerPlacementModal({
+          title: 'Edit marker placement',
+          subtitle:
+            marker.title + ' · ' +
+            (adaptationChannels.find((item) => item.id === placement.channelId)?.label || placement.channelId) +
+            ' · ' +
+            formatDayLabel(publishAt),
+          targetLanguage: placement.targetLanguage,
+          marketCountry: placement.marketCountry || placement.market_country || null,
+          timeValue: formatTimeInputValue(publishAt),
+          saveLabel: 'Save changes',
+          canDelete: true,
+          allowMultipleLocations: false,
+        });
+      }
+
+      function resolveDefaultMarkerPlacementTime(selectedDay) {
+        if (isSameDay(selectedDay, new Date())) {
+          const nowParts = getMoscowDateParts(new Date(Date.now() + 5 * 60 * 1000));
+          return String(nowParts.hours).padStart(2, '0') + ':' +
+            String(nowParts.minutes).padStart(2, '0');
+        }
+
+        return '12:00';
+      }
+
+      function formatTimeInputValue(value) {
+        const parts = getMoscowDateParts(value);
+        if (!parts) {
+          return '12:00';
+        }
+        return String(parts.hours).padStart(2, '0') + ':' +
+          String(parts.minutes).padStart(2, '0');
+      }
+
+      function configureMarkerPlacementModal(options) {
+        document.getElementById('markerPlacementTitle').textContent = options.title;
+        document.getElementById('markerPlacementSubtitle').textContent = options.subtitle;
+        document.getElementById('markerPlacementSaveBtn').textContent = options.saveLabel;
+        document.getElementById('markerPlacementDeleteBtn').hidden = !options.canDelete;
+
+        const languageSelect = document.getElementById('markerPlacementLanguage');
+        languageSelect.multiple = Boolean(options.allowMultipleLocations);
+        languageSelect.size = options.allowMultipleLocations ? Math.min(8, marketLocationOptions().length) : 1;
+        languageSelect.innerHTML = marketLocationOptions().map((option) =>
+          '<option value="' + escapeHtml(option.key) + '">' + escapeHtml(option.label) + '</option>'
+        ).join('');
+        if (options.targetLanguage) {
+          languageSelect.value = marketOptionForPlacement({
+            targetLanguage: options.targetLanguage,
+            marketCountry: options.marketCountry,
+          })?.key || options.targetLanguage;
+        } else if (options.allowMultipleLocations) {
+          languageSelect.selectedIndex = 0;
+        }
+
+        const timeInput = document.getElementById('markerPlacementTime');
+        timeInput.value = options.timeValue;
+
         document.getElementById('markerPlacementError').textContent = '';
         document.getElementById('markerPlacementModalBackdrop').classList.add('open');
       }
@@ -2669,7 +2986,10 @@ ${renderDevConsoleStyles()}
 
       async function saveMarkerPlacement() {
         const error = document.getElementById('markerPlacementError');
-        const targetLanguage = document.getElementById('markerPlacementLanguage').value.trim();
+        const languageSelect = document.getElementById('markerPlacementLanguage');
+        const selectedMarketOptions = [...languageSelect.selectedOptions]
+          .map((option) => marketOptionByKey(option.value.trim()))
+          .filter(Boolean);
         const timeValue = document.getElementById('markerPlacementTime').value.trim();
 
         error.textContent = '';
@@ -2679,8 +2999,8 @@ ${renderDevConsoleStyles()}
           return;
         }
 
-        if (!targetLanguage || !timeValue) {
-          error.textContent = 'Choose language and time.';
+        if (!selectedMarketOptions.length || !timeValue) {
+          error.textContent = 'Choose at least one location and time.';
           return;
         }
 
@@ -2695,18 +3015,80 @@ ${renderDevConsoleStyles()}
         }
 
         try {
-          await request('/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              markerId: pendingMarkerPlacement.markerId,
-              channelId: pendingMarkerPlacement.channelId,
-              targetLanguage,
-              publishAt: publishAt.toISOString(),
-            }),
-          });
+          const firstMarketOption = selectedMarketOptions[0];
+          const targetLanguage = firstMarketOption.language || '';
+          if (
+            pendingMarkerPlacement.mode === 'edit' &&
+            pendingMarkerPlacement.originalTargetLanguage === targetLanguage.toLowerCase() &&
+            pendingMarkerPlacement.originalMarketKey === firstMarketOption.key &&
+            pendingMarkerPlacement.originalPublishAt === publishAt.toISOString()
+          ) {
+            closeMarkerPlacementModal();
+            return;
+          }
+
+          await Promise.all(selectedMarketOptions.map((marketOption) =>
+            request(
+              '/projects/' + encodeURIComponent(currentProjectId) + '/marker-placements',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  markerId: pendingMarkerPlacement.markerId,
+                  channelId: pendingMarkerPlacement.channelId,
+                  targetLanguage: marketOption.language,
+                  marketCountry: marketOption.country,
+                  marketLocationName: marketOption.locationName,
+                  publishAt: publishAt.toISOString(),
+                }),
+              },
+              { renderResponse: false },
+            )
+          ));
+
+          if (pendingMarkerPlacement.mode === 'edit' && pendingMarkerPlacement.placementId) {
+            await request(
+              '/projects/' +
+                encodeURIComponent(currentProjectId) +
+                '/marker-placements/' +
+                encodeURIComponent(pendingMarkerPlacement.placementId),
+              { method: 'DELETE' },
+              { renderResponse: false },
+            );
+          }
+
           closeMarkerPlacementModal();
-          await refreshProject();
+          await refreshMarkerPlacementsForCurrentWeek();
+        } catch (requestError) {
+          error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
+        }
+      }
+
+      async function deleteMarkerPlacement() {
+        const error = document.getElementById('markerPlacementError');
+        error.textContent = '';
+
+        if (!pendingMarkerPlacement?.placementId) {
+          error.textContent = 'No marker placement selected.';
+          return;
+        }
+
+        const confirmed = window.confirm('Delete this marker placement from the calendar?');
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          await request(
+            '/projects/' +
+              encodeURIComponent(currentProjectId) +
+              '/marker-placements/' +
+              encodeURIComponent(pendingMarkerPlacement.placementId),
+            { method: 'DELETE' },
+            { renderResponse: false },
+          );
+          closeMarkerPlacementModal();
+          await refreshMarkerPlacementsForCurrentWeek();
         } catch (requestError) {
           error.textContent = requestError instanceof Error ? requestError.message : String(requestError);
         }
@@ -2738,11 +3120,13 @@ ${renderDevConsoleStyles()}
             const isPast = isPastPlanningDay(dayDate);
             const markerPlacements = markerPlacementsForCell(channel.id, dayDate);
             const publications = plannedPublicationsForCell(channel.id, dayDate);
-            const markerContent = calendarMode === 'markers' && markerPlacements.length
+            const cellDayKey = dateKey(dayDate);
+            const canPlaceMarker = calendarMode === 'markers' && Boolean(activeMarkerId) && !isPast;
+            const markerCards = calendarMode === 'markers' && markerPlacements.length
               ? markerPlacements.map((item) =>
                   '<div class="week-marker ' + (item.markerId === activeMarkerId ? 'is-active' : '') + '"' +
-                    ' onclick="selectMarkerFromPlacement(event, \\''
-                      + escapeHtml(item.markerId)
+                    ' onclick="openExistingMarkerPlacementModal(event, \\''
+                      + escapeHtml(item.id)
                       + '\\')"'
                     + ' style="' +
                     '--marker-bg:' + item.colorBg + ';' +
@@ -2751,12 +3135,20 @@ ${renderDevConsoleStyles()}
                   '">' +
                     '<div class="week-marker-title">' + escapeHtml(item.title) + '</div>' +
                     '<div class="week-marker-meta">' +
-                      '<span>' + escapeHtml(languageCode(item.targetLanguage)) + '</span>' +
+                      '<span>' + escapeHtml(markerPlacementMarketLabel(item)) + '</span>' +
                       '<span>' + escapeHtml(formatTime(item.publishAt)) + '</span>' +
                     '</div>' +
                   '</div>'
                 ).join('')
               : '';
+            const markerAddControl = calendarMode === 'markers' && canPlaceMarker && markerPlacements.length >= 2
+              ? '<button type="button" class="week-marker-add" onclick="openMarkerPlacementModal(event, \\'' +
+                  escapeHtml(channel.id) +
+                  '\\', \\'' +
+                  escapeHtml(cellDayKey) +
+                  '\\')" aria-label="Add marker placement">+</button>'
+              : '';
+            const markerContent = markerCards + markerAddControl;
             const publicationContent = calendarMode === 'posts' && publications.length
               ? publications.map((item) =>
                   '<div class="week-publication ' + (item.isPublished ? 'is-published' : '') + '"' +
@@ -2779,12 +3171,11 @@ ${renderDevConsoleStyles()}
               '<span class="week-cell-placeholder">' +
                 (calendarMode === 'markers' && activeMarkerId && !isPast ? 'Place marker' : '—') +
               '</span>';
-            const canPlaceMarker = calendarMode === 'markers' && Boolean(activeMarkerId) && !isPast;
 
             return \`
               <div
                 class="week-cell \${isToday ? 'is-today' : ''} \${canPlaceMarker ? 'is-placeable' : ''}"
-                onclick="handleCellPress('\${channel.id}', '\${dateKey(dayDate)}')"
+                onclick="handleCellPress('\${channel.id}', '\${cellDayKey}')"
               >
                 <div class="week-cell-scroll">\${content}</div>
               </div>
@@ -2896,13 +3287,36 @@ ${renderDevConsoleStyles()}
         }
 
         try {
-          const [project, articles, markers, campaigns] = await Promise.all([
-            request('/projects/' + encodeURIComponent(currentProjectId)).catch(() => null),
-            request('/articles?projectId=' + encodeURIComponent(currentProjectId)),
-            request('/projects/' + encodeURIComponent(currentProjectId) + '/markers').catch(() => []),
-            request('/projects/' + encodeURIComponent(currentProjectId) + '/campaigns', undefined, { renderResponse: false }).catch(() => []),
-          ]);
+          const projectPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId),
+            undefined,
+            { renderResponse: false },
+          ).catch(() => null);
+          const articlesPromise = request(
+            '/articles?projectId=' + encodeURIComponent(currentProjectId),
+            undefined,
+            { renderResponse: false },
+          );
+          const markersPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/markers',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []);
+          const campaignsPromise = request(
+            '/projects/' + encodeURIComponent(currentProjectId) + '/campaigns',
+            undefined,
+            { renderResponse: false },
+          ).catch(() => []);
+
+          const project = await projectPromise;
           currentProject = project;
+          renderProjectHero();
+
+          const [articles, markers, campaigns] = await Promise.all([
+            articlesPromise,
+            markersPromise,
+            campaignsPromise,
+          ]);
           currentProjectArticles = Array.isArray(articles) ? articles : [];
           currentProjectMarkers = Array.isArray(markers) ? markers : [];
           currentProjectCampaigns = Array.isArray(campaigns) ? campaigns : [];
@@ -2913,24 +3327,23 @@ ${renderDevConsoleStyles()}
             ),
           );
           syncActiveMarker();
-          const weekStart = new Date(currentWeekStart);
-          weekStart.setUTCHours(0, 0, 0, 0);
-          const weekEnd = addDays(currentWeekStart, 6);
-          weekEnd.setUTCHours(23, 59, 59, 999);
+          const { weekStart, weekEnd } = currentWeekRange();
           const [projectPlans, markerPlacements, publicationLists] = await Promise.all([
             request(
               '/publishing/projects/' + encodeURIComponent(currentProjectId) +
               '/plans?from=' + encodeURIComponent(weekStart.toISOString()) +
               '&to=' + encodeURIComponent(weekEnd.toISOString()),
+              undefined,
+              { renderResponse: false },
             ),
-            request(
-              '/projects/' + encodeURIComponent(currentProjectId) +
-              '/marker-placements?from=' + encodeURIComponent(weekStart.toISOString()) +
-              '&to=' + encodeURIComponent(weekEnd.toISOString()),
-            ).catch(() => []),
+            request(markerPlacementsUrlForCurrentWeek(), undefined, { renderResponse: false }).catch(() => []),
             Promise.all(
             currentProjectArticles.map((article) =>
-              request('/publishing/articles/' + encodeURIComponent(article.id)).catch(() => []),
+              request(
+                '/publishing/articles/' + encodeURIComponent(article.id),
+                undefined,
+                { renderResponse: false },
+              ).catch(() => []),
             ),
             ),
           ]);
@@ -3072,7 +3485,7 @@ ${renderDevConsoleScript()}
       .post-card {
         min-height: 220px;
         display: grid;
-        grid-template-rows: auto 1fr auto;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
         gap: 14px;
         padding: 18px;
         border-radius: 28px;
@@ -3080,6 +3493,31 @@ ${renderDevConsoleScript()}
         background: var(--post-bg);
         color: var(--post-text);
         overflow: hidden;
+      }
+      .post-main {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 14px;
+      }
+      .post-image {
+        width: 100%;
+        height: 100%;
+        min-height: 180px;
+        max-height: 240px;
+        border-radius: 22px;
+        border: 1px solid var(--post-border);
+        background: rgba(255, 255, 255, 0.42);
+        object-fit: cover;
+        align-self: stretch;
+      }
+      .post-image-placeholder {
+        display: grid;
+        place-items: center;
+        color: rgba(18, 18, 18, 0.42);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .post-meta {
         display: flex;
@@ -3123,6 +3561,126 @@ ${renderDevConsoleScript()}
         gap: 10px;
         flex-wrap: wrap;
       }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(18, 18, 18, 0.24);
+        display: none;
+        place-items: center;
+        padding: 24px;
+      }
+      .modal-backdrop.open {
+        display: grid;
+      }
+      .modal {
+        width: min(880px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(18, 18, 18, 0.12);
+        border-radius: 30px;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .modal-head h3 {
+        margin: 0 0 6px;
+        font-size: 30px;
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+        font-weight: 400;
+      }
+      .modal-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+        gap: 16px;
+      }
+      .detail-side {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+      }
+      .detail-image {
+        width: 100%;
+        max-height: min(300px, 36vh);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      .detail-image[hidden] {
+        display: none;
+      }
+      .detail-facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .detail-fact {
+        display: grid;
+        gap: 5px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.52);
+      }
+      .detail-fact span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .detail-fact strong {
+        font-size: 15px;
+        font-weight: 400;
+        overflow-wrap: anywhere;
+      }
+      label {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      textarea {
+        min-height: 260px;
+        resize: vertical;
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--text);
+        font: inherit;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+      textarea[readonly] {
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.44);
+      }
+      input[type="file"] {
+        width: 100%;
+      }
+      .modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
       .empty {
         padding: 28px;
         border: 1px dashed var(--border);
@@ -3151,6 +3709,10 @@ ${renderDevConsoleScript()}
         overflow-wrap: break-word;
       }
       @media (max-width: 960px) {
+        .post-card,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
       }
       @media (max-width: 640px) {
         .topbar {
@@ -3185,6 +3747,41 @@ ${renderDevConsoleStyles()}
       </section>
     </div>
 
+    <div id="publicationModalBackdrop" class="modal-backdrop" onclick="closePublicationModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3 id="publicationModalTitle">Publication</h3>
+            <p id="publicationModalSubtitle">Publication details.</p>
+          </div>
+          <button type="button" onclick="closePublicationModal()">Close</button>
+        </div>
+        <div class="detail-grid">
+          <div>
+            <label>
+              Publication text
+              <textarea id="publicationContent"></textarea>
+            </label>
+          </div>
+          <aside class="detail-side">
+            <img id="publicationImage" class="detail-image" alt="Publication image preview" hidden />
+            <div id="publicationFacts" class="detail-facts"></div>
+            <label id="publicationImageUploadLabel">
+              Replace image
+              <input id="publicationImageUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+            </label>
+          </aside>
+        </div>
+        <div class="modal-actions">
+          <button id="savePublicationContentBtn" type="button" onclick="savePublicationContent()">Save text</button>
+          <button id="removePublicationImageBtn" type="button" class="secondary" onclick="removePublicationImage()">Remove image</button>
+          <button id="uploadPublicationImageBtn" type="button" class="secondary" onclick="uploadPublicationImage()">Upload image</button>
+          <a id="publishedPostLink" class="btn" href="#" target="_blank" rel="noopener noreferrer" hidden>Open published post</a>
+        </div>
+        <div id="publicationModalError" class="error"></div>
+      </div>
+    </div>
+
     <script>
       const projectId = ${JSON.stringify(projectId)};
       const channelId = ${JSON.stringify(channelId)};
@@ -3204,6 +3801,7 @@ ${renderDevConsoleStyles()}
         { bg: '#fff0f5', border: '#ffc9dc', text: '#b42363', time: '#8f3f62' },
       ];
       let currentPosts = [];
+      let activePublicationDetail = null;
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -3280,7 +3878,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatTime(value) {
@@ -3295,13 +3893,9 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
+        const match = languageOptions().find((option) => option.language === normalized);
+        if (match) return match.label;
+        if (normalized === 'fil') return 'Tagalog (tl)';
         return normalized.toUpperCase();
       }
 
@@ -3379,7 +3973,82 @@ ${renderDevConsoleStyles()}
         return payload;
       }
 
-      function collectPosts(plans, articleMap, publicationMap, selectedDate) {
+      function toTitle(value) {
+        return String(value || '')
+          .replace(/_/g, ' ')
+          .replace(/\\b\\w/g, (char) => char.toUpperCase()) || '—';
+      }
+
+      function findArticleContent(articleDetail, overviewItem) {
+        if (!articleDetail || !overviewItem) {
+          return '';
+        }
+
+        const adaptation = (articleDetail.adaptations || []).find((item) => item.id === overviewItem.adaptationId);
+        if (!adaptation) {
+          return articleDetail.original?.content || '';
+        }
+
+        if (overviewItem.translationId) {
+          const translation = (adaptation.translations || []).find((item) => item.id === overviewItem.translationId);
+          return translation?.translatedContent || '';
+        }
+
+        return adaptation.adaptedContent || '';
+      }
+
+      function resolvePublicationUrl(publication, overviewItem) {
+        if (overviewItem?.externalUrl) {
+          return overviewItem.externalUrl;
+        }
+        if (!publication) {
+          return null;
+        }
+
+        if (publication.externalUrl) {
+          return publication.externalUrl;
+        }
+
+        const postId = String(publication.telegramMessageId || '').trim();
+        const accountRef = String(publication.telegramChatId || '').trim();
+
+        if (!postId) {
+          return null;
+        }
+
+        if (publication.channelId === 'channel_x') {
+          return 'https://x.com/i/web/status/' + encodeURIComponent(postId);
+        }
+
+        if (publication.channelId === 'channel_telegram') {
+          if (accountRef.startsWith('@')) {
+            return 'https://t.me/' + encodeURIComponent(accountRef.slice(1)) + '/' + encodeURIComponent(postId);
+          }
+          if (/^-100\\d+$/.test(accountRef)) {
+            return 'https://t.me/c/' + encodeURIComponent(accountRef.slice(4)) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        if (publication.channelId === 'channel_discord' && accountRef.includes('/')) {
+          const parts = accountRef.split('/');
+          if (parts[0] && parts[1]) {
+            return 'https://discord.com/channels/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]) + '/' + encodeURIComponent(postId);
+          }
+        }
+
+        return null;
+      }
+
+      function overviewMatchKey(articleId, channel, language, publishAt) {
+        return [
+          articleId || '',
+          channel || '',
+          String(language || '').toLowerCase(),
+          new Date(publishAt).getTime(),
+        ].join('|');
+      }
+
+      function collectPosts(plans, articleMap, publicationMap, selectedDate, campaignMap, overviewMap, articleDetailMap) {
         return plans
           .filter((plan) =>
             plan &&
@@ -3395,20 +4064,217 @@ ${renderDevConsoleStyles()}
               String(item.targetLanguage || '').toLowerCase() === String(plan.targetLanguage || '').toLowerCase() &&
               new Date(item.publishAt).getTime() === new Date(plan.publishAt).getTime(),
             ) || null;
+            const overviewItem = overviewMap.get(
+              overviewMatchKey(plan.articleId, channelId, plan.targetLanguage, plan.publishAt),
+            ) || null;
+            const campaign = overviewItem?.campaignId
+              ? { id: overviewItem.campaignId, name: overviewItem.campaignName }
+              : (campaignMap.get(plan.articleId) || null);
+            const articleDetail = articleDetailMap.get(plan.articleId) || null;
+            const publicationStatus = overviewItem?.publicationStatus || publication?.status || null;
+            const plannedStatus = overviewItem?.plannedStatus || null;
 
             return {
               planId: plan.id,
+              plannedPublicationId: overviewItem?.plannedPublicationId || null,
               articleId: plan.articleId,
               articleTitle: article?.originalTitle || 'Untitled',
               articleExcerpt: article?.originalExcerpt || '',
               targetLanguage: plan.targetLanguage,
               publishAt: new Date(plan.publishAt),
               publication,
-              status: previewStatus(publication, plan.publishAt),
+              publicationId: overviewItem?.publicationId || publication?.id || null,
+              publicationStatus,
+              plannedStatus,
+              artifactType: overviewItem?.artifactType || null,
+              adaptationId: overviewItem?.adaptationId || null,
+              translationId: overviewItem?.translationId || null,
+              content: findArticleContent(articleDetail, overviewItem),
+              campaignId: campaign?.id || null,
+              campaignName: campaign?.name || null,
+              imageUrl: overviewItem?.imageUrl || null,
+              externalUrl: resolvePublicationUrl(publication, overviewItem),
+              errorMessage: overviewItem?.errorMessage || publication?.errorMessage || null,
+              status: previewStatus(
+                publicationStatus ? { ...publication, status: publicationStatus, publishedAt: overviewItem?.publishedAt || publication?.publishedAt } : publication,
+                overviewItem?.scheduledFor || plan.publishAt,
+              ),
               theme: articleTheme(plan.articleId),
             };
           })
           .sort((a, b) => a.publishAt.getTime() - b.publishAt.getTime());
+      }
+
+      function isPublishedPost(item) {
+        return item?.publicationStatus === 'published' || item?.plannedStatus === 'published';
+      }
+
+      function canEditPost(item) {
+        return Boolean(item && !isPublishedPost(item) && item.articleId && item.adaptationId);
+      }
+
+      function renderDetailFact(label, value) {
+        return '<div class="detail-fact"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value || '—') + '</strong></div>';
+      }
+
+      function openPublicationModal(index) {
+        const item = currentPosts[Number(index)];
+        if (!item) {
+          return;
+        }
+
+        activePublicationDetail = item;
+        const editable = canEditPost(item);
+        const published = isPublishedPost(item);
+        const modal = document.getElementById('publicationModalBackdrop');
+        const image = document.getElementById('publicationImage');
+        const link = document.getElementById('publishedPostLink');
+        const textarea = document.getElementById('publicationContent');
+        const saveButton = document.getElementById('savePublicationContentBtn');
+        const uploadButton = document.getElementById('uploadPublicationImageBtn');
+        const removeButton = document.getElementById('removePublicationImageBtn');
+        const uploadLabel = document.getElementById('publicationImageUploadLabel');
+
+        document.getElementById('publicationModalTitle').textContent =
+          item.campaignName || item.articleTitle || 'Publication';
+        document.getElementById('publicationModalSubtitle').textContent =
+          published ? 'Published publication. Content is read-only.' : 'Draft or scheduled publication. You can adjust content before publishing.';
+        textarea.value = item.content || '';
+        textarea.readOnly = !editable;
+        saveButton.hidden = !editable;
+        uploadButton.hidden = !editable || !item.campaignId;
+        removeButton.hidden = !editable || !item.campaignId || !item.imageUrl;
+        uploadLabel.hidden = !editable || !item.campaignId;
+        document.getElementById('publicationImageUpload').value = '';
+        document.getElementById('publicationModalError').textContent = '';
+
+        if (item.imageUrl) {
+          image.hidden = false;
+          image.src = item.imageUrl;
+        } else {
+          image.hidden = true;
+          image.removeAttribute('src');
+        }
+
+        document.getElementById('publicationFacts').innerHTML = [
+          renderDetailFact('Channel', channelLabel(item.publication?.channelId || channelId)),
+          renderDetailFact('Language', languageLabel(item.targetLanguage)),
+          renderDetailFact('Status', toTitle(item.publicationStatus || item.plannedStatus || 'planned')),
+          renderDetailFact('Scheduled for', formatDateTime(item.publishAt)),
+          renderDetailFact('Publication id', item.publicationId),
+          renderDetailFact('Campaign', item.campaignName),
+        ].join('');
+
+        if (published && item.externalUrl) {
+          link.hidden = false;
+          link.href = item.externalUrl;
+        } else {
+          link.hidden = true;
+          link.removeAttribute('href');
+        }
+
+        modal.classList.add('open');
+      }
+
+      function closePublicationModal(event) {
+        if (event && event.target !== event.currentTarget) {
+          return;
+        }
+        document.getElementById('publicationModalBackdrop').classList.remove('open');
+        activePublicationDetail = null;
+      }
+
+      async function savePublicationContent() {
+        const item = activePublicationDetail;
+        if (!canEditPost(item)) {
+          return;
+        }
+
+        const content = document.getElementById('publicationContent').value.trim();
+        if (!content) {
+          document.getElementById('publicationModalError').textContent = 'Publication text cannot be empty.';
+          return;
+        }
+
+        const url = item.translationId
+          ? '/articles/' + encodeURIComponent(item.articleId) +
+            '/adaptations/' + encodeURIComponent(item.adaptationId) +
+            '/translations/' + encodeURIComponent(item.translationId) +
+            '/edit'
+          : '/articles/' + encodeURIComponent(item.articleId) +
+            '/adaptations/' + encodeURIComponent(item.adaptationId) +
+            '/edit';
+        const body = item.translationId ? { translatedContent: content } : { adaptedContent: content };
+
+        try {
+          await post(url, body);
+          item.content = content;
+          document.getElementById('publicationModalError').textContent = '';
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function uploadPublicationImage() {
+        const item = activePublicationDetail;
+        const file = document.getElementById('publicationImageUpload').files?.[0];
+        if (!canEditPost(item) || !item.campaignId || !file) {
+          document.getElementById('publicationModalError').textContent = 'Choose an image first.';
+          return;
+        }
+
+        try {
+          const sourceImageDataUrl = await readFileAsDataUrl(file);
+          const result = await post(
+            '/campaign-media/' + encodeURIComponent(item.campaignId) + '/' + encodeURIComponent(channelId),
+            { sourceImageDataUrl },
+          );
+          item.imageUrl = result.imageUrl + '?v=' + Date.now();
+          const image = document.getElementById('publicationImage');
+          image.hidden = false;
+          image.src = item.imageUrl;
+          document.getElementById('removePublicationImageBtn').hidden = false;
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      async function removePublicationImage() {
+        const item = activePublicationDetail;
+        if (!canEditPost(item) || !item.campaignId) {
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            '/campaign-media/' + encodeURIComponent(item.campaignId) + '/' + encodeURIComponent(channelId),
+            { method: 'DELETE' },
+          );
+          const payload = await response.json();
+          renderOutput(payload);
+          if (!response.ok) {
+            throw new Error(payload?.message || 'Request failed');
+          }
+          item.imageUrl = null;
+          const image = document.getElementById('publicationImage');
+          image.hidden = true;
+          image.removeAttribute('src');
+          document.getElementById('removePublicationImageBtn').hidden = true;
+          await loadDaySchedule();
+        } catch (error) {
+          document.getElementById('publicationModalError').textContent = error instanceof Error ? error.message : String(error);
+        }
       }
 
       function renderPosts(items, selectedDate) {
@@ -3423,9 +4289,11 @@ ${renderDevConsoleStyles()}
         }
 
         root.innerHTML = items.map((item) => {
-          const canCancel = item.publication
-            ? item.publication.status !== 'published' && item.publication.status !== 'publishing'
-            : true;
+          const index = currentPosts.indexOf(item);
+          const canCancel =
+            !isPublishedPost(item) &&
+            item.publicationStatus !== 'publishing' &&
+            item.plannedStatus !== 'publishing';
           return \`
             <article
               class="post-card"
@@ -3435,18 +4303,23 @@ ${renderDevConsoleStyles()}
                 --post-text: \${escapeHtml(item.theme.text)};
               "
             >
-              <div class="post-meta">
-                <span class="badge lang">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
-                <span class="badge lang">\${escapeHtml(formatTime(item.publishAt))}</span>
-                <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
+              <div class="post-main">
+                <div class="post-meta">
+                  <span class="badge lang">\${escapeHtml(languageLabel(item.targetLanguage))}</span>
+                  <span class="badge lang">\${escapeHtml(formatTime(item.publishAt))}</span>
+                  <span class="badge status \${escapeHtml(item.status.className)}">\${escapeHtml(item.status.label)}</span>
+                </div>
+                <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
+                <div class="post-actions">
+                  <button class="btn" type="button" onclick="openPublicationModal(\${index})">Open publication</button>
+                  \${canCancel
+                    ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
+                    : ''}
+                </div>
               </div>
-              <h3 class="post-title">\${escapeHtml(item.articleTitle)}</h3>
-              <div class="post-actions">
-                <a class="btn" style="justify-self:start;" href="/test-ui/review?articleId=\${escapeHtml(item.articleId)}">Open workflow</a>
-                \${canCancel
-                  ? '<button class="btn secondary" onclick="cancelPublication(\\'' + escapeHtml(item.planId) + '\\')">Cancel publication</button>'
-                  : ''}
-              </div>
+              \${item.imageUrl
+                ? '<img class="post-image" src="' + escapeHtml(item.imageUrl) + '" alt="Publication image preview" loading="lazy" />'
+                : '<div class="post-image post-image-placeholder">No image</div>'}
             </article>
           \`;
         }).join('');
@@ -3492,7 +4365,55 @@ ${renderDevConsoleStyles()}
               Array.isArray(publicationLists[index]) ? publicationLists[index] : [],
             ]),
           );
-          currentPosts = collectPosts(Array.isArray(plans) ? plans : [], articleMap, publicationMap, selectedDate);
+          const articleIds = Array.from(
+            new Set((Array.isArray(plans) ? plans : []).map((plan) => plan.articleId).filter(Boolean)),
+          );
+          const [campaigns, articleDetails] = await Promise.all([
+            request('/projects/' + encodeURIComponent(projectId) + '/campaigns').catch(() => []),
+            Promise.all(articleIds.map((articleId) =>
+              request('/articles/' + encodeURIComponent(articleId)).catch(() => null),
+            )),
+          ]);
+          const campaignRows = Array.isArray(campaigns) ? campaigns : [];
+          const campaignById = new Map(campaignRows.map((campaign) => [campaign.id, campaign]));
+          const campaignMap = new Map(
+            campaignRows
+              .filter((campaign) => campaign?.sourceArticleId)
+              .map((campaign) => [campaign.sourceArticleId, campaign]),
+          );
+          const campaignOverviews = await Promise.all(
+            campaignRows.map((campaign) =>
+              request('/campaigns/' + encodeURIComponent(campaign.id) + '/publishing-overview').catch(() => null),
+            ),
+          );
+          const overviewMap = new Map();
+          campaignOverviews
+            .filter(Boolean)
+            .forEach((overview) => {
+              const campaign = campaignById.get(overview.campaignId);
+              (Array.isArray(overview.items) ? overview.items : []).forEach((item) => {
+                overviewMap.set(
+                  overviewMatchKey(item.articleId, item.channel, item.language, item.scheduledFor),
+                  {
+                    ...item,
+                    campaignId: overview.campaignId,
+                    campaignName: campaign?.name || null,
+                  },
+                );
+              });
+            });
+          const articleDetailMap = new Map(
+            articleDetails.filter(Boolean).map((article) => [article.id, article]),
+          );
+          currentPosts = collectPosts(
+            Array.isArray(plans) ? plans : [],
+            articleMap,
+            publicationMap,
+            selectedDate,
+            campaignMap,
+            overviewMap,
+            articleDetailMap,
+          );
           renderPosts(currentPosts, selectedDate);
         } catch (error) {
           document.getElementById('error').textContent = error instanceof Error ? error.message : String(error);
@@ -3950,14 +4871,41 @@ ${renderDevConsoleStyles()}
       let editingTypeId = null;
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return language.toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function builtInPrompt(channelId) {
@@ -4897,13 +5845,36 @@ ${renderDevConsoleStyles()}
         const originalLanguage = String(currentArticle?.original?.language || 'en').trim().toLowerCase() || 'en';
         const options = [
           { language: originalLanguage, label: languageLabel(originalLanguage) },
-          { language: 'en', label: 'English' },
-          { language: 'es', label: 'Spanish' },
-          { language: 'ru', label: 'Russian' },
-          { language: 'id', label: 'Indonesian' },
-          { language: 'fil', label: 'Filipino' },
-          { language: 'vi', label: 'Vietnamese' },
-          { language: 'pt', label: 'Portuguese' },
+          { language: 'en', label: 'English (en)' },
+          { language: 'pt', label: 'Português (pt)' },
+          { language: 'id', label: 'Bahasa Indonesia (id)' },
+          { language: 'es', label: 'Español (es)' },
+          { language: 'vi', label: 'Tiếng Việt (vi)' },
+          { language: 'ur', label: 'اردو (ur)' },
+          { language: 'tl', label: 'Tagalog (tl)' },
+          { language: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { language: 'ha', label: 'Hausa (ha)' },
+          { language: 'pa', label: 'ਪੰਜਾਬੀ (pa)' },
+          { language: 'yo', label: 'Yorùbá (yo)' },
+          { language: 'ps', label: 'پښتو (ps)' },
+          { language: 'zu', label: 'isiZulu (zu)' },
+          { language: 'tr', label: 'Türkçe (tr)' },
+          { language: 'ar', label: 'العربية (ar)' },
+          { language: 'ru', label: 'Русский (ru)' },
+          { language: 'hi', label: 'हिन्दी (hi)' },
+          { language: 'ja', label: '日本語 (ja)' },
+          { language: 'ko', label: '한국어 (ko)' },
+          { language: 'fr', label: 'Français (fr)' },
+          { language: 'de', label: 'Deutsch (de)' },
+          { language: 'it', label: 'Italiano (it)' },
+          { language: 'nl', label: 'Nederlands (nl)' },
+          { language: 'ms', label: 'Bahasa Melayu (ms)' },
+          { language: 'th', label: 'ไทย (th)' },
+          { language: 'af', label: 'Afrikaans (af)' },
+          { language: 'xh', label: 'isiXhosa (xh)' },
+          { language: 'ig', label: 'Igbo (ig)' },
+          { language: 'pl', label: 'Polski (pl)' },
+          { language: 'ro', label: 'Română (ro)' },
         ];
 
         return options.filter(
@@ -4913,14 +5884,40 @@ ${renderDevConsoleStyles()}
 
       function languageLabel(language) {
         const normalized = String(language || '').toLowerCase();
-        if (normalized === 'ru') return 'Russian';
-        if (normalized === 'en') return 'English';
-        if (normalized === 'es') return 'Spanish';
-        if (normalized === 'id') return 'Indonesian';
-        if (normalized === 'fil') return 'Filipino';
-        if (normalized === 'vi') return 'Vietnamese';
-        if (normalized === 'pt') return 'Portuguese';
-        return normalized.toUpperCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
@@ -6173,14 +7170,41 @@ ${renderDevConsoleStyles()}
       }
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return String(language || '').toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function formatDateTime(value) {
@@ -6194,7 +7218,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatPlanTiming(plan) {
@@ -6897,14 +7921,41 @@ ${renderDevConsoleStyles()}
       }
 
       function languageLabel(language) {
-        if (language === 'ru') return 'Russian';
-        if (language === 'en') return 'English';
-        if (language === 'es') return 'Spanish';
-        if (language === 'id') return 'Indonesian';
-        if (language === 'fil') return 'Filipino';
-        if (language === 'vi') return 'Vietnamese';
-        if (language === 'pt') return 'Portuguese';
-        return String(language || '').toUpperCase();
+        const normalized = String(language || '').toLowerCase();
+        const labels = {
+          af: 'Afrikaans (af)',
+          ar: 'العربية (ar)',
+          de: 'Deutsch (de)',
+          en: 'English (en)',
+          es: 'Español (es)',
+          fil: 'Tagalog (tl)',
+          fr: 'Français (fr)',
+          ha: 'Hausa (ha)',
+          hi: 'हिन्दी (hi)',
+          id: 'Bahasa Indonesia (id)',
+          ig: 'Igbo (ig)',
+          it: 'Italiano (it)',
+          ja: '日本語 (ja)',
+          ko: '한국어 (ko)',
+          ms: 'Bahasa Melayu (ms)',
+          nl: 'Nederlands (nl)',
+          pa: 'ਪੰਜਾਬੀ (pa)',
+          pcm: 'Naijá / Pidgin (pcm)',
+          pl: 'Polski (pl)',
+          ps: 'پښتو (ps)',
+          pt: 'Português (pt)',
+          ro: 'Română (ro)',
+          ru: 'Русский (ru)',
+          th: 'ไทย (th)',
+          tl: 'Tagalog (tl)',
+          tr: 'Türkçe (tr)',
+          ur: 'اردو (ur)',
+          vi: 'Tiếng Việt (vi)',
+          xh: 'isiXhosa (xh)',
+          yo: 'Yorùbá (yo)',
+          zu: 'isiZulu (zu)',
+        };
+        return labels[normalized] || normalized.toUpperCase();
       }
 
       function formatDateTime(value) {
@@ -6918,7 +7969,7 @@ ${renderDevConsoleStyles()}
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        }).format(date);
+        }).format(date) + ' MSK';
       }
 
       function formatHumanDateTime(value) {
@@ -7058,7 +8109,9 @@ ${renderDevConsoleStyles()}
                     : publication.channelId === 'channel_x'
                       ? 'X post #' + String(publication.telegramMessageId)
                       : publication.channelId === 'channel_blog'
-                        ? 'Blog item marked as published'
+                        ? String(publication.telegramMessageId).startsWith('http')
+                          ? 'Blog published: ' + String(publication.telegramMessageId)
+                          : 'Blog published'
                       : 'Telegram message #' + String(publication.telegramMessageId),
                 ) +
               '</div>'
@@ -7619,9 +8672,9 @@ ${renderDevConsoleStyles()}
 
             <div id="aiPanel" class="ai-panel">
               <h3>AI fix selection</h3>
-              <p>Select a text fragment on the left, describe what should change, and DeepSeek will create a new adaptation version.</p>
+              <p>Select a text fragment on the left, describe what should change, and AI/OpenRouter will create a new adaptation version.</p>
               <div>
-                <strong>Instruction for DeepSeek</strong>
+                <strong>Instruction for AI/OpenRouter</strong>
                 <textarea id="aiPrompt" class="ai-prompt" placeholder="For example: make this idea softer, remove clickbait, shorten it, make the phrasing more precise"></textarea>
               </div>
               <div class="actions" style="margin-top:0;">
@@ -8021,7 +9074,7 @@ ${renderDevConsoleStyles()}
         }
 
         if (!instruction) {
-          setMessage('Write an instruction for DeepSeek first.', 'error');
+          setMessage('Write an instruction for AI/OpenRouter first.', 'error');
           return;
         }
 
@@ -8048,7 +9101,7 @@ ${renderDevConsoleStyles()}
           document.getElementById('content').value = result.adaptedContent;
           clearPersistentSelection();
           updateSelectionPreview();
-          setMessage('DeepSeek created a new intermediate version and made it current.', 'success');
+          setMessage('AI/OpenRouter created a new intermediate version and made it current.', 'success');
 
           if (window.opener && typeof window.opener.refreshArticle === 'function') {
             window.opener.refreshArticle().catch(() => {});

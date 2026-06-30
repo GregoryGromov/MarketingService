@@ -25,11 +25,14 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
   }
 
   async publishMessage(params: PublishDiscordMessageParams): Promise<PublishDiscordMessageResult> {
-    const webhookUrl = this.config.get<string>('DISCORD_WEBHOOK_URL');
+    const publishingTarget = params.publishingTarget ?? 'test';
+    const webhookEnvKey =
+      publishingTarget === 'production' ? 'DISCORD_PROD_WEBHOOK_URL' : 'DISCORD_WEBHOOK_URL';
+    const webhookUrl = this.config.get<string>(webhookEnvKey);
     const textLength = Array.from(params.text).length;
 
     if (!webhookUrl) {
-      throw new Error('DISCORD_WEBHOOK_URL is not configured');
+      throw new Error(`${webhookEnvKey} is not configured`);
     }
 
     if (textLength > DISCORD_CONTENT_CHARACTER_LIMIT) {
@@ -63,9 +66,14 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
       );
     }
 
+    const webhookMetadata =
+      payload?.guild_id && payload?.channel_id
+        ? null
+        : await this.fetchWebhookMetadata(webhookUrl);
+
     return {
-      guildId: payload?.guild_id ?? null,
-      channelId: payload?.channel_id ?? null,
+      guildId: payload?.guild_id ?? webhookMetadata?.guild_id ?? null,
+      channelId: payload?.channel_id ?? webhookMetadata?.channel_id ?? null,
       messageId: payload?.id ?? null,
     };
   }
@@ -91,6 +99,17 @@ export class DiscordWebhookPublisher extends DiscordPublisherPort {
     } catch {
       return null;
     }
+  }
+
+  private async fetchWebhookMetadata(webhookUrl: string): Promise<DiscordWebhookResponse | null> {
+    const response = await fetch(webhookUrl, { method: 'GET' });
+    const rawBody = await response.text();
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return this.parseResponseBody<DiscordWebhookResponse>(rawBody);
   }
 
   private describeErrorPayload(payload: DiscordWebhookResponse | null, rawBody: string): string {

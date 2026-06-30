@@ -5,6 +5,7 @@ export interface GenerateAdaptationParams {
   sourceLanguage: string;
   channelId: ChannelId;
   displayName: string;
+  model?: string | null;
   promptInstructions: string | null;
 }
 

@@ -28,7 +28,8 @@ export class ScheduleXPublicationHandler
       );
     }
 
-    if (adaptation.channelId !== 'channel_x') {
+    const channelId = normalizeScheduledChannelId(adaptation.channelId);
+    if (channelId !== 'channel_x') {
       throw new Error(
         `Adaptation ${adaptation.id} belongs to ${adaptation.channelId} and cannot be scheduled for X`,
       );
@@ -39,7 +40,7 @@ export class ScheduleXPublicationHandler
     const existing = await this.publicationRepository.findByLogicalKey(
       command.articleId,
       adaptation.id,
-      adaptation.channelId,
+      channelId,
       targetLanguage,
     );
 
@@ -53,7 +54,7 @@ export class ScheduleXPublicationHandler
     const publication = Publication.create({
       articleId: command.articleId,
       adaptationId: adaptation.id,
-      channelId: adaptation.channelId,
+      channelId,
       displayName: adaptation.displayName,
       targetLanguage,
       publishAt: command.publishAt,
@@ -76,4 +77,8 @@ export class ScheduleXPublicationHandler
       errorMessage: publication.errorMessage,
     });
   }
+}
+
+function normalizeScheduledChannelId(channelId: string): 'channel_x' | string {
+  return channelId === 'x' || channelId === 'twitter' ? 'channel_x' : channelId;
 }

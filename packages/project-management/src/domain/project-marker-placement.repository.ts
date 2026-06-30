@@ -16,7 +16,9 @@ export abstract class ProjectMarkerPlacementRepository {
     channelId: string,
     targetLanguage: string,
     publishAt: Date,
+    marketCountry?: string | null,
   ): Promise<ProjectMarkerPlacement | null>;
   abstract save(placement: ProjectMarkerPlacement): Promise<void>;
+  abstract deleteById(id: ProjectMarkerPlacementId): Promise<void>;
   abstract deleteByMarkerId(markerId: ProjectMarkerId): Promise<void>;
 }

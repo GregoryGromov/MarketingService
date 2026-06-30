@@ -1,11 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AiGatewayPort,
-  type AiGatewayQualityOutcome,
   type AiGatewayReason,
-  type AiGatewaySeverity,
-  type AiGatewaySourceValidationOutcome,
   type AiGatewaySuggestedFix,
   type AiQualityCheckResult,
   type BrandMemory,
@@ -19,11 +14,14 @@ import {
   type ValidateSourceLongreadParams,
   type ValidateSourceLongreadResult,
 } from '@marketing-service/project-management';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-interface DeepSeekChatCompletionResponse {
+interface ChatCompletionResponse {
   choices?: Array<{
     message?: {
       content?: string | null;
+      reasoning_content?: string | null;
     };
   }>;
   error?: {
@@ -44,7 +42,41 @@ class AiGatewayTransportError extends Error {
 
 class AiGatewayValidationError extends Error {}
 
+function createChatCompletionsUrl(baseUrl: string): string {
+  const normalized = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return new URL('chat/completions', normalized).toString();
+}
+
+function createHeaders(params: {
+  apiKey: string;
+  appTitle?: string | null;
+  referer?: string | null;
+}): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${params.apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (params.referer) {
+    headers['HTTP-Referer'] = params.referer;
+  }
+  if (params.appTitle) {
+    headers['X-Title'] = params.appTitle;
+  }
+  return headers;
+}
+
+function isOpenRouterBaseUrl(baseUrl: string): boolean {
+  return baseUrl.toLowerCase().includes('openrouter.ai');
+}
+
 type StructuredResultParser<TResult> = (payload: unknown) => TResult;
+type AiThinkingType = 'enabled' | 'disabled';
+
+interface AiCompletionOptions {
+  model?: string;
+  thinkingType?: AiThinkingType;
+  reasoningEffort?: 'high' | 'max';
+}
 
 const SOURCE_VALIDATION_OUTCOMES = ['passed', 'needs_review', 'blocked'] as const;
 const QUALITY_CHECK_OUTCOMES = ['passed', 'warning', 'failed', 'blocked'] as const;
@@ -54,7 +86,7 @@ const REASON_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 export class DeepSeekAiGateway extends AiGatewayPort {
   private readonly logger = new Logger(DeepSeekAiGateway.name);
 
-  constructor(private readonly config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     super();
   }
 
@@ -76,6 +108,7 @@ export class DeepSeekAiGateway extends AiGatewayPort {
       this.buildAdaptationSystemPrompt(params),
       this.buildAdaptationUserPrompt(params),
       0.7,
+      { model: params.model?.trim() || undefined },
     );
   }
 
@@ -135,10 +168,15 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     systemPrompt: string,
     userPrompt: string,
     temperature: number,
+    options: AiCompletionOptions = {},
   ): Promise<{ content: string }> {
     return this.executeWithRetry(operationName, async () => {
       const content = this.parseTextResult(
-        await this.requestCompletion(systemPrompt, userPrompt, temperature),
+        await this.requestCompletion(systemPrompt, userPrompt, temperature, {
+          model: options.model?.trim() || this.resolveAdaptationModel(),
+          thinkingType: this.resolveAdaptationThinkingType(),
+          reasoningEffort: this.resolveAdaptationReasoningEffort(),
+        }),
       );
 
       return { content };
@@ -207,54 +245,123 @@ export class DeepSeekAiGateway extends AiGatewayPort {
     systemPrompt: string,
     userPrompt: string,
     temperature: number,
+    options: AiCompletionOptions = {},
   ): Promise<string> {
-    const baseUrl = this.config.get<string>('DEEPSEEK_BASE_URL') ?? 'https://api.deepseek.com';
-    const apiKey = this.config.get<string>('DEEPSEEK_API_KEY');
-    const model = this.config.get<string>('DEEPSEEK_MODEL') ?? 'deepseek-v4-flash';
+    const openRouterApiKey = this.config.get<string>('OPENROUTER_API_KEY')?.trim();
+    const genericApiKey = this.config.get<string>('SEO_BRIEF_AI_API_KEY')?.trim();
+    const model =
+      options.model?.trim() ||
+      this.config.get<string>('OPENROUTER_MODEL')?.trim() ||
+      this.config.get<string>('DEEPSEEK_MODEL')?.trim() ||
+      (openRouterApiKey ? 'deepseek/deepseek-chat-v3-0324' : 'deepseek-v4-flash');
+    const requestedOpenRouterModel = model.includes('/');
+    const baseUrl =
+      this.config.get<string>('OPENROUTER_BASE_URL')?.trim() ||
+      (requestedOpenRouterModel
+        ? undefined
+        : this.config.get<string>('DEEPSEEK_BASE_URL')?.trim()) ||
+      (openRouterApiKey || genericApiKey || requestedOpenRouterModel
+        ? 'https://openrouter.ai/api/v1'
+        : 'https://api.deepseek.com');
+    const apiKey =
+      openRouterApiKey ||
+      genericApiKey ||
+      (requestedOpenRouterModel ? undefined : this.config.get<string>('DEEPSEEK_API_KEY')?.trim());
+    const thinkingType = options.thinkingType ?? 'disabled';
+    const openRouter = isOpenRouterBaseUrl(baseUrl);
 
     if (!apiKey) {
-      throw new AiGatewayConfigurationError('DEEPSEEK_API_KEY is not configured');
+      throw new AiGatewayConfigurationError(
+        'OPENROUTER_API_KEY or DEEPSEEK_API_KEY is not configured',
+      );
     }
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const body: Record<string, unknown> = {
+      model,
+      stream: false,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+    };
+
+    if (!openRouter) {
+      body.thinking = { type: thinkingType };
+    }
+
+    if (!openRouter && thinkingType === 'enabled') {
+      body.reasoning_effort = options.reasoningEffort ?? 'max';
+    } else {
+      body.temperature = temperature;
+    }
+
+    const response = await fetch(createChatCompletionsUrl(baseUrl), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        thinking: { type: 'disabled' },
-        temperature,
-        stream: false,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
+      headers: createHeaders({
+        apiKey,
+        appTitle: this.config.get<string>('OPENROUTER_APP_TITLE')?.trim(),
+        referer: this.config.get<string>('OPENROUTER_HTTP_REFERER')?.trim(),
       }),
+      body: JSON.stringify(body),
     });
 
-    const payload = (await response.json()) as DeepSeekChatCompletionResponse;
+    const payload = (await response.json()) as ChatCompletionResponse;
 
     if (!response.ok) {
       throw new AiGatewayTransportError(
-        payload.error?.message ?? `DeepSeek request failed with ${response.status}`,
+        payload.error?.message ?? `AI request failed with ${response.status}`,
         response.status,
       );
     }
 
     const content = payload.choices?.[0]?.message?.content?.trim();
     if (!content) {
-      throw new AiGatewayValidationError('DeepSeek returned empty content');
+      throw new AiGatewayValidationError('AI provider returned empty content');
     }
 
     return content;
+  }
+
+  private resolveAdaptationModel(): string {
+    const openRouterApiKey = this.config.get<string>('OPENROUTER_API_KEY')?.trim();
+    return (
+      this.config.get<string>('OPENROUTER_ADAPTATION_MODEL')?.trim() ||
+      this.config.get<string>('OPENROUTER_CONTENT_MODEL')?.trim() ||
+      this.config.get<string>('OPENROUTER_MODEL')?.trim() ||
+      this.config.get<string>('DEEPSEEK_ADAPTATION_MODEL')?.trim() ||
+      this.config.get<string>('DEEPSEEK_CONTENT_MODEL')?.trim() ||
+      (openRouterApiKey ? 'deepseek/deepseek-chat-v3-0324' : 'deepseek-v4-pro')
+    );
+  }
+
+  private resolveAdaptationThinkingType(): AiThinkingType {
+    const value = (
+      this.config.get<string>('DEEPSEEK_ADAPTATION_THINKING') ??
+      this.config.get<string>('DEEPSEEK_CONTENT_THINKING') ??
+      'enabled'
+    )
+      .trim()
+      .toLowerCase();
+
+    return value === 'disabled' ? 'disabled' : 'enabled';
+  }
+
+  private resolveAdaptationReasoningEffort(): 'high' | 'max' {
+    const value = (
+      this.config.get<string>('DEEPSEEK_ADAPTATION_REASONING_EFFORT') ??
+      this.config.get<string>('DEEPSEEK_CONTENT_REASONING_EFFORT') ??
+      'max'
+    )
+      .trim()
+      .toLowerCase();
+
+    return value === 'high' ? 'high' : 'max';
   }
 
   private parseTextResult(rawContent: string): string {

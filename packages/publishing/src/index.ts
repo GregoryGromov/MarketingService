@@ -4,6 +4,7 @@ export {
   Publication,
   type PublicationId,
   type PublicationProps,
+  type PublicationPublishingTarget,
   type PublicationStatus,
 } from './domain/publication.aggregate.js';
 export { PublicationRepository } from './domain/publication.repository.js';
@@ -15,9 +16,15 @@ export {
 } from './domain/publication-plan.aggregate.js';
 export { PublicationPlanRepository } from './domain/publication-plan.repository.js';
 export {
+  BlogPublisherPort,
+  type PublishBlogArticleParams,
+  type PublishBlogArticleResult,
+  type PublishBlogArticleTranslation,
+} from './ports/blog-publisher.port.js';
+export {
   PublicationOutcomePort,
-  type SyncPublishingLinkRemovedParams,
   type SyncPublicationOutcomeParams,
+  type SyncPublishingLinkRemovedParams,
 } from './ports/publication-outcome.port.js';
 export { PublishingModule } from './publishing.module.js';
 export { CancelPlannedPublicationCommand } from './use-cases/cancel-planned-publication/cancel-planned-publication.command.js';

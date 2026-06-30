@@ -14,40 +14,32 @@ import {
 import {
   Inject,
   Injectable,
-  OnApplicationBootstrap,
-  OnModuleDestroy,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandBus } from '@nestjs/cqrs';
-import { Job, Worker, type RedisOptions } from 'bullmq';
+import { type Job, Worker } from 'bullmq';
 import { Logger } from 'nestjs-pino';
-
-function buildRedisConnection(redisUrl: string): RedisOptions {
-  const parsed = new URL(redisUrl);
-  const database = parsed.pathname ? Number.parseInt(parsed.pathname.slice(1) || '0', 10) : 0;
-
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number.parseInt(parsed.port, 10) : 6379,
-    username: parsed.username || undefined,
-    password: parsed.password || undefined,
-    db: Number.isNaN(database) ? 0 : database,
-    tls: parsed.protocol === 'rediss:' ? {} : undefined,
-    maxRetriesPerRequest: null,
-  };
-}
+import {
+  createThrottledConnectionErrorLogger,
+  waitForRedisReady,
+} from './redis-worker-connection.js';
 
 @Injectable()
-export class CampaignProductionWorker
-  implements OnApplicationBootstrap, OnModuleDestroy
-{
+export class CampaignProductionWorker implements OnApplicationBootstrap, OnModuleDestroy {
   private worker: Worker<CampaignProductionJobPayload> | null = null;
 
   constructor(
+    @Inject(ConfigService)
     private readonly config: ConfigService,
+    @Inject(Logger)
     private readonly logger: Logger,
+    @Inject(StartCampaignProductionExecutor)
     private readonly sourceCheckExecutor: StartCampaignProductionExecutor,
+    @Inject(RunCampaignStage1Executor)
     private readonly stage1Executor: RunCampaignStage1Executor,
+    @Inject(RunCampaignStage2Executor)
     private readonly stage2Executor: RunCampaignStage2Executor,
     @Inject(CommandBus)
     private readonly commandBus: CommandBus,
@@ -58,11 +50,13 @@ export class CampaignProductionWorker
       return;
     }
 
+    const redisUrl = this.config.getOrThrow<string>('REDIS_URL');
+    const connection = await waitForRedisReady(redisUrl, CAMPAIGN_PRODUCTION_QUEUE, this.logger);
     this.worker = new Worker<CampaignProductionJobPayload>(
       CAMPAIGN_PRODUCTION_QUEUE,
       async (job) => this.processJob(job),
       {
-        connection: buildRedisConnection(this.config.getOrThrow<string>('REDIS_URL')),
+        connection,
         concurrency: 1,
       },
     );
@@ -78,6 +72,10 @@ export class CampaignProductionWorker
         `Campaign production job ${job?.name ?? 'unknown'} failed for campaign ${job?.data?.campaignId ?? 'unknown'}`,
       );
     });
+    this.worker.on(
+      'error',
+      createThrottledConnectionErrorLogger(CAMPAIGN_PRODUCTION_QUEUE, this.logger),
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -120,10 +118,7 @@ export class CampaignProductionWorker
   }
 
   private async processStage1(payload: CampaignProductionJobPayload): Promise<void> {
-    const result = await this.stage1Executor.execute(
-      payload.campaignId,
-      payload.workflowRunId,
-    );
+    const result = await this.stage1Executor.execute(payload.campaignId, payload.workflowRunId);
 
     if (result.outcome !== 'completed') {
       this.logger.log(
@@ -144,10 +139,7 @@ export class CampaignProductionWorker
   }
 
   private async processStage2(payload: CampaignProductionJobPayload): Promise<void> {
-    const result = await this.stage2Executor.execute(
-      payload.campaignId,
-      payload.workflowRunId,
-    );
+    const result = await this.stage2Executor.execute(payload.campaignId, payload.workflowRunId);
 
     if (result.outcome !== 'completed') {
       this.logger.log(

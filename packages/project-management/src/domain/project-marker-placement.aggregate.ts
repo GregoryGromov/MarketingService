@@ -14,6 +14,8 @@ export interface CreateProjectMarkerPlacementParams {
   projectId: ProjectId;
   channelId: string;
   targetLanguage: string;
+  marketCountry?: string | null;
+  marketLocationName?: string | null;
   publishAt: Date;
 }
 
@@ -23,6 +25,8 @@ export interface ProjectMarkerPlacementProps {
   projectId: ProjectId;
   channelId: string;
   targetLanguage: string;
+  marketCountry: string | null;
+  marketLocationName: string | null;
   publishAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +39,8 @@ export class ProjectMarkerPlacement extends AggregateRoot {
     public readonly projectId: ProjectId,
     public readonly channelId: string,
     public readonly targetLanguage: string,
+    public readonly marketCountry: string | null,
+    public readonly marketLocationName: string | null,
     public readonly publishAt: Date,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
@@ -50,6 +56,8 @@ export class ProjectMarkerPlacement extends AggregateRoot {
       params.projectId,
       params.channelId,
       params.targetLanguage.trim().toLowerCase(),
+      normalizeOptionalText(params.marketCountry),
+      normalizeOptionalText(params.marketLocationName ?? params.marketCountry),
       params.publishAt,
       now,
       now,
@@ -72,9 +80,16 @@ export class ProjectMarkerPlacement extends AggregateRoot {
       props.projectId,
       props.channelId,
       props.targetLanguage,
+      props.marketCountry,
+      props.marketLocationName,
       props.publishAt,
       props.createdAt,
       props.updatedAt,
     );
   }
+}
+
+function normalizeOptionalText(value?: string | null): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }

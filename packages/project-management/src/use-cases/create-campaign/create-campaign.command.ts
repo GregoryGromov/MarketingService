@@ -17,5 +17,6 @@ export class CreateCampaignCommand {
     public readonly sourceLanguage?: string,
     public readonly extraInstructions?: string | null,
     public readonly plannedPublicationOverrides?: CreateCampaignPlannedPublicationOverride[] | null,
+    public readonly publishingTarget?: 'test' | 'production',
   ) {}
 }

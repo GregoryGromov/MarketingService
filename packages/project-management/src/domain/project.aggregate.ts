@@ -13,6 +13,31 @@ export interface BrandMemoryDocument {
   notes: string | null;
 }
 
+export interface SeoCompetitorsMemory {
+  mustInclude: string[];
+  optional: string[];
+  exclude: string[];
+}
+
+export interface SeoCompetitorKeywordMapMemory {
+  generatedAt: string;
+  nextRefreshAt?: string | null;
+  refreshIntervalHours?: number | null;
+  competitorKeywordsJsonId: string;
+  market: {
+    country: string;
+    language: string;
+    locationName: string | null;
+  };
+  targets: string[];
+  targetCount: number;
+  itemCount: number;
+  deduplicatedKeywordCount: number;
+  targetResults: unknown[];
+  items: unknown[];
+  allKeywordsFlat: unknown[];
+}
+
 export interface AdaptationPromptRules {
   generalInstructions: string | null;
   telegram: string | null;
@@ -33,6 +58,11 @@ export interface BrandMemory {
   brandName: string | null;
   productDescription: string | null;
   targetAudience: string | null;
+  targetAudiences: string[];
+  keyMessage: string | null;
+  defaultCta: string | null;
+  brandConstraints: string[];
+  claimsConstraints: string[];
   approvedFacts: string[];
   forbiddenClaims: string[];
   glossary: Record<string, string>;
@@ -40,6 +70,8 @@ export interface BrandMemory {
   requiredPhrases: string[];
   brandDocs: BrandMemoryDocument[];
   adaptationPromptRules: AdaptationPromptRules;
+  seoCompetitors: SeoCompetitorsMemory;
+  seoCompetitorKeywordMap: SeoCompetitorKeywordMapMemory | null;
 }
 
 export interface CreateProjectParams {
@@ -65,9 +97,17 @@ function normalizeStringList(values?: string[] | null): string[] {
     return [];
   }
 
-  return values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  return values.map((value) => value.trim()).filter((value) => value.length > 0);
+}
+
+function normalizeTargetAudiences(
+  targetAudiences?: string[] | null,
+  legacyTargetAudience?: string | null,
+): string[] {
+  return normalizeStringList([
+    ...(targetAudiences ?? []),
+    ...(legacyTargetAudience ? [legacyTargetAudience] : []),
+  ]).filter((value, index, values) => values.indexOf(value) === index);
 }
 
 function normalizeGlossary(glossary?: Record<string, string> | null): Record<string, string> {
@@ -96,6 +136,53 @@ function normalizeBrandDocs(docs?: BrandMemoryDocument[] | null): BrandMemoryDoc
     .filter((doc) => doc.title.length > 0);
 }
 
+function normalizeSeoCompetitors(
+  competitors?: Partial<SeoCompetitorsMemory> | null,
+): SeoCompetitorsMemory {
+  return {
+    mustInclude: normalizeStringList(competitors?.mustInclude),
+    optional: normalizeStringList(competitors?.optional),
+    exclude: normalizeStringList(competitors?.exclude),
+  };
+}
+
+function normalizeSeoCompetitorKeywordMap(
+  map?: Partial<SeoCompetitorKeywordMapMemory> | null,
+): SeoCompetitorKeywordMapMemory | null {
+  if (!map) {
+    return null;
+  }
+
+  const generatedAt = normalizeText(map.generatedAt);
+  const competitorKeywordsJsonId = normalizeText(map.competitorKeywordsJsonId);
+  if (!generatedAt || !competitorKeywordsJsonId) {
+    return null;
+  }
+
+  return {
+    generatedAt,
+    nextRefreshAt: normalizeText(map.nextRefreshAt),
+    refreshIntervalHours: Number.isFinite(map.refreshIntervalHours)
+      ? Number(map.refreshIntervalHours)
+      : null,
+    competitorKeywordsJsonId,
+    market: {
+      country: normalizeText(map.market?.country) ?? '',
+      language: normalizeText(map.market?.language) ?? '',
+      locationName: normalizeText(map.market?.locationName),
+    },
+    targets: normalizeStringList(map.targets),
+    targetCount: Number.isFinite(map.targetCount) ? Number(map.targetCount) : 0,
+    itemCount: Number.isFinite(map.itemCount) ? Number(map.itemCount) : 0,
+    deduplicatedKeywordCount: Number.isFinite(map.deduplicatedKeywordCount)
+      ? Number(map.deduplicatedKeywordCount)
+      : 0,
+    targetResults: Array.isArray(map.targetResults) ? map.targetResults : [],
+    items: Array.isArray(map.items) ? map.items : [],
+    allKeywordsFlat: Array.isArray(map.allKeywordsFlat) ? map.allKeywordsFlat : [],
+  };
+}
+
 function normalizeAdaptationPromptRules(
   rules?: Partial<AdaptationPromptRules> | null,
 ): AdaptationPromptRules {
@@ -109,9 +196,7 @@ function normalizeAdaptationPromptRules(
   };
 }
 
-function normalizeMediaAspectRatios(
-  ratios?: Partial<MediaAspectRatios> | null,
-): MediaAspectRatios {
+function normalizeMediaAspectRatios(ratios?: Partial<MediaAspectRatios> | null): MediaAspectRatios {
   return {
     telegram: normalizeText(ratios?.telegram) ?? '1:1',
     x: normalizeText(ratios?.x) ?? '16:9',
@@ -121,19 +206,28 @@ function normalizeMediaAspectRatios(
 }
 
 function normalizeBrandMemory(brandMemory?: Partial<BrandMemory> | null): BrandMemory {
+  const targetAudiences = normalizeTargetAudiences(
+    brandMemory?.targetAudiences,
+    brandMemory?.targetAudience,
+  );
   return {
     brandName: normalizeText(brandMemory?.brandName),
     productDescription: normalizeText(brandMemory?.productDescription),
-    targetAudience: normalizeText(brandMemory?.targetAudience),
+    targetAudience: targetAudiences[0] ?? null,
+    targetAudiences,
+    keyMessage: normalizeText(brandMemory?.keyMessage),
+    defaultCta: normalizeText(brandMemory?.defaultCta),
+    brandConstraints: normalizeStringList(brandMemory?.brandConstraints),
+    claimsConstraints: normalizeStringList(brandMemory?.claimsConstraints),
     approvedFacts: normalizeStringList(brandMemory?.approvedFacts),
     forbiddenClaims: normalizeStringList(brandMemory?.forbiddenClaims),
     glossary: normalizeGlossary(brandMemory?.glossary),
     bannedPhrases: normalizeStringList(brandMemory?.bannedPhrases),
     requiredPhrases: normalizeStringList(brandMemory?.requiredPhrases),
     brandDocs: normalizeBrandDocs(brandMemory?.brandDocs),
-    adaptationPromptRules: normalizeAdaptationPromptRules(
-      brandMemory?.adaptationPromptRules,
-    ),
+    adaptationPromptRules: normalizeAdaptationPromptRules(brandMemory?.adaptationPromptRules),
+    seoCompetitors: normalizeSeoCompetitors(brandMemory?.seoCompetitors),
+    seoCompetitorKeywordMap: normalizeSeoCompetitorKeywordMap(brandMemory?.seoCompetitorKeywordMap),
   };
 }
 

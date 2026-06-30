@@ -472,7 +472,7 @@ function renderCampaignUiStyles(): string {
         min-height: 360px;
       }
       .form-grid.create-campaign-form-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         align-items: end;
       }
       .form-grid.create-campaign-form-grid .full {
@@ -957,7 +957,8 @@ function renderSharedClientScript(): string {
       }
 
       const MOSCOW_TIME_ZONE = 'Europe/Moscow';
-      const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000;
+      const MOSCOW_OFFSET_HOURS = 3;
+      const MOSCOW_OFFSET_MS = MOSCOW_OFFSET_HOURS * 60 * 60 * 1000;
 
       function toggleDevOverlay(forceOpen) {
         const overlay = document.getElementById('devOverlay');
@@ -973,7 +974,24 @@ function renderSharedClientScript(): string {
       });
 
       async function request(url, options = {}, config = {}) {
-        const res = await fetch(url, options);
+        const method = String(options.method || 'GET').toUpperCase();
+        const startedAt = Date.now();
+        let res;
+        try {
+          res = await fetch(url, options);
+        } catch (error) {
+          const networkLog = {
+            ok: false,
+            type: 'network_error',
+            method,
+            url,
+            durationMs: Date.now() - startedAt,
+            error: String(error),
+          };
+          setOutput(networkLog);
+          throw error;
+        }
+
         const text = await res.text();
         let payload;
         try {
@@ -982,15 +1000,71 @@ function renderSharedClientScript(): string {
           payload = text;
         }
 
+        const responseLog = {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+          method,
+          url,
+          durationMs: Date.now() - startedAt,
+          payload,
+        };
+
         if (config.renderResponse !== false) {
-          setOutput({ status: res.status, ok: res.ok, url, payload });
+          setOutput(responseLog);
         }
 
         if (!res.ok) {
-          throw new Error(payload?.message || 'Request failed');
+          setOutput({
+            ...responseLog,
+            requestBody: summarizeRequestBody(options.body),
+          });
+          throw new Error(extractRequestErrorMessage(payload, res));
         }
 
         return payload;
+      }
+
+      function summarizeRequestBody(body) {
+        if (!body || typeof body !== 'string') {
+          return null;
+        }
+        try {
+          const parsed = JSON.parse(body);
+          if (typeof parsed.content === 'string') {
+            parsed.contentPreview = parsed.content.slice(0, 400);
+            parsed.contentLength = parsed.content.length;
+            delete parsed.content;
+          }
+          if (typeof parsed.sourceImageDataUrl === 'string') {
+            parsed.sourceImageDataUrl = '[data-url omitted, length=' + parsed.sourceImageDataUrl.length + ']';
+          }
+          return parsed;
+        } catch {
+          return body.length > 1000 ? body.slice(0, 1000) + '...[truncated]' : body;
+        }
+      }
+
+      function extractRequestErrorMessage(payload, response) {
+        const fallback = response
+          ? 'Request failed: HTTP ' + response.status + ' ' + response.statusText
+          : 'Request failed';
+        if (!payload) {
+          return fallback;
+        }
+        if (typeof payload === 'string') {
+          return payload || fallback;
+        }
+        if (Array.isArray(payload.message)) {
+          return payload.message.join('; ') || fallback;
+        }
+        if (typeof payload.message === 'string') {
+          return payload.message;
+        }
+        if (typeof payload.error === 'string') {
+          return payload.error;
+        }
+        return JSON.stringify(payload);
       }
 
       function readFileAsDataUrl(file) {
@@ -1000,6 +1074,73 @@ function renderSharedClientScript(): string {
           reader.onerror = () => reject(reader.error || new Error('File read failed'));
           reader.readAsDataURL(file);
         });
+      }
+
+      function loadImageFromDataUrl(dataUrl) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error('Source image could not be decoded.'));
+          image.src = dataUrl;
+        });
+      }
+
+      function canvasToJpegDataUrl(canvas, quality) {
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Source image could not be compressed.'));
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result || ''));
+              reader.onerror = () => reject(reader.error || new Error('Compressed image read failed'));
+              reader.readAsDataURL(blob);
+            },
+            'image/jpeg',
+            quality,
+          );
+        });
+      }
+
+      function estimateDataUrlBytes(dataUrl) {
+        const commaIndex = dataUrl.indexOf(',');
+        const payload = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+        return Math.floor((payload.length * 3) / 4);
+      }
+
+      async function prepareSourceImageDataUrl(file) {
+        const maxBytes = 9.5 * 1024 * 1024;
+        const maxSide = 2400;
+        const sourceDataUrl = await readFileAsDataUrl(file);
+        const image = await loadImageFromDataUrl(sourceDataUrl);
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Source image could not be prepared.');
+        }
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+
+        let quality = 0.88;
+        let compressedDataUrl = await canvasToJpegDataUrl(canvas, quality);
+        while (estimateDataUrlBytes(compressedDataUrl) > maxBytes && quality > 0.55) {
+          quality -= 0.08;
+          compressedDataUrl = await canvasToJpegDataUrl(canvas, quality);
+        }
+
+        if (estimateDataUrlBytes(compressedDataUrl) > maxBytes) {
+          throw new Error('Source image is too large after compression. Use a smaller image.');
+        }
+
+        return compressedDataUrl;
       }
 
       function toMoscowShiftedDate(value) {
@@ -1030,7 +1171,7 @@ function renderSharedClientScript(): string {
         if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
           return null;
         }
-        return new Date(Date.UTC(year, month - 1, day, hours - 3, minutes, 0, 0)).toISOString();
+        return new Date(Date.UTC(year, month - 1, day, hours - MOSCOW_OFFSET_HOURS, minutes, 0, 0)).toISOString();
       }
 
       function formatDateTime(value) {
@@ -1174,9 +1315,10 @@ function renderCampaignUiPage(params: {
   script: string;
   showHero?: boolean;
 }): string {
-  const heroMarkup = params.showHero === false
-    ? ''
-    : `
+  const heroMarkup =
+    params.showHero === false
+      ? ''
+      : `
       <section class="hero">
         <div class="hero-copy">
           <span class="eyebrow">${escapeHtml(params.eyebrow)}</span>
@@ -1235,8 +1377,7 @@ export class CampaignTestUiController {
       title: 'Marketing Service - Campaigns',
       eyebrow: 'Campaigns',
       heading: 'Campaigns',
-      summary:
-        'Project campaign workspace.',
+      summary: 'Project campaign workspace.',
       showHero: false,
       body: `
         <section class="panel stack">
@@ -1531,6 +1672,13 @@ export class CampaignTestUiController {
                 Preset
                 <select id="presetId" required></select>
               </label>
+              <label class="field">
+                Publishing destination
+                <select id="publishingTarget" required>
+                  <option value="test">Test accounts</option>
+                  <option value="production">Production accounts</option>
+                </select>
+              </label>
             </div>
 
             <div class="section-copy">
@@ -1578,6 +1726,11 @@ export class CampaignTestUiController {
               Source image
               <input id="sourceImage" type="file" accept="image/png,image/jpeg,image/webp" />
               <span id="sourceImageNote" class="source-image-note">Optional. The image will be cropped automatically for Telegram, X, Discord, and Blog.</span>
+            </label>
+            <label class="field">
+              Blog cover image URL
+              <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+              <span class="source-image-note">Optional. If set, Blog publishing uses this HTTPS image instead of BLOG_DEFAULT_COVER_IMAGE_URL.</span>
             </label>
           </form>
         </section>
@@ -1711,7 +1864,37 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
+        const languageOptions = [
+          { value: 'en', label: 'English (en)' },
+          { value: 'pt', label: 'Português (pt)' },
+          { value: 'id', label: 'Bahasa Indonesia (id)' },
+          { value: 'es', label: 'Español (es)' },
+          { value: 'vi', label: 'Tiếng Việt (vi)' },
+          { value: 'ur', label: 'اردو (ur)' },
+          { value: 'tl', label: 'Tagalog (tl)' },
+          { value: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { value: 'ha', label: 'Hausa (ha)' },
+          { value: 'yo', label: 'Yorùbá (yo)' },
+          { value: 'ps', label: 'پښتو (ps)' },
+          { value: 'zu', label: 'isiZulu (zu)' },
+          { value: 'tr', label: 'Türkçe (tr)' },
+          { value: 'ar', label: 'العربية (ar)' },
+          { value: 'ru', label: 'Русский (ru)' },
+          { value: 'hi', label: 'हिन्दी (hi)' },
+          { value: 'ja', label: '日本語 (ja)' },
+          { value: 'ko', label: '한국어 (ko)' },
+          { value: 'fr', label: 'Français (fr)' },
+          { value: 'de', label: 'Deutsch (de)' },
+          { value: 'it', label: 'Italiano (it)' },
+          { value: 'nl', label: 'Nederlands (nl)' },
+          { value: 'ms', label: 'Bahasa Melayu (ms)' },
+          { value: 'th', label: 'ไทย (th)' },
+          { value: 'af', label: 'Afrikaans (af)' },
+          { value: 'xh', label: 'isiXhosa (xh)' },
+          { value: 'ig', label: 'Igbo (ig)' },
+          { value: 'pl', label: 'Polski (pl)' },
+          { value: 'ro', label: 'Română (ro)' },
+        ];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
         const emptyPresetId = '__empty__';
@@ -2421,6 +2604,10 @@ export class CampaignTestUiController {
           if (sourceImageNote && currentArticle?.defaultCoverUrl) {
             sourceImageNote.textContent = 'Image attached. Cropped variants will be used for social publishing.';
           }
+          const blogCoverImageUrlInput = document.getElementById('blogCoverImageUrl');
+          if (blogCoverImageUrlInput && currentArticle?.defaultCoverUrl?.startsWith('https://')) {
+            blogCoverImageUrlInput.value = currentArticle.defaultCoverUrl;
+          }
 
           return currentArticle;
         }
@@ -2445,17 +2632,19 @@ export class CampaignTestUiController {
         }
 
         function normalizePublicationLanguage(value) {
-          const normalizedValue = String(value || 'EN').toUpperCase();
-          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+          const normalizedValue = String(value || 'en').trim().toLowerCase();
+          const aliases = { fil: 'tl', english: 'en', russian: 'ru' };
+          const nextValue = aliases[normalizedValue] || normalizedValue;
+          return languageOptions.some((language) => language.value === nextValue) ? nextValue : 'en';
         }
 
         function buildLanguageSelectOptions(selectedValue) {
           const normalizedValue = normalizePublicationLanguage(selectedValue);
           return languageOptions
             .map((language) =>
-              '<option value="' + escapeHtml(language) + '"' +
-              (language === normalizedValue ? ' selected' : '') +
-              '>' + escapeHtml(language) + '</option>'
+              '<option value="' + escapeHtml(language.value) + '"' +
+              (language.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language.label) + '</option>'
             )
             .join('');
         }
@@ -2592,7 +2781,7 @@ export class CampaignTestUiController {
             dayOffset: '0',
             localTime: '09:00',
             channel: 'channel_telegram',
-            language: 'EN',
+            language: 'en',
             publicationType: normalizePublicationTypeValue('channel_telegram', null),
             style: 'default',
           };
@@ -2819,6 +3008,7 @@ export class CampaignTestUiController {
                   document.getElementById('startDate').value,
                   '00:00',
                 ),
+                publishingTarget: document.getElementById('publishingTarget')?.value || 'test',
                 extraInstructions: null,
               };
               if (shouldSendPlanOverrides) {
@@ -2896,11 +3086,12 @@ export class CampaignTestUiController {
             }
             const sourceImageInput = document.getElementById('sourceImage');
             const sourceImageFile = sourceImageInput?.files?.[0] || null;
+            const coverImageUrl = document.getElementById('blogCoverImageUrl')?.value?.trim() || null;
 
             setPrimaryButtonBusy('longreadNext', true, 'Starting AI...', 'Next');
             try {
               const sourceImageDataUrl = sourceImageFile
-                ? await readFileAsDataUrl(sourceImageFile)
+                ? await prepareSourceImageDataUrl(sourceImageFile)
                 : null;
               await request(
                 '/campaigns/' + encodeURIComponent(createdCampaignId) + '/source',
@@ -2910,6 +3101,7 @@ export class CampaignTestUiController {
                   body: JSON.stringify({
                     content: sourceContent,
                     language: getSelectedSourceLanguage(),
+                    coverImageUrl,
                     sourceImageDataUrl,
                   }),
                 },
@@ -3079,7 +3271,37 @@ export class CampaignTestUiController {
           ['channel_discord', 'Discord'],
           ['channel_blog', 'Blog'],
         ];
-        const languageOptions = ['RU', 'EN', 'ES', 'ID', 'FIL', 'VI', 'PT'];
+        const languageOptions = [
+          { value: 'en', label: 'English (en)' },
+          { value: 'pt', label: 'Português (pt)' },
+          { value: 'id', label: 'Bahasa Indonesia (id)' },
+          { value: 'es', label: 'Español (es)' },
+          { value: 'vi', label: 'Tiếng Việt (vi)' },
+          { value: 'ur', label: 'اردو (ur)' },
+          { value: 'tl', label: 'Tagalog (tl)' },
+          { value: 'pcm', label: 'Naijá / Pidgin (pcm)' },
+          { value: 'ha', label: 'Hausa (ha)' },
+          { value: 'yo', label: 'Yorùbá (yo)' },
+          { value: 'ps', label: 'پښتو (ps)' },
+          { value: 'zu', label: 'isiZulu (zu)' },
+          { value: 'tr', label: 'Türkçe (tr)' },
+          { value: 'ar', label: 'العربية (ar)' },
+          { value: 'ru', label: 'Русский (ru)' },
+          { value: 'hi', label: 'हिन्दी (hi)' },
+          { value: 'ja', label: '日本語 (ja)' },
+          { value: 'ko', label: '한국어 (ko)' },
+          { value: 'fr', label: 'Français (fr)' },
+          { value: 'de', label: 'Deutsch (de)' },
+          { value: 'it', label: 'Italiano (it)' },
+          { value: 'nl', label: 'Nederlands (nl)' },
+          { value: 'ms', label: 'Bahasa Melayu (ms)' },
+          { value: 'th', label: 'ไทย (th)' },
+          { value: 'af', label: 'Afrikaans (af)' },
+          { value: 'xh', label: 'isiXhosa (xh)' },
+          { value: 'ig', label: 'Igbo (ig)' },
+          { value: 'pl', label: 'Polski (pl)' },
+          { value: 'ro', label: 'Română (ro)' },
+        ];
         const publicationTypeOptionsByChannel = ${renderPublicationTypeOptionsByChannel()} || {};
         const defaultPublicationTypeOptions = [{ value: 'default', label: 'Default' }];
 
@@ -3094,17 +3316,19 @@ export class CampaignTestUiController {
         }
 
         function normalizePublicationLanguage(value) {
-          const normalizedValue = String(value || 'EN').toUpperCase();
-          return languageOptions.includes(normalizedValue) ? normalizedValue : 'EN';
+          const normalizedValue = String(value || 'en').trim().toLowerCase();
+          const aliases = { fil: 'tl', english: 'en', russian: 'ru' };
+          const nextValue = aliases[normalizedValue] || normalizedValue;
+          return languageOptions.some((language) => language.value === nextValue) ? nextValue : 'en';
         }
 
         function buildLanguageSelectOptions(selectedValue) {
           const normalizedValue = normalizePublicationLanguage(selectedValue);
           return languageOptions
             .map((language) =>
-              '<option value="' + escapeHtml(language) + '"' +
-              (language === normalizedValue ? ' selected' : '') +
-              '>' + escapeHtml(language) + '</option>'
+              '<option value="' + escapeHtml(language.value) + '"' +
+              (language.value === normalizedValue ? ' selected' : '') +
+              '>' + escapeHtml(language.label) + '</option>'
             )
             .join('');
         }
@@ -3140,7 +3364,7 @@ export class CampaignTestUiController {
             dayOffset: '0',
             localTime: '09:00',
             channel: 'channel_telegram',
-            language: 'EN',
+            language: 'en',
             publicationType: normalizePublicationTypeValue('channel_telegram', null),
             style: 'default',
           };
@@ -3422,12 +3646,28 @@ export class CampaignTestUiController {
                 <input id="brandName" type="text" maxlength="120" />
               </label>
               <label class="field">
-                Target audience
-                <input id="targetAudience" type="text" maxlength="2000" />
+                Target audiences
+                <textarea id="targetAudiences" placeholder="One audience per line"></textarea>
+              </label>
+              <label class="field">
+                Default CTA
+                <input id="defaultCta" type="text" maxlength="1000" placeholder="Default action for SEO briefs" />
               </label>
               <label class="field full">
                 Product description
                 <textarea id="productDescription"></textarea>
+              </label>
+              <label class="field full">
+                Key message
+                <textarea id="keyMessage" placeholder="Persistent product message for SEO briefs"></textarea>
+              </label>
+              <label class="field">
+                SEO brand constraints
+                <textarea id="brandConstraints" placeholder="One constraint per line"></textarea>
+              </label>
+              <label class="field">
+                SEO claims / compliance constraints
+                <textarea id="claimsConstraints" placeholder="One constraint per line"></textarea>
               </label>
               <label class="field">
                 Approved facts
@@ -3453,6 +3693,34 @@ export class CampaignTestUiController {
                 Brand docs
                 <textarea id="brandDocs" placeholder="One line per document: Title | URL | Notes"></textarea>
               </label>
+              <label class="field full">
+                SEO competitor domains to include
+                <textarea id="seoCompetitorsMustInclude" placeholder="One domain per line, for example binance.com"></textarea>
+              </label>
+              <label class="field">
+                Optional SEO competitor domains
+                <textarea id="seoCompetitorsOptional" placeholder="One domain per line"></textarea>
+              </label>
+              <label class="field">
+                SEO competitors / sources to exclude
+                <textarea id="seoCompetitorsExclude" placeholder="One domain or source per line"></textarea>
+              </label>
+              <label class="field">
+                Competitor keyword country
+                <input id="seoCompetitorCountry" type="text" value="Nigeria" />
+              </label>
+              <label class="field">
+                Competitor keyword language
+                <input id="seoCompetitorLanguage" type="text" value="English" />
+              </label>
+              <div class="field full stack" style="gap:10px;">
+                <label style="margin:0;">SEO competitor ranked keywords</label>
+                <p id="seoCompetitorKeywordMapSummary" style="margin:0;color:var(--muted);">No competitor ranked keywords stored yet.</p>
+                <div class="actions">
+                  <button id="refreshSeoCompetitorKeywordsBtn" type="button">Refresh Competitor Ranked Keywords</button>
+                  <p id="seoCompetitorRefreshStatus" style="margin:0;color:var(--muted);"></p>
+                </div>
+              </div>
             </div>
             <div class="actions">
               <button id="saveBrandMemoryBtn" class="primary is-pristine" type="submit" disabled>Save Brand Memory</button>
@@ -3463,6 +3731,7 @@ export class CampaignTestUiController {
       script: `
         const projectId = ${JSON.stringify(projectId)};
         let initialBrandMemoryPayload = '';
+        let seoCompetitorKeywordRefreshTimer = null;
 
         function linesToText(values) {
           return Array.isArray(values) ? values.join('\\n') : '';
@@ -3480,16 +3749,84 @@ export class CampaignTestUiController {
             : '';
         }
 
+        function renderCompetitorKeywordMapSummary(map) {
+          const summary = document.getElementById('seoCompetitorKeywordMapSummary');
+          if (!map || !Array.isArray(map.targets) || map.targets.length === 0) {
+            summary.textContent = 'No competitor ranked keywords stored yet. Add domains and refresh before SEO Brief Step 4.';
+            return;
+          }
+
+          const nextRefresh = map.nextRefreshAt
+            ? '. Next auto refresh: ' + formatDateTime(map.nextRefreshAt)
+            : '';
+          summary.textContent =
+            'Stored ' + (map.deduplicatedKeywordCount || 0) +
+            ' deduplicated keywords from ' + (map.targetCount || map.targets.length) +
+            ' competitors. Last successful refresh: ' + formatDateTime(map.generatedAt) +
+            nextRefresh +
+            '. JSON ID: ' + (map.competitorKeywordsJsonId || 'brand_memory_competitor_keywords');
+        }
+
+        function scheduleSeoCompetitorKeywordRefresh(map) {
+          if (seoCompetitorKeywordRefreshTimer) {
+            clearTimeout(seoCompetitorKeywordRefreshTimer);
+            seoCompetitorKeywordRefreshTimer = null;
+          }
+
+          if (!map || !map.nextRefreshAt) {
+            return;
+          }
+
+          const nextRefreshTime = new Date(map.nextRefreshAt).getTime();
+          if (!Number.isFinite(nextRefreshTime)) {
+            return;
+          }
+
+          const delayMs = Math.max(0, nextRefreshTime - Date.now());
+          seoCompetitorKeywordRefreshTimer = setTimeout(() => {
+            refreshSeoCompetitorKeywords({ auto: true }).catch((error) => {
+              const status = document.getElementById('seoCompetitorRefreshStatus');
+              status.textContent = 'Auto refresh failed: ' + (error instanceof Error ? error.message : String(error));
+              status.style.color = 'var(--danger)';
+            });
+          }, delayMs);
+        }
+
         function fillForm(brandMemory) {
           document.getElementById('brandName').value = brandMemory.brandName || '';
           document.getElementById('productDescription').value = brandMemory.productDescription || '';
-          document.getElementById('targetAudience').value = brandMemory.targetAudience || '';
+          document.getElementById('targetAudiences').value = linesToText(
+            Array.isArray(brandMemory.targetAudiences) && brandMemory.targetAudiences.length > 0
+              ? brandMemory.targetAudiences
+              : (brandMemory.targetAudience ? [brandMemory.targetAudience] : []),
+          );
+          document.getElementById('keyMessage').value = brandMemory.keyMessage || '';
+          document.getElementById('defaultCta').value = brandMemory.defaultCta || '';
+          document.getElementById('brandConstraints').value = linesToText(brandMemory.brandConstraints);
+          document.getElementById('claimsConstraints').value = linesToText(brandMemory.claimsConstraints);
           document.getElementById('approvedFacts').value = linesToText(brandMemory.approvedFacts);
           document.getElementById('forbiddenClaims').value = linesToText(brandMemory.forbiddenClaims);
           document.getElementById('requiredPhrases').value = linesToText(brandMemory.requiredPhrases);
           document.getElementById('bannedPhrases').value = linesToText(brandMemory.bannedPhrases);
           document.getElementById('glossary').value = glossaryToText(brandMemory.glossary);
           document.getElementById('brandDocs').value = docsToText(brandMemory.brandDocs);
+          const seoCompetitors = brandMemory.seoCompetitors || {};
+          document.getElementById('seoCompetitorsMustInclude').value =
+            linesToText(seoCompetitors.mustInclude);
+          document.getElementById('seoCompetitorsOptional').value =
+            linesToText(seoCompetitors.optional);
+          document.getElementById('seoCompetitorsExclude').value =
+            linesToText(seoCompetitors.exclude);
+          if (brandMemory.seoCompetitorKeywordMap?.market?.country) {
+            document.getElementById('seoCompetitorCountry').value =
+              brandMemory.seoCompetitorKeywordMap.market.country;
+          }
+          if (brandMemory.seoCompetitorKeywordMap?.market?.language) {
+            document.getElementById('seoCompetitorLanguage').value =
+              brandMemory.seoCompetitorKeywordMap.market.language;
+          }
+          renderCompetitorKeywordMapSummary(brandMemory.seoCompetitorKeywordMap);
+          scheduleSeoCompetitorKeywordRefresh(brandMemory.seoCompetitorKeywordMap);
         }
 
         function serializePayload(payload) {
@@ -3524,17 +3861,85 @@ export class CampaignTestUiController {
         }
 
         function buildPayload() {
+          const targetAudiences = splitLines(document.getElementById('targetAudiences').value);
           return {
             brandName: document.getElementById('brandName').value || null,
             productDescription: document.getElementById('productDescription').value || null,
-            targetAudience: document.getElementById('targetAudience').value || null,
+            targetAudience: targetAudiences[0] || null,
+            targetAudiences,
+            keyMessage: document.getElementById('keyMessage').value || null,
+            defaultCta: document.getElementById('defaultCta').value || null,
+            brandConstraints: splitLines(document.getElementById('brandConstraints').value),
+            claimsConstraints: splitLines(document.getElementById('claimsConstraints').value),
             approvedFacts: splitLines(document.getElementById('approvedFacts').value),
             forbiddenClaims: splitLines(document.getElementById('forbiddenClaims').value),
             requiredPhrases: splitLines(document.getElementById('requiredPhrases').value),
             bannedPhrases: splitLines(document.getElementById('bannedPhrases').value),
             glossary: parseGlossary(document.getElementById('glossary').value),
             brandDocs: parseBrandDocs(document.getElementById('brandDocs').value),
+            seoCompetitors: {
+              mustInclude: splitLines(document.getElementById('seoCompetitorsMustInclude').value),
+              optional: splitLines(document.getElementById('seoCompetitorsOptional').value),
+              exclude: splitLines(document.getElementById('seoCompetitorsExclude').value),
+            },
           };
+        }
+
+        async function refreshSeoCompetitorKeywords(options = {}) {
+          const auto = Boolean(options.auto);
+          const button = document.getElementById('refreshSeoCompetitorKeywordsBtn');
+          const status = document.getElementById('seoCompetitorRefreshStatus');
+          button.disabled = true;
+          status.textContent = auto
+            ? 'Auto refreshing DataForSEO ranked keywords...'
+            : 'Saving Brand Memory and fetching DataForSEO ranked keywords...';
+          status.style.color = 'var(--muted)';
+
+          try {
+            if (!auto) {
+              const payload = buildPayload();
+              await request(
+                '/projects/' + encodeURIComponent(projectId) + '/brand-memory',
+                {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                },
+                { renderResponse: false },
+              );
+            }
+
+            const result = await request(
+              '/projects/' + encodeURIComponent(projectId) + '/brand-memory/refresh-competitor-keywords',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  country: document.getElementById('seoCompetitorCountry').value || null,
+                  language: document.getElementById('seoCompetitorLanguage').value || null,
+                }),
+              },
+            );
+
+            fillForm(result.brandMemory || {});
+            document.getElementById('updatedAt').textContent =
+              'Last update ' + formatDateTime(new Date().toISOString());
+            initialBrandMemoryPayload = serializePayload(buildPayload());
+            syncSaveButtonState();
+            status.textContent =
+              'Fetched ' + result.itemCount + ' ranked keyword rows from ' +
+              result.targetCount + ' competitors. Last successful refresh: ' +
+              formatDateTime(result.generatedAt) + '. Next auto refresh: ' +
+              formatDateTime(result.nextRefreshAt) + '.';
+            status.style.color = 'var(--success)';
+          } catch (error) {
+            status.textContent = error instanceof Error ? error.message : String(error);
+            status.style.color = 'var(--danger)';
+            setOutput(error instanceof Error ? error.message : String(error));
+            throw error;
+          } finally {
+            button.disabled = false;
+          }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -3557,6 +3962,12 @@ export class CampaignTestUiController {
             initialBrandMemoryPayload = serializePayload(payload);
             syncSaveButtonState();
           });
+
+          document
+            .getElementById('refreshSeoCompetitorKeywordsBtn')
+            .addEventListener('click', async () => {
+              await refreshSeoCompetitorKeywords({ auto: false }).catch(() => {});
+            });
         });
 
         loadPage().catch((error) => setOutput(String(error)));
@@ -3999,6 +4410,11 @@ export class CampaignTestUiController {
                 <label class="field full">
                   Source content
                   <textarea id="sourceContent" placeholder="Paste the canonical longread or source memo here."></textarea>
+                </label>
+                <label class="field full">
+                  Blog cover image URL
+                  <input id="blogCoverImageUrl" type="url" placeholder="https://cdn.example.com/cover.webp" />
+                  <span class="source-image-note">Optional. Blog publishing uses this HTTPS image instead of BLOG_DEFAULT_COVER_IMAGE_URL.</span>
                 </label>
               </div>
               <div class="actions">
@@ -4472,6 +4888,7 @@ export class CampaignTestUiController {
               {
                 content: document.getElementById('sourceContent').value,
                 language: document.getElementById('sourceLanguage').value || 'en',
+                coverImageUrl: document.getElementById('blogCoverImageUrl')?.value?.trim() || null,
               },
             );
           });
@@ -5009,6 +5426,7 @@ export class CampaignTestUiController {
               <p id="inboxSummary">Loading messages that need a decision.</p>
             </div>
           </div>
+          <div class="campaign-segment-row" id="inboxTabs" role="tablist" aria-label="Inbox sections"></div>
           <div id="inboxItems" class="inbox-list"></div>
         </section>
       `,
@@ -5017,6 +5435,7 @@ export class CampaignTestUiController {
         let currentProject = null;
         let currentInbox = null;
         let currentArticlesById = new Map();
+        let activeInboxTab = 'new';
 
         function normalizeOptionalFieldValue(value) {
           const normalized = String(value ?? '').trim();
@@ -5144,6 +5563,7 @@ export class CampaignTestUiController {
         }
 
         function genericInboxCard(item) {
+          const canAcknowledge = item.type === 'publishing_exception' && item.status === 'pending';
           return '<article class="inbox-item">' +
             '<div class="card-head">' +
               '<div class="stack">' +
@@ -5154,14 +5574,42 @@ export class CampaignTestUiController {
             '</div>' +
             campaignMetaPill(item) +
             '<p class="soft">This item is read-only for now. Technical payload is available in Dev output.</p>' +
+            (canAcknowledge
+              ? '<div class="actions"><button type="button" class="primary" data-acknowledge-approval-item="' + escapeHtml(item.id) + '">Okay</button></div>'
+              : '') +
+          '</article>';
+        }
+
+        function historyInboxCard(item) {
+          const resolvedLabel = item.resolvedAt
+            ? 'Resolved ' + formatDateTime(item.resolvedAt)
+            : 'Created ' + formatDateTime(item.createdAt);
+          return '<article class="inbox-item">' +
+            '<div class="card-head">' +
+              '<div class="stack">' +
+                '<span class="eyebrow">' + escapeHtml(item.type) + '</span>' +
+                '<h3>' + escapeHtml(item.title) + '</h3>' +
+              '</div>' +
+              renderBadge(item.status) +
+            '</div>' +
+            '<div class="actions">' +
+              '<span class="pill">' + escapeHtml(item.campaignName) + '</span>' +
+              '<span class="pill">' + escapeHtml(resolvedLabel) + '</span>' +
+              '<a class="btn" href="' + campaignCreationUrl(item) + '">Open campaign</a>' +
+            '</div>' +
+            (item.details?.errorMessage
+              ? '<p class="soft">' + escapeHtml(item.details.errorMessage) + '</p>'
+              : '<p class="soft">Notification is stored in history.</p>') +
           '</article>';
         }
 
         function renderInbox(project, inbox) {
           const items = inbox.items || [];
+          const historyItems = inbox.historyItems || [];
           const campaignCount = new Set(items.map((item) => item.campaignId)).size;
           const sourceIssueCount = items.filter((item) => item.type === 'source_issue').length;
           const otherIssueCount = items.length - sourceIssueCount;
+          const visibleItems = activeInboxTab === 'history' ? historyItems : items;
 
           document.getElementById('backToProjectDashboard').href =
             '/test-ui/project?projectId=' + encodeURIComponent(project.id);
@@ -5171,19 +5619,41 @@ export class CampaignTestUiController {
             : items.length + ' message(s) require a decision across ' + campaignCount + ' campaign(s). Source issues: ' +
               sourceIssueCount + '. Other exceptions: ' + otherIssueCount + '.';
 
+          const tabs = document.getElementById('inboxTabs');
+          tabs.innerHTML = [
+            { id: 'new', label: 'New (' + items.length + ')' },
+            { id: 'history', label: 'History (' + historyItems.length + ')' },
+          ].map((tab) =>
+            '<button type="button" class="' + (activeInboxTab === tab.id ? 'is-active' : '') + '" data-inbox-tab="' + tab.id + '">' +
+              escapeHtml(tab.label) +
+            '</button>'
+          ).join('');
+          tabs.querySelectorAll('[data-inbox-tab]').forEach((button) => {
+            button.addEventListener('click', () => {
+              activeInboxTab = button.dataset.inboxTab || 'new';
+              renderInbox(project, inbox);
+            });
+          });
+
           const root = document.getElementById('inboxItems');
-          if (items.length === 0) {
-            root.innerHTML = '<div class="empty-state">Inbox is empty.</div>';
+          if (visibleItems.length === 0) {
+            root.innerHTML = '<div class="empty-state">' + (activeInboxTab === 'history' ? 'No inbox history yet.' : 'Inbox is empty.') + '</div>';
             return;
           }
 
-          root.innerHTML = items.map((item) =>
-            item.type === 'source_issue'
-              ? sourceIssueCard(item)
-              : isGeneratedArtifactIssue(item)
-                ? generatedArtifactIssueCard(item)
-                : genericInboxCard(item)
+          root.innerHTML = visibleItems.map((item) =>
+            activeInboxTab === 'history'
+              ? historyInboxCard(item)
+              : item.type === 'source_issue'
+                ? sourceIssueCard(item)
+                : isGeneratedArtifactIssue(item)
+                  ? generatedArtifactIssueCard(item)
+                  : genericInboxCard(item)
           ).join('');
+
+          root.querySelectorAll('[data-acknowledge-approval-item]').forEach((button) => {
+            button.addEventListener('click', () => acknowledgeApprovalItem(button.dataset.acknowledgeApprovalItem));
+          });
 
           root.querySelectorAll('[data-open-source-edit]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -5248,6 +5718,17 @@ export class CampaignTestUiController {
           root.querySelectorAll('.artifact-resolution-form').forEach((form) => {
             form.addEventListener('submit', submitEditedGeneratedArtifact);
           });
+        }
+
+        async function acknowledgeApprovalItem(approvalItemId) {
+          if (!approvalItemId || !projectId) {
+            return;
+          }
+          await request(
+            '/projects/' + encodeURIComponent(projectId) + '/inbox/' + encodeURIComponent(approvalItemId) + '/acknowledge',
+            { method: 'POST' },
+          );
+          await loadPage();
         }
 
         async function postSourceIssueDecision(campaignId, payload) {
@@ -5341,7 +5822,7 @@ export class CampaignTestUiController {
           ]);
 
           const articleIds = [...new Set(
-            (inbox.items || [])
+            [...(inbox.items || []), ...(inbox.historyItems || [])]
               .map((item) => item.sourceArticleId)
               .filter(Boolean),
           )];
