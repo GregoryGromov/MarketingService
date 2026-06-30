@@ -231,6 +231,7 @@ export class SeoBriefTestUiController {
     const defaultPromptInstructionOverridesJson = JSON.stringify(
       DEFAULT_SEO_BRIEF_PROMPT_INSTRUCTION_OVERRIDES,
     ).replace(/</g, '\\u003c');
+    const seoBriefUiVersion = 'seo-brief-ui-2026-06-30-ai-retry-autofinalize-v2';
 
     return `<!doctype html>
 <html lang="en">
@@ -299,6 +300,24 @@ export class SeoBriefTestUiController {
       .danger-action:hover {
         border-color: #7f2419;
         background: #9f2f22;
+      }
+      .server-version-card {
+        min-width: 260px;
+        max-width: 420px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 10px 12px;
+        display: grid;
+        gap: 4px;
+        color: var(--muted);
+      }
+      .server-version-card strong {
+        color: var(--text);
+        font-size: 13px;
+      }
+      .server-version-card span {
+        font-size: 12px;
       }
       .run-library-panel {
         display: grid;
@@ -1770,6 +1789,10 @@ export class SeoBriefTestUiController {
         border-color: #8f1d14;
         background: #9f1f16;
       }
+      .server-version-card {
+        background: rgba(255, 255, 255, 0.74);
+        border-radius: 22px;
+      }
       .hero-top, .section-head, .toolbar, .form-grid {
         gap: 16px;
       }
@@ -2002,6 +2025,10 @@ export class SeoBriefTestUiController {
               Move through the SEO brief workflow one semantic step at a time, confirm each
               transition manually, and inspect the trace without leaving the API app.
             </p>
+          </div>
+          <div class="server-version-card" aria-live="polite">
+            <strong id="seoUiVersionCurrent">${escapeHtmlServer(seoBriefUiVersion)}</strong>
+            <span id="seoUiVersionStep">Step: Input</span>
           </div>
           <div class="actions">
             <button type="button" class="danger-action" id="killAutoFlowBtn" hidden>Kill flow</button>
@@ -2389,6 +2416,7 @@ export class SeoBriefTestUiController {
       let clientDevLogSeq = 0;
       let clientFetchSeq = 0;
       const CLIENT_DEV_LOG_LIMIT = 120;
+      const SEO_BRIEF_UI_VERSION = ${JSON.stringify(seoBriefUiVersion)};
       const DEFAULT_KEYWORD_EXPANSION_PROMPT = ${defaultKeywordExpansionPromptJson};
       const SEO_BRIEF_MARKET_PRESETS = [
         { marketKey: 'india-en', country: 'India', locationName: 'India', code: 'en', name: 'English', languageLabel: 'English' },
@@ -2848,7 +2876,6 @@ export class SeoBriefTestUiController {
 
       function updateClientDevStatus() {
         const node = qs('clientDevStatus');
-        if (!node) return;
         const parts = [
           'Step: ' + getActiveSeoStepLabel(),
           appState.selectedRunId ? 'Run: ' + appState.selectedRunId : 'No run selected',
@@ -2863,7 +2890,22 @@ export class SeoBriefTestUiController {
               String(appState.autoFlowTotal || 0),
           );
         }
-        node.textContent = parts.join(' · ');
+        const statusText = parts.join(' · ');
+        if (node) {
+          node.textContent = statusText;
+        }
+        updateSeoUiVersionBadge(statusText);
+      }
+
+      function updateSeoUiVersionBadge(statusText) {
+        const versionNode = qs('seoUiVersionCurrent');
+        const stepNode = qs('seoUiVersionStep');
+        if (versionNode) {
+          versionNode.textContent = SEO_BRIEF_UI_VERSION;
+        }
+        if (stepNode) {
+          stepNode.textContent = statusText || 'Step: ' + getActiveSeoStepLabel();
+        }
       }
 
       function syncKillAutoFlowButton() {
@@ -4309,11 +4351,13 @@ export class SeoBriefTestUiController {
 
       function setLaunchStatus(message, tone = 'info') {
         const node = qs('launchStatus');
-        if (!node) return;
-        node.hidden = false;
-        node.innerHTML =
-          '<strong>' + escapeHtmlClient(tone === 'error' ? 'Launch error' : 'Launch status') + '</strong>' +
-          '<p>' + escapeHtmlClient(message) + '</p>';
+        if (node) {
+          node.hidden = false;
+          node.innerHTML =
+            '<strong>' + escapeHtmlClient(tone === 'error' ? 'Launch error' : 'Launch status') + '</strong>' +
+            '<p>' + escapeHtmlClient(message) + '</p>';
+        }
+        updateSeoUiVersionBadge('Launch: ' + message);
       }
 
       function renderSerpDomainAggregation(run) {

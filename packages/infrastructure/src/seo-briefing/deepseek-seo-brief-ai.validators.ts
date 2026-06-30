@@ -120,20 +120,19 @@ export function validateExpandKeywordsResult(
   payload: unknown,
   operation: string,
 ): ExpandKeywordsResult {
+  if (Array.isArray(payload)) {
+    return normalizeSearchHypothesesPayload(payload, operation, 'payload');
+  }
+
   const record = ensureObject(payload, operation, 'payload');
-  if ('search_hypotheses' in record) {
-    const hypotheses = ensureArray(record.search_hypotheses, operation, 'search_hypotheses').map(
-      (item, index) => validateSearchHypothesis(item, operation, `search_hypotheses[${index}]`),
+  const searchHypothesesPayload =
+    record.search_hypotheses ?? record.searchHypotheses ?? record.hypotheses ?? record.keywords;
+  if (searchHypothesesPayload !== undefined) {
+    return normalizeSearchHypothesesPayload(
+      ensureArray(searchHypothesesPayload, operation, 'search_hypotheses'),
+      operation,
+      'search_hypotheses',
     );
-
-    if (hypotheses.length === 0) {
-      throw validationError(`${operation} must return search_hypotheses`, operation, payload);
-    }
-
-    return {
-      hypotheses,
-      groups: groupSearchHypothesesByType(hypotheses),
-    };
   }
 
   const groups = ensureArray(record.groups, operation, 'groups').map((item, index) => {
@@ -168,6 +167,25 @@ export function validateExpandKeywordsResult(
   }
 
   return { hypotheses, groups };
+}
+
+function normalizeSearchHypothesesPayload(
+  value: unknown[],
+  operation: string,
+  path: string,
+): ExpandKeywordsResult {
+  const hypotheses = value.map((item, index) =>
+    validateSearchHypothesis(item, operation, `${path}[${index}]`),
+  );
+
+  if (hypotheses.length === 0) {
+    throw validationError(`${operation} must return search_hypotheses`, operation, value);
+  }
+
+  return {
+    hypotheses,
+    groups: groupSearchHypothesesByType(hypotheses),
+  };
 }
 
 function validateSearchHypothesis(

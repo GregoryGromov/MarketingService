@@ -1,22 +1,23 @@
-import type {
-  BuildProductBridgeParams,
-  ClassifySerpDomainsParams,
-  CleanupLongreadArticleParams,
-  ClusterKeywordsParams,
-  DraftLongreadArticleParams,
-  ExpandKeywordsParams,
-  ExplainClusterSelectionParams,
-  GenerateSeoBriefParams,
-  PackageLongreadArticleParams,
-  ReviewClusterProductFitParams,
-  SelectRelatedKeywordsParams,
-  SeoBriefArtifactRepository,
-  SeoBriefLlmCallLog,
-  SeoBriefLlmCallLogId,
-  SeoBriefLlmLogRepository,
-  SeoBriefRunId,
-  SynthesizeOnPageParams,
-  TriageKeywordsParams,
+import {
+  type BuildProductBridgeParams,
+  type ClassifySerpDomainsParams,
+  type CleanupLongreadArticleParams,
+  type ClusterKeywordsParams,
+  type DraftLongreadArticleParams,
+  type ExpandKeywordsParams,
+  type ExplainClusterSelectionParams,
+  type GenerateSeoBriefParams,
+  type PackageLongreadArticleParams,
+  type ReviewClusterProductFitParams,
+  type SelectRelatedKeywordsParams,
+  SeoBriefAiTransportError,
+  type SeoBriefArtifactRepository,
+  type SeoBriefLlmCallLog,
+  type SeoBriefLlmCallLogId,
+  type SeoBriefLlmLogRepository,
+  type SeoBriefRunId,
+  type SynthesizeOnPageParams,
+  type TriageKeywordsParams,
 } from '@marketing-service/seo-briefing';
 import type { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
@@ -79,10 +80,12 @@ class FakeConfigService {
   }
 }
 
+type FakeSeoBriefAiQueueItem = SeoBriefAiCompletionResponse | Error;
+
 class FakeSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
   readonly requests: SeoBriefAiCompletionRequest[] = [];
 
-  constructor(private readonly queue: SeoBriefAiCompletionResponse[]) {
+  constructor(private readonly queue: FakeSeoBriefAiQueueItem[]) {
     super();
   }
 
@@ -94,13 +97,16 @@ class FakeSeoBriefAiHttpClient extends SeoBriefAiHttpClientPort {
     if (!next) {
       throw new Error('No queued fake SEO brief AI response');
     }
+    if (next instanceof Error) {
+      throw next;
+    }
 
     return next;
   }
 }
 
 function createAdapter(
-  queue: SeoBriefAiCompletionResponse[],
+  queue: FakeSeoBriefAiQueueItem[],
   pricing: { input: number; output: number } | null = null,
 ) {
   const client = new FakeSeoBriefAiHttpClient(queue);
@@ -210,6 +216,98 @@ describe('DeepSeekSeoBriefAiAdapter', () => {
     expect(client.requests[0]?.userPrompt).toContain(
       'Keep the keywords broad, short, and category-level.',
     );
+  });
+
+  it('accepts keyword expansion hypotheses without the canonical search_hypotheses wrapper', async () => {
+    const { adapter } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          hypotheses: [
+            {
+              query: 'usdt staking without lockup',
+              hypothesis_type: 'action',
+              why_generated: 'Matches the user scenario around keeping USDT accessible.',
+              product_fit_hypothesis: 'workflow_bridge',
+              risk_flags: [],
+            },
+          ],
+        }),
+        rawPayload: { id: 'resp-1' },
+        tokenUsageInput: 111,
+        tokenUsageOutput: 44,
+        estimatedCost: null,
+      },
+    ]);
+
+    const result = await adapter.expandKeywords(createExpandParams());
+
+    expect(result.hypotheses).toHaveLength(1);
+    expect(result.groups).toHaveLength(1);
+    expect(result.hypotheses[0]?.keyword).toBe('usdt staking without lockup');
+  });
+
+  it('accepts keyword expansion hypotheses returned as a top-level array', async () => {
+    const { adapter } = createAdapter([
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify([
+          {
+            query: 'is usdt yield safe',
+            hypothesis_type: 'risk',
+            why_generated: 'Matches the risk angle in the input.',
+            product_fit_hypothesis: 'education_bridge',
+            risk_flags: [],
+          },
+        ]),
+        rawPayload: { id: 'resp-1' },
+        tokenUsageInput: 111,
+        tokenUsageOutput: 44,
+        estimatedCost: null,
+      },
+    ]);
+
+    const result = await adapter.expandKeywords(createExpandParams());
+
+    expect(result.hypotheses).toHaveLength(1);
+    expect(result.groups).toHaveLength(1);
+    expect(result.hypotheses[0]?.hypothesisType).toBe('risk');
+  });
+
+  it('retries transient AI JSON transport failures before validating structured output', async () => {
+    const { adapter, client, repository } = createAdapter([
+      new SeoBriefAiTransportError('Unexpected end of JSON input', 'completion', 'openrouter', 200),
+      {
+        status: 200,
+        model: 'deepseek-v4-pro',
+        content: JSON.stringify({
+          search_hypotheses: [
+            {
+              query: 'how to earn yield on usdt',
+              hypothesis_type: 'action',
+              why_generated: 'Matches the action intent in the brief.',
+              product_fit_hypothesis: 'workflow_bridge',
+              risk_flags: [],
+            },
+          ],
+        }),
+        rawPayload: { id: 'resp-retry-ok' },
+        tokenUsageInput: 111,
+        tokenUsageOutput: 44,
+        estimatedCost: null,
+      },
+    ]);
+
+    const params = createExpandParams();
+    const result = await adapter.expandKeywords(params);
+    const logs = await repository.findByRunId(params.runId);
+
+    expect(client.requests).toHaveLength(2);
+    expect(result.hypotheses).toHaveLength(1);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]?.status).toBe('completed');
   });
 
   it('repairs invalid structured output on a follow-up request and keeps both llm logs', async () => {

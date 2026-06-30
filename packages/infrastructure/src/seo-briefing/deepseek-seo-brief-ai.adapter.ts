@@ -549,9 +549,19 @@ export class DeepSeekSeoBriefAiAdapter {
   }
 
   private isRetryableError(error: unknown): boolean {
+    if (!(error instanceof SeoBriefAiTransportError)) {
+      return false;
+    }
+
+    if (error.status == null || error.status >= 500 || error.status === 429) {
+      return true;
+    }
+
+    const message = error.message.toLowerCase();
     return (
-      error instanceof SeoBriefAiTransportError &&
-      (error.status == null || error.status >= 500 || error.status === 429)
+      message.includes('unexpected end of json input') ||
+      message.includes('returned invalid json') ||
+      message.includes('does not contain message content')
     );
   }
 
