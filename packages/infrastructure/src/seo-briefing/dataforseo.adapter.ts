@@ -1445,14 +1445,14 @@ export class DataForSeoAdapter {
   private getOnPagePollAttempts(): number {
     return Math.max(
       1,
-      Number.parseInt(this.config.get<string>('DATAFORSEO_ON_PAGE_POLL_ATTEMPTS') ?? '3', 10),
+      Number.parseInt(this.config.get<string>('DATAFORSEO_ON_PAGE_POLL_ATTEMPTS') ?? '12', 10),
     );
   }
 
   private getOnPagePollDelayMs(): number {
     return Math.max(
       0,
-      Number.parseInt(this.config.get<string>('DATAFORSEO_ON_PAGE_POLL_DELAY_MS') ?? '200', 10),
+      Number.parseInt(this.config.get<string>('DATAFORSEO_ON_PAGE_POLL_DELAY_MS') ?? '5000', 10),
     );
   }
 
