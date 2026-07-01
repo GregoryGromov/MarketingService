@@ -1084,17 +1084,8 @@ export class ProcessSeoBriefRunExecutor {
               })),
             });
 
-            const outcome =
-              selectedCluster.productScore < MIN_PRODUCT_SCORE ||
-              selectedCluster.finalScore < MIN_FINAL_CLUSTER_SCORE
-                ? ('needs_manual_review' as const)
-                : ('done' as const);
-            const reason =
-              outcome === 'needs_manual_review'
-                ? selectedCluster.productScore < MIN_PRODUCT_SCORE
-                  ? 'Top cluster has insufficient product fit'
-                  : 'Top cluster score is below viability threshold'
-                : null;
+            const outcome = 'done' as const;
+            const reason = null;
             const rejectedClusters = rankedClusters.slice(1).map((cluster) => ({
               label: cluster.label,
               representativeKeyword: cluster.representativeKeyword,
