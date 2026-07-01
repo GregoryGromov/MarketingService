@@ -191,6 +191,8 @@ export function buildExpandKeywordsPrompt(params: ExpandKeywordsParams): SeoBrie
         `Generate exactly ${String(params.limit ?? 10)} Google-like search hypotheses for SERP discovery.`,
         'Return search_hypotheses only. Do not return groups.',
         'Generate realistic Google search queries, not article titles.',
+        'Every query must be short enough for keyword APIs: 2-7 words, maximum 10 words, maximum 80 characters.',
+        'Do not return full questions, article headlines, or long-tail sentences as query text.',
         'Use manual userPainScenarios from the marketer input as the main source.',
         'topic_hint is a hard scope signal for concrete entities, ecosystems, chains, geographies, and product categories.',
         'requiredTopicTerms are extracted from topic_hint and must be preserved when they are concrete.',

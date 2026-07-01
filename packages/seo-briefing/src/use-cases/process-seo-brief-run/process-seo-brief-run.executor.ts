@@ -42,6 +42,8 @@ const MAX_KEYWORD_UNIVERSE_ITEMS = SEO_BRIEF_OPERATIONAL_LIMITS.maxKeywordUniver
 const MAX_CLUSTERS_TO_SCORE = SEO_BRIEF_OPERATIONAL_LIMITS.maxClustersToScore;
 const MIN_FINAL_CLUSTER_SCORE = SEO_BRIEF_OPERATIONAL_LIMITS.minFinalClusterScore;
 const MIN_PRODUCT_SCORE = SEO_BRIEF_OPERATIONAL_LIMITS.minProductScore;
+const DATAFORSEO_KEYWORD_MAX_WORDS = 10;
+const DATAFORSEO_KEYWORD_MAX_CHARS = 80;
 
 export interface ProcessSeoBriefRunResult {
   runId: string;
@@ -354,28 +356,37 @@ export class ProcessSeoBriefRunExecutor {
         });
       }
 
-      const researchKeywords = uniqueKeywords([
-        run.topicSeed,
-        ...keywordExpansion.hypotheses.map((item) => item.keyword),
-      ]);
+      const researchKeywords = filterDataForSeoKeywords(
+        uniqueKeywords([
+          run.topicSeed,
+          ...keywordExpansion.hypotheses.map((item) => item.keyword),
+        ]),
+      );
+
+      const requestedSearchVolumeKeywords = researchKeywords;
 
       const keywordResearch = shouldExecuteStage(options.startStage, 'keyword_research')
         ? await this.executeStage(run.id, 'keyword_research', async (step) => {
-            const volume = await this.seoResearch.getSearchVolume({
-              runId: run.id,
-              stepId: step.id,
-              timeoutMs: requestTimeoutMs,
-              keywords: researchKeywords,
-              market: {
-                country: run.country,
-                language: run.language,
-                locationName: run.country,
-              },
-            });
+            const volumeItems =
+              requestedSearchVolumeKeywords.length > 0
+                ? (
+                    await this.seoResearch.getSearchVolume({
+                      runId: run.id,
+                      stepId: step.id,
+                      timeoutMs: requestTimeoutMs,
+                      keywords: requestedSearchVolumeKeywords,
+                      market: {
+                        country: run.country,
+                        language: run.language,
+                        locationName: run.country,
+                      },
+                    })
+                  ).items
+                : [];
 
             const enrichedKeywords = uniqueKeywordItems([
               createSyntheticKeywordItem(run.topicSeed),
-              ...volume.items.map((item) => ({
+              ...volumeItems.map((item) => ({
                 keyword: item.keyword,
                 searchVolume: item.searchVolume,
                 competition: item.competition,
@@ -391,7 +402,11 @@ export class ProcessSeoBriefRunExecutor {
               artifactType: 'keyword_research_snapshot',
               payload: {
                 topicSeed: run.topicSeed,
-                requestedKeywords: researchKeywords,
+                requestedKeywords: requestedSearchVolumeKeywords,
+                skippedKeywords: uniqueKeywords([
+                  run.topicSeed,
+                  ...keywordExpansion.hypotheses.map((item) => item.keyword),
+                ]).filter((keyword) => !requestedSearchVolumeKeywords.includes(keyword)),
                 enrichedKeywords: enrichedKeywords as unknown as SeoBriefJsonValue,
               },
               attempt: step.attemptNumber,
@@ -1800,6 +1815,24 @@ function uniqueKeywords(values: string[]): string[] {
   return result;
 }
 
+function filterDataForSeoKeywords(values: string[]): string[] {
+  return values.filter((value) => isDataForSeoKeywordSafe(value));
+}
+
+function isDataForSeoKeywordSafe(value: string): boolean {
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (!normalized) {
+    return false;
+  }
+
+  const wordCount = normalized.split(' ').filter(Boolean).length;
+  return (
+    wordCount > 0 &&
+    wordCount <= DATAFORSEO_KEYWORD_MAX_WORDS &&
+    normalized.length <= DATAFORSEO_KEYWORD_MAX_CHARS
+  );
+}
+
 function uniqueKeywordItems(items: ResearchKeywordItem[]): ResearchKeywordItem[] {
   const seen = new Set<string>();
   const result: ResearchKeywordItem[] = [];
@@ -1831,7 +1864,9 @@ function deriveRelatedKeywordSeeds(topicSeed: string, items: ResearchKeywordItem
     return rightVolume - leftVolume;
   });
 
-  const candidates = uniqueKeywords([topicSeed, ...sorted.map((item) => item.keyword)]);
+  const candidates = filterDataForSeoKeywords(
+    uniqueKeywords([topicSeed, ...sorted.map((item) => item.keyword)]),
+  );
   return candidates.slice(0, RELATED_KEYWORD_SEED_LIMIT);
 }
 
@@ -1854,11 +1889,13 @@ function deriveSerpResearchKeywords(
     return rightVolume - leftVolume;
   });
 
-  const candidates = uniqueKeywords([
-    topicSeed,
-    ...rankedResearchKeywords.map((item) => item.keyword),
-    ...rankedRelatedKeywords.map((item) => item.keyword),
-  ]);
+  const candidates = filterDataForSeoKeywords(
+    uniqueKeywords([
+      topicSeed,
+      ...rankedResearchKeywords.map((item) => item.keyword),
+      ...rankedRelatedKeywords.map((item) => item.keyword),
+    ]),
+  );
 
   return candidates.slice(0, SERP_RESEARCH_KEYWORD_LIMIT);
 }
