@@ -2211,14 +2211,14 @@ export class SeoBriefTestUiController {
                   </div>
                 </summary>
                 <input id="aiModelMode" type="hidden" value="pro" />
-                <input id="aiModel" type="hidden" value="deepseek/deepseek-chat-v3-0324" />
+                <input id="aiModel" type="hidden" value="deepseek/deepseek-v4-pro" />
                 <div class="input-group-grid">
                   <label class="field">
                     <span>AI Model</span>
                     <em>Primary model used for every AI call in this SEO run.</em>
                     <select id="aiModelPreset">
-                      <option value="deepseek/deepseek-chat-v3-0324" data-mode="flash" data-input-price="0.27" data-output-price="1.10">DeepSeek Flash (no thinking, fastest) - Chat V3 via OpenRouter</option>
-                      <option value="deepseek-chat-v3-pro" data-model="deepseek/deepseek-chat-v3-0324" data-mode="pro" data-input-price="0.27" data-output-price="1.10" selected>DeepSeek Pro (no thinking) - Chat V3 via OpenRouter</option>
+                      <option value="deepseek/deepseek-v4-flash" data-mode="flash" data-input-price="0.14" data-output-price="0.28">DeepSeek Flash (no thinking, fastest) - V4 Flash via OpenRouter</option>
+                      <option value="deepseek-v4-pro" data-model="deepseek/deepseek-v4-pro" data-mode="pro" data-input-price="1.74" data-output-price="3.48" selected>DeepSeek Pro (no thinking) - V4 Pro via OpenRouter</option>
                       <option value="deepseek/deepseek-r1-0528" data-mode="pro_thinking" data-input-price="0.55" data-output-price="2.19">DeepSeek Pro Thinking - R1 reasoning via OpenRouter</option>
                       <option value="google/gemini-2.5-flash" data-mode="flash" data-input-price="0.30" data-output-price="2.50">Gemini Flash (no thinking, fast) - 2.5 Flash via OpenRouter</option>
                       <option value="google/gemini-2.5-pro" data-mode="pro_thinking" data-input-price="1.25" data-output-price="10">Gemini Pro Thinking - 2.5 Pro via OpenRouter</option>
@@ -2231,7 +2231,7 @@ export class SeoBriefTestUiController {
                   <label class="field">
                     <span>Custom Model Slug</span>
                     <em>Use any OpenRouter vendor/model slug.</em>
-                    <input id="aiModelCustom" value="deepseek/deepseek-chat-v3-0324" placeholder="vendor/model-name" />
+                    <input id="aiModelCustom" value="deepseek/deepseek-v4-pro" placeholder="vendor/model-name" />
                   </label>
                 </div>
                 <div class="input-group-grid">

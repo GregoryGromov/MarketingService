@@ -650,10 +650,10 @@ export class DeepSeekSeoBriefAiAdapter {
       return explicitModel;
     }
     const defaultFlashModel = this.hasOpenRouterConfigured()
-      ? 'deepseek/deepseek-chat-v3-0324'
+      ? 'deepseek/deepseek-v4-flash'
       : 'deepseek-v4-flash';
     const defaultProModel = this.hasOpenRouterConfigured()
-      ? 'deepseek/deepseek-chat-v3-0324'
+      ? 'deepseek/deepseek-v4-pro'
       : 'deepseek-v4-pro';
 
     if (modelMode === 'flash') {
