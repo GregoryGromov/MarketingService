@@ -2448,6 +2448,7 @@ export class SeoBriefTestUiController {
       const AUTO_FLOW_RUN_IDS_STORAGE_KEY = 'seoBriefing.autoFlowRunIds';
       const CLIENT_DEV_PANEL_OPEN_STORAGE_KEY = 'seoBriefing.clientDevPanelOpen';
       const LAUNCH_FORM_STATE_STORAGE_KEY = 'seoBriefing.launchFormState.v1';
+      const LANGUAGE_BATCH_STORAGE_KEY = 'seoBriefing.languageBatch.v1';
       const AUTO_WORKFLOW_MODE = 'auto_until_selection';
       const SEO_STEP_TABS = [
         { id: 'input', label: 'Input', number: '0' },
@@ -8634,7 +8635,7 @@ export class SeoBriefTestUiController {
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         showToast('Creating ' + String(batchItems.length) + ' language runs');
 
-        await runWithConcurrency(batchItems, 3, async (item) => {
+        await runWithConcurrency(batchItems, 10, async (item) => {
           item.status = 'running';
           item.stage = 'Create run';
           item.message = 'Creating run';
@@ -8659,6 +8660,10 @@ export class SeoBriefTestUiController {
         await loadRuns();
         renderLanguageBatchProgress();
         qs('languageBatchProgress')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Follow the backend pipeline and keep the cards in sync until every run
+        // settles (reached cluster selection or failed).
+        await pollLanguageBatchUntilSettled();
+        await loadRuns();
         const readyForAutoFinalize = batchItems.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize);
         const failedCount = batchItems.filter((item) => item.status === 'failed').length;
         const shouldAutoFinalize = appState.markerPlan && readyForAutoFinalize.length > 0;
@@ -8695,6 +8700,133 @@ export class SeoBriefTestUiController {
         renderLanguageBatchProgress();
       }
 
+      const BATCH_STAGE_LABELS = {
+        created: 'Input',
+        keyword_expansion: 'Keywords',
+        keyword_research: 'Keywords',
+        related_keyword_research: 'Keywords',
+        serp_research: 'SERP',
+        domain_metrics_research: 'SERP',
+        // onpage_research crawls competitor SERP pages and runs BEFORE clustering in the
+        // pipeline. Labelling it "OnPage" (a later card chip) made the card jump forward
+        // to OnPage then back to Clusters; keep it in the SERP phase so progress is monotonic.
+        onpage_research: 'SERP',
+        keyword_triage: 'Clustering',
+        clustering: 'Clustering',
+        cluster_scoring: 'Cluster scoring',
+        cluster_selection: 'Cluster selection',
+        brief_generation: 'Final brief',
+      };
+
+      function batchStageLabel(stage) {
+        return BATCH_STAGE_LABELS[stage] || 'Backend workflow';
+      }
+
+      function isBatchItemSettled(item) {
+        return item.status === 'failed' || item.status === 'done';
+      }
+
+      // Map a live run snapshot onto a batch card so it reflects real backend
+      // progress instead of staying stuck on the initial "Queued in worker".
+      function applyRunSnapshotToBatchItem(item, run) {
+        const status = String(run?.status || '');
+        const selectionStep = findLatestStep(run, 'cluster_selection');
+        const briefStep = findLatestStep(run, 'brief_generation');
+        const briefDone = briefStep?.status === 'completed';
+
+        if (status === 'failed') {
+          const stage = findRunningStage(run) || findNextStage(run) || 'cluster_selection';
+          item.status = 'failed';
+          item.stage = batchStageLabel(stage);
+          item.message = run.failureReason || 'Run failed';
+          item.diagnostics = run.failureReason ? [run.failureReason] : [];
+          return;
+        }
+        // 'done' = pipeline ran to completion.
+        if (status === 'done') {
+          const doneFlags = getManualStepFlags(run);
+          // Headless full auto-flow (variant B) runs keyword research all the way to a
+          // packaged, article-ready longread. When the final package exists the run is
+          // ready to finalize (social adaptations + calendar); auto-finalize is safe here
+          // because the brief is the article-ready v2 shape, not the SEO-only dead-end.
+          if (doneFlags.longreadPackage) {
+            item.status = 'done';
+            item.stage = doneFlags.longreadAdaptations ? 'Calendar' : 'Package';
+            item.readyForFinalize = !doneFlags.longreadAdaptations;
+            item.message = doneFlags.longreadAdaptations
+              ? 'Article packaged + adaptations ready'
+              : 'Article packaged — ready to finalize';
+            return;
+          }
+          // SEO-only executor path: brief generated but no article chain. Leave finalize
+          // as a deliberate action (the SEO-shaped brief 409s on longread drafting).
+          item.status = 'done';
+          item.stage = briefDone ? 'Final brief' : 'Cluster selection';
+          item.readyForFinalize = false;
+          item.message = briefDone ? 'Completed — SEO brief ready' : 'Completed';
+          return;
+        }
+        // Genuine manual-review halt only fires on the explicit needs_manual_review status.
+        // We must NOT treat awaiting_confirmation+selection-completed as a manual stop: the
+        // select-seo-brief-clusters handler parks every run in awaiting_confirmation and
+        // completes the cluster_selection step, but in full auto-flow the run keeps going
+        // (onpage -> brief -> article). Treating that as "done/manual review" froze the
+        // card mid-pipeline. awaiting_confirmation now flows to the running branch below.
+        if (status === 'needs_manual_review') {
+          item.status = 'done';
+          item.stage = 'Cluster selection';
+          item.readyForFinalize = false;
+          item.message = run.failureReason
+            ? 'Manual review: ' + run.failureReason
+            : 'Manual review required';
+          return;
+        }
+        // 'running' or an intermediate 'awaiting_confirmation'. Several headless command
+        // handlers (e.g. keyword candidate scoring) park the run in awaiting_confirmation
+        // mid-pipeline; in full auto-flow that is NOT a manual stop (the genuine
+        // cluster-selection halt already returned above), so show live step progress
+        // instead of falling through to a misleading "queued".
+        if (status === 'running' || status === 'awaiting_confirmation') {
+          const stage = findRunningStage(run) || findNextStage(run) || 'keyword_expansion';
+          item.status = 'running';
+          item.stage = batchStageLabel(stage);
+          item.message = 'Processing: ' + batchStageLabel(stage);
+          return;
+        }
+        // genuinely queued in the worker, not yet started
+        item.status = 'queued';
+        item.stage = 'Backend workflow';
+        item.message = 'Queued in worker';
+      }
+
+      async function pollLanguageBatchUntilSettled() {
+        const POLL_INTERVAL_MS = 4000;
+        const MAX_POLLS = 900;
+        for (let poll = 0; poll < MAX_POLLS; poll += 1) {
+          const pending = appState.languageBatchItems.filter(
+            (item) => item.runId && !isBatchItemSettled(item),
+          );
+          if (!pending.length) return;
+          await Promise.all(
+            pending.map(async (item) => {
+              try {
+                const run = await fetchRunSnapshot(item.runId);
+                applyRunSnapshotToBatchItem(item, run);
+              } catch (error) {
+                // transient fetch error — keep current state, retry next tick
+              }
+            }),
+          );
+          renderLanguageBatchProgress();
+          if (
+            appState.languageBatchItems.every((item) => !item.runId || isBatchItemSettled(item))
+          ) {
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+      }
+
       async function finalizeLanguageBatch() {
         if (appState.languageBatchFinalizing) return;
         const items = appState.languageBatchItems.filter((item) => item.status === 'done' && item.runId && item.readyForFinalize);
@@ -8705,7 +8837,7 @@ export class SeoBriefTestUiController {
         appState.languageBatchFinalizing = true;
         renderLanguageBatchProgress();
         try {
-          await runWithConcurrency(items, 2, async (item) => {
+          await runWithConcurrency(items, 10, async (item) => {
             try {
               await finalizeLanguageBatchItem(item);
               item.readyForFinalize = false;
@@ -8800,8 +8932,51 @@ export class SeoBriefTestUiController {
               : 'done';
           renderLanguageBatchProgress();
         } else if (markerPlanBlogPlacementsForRun(run).length > 0) {
-          item.diagnostics = ['Blog placement found. Final package is ready, but Blog publish needs the Blog publish action and cover URL.'];
-          setBatchItemProgress(item, 'Blog', 'Final package ready; publish Blog with cover URL', 'done');
+          // Headless full auto-flow publishes the packaged article straight to the Blog.
+          // The cover image resolves server-side from the run's normalized_input, so no
+          // manual cover entry is needed. Guard against double-posting on re-finalize.
+          const existingBlog = findCurrentArticleArtifact(run, 'blog_publish_result');
+          // Only a live 'published' result blocks re-publish; a draft should still be
+          // promoted to published on finalize (the endpoint updates the existing article).
+          const existingUrl =
+            existingBlog &&
+            existingBlog.payload?.status === 'published' &&
+            typeof existingBlog.payload?.url === 'string'
+              ? existingBlog.payload.url
+              : '';
+          if (existingUrl) {
+            item.diagnostics = ['Blog already published: ' + existingUrl];
+            setBatchItemProgress(item, 'Blog', 'Blog already published: ' + existingUrl, 'done');
+          } else {
+            setBatchItemProgress(item, 'Blog', 'Publishing to Blog', 'running');
+            try {
+              const locale = normalizeTargetLanguage(run?.market?.language || 'en');
+              const blogResult = await postRunAction(item.runId, '/publish-blog', {
+                coverImageUrl: null,
+                locale,
+                status: 'published',
+              });
+              const url =
+                blogResult && typeof blogResult.url === 'string' ? blogResult.url : '';
+              item.diagnostics = url ? ['Blog published: ' + url] : [];
+              setBatchItemProgress(
+                item,
+                'Blog',
+                url ? 'Blog published: ' + url : 'Blog published',
+                'done',
+              );
+            } catch (error) {
+              item.diagnostics = [
+                error instanceof Error ? error.message : 'Blog publish failed',
+              ];
+              setBatchItemProgress(
+                item,
+                'Blog',
+                error instanceof Error ? error.message : 'Blog publish failed',
+                'failed',
+              );
+            }
+          }
         } else {
           item.diagnostics = ['No marker placements matched this language.'];
           setBatchItemProgress(item, 'Calendar', 'No marker placements for this language', 'done');
@@ -8935,12 +9110,79 @@ export class SeoBriefTestUiController {
         );
       }
 
+      function currentBatchScope() {
+        const params = new URLSearchParams(location.search);
+        return {
+          projectId: params.get('projectId') || qs('projectId')?.value || '',
+          markerId: params.get('markerId') || '',
+        };
+      }
+
+      // Persist the live batch so a page reload does not wipe the "Location batch"
+      // panel. Only created runs (with a runId) are worth restoring.
+      function persistLanguageBatch() {
+        try {
+          const items = Array.isArray(appState.languageBatchItems) ? appState.languageBatchItems : [];
+          const persistable = items.filter((item) => item.runId);
+          if (!persistable.length) {
+            localStorage.removeItem(LANGUAGE_BATCH_STORAGE_KEY);
+            return;
+          }
+          const scope = currentBatchScope();
+          localStorage.setItem(
+            LANGUAGE_BATCH_STORAGE_KEY,
+            JSON.stringify({ projectId: scope.projectId, markerId: scope.markerId, items: persistable }),
+          );
+        } catch (error) {
+          // localStorage may be unavailable (private mode/quota); non-fatal.
+        }
+      }
+
+      async function restoreLanguageBatch() {
+        let saved = null;
+        try {
+          saved = JSON.parse(localStorage.getItem(LANGUAGE_BATCH_STORAGE_KEY) || 'null');
+        } catch (error) {
+          saved = null;
+        }
+        if (!saved || !Array.isArray(saved.items) || !saved.items.length) return;
+        const scope = currentBatchScope();
+        // Only restore the batch that belongs to the project currently open.
+        if (saved.projectId && scope.projectId && saved.projectId !== scope.projectId) return;
+        appState.languageBatchItems = saved.items;
+        renderLanguageBatchProgress();
+        // Re-fetch every run once and re-apply the current snapshot mapping. This corrects
+        // cards that an older mapping froze in a wrong terminal state (e.g. a headless run
+        // mislabeled "manual review" that actually finished as a packaged article).
+        await Promise.all(
+          saved.items
+            .filter((item) => item.runId)
+            .map(async (item) => {
+              try {
+                const run = await fetchRunSnapshot(item.runId);
+                applyRunSnapshotToBatchItem(item, run);
+              } catch (error) {
+                // keep persisted state on transient fetch failure
+              }
+            }),
+        );
+        renderLanguageBatchProgress();
+        const hasUnsettled = appState.languageBatchItems.some(
+          (item) => item.runId && !isBatchItemSettled(item),
+        );
+        if (hasUnsettled) {
+          // Resume following the backend pipeline where the previous page left off.
+          void pollLanguageBatchUntilSettled().then(() => loadRuns()).catch(() => {});
+        }
+      }
+
       function renderLanguageBatchProgress(items = appState.languageBatchItems) {
         const node = qs('languageBatchProgress');
         if (!node) return;
         if (!Array.isArray(items) || items.length === 0) {
           node.hidden = true;
           node.innerHTML = '';
+          persistLanguageBatch();
           return;
         }
         const counts = {
@@ -8961,6 +9203,7 @@ export class SeoBriefTestUiController {
             : appState.markerPlan
               ? '<p class="muted">Backend workflow continues each queued run independently. Persisted marker plans are required for calendar scheduling.</p>'
               : '<p class="muted">Backend workflow continues each queued run independently.</p>');
+        persistLanguageBatch();
       }
 
       function bindLaunchFormActions() {
@@ -9082,6 +9325,7 @@ export class SeoBriefTestUiController {
         }
         await loadRuns();
         appendClientDevLog('Runs loaded', { count: appState.runs.length });
+        await restoreLanguageBatch();
       }
 
       boot().catch((error) => {

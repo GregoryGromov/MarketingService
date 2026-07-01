@@ -1529,9 +1529,21 @@ export function validateExplainClusterSelectionResult(
     rejectedClusters: ensureArray(record.rejectedClusters, operation, 'rejectedClusters').map(
       (item, index) => {
         const cluster = ensureObject(item, operation, `rejectedClusters[${index}]`);
+        // These are explanatory fields for already-rejected clusters; a flaky
+        // model occasionally omits them. Don't fail the whole run over it.
         return {
-          label: ensureText(cluster.label, operation, `rejectedClusters[${index}].label`),
-          reason: ensureText(cluster.reason, operation, `rejectedClusters[${index}].reason`),
+          label: ensureTextWithFallback(
+            cluster.label,
+            operation,
+            `rejectedClusters[${index}].label`,
+            'Unnamed cluster',
+          ),
+          reason: ensureTextWithFallback(
+            cluster.reason,
+            operation,
+            `rejectedClusters[${index}].reason`,
+            'No specific reason provided.',
+          ),
         };
       },
     ),
@@ -1553,7 +1565,7 @@ export function validateSynthesizeOnPageResult(
     operation,
     'recommended_article_structure',
   );
-  const h2 = ensureArray(articleStructure.h2, operation, 'recommended_article_structure.h2').map(
+  const h2 = coerceSectionArray(articleStructure.h2).map(
     (item, index) => {
       const section = ensureObject(item, operation, `recommended_article_structure.h2[${index}]`);
       return {
@@ -1641,7 +1653,7 @@ export function validateGenerateSeoBriefResult(
     return validateProductionSeoBriefResult(record, operation, payload);
   }
 
-  const outline = ensureArray(record.outline, operation, 'outline').map((item, index) => {
+  const outline = coerceSectionArray(record.outline).map((item, index) => {
     const section = ensureObject(item, operation, `outline[${index}]`);
     return {
       heading: ensureText(section.heading, operation, `outline[${index}].heading`),
@@ -1824,7 +1836,7 @@ function validateProductionSeoBriefResult(
   operation: string,
   payload: unknown,
 ): GenerateSeoBriefResult {
-  const outline = ensureArray(record.outline, operation, 'outline').map((item, index) => {
+  const outline = coerceSectionArray(record.outline).map((item, index) => {
     const section = ensureObject(item, operation, `outline[${index}]`);
     const h2 = ensureText(section.h2, operation, `outline[${index}].h2`);
     const h3 = ensureStringArray(section.h3, operation, `outline[${index}].h3`);
@@ -1955,6 +1967,40 @@ function ensureArray(value: unknown, operation: string, path: string): unknown[]
   }
 
   return value;
+}
+
+// Models sometimes return a list field (recommended_article_structure.h2, outline, faq)
+// as a single section object, or as an object map of sections, instead of an array.
+// Coerce those shapes to an array so a well-formed-but-mis-shaped response is normalized
+// instead of failing the whole run. A truly empty result still hits the downstream
+// "at least one item" guard.
+const SECTION_ITEM_KEYS = [
+  'heading',
+  'purpose',
+  'subpoints',
+  'keyPoints',
+  'h2',
+  'h3',
+  'notes',
+  'question',
+  'answer',
+  'answer_direction',
+  'title',
+];
+
+function coerceSectionArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>;
+    // A single section object (has typical item keys) vs a keyed map of sections.
+    if (SECTION_ITEM_KEYS.some((key) => key in record)) {
+      return [record];
+    }
+    return Object.values(record);
+  }
+  return [];
 }
 
 function ensureText(value: unknown, operation: string, path: string): string {

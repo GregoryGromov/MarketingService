@@ -63,6 +63,13 @@ export interface ProcessSeoBriefRunResult {
 export interface ProcessSeoBriefRunOptions {
   startStage?: SeoBriefRerunnableStage;
   stopAfterStage?: SeoBriefRerunnableStage;
+  /**
+   * When true, a cluster_selection outcome of `needs_manual_review` caused by a
+   * low viability/product score no longer halts the run: the top-ranked cluster
+   * is auto-accepted and the pipeline continues to brief generation. A run with
+   * no selectable cluster at all still stops for manual review.
+   */
+  skipManualReview?: boolean;
 }
 
 type KeywordExpansionResult = Awaited<ReturnType<SeoBriefAiPort['expandKeywords']>>;
@@ -1095,7 +1102,10 @@ export class ProcessSeoBriefRunExecutor {
           })
         : restoreClusterSelection(priorArtifacts);
 
-      if (clusterSelection.outcome === 'needs_manual_review') {
+      const canAutoAcceptSelection =
+        options.skipManualReview === true && clusterSelection.selectedCluster != null;
+
+      if (clusterSelection.outcome === 'needs_manual_review' && !canAutoAcceptSelection) {
         run.markNeedsManualReview(clusterSelection.reason);
         await this.runRepository.save(run);
 

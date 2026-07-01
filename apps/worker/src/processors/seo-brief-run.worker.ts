@@ -2,6 +2,7 @@ import {
   PROCESS_SEO_BRIEF_RUN_JOB,
   ProcessSeoBriefRunExecutor,
   SEO_BRIEF_RUN_QUEUE,
+  SeoBriefArticleAutoFlowRunner,
   type SeoBriefRunJobPayload,
 } from '@marketing-service/seo-briefing';
 import {
@@ -29,6 +30,8 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
     private readonly logger: Logger,
     @Inject(ProcessSeoBriefRunExecutor)
     private readonly executor: ProcessSeoBriefRunExecutor,
+    @Inject(SeoBriefArticleAutoFlowRunner)
+    private readonly articleAutoFlow: SeoBriefArticleAutoFlowRunner,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -38,12 +41,13 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
 
     const redisUrl = this.config.getOrThrow<string>('REDIS_URL');
     const connection = await waitForRedisReady(redisUrl, SEO_BRIEF_RUN_QUEUE, this.logger);
+    const concurrency = this.resolveConcurrency();
     this.worker = new Worker<SeoBriefRunJobPayload>(
       SEO_BRIEF_RUN_QUEUE,
       async (job) => this.processJob(job),
       {
         connection,
-        concurrency: 1,
+        concurrency,
       },
     );
 
@@ -59,6 +63,15 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
     this.worker.on('error', createThrottledConnectionErrorLogger(SEO_BRIEF_RUN_QUEUE, this.logger));
   }
 
+  private resolveConcurrency(): number {
+    const raw = this.config.get<string>('SEO_BRIEF_WORKER_CONCURRENCY');
+    const parsed = Number.parseInt(raw ?? '', 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return 1;
+    }
+    return parsed;
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.worker) {
       await this.worker.close();
@@ -69,9 +82,16 @@ export class SeoBriefRunWorker implements OnApplicationBootstrap, OnModuleDestro
   private async processJob(job: Job<SeoBriefRunJobPayload>): Promise<void> {
     switch (job.name) {
       case PROCESS_SEO_BRIEF_RUN_JOB:
+        if (job.data.fullAutoFlow) {
+          // Headless variant B: run keyword research -> packaged article via the
+          // CQRS command chain instead of the SEO-only executor pipeline.
+          await this.articleAutoFlow.run(job.data.runId);
+          return;
+        }
         await this.executor.execute(job.data.runId, {
           startStage: job.data.startStage,
           stopAfterStage: job.data.stopAfterStage,
+          skipManualReview: job.data.skipManualReview,
         });
         return;
       default:

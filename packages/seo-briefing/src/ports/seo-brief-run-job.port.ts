@@ -8,6 +8,11 @@ export interface SeoBriefRunJobPayload {
   runId: SeoBriefRunId;
   startStage?: SeoBriefRerunnableStage;
   stopAfterStage?: SeoBriefRerunnableStage;
+  skipManualReview?: boolean;
+  // When true the worker runs the full headless article auto-flow (keyword research
+  // through packaged longread) by invoking the manual CQRS command chain in sequence,
+  // instead of the SEO-only ProcessSeoBriefRunExecutor pipeline.
+  fullAutoFlow?: boolean;
 }
 
 export interface EnqueuedSeoBriefRunJob {

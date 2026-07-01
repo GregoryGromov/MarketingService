@@ -25,6 +25,7 @@ import {
   ContinueSeoBriefRunCommand,
   CreateSeoBriefRunCommand,
   type CreateSeoBriefRunResult,
+  StartSeoBriefAutoRunCommand,
   type ExtractedSeoBriefContext,
   ExtractSerpDerivedCandidatesCommand,
   type ExtractSerpDerivedCandidatesResult,
@@ -344,8 +345,9 @@ export class SeoBriefController {
     @Body(new ValibotPipe(CreateSeoBriefRunSchema))
     dto: CreateSeoBriefRunDto,
   ): Promise<CreateSeoBriefRunResult> {
+    let result: CreateSeoBriefRunResult;
     try {
-      return await this.commandBus.execute(new CreateSeoBriefRunCommand(dto));
+      result = await this.commandBus.execute(new CreateSeoBriefRunCommand(dto));
     } catch (error) {
       if (error instanceof SeoBriefProjectNotFoundError) {
         throw new NotFoundException(error.message);
@@ -353,6 +355,21 @@ export class SeoBriefController {
 
       throw error;
     }
+
+    // Auto-start the backend pipeline (up to cluster selection) for auto runs.
+    // Without this the run is created but never enqueued, so the worker stays idle.
+    if (dto.workflowMode === 'auto_until_selection' && !result.deduplicated) {
+      try {
+        await this.commandBus.execute(new StartSeoBriefAutoRunCommand(result.runId));
+      } catch (error) {
+        this.logger.error(
+          error,
+          `Failed to auto-start SEO brief run ${result.runId}; it remains awaiting confirmation`,
+        );
+      }
+    }
+
+    return result;
   }
 
   @Post('runs/:id/rerun')

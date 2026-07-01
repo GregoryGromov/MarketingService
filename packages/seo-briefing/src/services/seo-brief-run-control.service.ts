@@ -136,6 +136,96 @@ export class SeoBriefRunControlService {
     };
   }
 
+  /**
+   * Enqueue a single backend job that runs the whole pipeline from the first
+   * stage up to and including cluster selection, then stops for manual review.
+   * This is what `workflowMode: 'auto_until_selection'` runs are expected to do
+   * right after they are created.
+   */
+  async runAutoUntilSelection(params: { runId: string }): Promise<SeoBriefRunControlResult> {
+    // When SEO_BRIEF_FULL_AUTO_FLOW is enabled, auto runs go fully headless: the worker
+    // drives the complete keyword-research -> packaged-article CQRS chain (variant B),
+    // producing article-ready output without a browser. Otherwise we fall back to the
+    // SEO-only executor pipeline that stops at brief / cluster selection.
+    const fullAutoFlow = isTruthyEnvFlag(process.env.SEO_BRIEF_FULL_AUTO_FLOW);
+    if (fullAutoFlow) {
+      return this.enqueueFullAutoFlow(params.runId);
+    }
+
+    // When SEO_BRIEF_AUTO_SKIP_MANUAL_REVIEW is enabled, auto runs no longer pause
+    // at cluster selection for manual review: they auto-accept the top cluster and
+    // continue all the way to brief generation.
+    const skipManualReview = isTruthyEnvFlag(process.env.SEO_BRIEF_AUTO_SKIP_MANUAL_REVIEW);
+    const stopAfterStage: SeoBriefRerunnableStage = skipManualReview
+      ? 'brief_generation'
+      : 'cluster_selection';
+    const run = await this.loadRun(params.runId);
+    this.assertNotBusy(run.status, run.id);
+
+    run.queue();
+    await this.runRepository.save(run);
+    await this.saveAdminArtifact({
+      runId: run.id,
+      stage: 'keyword_expansion',
+      artifactType: 'auto_run_request',
+      payload: {
+        requestedBy: 'auto_until_selection',
+        stopAfterStage,
+        skipManualReview,
+      },
+    });
+
+    const job = await this.jobs.enqueueRun({
+      runId: run.id,
+      stopAfterStage,
+      skipManualReview,
+    });
+
+    return {
+      runId: run.id,
+      status: run.status,
+      startStage: 'keyword_expansion',
+      jobId: job.jobId,
+      seoProductBalance: {
+        seoWeight: run.seoWeight,
+        productWeight: run.productWeight,
+      },
+    };
+  }
+
+  private async enqueueFullAutoFlow(runId: string): Promise<SeoBriefRunControlResult> {
+    const run = await this.loadRun(runId);
+    this.assertNotBusy(run.status, run.id);
+
+    run.queue();
+    await this.runRepository.save(run);
+    await this.saveAdminArtifact({
+      runId: run.id,
+      stage: 'keyword_expansion',
+      artifactType: 'auto_run_request',
+      payload: {
+        requestedBy: 'full_auto_flow',
+        fullAutoFlow: true,
+      },
+    });
+
+    const job = await this.jobs.enqueueRun({
+      runId: run.id,
+      fullAutoFlow: true,
+    });
+
+    return {
+      runId: run.id,
+      status: run.status,
+      startStage: 'keyword_expansion',
+      jobId: job.jobId,
+      seoProductBalance: {
+        seoWeight: run.seoWeight,
+        productWeight: run.productWeight,
+      },
+    };
+  }
+
   async markManualReview(params: {
     runId: string;
     reason?: string | null;
@@ -285,4 +375,12 @@ function findNextStage(steps: SeoBriefRunStep[]): SeoBriefRerunnableStage | null
   }
 
   return null;
+}
+
+function isTruthyEnvFlag(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 }

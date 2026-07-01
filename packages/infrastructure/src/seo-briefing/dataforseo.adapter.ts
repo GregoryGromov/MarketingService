@@ -235,6 +235,21 @@ function normalizeDataForSeoLanguagePayload(language: string): SeoBriefJsonObjec
   };
 }
 
+// DataForSEO's location database uses canonical country names that don't always match
+// the human/UI label (e.g. it lists Turkey as "Turkiye"). Sending an unrecognized
+// location_name fails the request outright ("Invalid Field: 'location_name'"), so map
+// known mismatches to the exact DataForSEO name.
+const DATAFORSEO_LOCATION_NAME_ALIASES: Record<string, string> = {
+  turkey: 'Turkiye',
+  türkiye: 'Turkiye',
+  turkiye: 'Turkiye',
+};
+
+function normalizeDataForSeoLocationName(value: string): string {
+  const trimmed = value.trim();
+  return DATAFORSEO_LOCATION_NAME_ALIASES[trimmed.toLowerCase()] ?? trimmed;
+}
+
 function normalizeMarketPayload(params: {
   country: string;
   language: string;
@@ -242,7 +257,9 @@ function normalizeMarketPayload(params: {
 }): SeoBriefJsonObject {
   return {
     ...normalizeDataForSeoLanguagePayload(params.language),
-    location_name: params.locationName?.trim() || params.country.trim(),
+    location_name: normalizeDataForSeoLocationName(
+      params.locationName?.trim() || params.country.trim(),
+    ),
   };
 }
 
@@ -495,8 +512,16 @@ export class DataForSeoAdapter {
       return cached.normalized;
     }
 
-    const taskPostPayload = await this.requestAndLog(params, '/v3/on_page/task_post', payload);
-    const task = this.getSingleTask(taskPostPayload, '/v3/on_page/task_post');
+    // task_post is asynchronous: DataForSEO returns 20100 ("Task Created") on
+    // success, then results are polled from /on_page/summary. Accept 20100 here
+    // so the queued task is not mistaken for a failure.
+    const TASK_CREATED_STATUS_CODES = [20000, 20100] as const;
+    const taskPostPayload = await this.requestAndLog(params, '/v3/on_page/task_post', payload, {
+      allowedStatusCodes: TASK_CREATED_STATUS_CODES,
+    });
+    const task = this.getSingleTask(taskPostPayload, '/v3/on_page/task_post', {
+      allowedStatusCodes: TASK_CREATED_STATUS_CODES,
+    });
     const taskId = asString(task.id);
     if (!taskId) {
       throw new SeoResearchValidationError(
@@ -556,6 +581,7 @@ export class DataForSeoAdapter {
     params: SeoResearchLogContext,
     endpoint: string,
     payload: SeoBriefJsonObject,
+    options?: { allowedStatusCodes?: readonly number[] },
   ): Promise<SeoBriefJsonValue> {
     const log = await this.startLog({
       runId: params.runId,
@@ -574,7 +600,7 @@ export class DataForSeoAdapter {
           timeoutMs: this.getTimeoutMs(params.timeoutMs),
         }),
       );
-      const task = this.getSingleTask(response.payload, endpoint);
+      const task = this.getSingleTask(response.payload, endpoint, options);
 
       await this.completeLog(log, {
         responsePayload: response.payload,
@@ -646,7 +672,16 @@ export class DataForSeoAdapter {
             timeoutMs: this.getTimeoutMs(params.timeoutMs),
           }),
         );
-        const task = this.getSingleTask(response.payload, endpoint);
+        // While the crawl is still queued/handed/in-progress, the summary task
+        // returns a non-20000 status (40601 handed, 40602 in queue, 40603 in
+        // progress). Treat those as "not ready yet" and keep polling instead of
+        // failing the whole stage.
+        const ON_PAGE_PENDING_STATUS_CODES = [40601, 40602, 40603] as const;
+        const task = this.getSingleTask(response.payload, endpoint, {
+          allowedStatusCodes: [20000, ...ON_PAGE_PENDING_STATUS_CODES],
+        });
+        const statusCode = typeof task.status_code === 'number' ? task.status_code : 0;
+        const pending = statusCode !== 20000;
         const result = asObject(task.result?.[0]);
         const crawlProgress = asString(result?.crawl_progress);
 
@@ -656,7 +691,10 @@ export class DataForSeoAdapter {
           cacheHit: false,
         });
 
-        if (!crawlProgress || crawlProgress === 'finished' || crawlProgress === '100%') {
+        if (
+          !pending &&
+          (!crawlProgress || crawlProgress === 'finished' || crawlProgress === '100%')
+        ) {
           return response.payload;
         }
 
@@ -714,7 +752,12 @@ export class DataForSeoAdapter {
     );
   }
 
-  private getSingleTask(payload: SeoBriefJsonValue, endpoint: string): DataForSeoTaskEnvelope {
+  private getSingleTask(
+    payload: SeoBriefJsonValue,
+    endpoint: string,
+    options?: { allowedStatusCodes?: readonly number[] },
+  ): DataForSeoTaskEnvelope {
+    const allowedStatusCodes = options?.allowedStatusCodes ?? [20000];
     const envelope = asObject(payload) as DataForSeoResponseEnvelope | null;
     const tasks = envelope?.tasks;
     if (!Array.isArray(tasks) || tasks.length === 0) {
@@ -736,7 +779,8 @@ export class DataForSeoAdapter {
       );
     }
 
-    if ((task.status_code ?? 0) !== 20000) {
+    const statusCode = typeof task.status_code === 'number' ? task.status_code : 0;
+    if (!allowedStatusCodes.includes(statusCode)) {
       throw new SeoResearchTransportError(
         asString(task.status_message) ?? `DataForSEO task failed for ${endpoint}`,
         endpoint,

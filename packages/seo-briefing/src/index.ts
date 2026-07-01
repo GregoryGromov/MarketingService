@@ -300,6 +300,7 @@ export type { CleanupLongreadArticleResult as CleanupLongreadArticleUseCaseResul
 export { ClusterKeywordCandidatesCommand } from './use-cases/cluster-keyword-candidates/cluster-keyword-candidates.command.js';
 export type { ClusterKeywordCandidatesResult } from './use-cases/cluster-keyword-candidates/cluster-keyword-candidates.handler.js';
 export { ContinueSeoBriefRunCommand } from './use-cases/continue-seo-brief-run/continue-seo-brief-run.command.js';
+export { StartSeoBriefAutoRunCommand } from './use-cases/start-seo-brief-auto-run/start-seo-brief-auto-run.command.js';
 export {
   type CreateSeoBriefRunAudienceShiftInput,
   CreateSeoBriefRunCommand,
@@ -353,6 +354,7 @@ export {
   ProcessSeoBriefRunExecutor,
   type ProcessSeoBriefRunOptions,
 } from './use-cases/process-seo-brief-run/process-seo-brief-run.executor.js';
+export { SeoBriefArticleAutoFlowRunner } from './use-cases/run-article-auto-flow/seo-brief-article-auto-flow.runner.js';
 export { RegenerateSeoBriefCommand } from './use-cases/regenerate-seo-brief/regenerate-seo-brief.command.js';
 export {
   RejectSeoBriefRunCommand,

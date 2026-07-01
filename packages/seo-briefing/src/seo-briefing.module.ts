@@ -12,6 +12,7 @@ import { CleanupLongreadArticleHandler } from './use-cases/cleanup-longread-arti
 import { ClusterKeywordCandidatesHandler } from './use-cases/cluster-keyword-candidates/cluster-keyword-candidates.handler.js';
 import { ContinueSeoBriefRunHandler } from './use-cases/continue-seo-brief-run/continue-seo-brief-run.handler.js';
 import { CreateSeoBriefRunHandler } from './use-cases/create-seo-brief-run/create-seo-brief-run.handler.js';
+import { StartSeoBriefAutoRunHandler } from './use-cases/start-seo-brief-auto-run/start-seo-brief-auto-run.handler.js';
 import { ExtractSerpDerivedCandidatesHandler } from './use-cases/extract-serp-derived-candidates/extract-serp-derived-candidates.handler.js';
 import { FetchFirstKeywordSerpPreviewHandler } from './use-cases/fetch-first-keyword-serp-preview/fetch-first-keyword-serp-preview.handler.js';
 import { FetchKeywordSerpPreviewsHandler } from './use-cases/fetch-keyword-serp-previews/fetch-keyword-serp-previews.handler.js';
@@ -30,6 +31,7 @@ import { ProcessSeoBriefRunExecutor } from './use-cases/process-seo-brief-run/pr
 import { RegenerateSeoBriefHandler } from './use-cases/regenerate-seo-brief/regenerate-seo-brief.handler.js';
 import { RejectSeoBriefRunHandler } from './use-cases/reject-seo-brief-run/reject-seo-brief-run.handler.js';
 import { ReviewClusterProductFitHandler } from './use-cases/review-cluster-product-fit/review-cluster-product-fit.handler.js';
+import { SeoBriefArticleAutoFlowRunner } from './use-cases/run-article-auto-flow/seo-brief-article-auto-flow.runner.js';
 import { RerunSeoBriefRunHandler } from './use-cases/rerun-seo-brief-run/rerun-seo-brief-run.handler.js';
 import { RerunSeoBriefStageHandler } from './use-cases/rerun-seo-brief-stage/rerun-seo-brief-stage.handler.js';
 import { ScoreKeywordCandidatesHandler } from './use-cases/score-keyword-candidates/score-keyword-candidates.handler.js';
@@ -49,6 +51,7 @@ import { UpdateFinalSeoBriefHandler } from './use-cases/update-final-seo-brief/u
     CleanupLongreadArticleHandler,
     ClusterKeywordCandidatesHandler,
     ContinueSeoBriefRunHandler,
+    StartSeoBriefAutoRunHandler,
     CreateSeoBriefRunHandler,
     ExtractSerpDerivedCandidatesHandler,
     FetchFirstKeywordSerpPreviewHandler,
@@ -65,6 +68,7 @@ import { UpdateFinalSeoBriefHandler } from './use-cases/update-final-seo-brief/u
     MatchCompetitorKeywordsHandler,
     PackageLongreadArticleHandler,
     ProcessSeoBriefRunExecutor,
+    SeoBriefArticleAutoFlowRunner,
     RegenerateSeoBriefHandler,
     RejectSeoBriefRunHandler,
     ReviewClusterProductFitHandler,
@@ -85,6 +89,7 @@ import { UpdateFinalSeoBriefHandler } from './use-cases/update-final-seo-brief/u
     SeoBriefExternalCallLoggerService,
     SeoBriefLlmLoggerService,
     ProcessSeoBriefRunExecutor,
+    SeoBriefArticleAutoFlowRunner,
     SeoBriefRunControlService,
     SeoBriefScoreLoggerService,
   ],

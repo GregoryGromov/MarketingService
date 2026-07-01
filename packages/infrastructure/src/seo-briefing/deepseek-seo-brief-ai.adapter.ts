@@ -120,6 +120,43 @@ interface DeepSeekRunPricing {
   outputUsdPerMillionTokens: number;
 }
 
+// Scan out the first complete brace-delimited object, ignoring braces inside string
+// literals. Returns null when there is no `{` or the object is truncated (never closes),
+// so a cut-off response still surfaces as an invalid-JSON error instead of a bad slice.
+function extractOutermostJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) {
+    return null;
+  }
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
 @Injectable()
 export class DeepSeekSeoBriefAiAdapter {
   private readonly logger = new Logger(DeepSeekSeoBriefAiAdapter.name);
@@ -510,6 +547,17 @@ export class DeepSeekSeoBriefAiAdapter {
     try {
       return JSON.parse(normalized) as unknown;
     } catch {
+      // Large structured outputs (e.g. package with the full article body) sometimes
+      // arrive wrapped in prose or with leading/trailing noise. Fall back to the outermost
+      // brace-delimited object before giving up.
+      const salvaged = extractOutermostJsonObject(normalized);
+      if (salvaged !== null) {
+        try {
+          return JSON.parse(salvaged) as unknown;
+        } catch {
+          // fall through to the validation error below
+        }
+      }
       throw new SeoBriefAiValidationError(
         `${operation} returned invalid JSON`,
         operation,
@@ -561,7 +609,18 @@ export class DeepSeekSeoBriefAiAdapter {
     return (
       message.includes('unexpected end of json input') ||
       message.includes('returned invalid json') ||
-      message.includes('does not contain message content')
+      message.includes('does not contain message content') ||
+      // Transient transport failures: request/body-read aborts, timeouts, dropped
+      // connections. These carry status 200 (body stream aborted mid-read) or null,
+      // so they slip past the status checks above and must be matched by message.
+      message.includes('aborted') ||
+      message.includes('timeout') ||
+      message.includes('timed out') ||
+      message.includes('network') ||
+      message.includes('fetch failed') ||
+      message.includes('econnreset') ||
+      message.includes('econnrefused') ||
+      message.includes('socket hang up')
     );
   }
 
@@ -575,7 +634,10 @@ export class DeepSeekSeoBriefAiAdapter {
       '',
       'Previous response was invalid.',
       `Validation error: ${reason}`,
-      'Return only valid JSON that matches the required schema exactly.',
+      'Fix ONLY the field named in the validation error. Keep every other field exactly as it was in your previous response.',
+      'When the error lists allowed values ("must be one of ..."), copy one of those values verbatim, including underscores. Do not invent, translate, or abbreviate enum values, and do not borrow a value that belongs to a different field.',
+      'Every required string field must be non-empty: never return "", null, or a placeholder.',
+      'Return only valid JSON that matches the required schema exactly. Include all required fields.',
       'Do not include markdown, commentary, or code fences.',
       'Previous invalid response:',
       invalidResponse,
