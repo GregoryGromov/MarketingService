@@ -1587,14 +1587,17 @@ function createKeywordScoringContext(
       260,
     ),
     keyMessage: compactText(params.keyMessage, 180),
-    brandMemory: fullPromptJson(brandMemory),
-    allowedFacts: fullStringArray(readPromptValue(brandMemory, 'approvedFacts')),
-    forbiddenClaims: uniqueStringsPreserveFullText([
-      ...fullStringArray(readPromptValue(brandMemory, 'forbiddenClaims')),
-      ...fullStringArray(readPromptValue(brandMemory, 'bannedPhrases')),
-      ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
-    ]),
-    requiredPhrases: fullStringArray(readPromptValue(brandMemory, 'requiredPhrases')),
+    brandMemory: compactKeywordScoringBrandMemory(brandMemory),
+    allowedFacts: compactStringArray(readPromptValue(brandMemory, 'approvedFacts'), 8, 120),
+    forbiddenClaims: uniqueCompactStrings(
+      [
+        ...compactStringArray(readPromptValue(brandMemory, 'forbiddenClaims'), 8, 120),
+        ...compactStringArray(readPromptValue(brandMemory, 'bannedPhrases'), 8, 90),
+        ...compactStringArray(readPromptValue(seoProductContext, 'claimConstraints'), 6, 90),
+      ],
+      14,
+    ),
+    requiredPhrases: compactStringArray(readPromptValue(brandMemory, 'requiredPhrases'), 8, 80),
     marketerConstraints: uniqueCompactStrings(
       [
         ...compactStringArray(readPromptValue(seoProductContext, 'marketerConstraints'), 8, 110),
@@ -1612,6 +1615,20 @@ function createKeywordScoringContext(
       'guaranteed profit',
       'risk-free yield',
     ],
+  };
+}
+
+function compactKeywordScoringBrandMemory(
+  brandMemory: Record<string, unknown> | null,
+): Record<string, unknown> {
+  return {
+    brandName: compactText(readPromptValue(brandMemory, 'brandName'), 80),
+    productDescription: compactText(readPromptValue(brandMemory, 'productDescription'), 220),
+    targetAudience:
+      compactText(readPromptValue(brandMemory, 'targetAudience'), 160) ??
+      compactText(readPromptValue(brandMemory, 'targetAudiences'), 180),
+    userPains: compactStringArray(readPromptValue(brandMemory, 'userPains'), 6, 120),
+    seoRules: compactStringArray(readPromptValue(brandMemory, 'seoRules'), 6, 120),
   };
 }
 
@@ -1756,37 +1773,6 @@ function compactPromptJson(
   return null;
 }
 
-function fullPromptJson(value: unknown, depth = 0): unknown {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => fullPromptJson(item, depth + 1));
-  }
-  if (typeof value === 'object') {
-    if (depth > 8) {
-      return '[max-depth]';
-    }
-
-    const output: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      if (isRawPromptField(key)) {
-        continue;
-      }
-      output[key] = fullPromptJson(item, depth + 1);
-    }
-    return output;
-  }
-
-  return null;
-}
-
 function isRawPromptField(key: string): boolean {
   return [
     'markdownPreview',
@@ -1809,10 +1795,6 @@ function compactStringArray(value: unknown, limit: number, itemLimit: number): s
     .slice(0, limit);
 }
 
-function fullStringArray(value: unknown): string[] {
-  return collectPromptStrings(value);
-}
-
 function collectPromptStrings(value: unknown): string[] {
   if (typeof value === 'string') {
     return value.trim() ? [value.trim()] : [];
@@ -1826,21 +1808,6 @@ function collectPromptStrings(value: unknown): string[] {
     );
   }
   return [];
-}
-
-function uniqueStringsPreserveFullText(values: string[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const value of values) {
-    const trimmed = value.trim();
-    const key = trimmed.toLowerCase();
-    if (!trimmed || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    result.push(trimmed);
-  }
-  return result;
 }
 
 function uniqueCompactStrings(values: string[], limit: number): string[] {
