@@ -135,6 +135,11 @@ interface OnPageResearchEntry {
   duplicateDescriptionPages: number | null;
 }
 
+interface SkippedOnPageTarget {
+  target: string;
+  reason: string;
+}
+
 interface KeywordUniverseEntry {
   keyword: string;
   searchVolume: number | null;
@@ -637,27 +642,35 @@ export class ProcessSeoBriefRunExecutor {
       const onpageResearch = shouldExecuteStage(options.startStage, 'onpage_research')
         ? await this.executeStage(run.id, 'onpage_research', async (step) => {
             const pages: OnPageResearchEntry[] = [];
+            const skippedTargets: SkippedOnPageTarget[] = [];
 
             for (const target of onpageTargets) {
-              const result = await this.seoResearch.getOnPageParse({
-                runId: run.id,
-                stepId: step.id,
-                timeoutMs: requestTimeoutMs,
-                target,
-                maxCrawlPages: 1,
-                enableJavascript: true,
-              });
+              try {
+                const result = await this.seoResearch.getOnPageParse({
+                  runId: run.id,
+                  stepId: step.id,
+                  timeoutMs: requestTimeoutMs,
+                  target,
+                  maxCrawlPages: 1,
+                  enableJavascript: true,
+                });
 
-              pages.push({
-                target,
-                providerTaskId: result.providerTaskId,
-                crawlProgress: result.crawlProgress,
-                onpageScore: result.onpageScore,
-                pageCount: result.pageCount,
-                brokenPages: result.brokenPages,
-                duplicateTitlePages: result.duplicateTitlePages,
-                duplicateDescriptionPages: result.duplicateDescriptionPages,
-              });
+                pages.push({
+                  target,
+                  providerTaskId: result.providerTaskId,
+                  crawlProgress: result.crawlProgress,
+                  onpageScore: result.onpageScore,
+                  pageCount: result.pageCount,
+                  brokenPages: result.brokenPages,
+                  duplicateTitlePages: result.duplicateTitlePages,
+                  duplicateDescriptionPages: result.duplicateDescriptionPages,
+                });
+              } catch (error) {
+                skippedTargets.push({
+                  target,
+                  reason: describeUnknownError(error),
+                });
+              }
             }
 
             await this.saveArtifact({
@@ -667,6 +680,7 @@ export class ProcessSeoBriefRunExecutor {
               payload: {
                 targets: onpageTargets,
                 pages: pages as unknown as SeoBriefJsonValue,
+                skippedTargets: skippedTargets as unknown as SeoBriefJsonValue,
               },
               attempt: step.attemptNumber,
             });
@@ -686,6 +700,7 @@ export class ProcessSeoBriefRunExecutor {
                 ),
                 domainCount: domainMetricsResearch.metrics.length,
                 onpageTargetCount: pages.length,
+                skippedOnpageTargetCount: skippedTargets.length,
               },
               attempt: step.attemptNumber,
             });
@@ -1831,6 +1846,14 @@ function isDataForSeoKeywordSafe(value: string): boolean {
     wordCount <= DATAFORSEO_KEYWORD_MAX_WORDS &&
     normalized.length <= DATAFORSEO_KEYWORD_MAX_CHARS
   );
+}
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return 'Unknown error';
 }
 
 function uniqueKeywordItems(items: ResearchKeywordItem[]): ResearchKeywordItem[] {
